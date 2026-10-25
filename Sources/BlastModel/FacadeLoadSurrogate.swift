@@ -712,7 +712,7 @@ public enum FacadeLoadSurrogate {
     /// `features`' load for a charge of `mass` kg, as a run on cells `cellSize` m across would
     /// give it, under `coefficients`.
     public static func predict(
-        _ f: Features, mass: Double, cellSize: Double, coefficients: Coefficients = .fitted
+        _ f: Features, mass: Double, cellSize: Double, coefficients: Coefficients = .adopted
     ) -> Prediction {
         // No charge, no load (and no arrival).
         guard mass > 0, mass.isFinite else {
@@ -830,7 +830,7 @@ public enum FacadeLoadSurrogate {
     }
 
     public static func estimate(
-        scene: Scenario, cellSize: Float, binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
+        scene: Scenario, cellSize: Float, binS: Double = 0.7e-3, coefficients: Coefficients = .adopted,
         roofCoefficients: Coefficients? = .roofs
     ) -> Estimate {
         let start = ContinuousClock.now
@@ -895,16 +895,17 @@ extension FacadeLoadSurrogate {
         let shielded = ValidationTables.figure("surrogateCloseInShielded")
         return [
             "An estimate, not a run. Against Beirut's full runs at 0.2, 0.5 and 1.1 kt, their top clear (8 m air refined "
-                + "to 4 m; its terms took five of Beirut's near boxes about the same charge, on 2 m air, not these runs):",
+                + "to 4 m; its terms, refitted on runs with their top clear, took five of Beirut's near boxes about the "
+                + "same charge, on 2 m air, not these runs):",
             "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
                 + "of sides deep in the district, hardly ever two states apart; the share of sides broken by distance "
-                + "came within 0.1 of the run's to 1.5 km at 0.2 kt and 2 km at 0.5 kt, and fell short beyond: low, "
-                + "the unsafe side.",
+                + "came within 0.1 of the run's to 1.5 km at 0.2 kt and 2.5 km at 0.5 kt, and at 0.2 kt fell short "
+                + "beyond: low, the unsafe side.",
             "Walls and roofs: not to be relied on. Of the components either called damaged, \(concrete.percent) of the "
                 + "concrete, \(stone.percent) of the stone and \(roof.percent) of the roofs took the run's level. Run the "
                 + "scene for the structure.",
             "Loads: peaks \(near.ratio) of the run's on the median to Z 20 m/kg^(1/3), each scattered by about ×1.3; "
-                + "further out \(far.ratio) times on the median: low.",
+                + "further out \(far.ratio) times on the median.",
             "Close in, Z 1.5–4.6 m/kg^(1/3), Kingery–Bulmash's base times the open façades' ratio on fine runs; "
                 + "a street the line runs down raises the loads by the fine canyon runs' terms; behind buildings the "
                 + "loads are lowered the more, the narrower the charge's surroundings (fitted on charges among "
@@ -944,7 +945,8 @@ extension FacadeLoadSurrogate.Coefficients {
     /// buildings close in the branch takes the shielding fitted on Beirut's charges among buildings
     /// at five places of ten, the five near boxes and the fit set (`CloseIn.Shielding`). Beirut's
     /// other five places, the near boxes' other yields and two more made-up districts were held out
-    /// to judge it on.
+    /// to judge it on. In use until 25 October 2026, when `clearTop`, refitted on runs whose top
+    /// clears the far façades, was adopted (`adopted`); kept as `TermSet.fitted` for earlier records.
     public static let fitted = FacadeLoadSurrogate.Coefficients(
         peak: [
             -2.0548, -0.4514, -0.1530, -0.0814, 0.0065, 0.7851, -0.3127, -0.1531, -0.0230, -0.1477, -0.3890,

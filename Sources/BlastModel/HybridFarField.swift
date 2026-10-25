@@ -145,19 +145,21 @@ public struct HybridFarField: Codable, Sendable, Equatable {
     /// What the mode is, in a line.
     public static let method =
         "The air run in 3-D to the hand-over; beyond it each façade's load from the façade load surrogate, its peak "
-        + "and impulse scaled to meet the near run where both hold and carried on its trend with distance."
+        + "and impulse scaled to meet the near run where both hold and carried on flat (New District's, since 25 "
+        + "October 2026; districts made before carry the near run's trend with distance)."
 
     /// Its standing, from Beirut against full runs at 0.2, 0.5 and 1.1 kt with their top clear (8 m
-    /// air refined to 4 m, since 25 October 2026), handing over at 1 km (docs/hybrid-far-field.md).
+    /// air refined to 4 m, since 25 October 2026), handing over at 1 km, on the clear-top terms with
+    /// the match carried flat, adopted the same day (docs/hybrid-far-field.md).
     public static let standing: [String] = {
         let peak = ValidationTables.figure("hybridFarPeak")
         let impulse = ValidationTables.figure("hybridFarImpulse")
         return [
             "Inside the hand-over: the near run's own loads, which on Beirut were the full run's (peaks 1.00, scatter 3–8%).",
-            "Beyond it, against the full run with its top clear: façade peaks \(peak.ratio) of its to 2.5 km, impulses "
-                + "\(impulse.ratio) times, the lower the smaller the yield and the further out; sides with some glass broken "
-                + "within 0.05 of its to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 2.5 km at 1.1 kt, 0.31–0.65 under at "
-                + "1.5–2.5 km at 0.2 kt; blown-out shares up to 0.52 under in a band. Low beyond 1.5 km: the unsafe side.",
+            "Beyond it, against the full run with its top clear: façade peaks \(peak.ratio) of its to 2.5 km, the lower "
+                + "the further out, impulses \(impulse.ratio) times; sides with some glass broken within 0.05 of its to "
+                + "1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 2.5 km at 1.1 kt, 0.13–0.50 under at 1.5–2.5 km at 0.2 kt; "
+                + "blown-out shares up to 0.39 under in a band. Glass low beyond 1.5 km at the smallest yield: the unsafe side.",
             "Arrivals beyond the hand-over: Kingery–Bulmash's scaled to the near run's, 2–4% earlier than the full run's.",
             "Walls and roofs beyond the hand-over take the façade load surrogate's standing: run the scene for the structure.",
         ]
@@ -208,7 +210,7 @@ extension HybridFarField {
         near: Scenario, far set: FarFieldSet, histories: [EnvelopeComponentHistory], cellSize: Float,
         seedFrom: Double? = nil, trendFrom: Double? = nil, nearBeyond: Bool = true,
         glass uncertainty: FacadeLoadSurrogate.Uncertainty? = nil,
-        coefficients: FacadeLoadSurrogate.Coefficients = .fitted
+        coefficients: FacadeLoadSurrogate.Coefficients = .adopted
     ) throws -> Judgement {
         let start = ContinuousClock.now
         let handover = Double(set.handoverM)

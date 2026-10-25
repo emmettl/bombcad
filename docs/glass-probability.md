@@ -252,7 +252,7 @@ The glass chances' standing says this since 25 October 2026. Calibrating them ag
 far terms, or the chances' load scatter, refitted on clear-top runs: a refit, and the user's
 decision.
 
-**Refitted on clear-top runs (25 October 2026, a candidate).** The surrogate's terms, its rise
+**Refitted on clear-top runs (25 October 2026, adopted the same day).** The surrogate's terms, its rise
 share and the chances' load scatter were refitted on its fit runs remade with their tops clear
 (emmettl/bombcad-work#98;
 [the surrogate](surrogate-first-look.md#refitted-on-clear-top-runs-25-october-2026)). Against the
@@ -263,8 +263,11 @@ same clear-top runs:
   still failing, their middle tenths 0.2–0.35 under;
 - the openings against GEER do not move (skill 0.17).
 
-It is an option (`--terms clear-top`; in the app, "Façade terms refitted on clear-top runs"), not
-the default.
+The user adopted it on 25 October 2026 (emmettl/bombcad-work#99): the chances draw these terms and
+this scatter by default, and the standing quotes them. The terms of 23 October stay by name
+(`--terms fitted`; in the app, "Façade terms of 23 October"). On the 4 m layout against GEER, drawn
+over the inferred yield, the openings' skill is 0.18 (0.19 on the terms of 23 October), and the glass
+blown out at 0.75–1 km 0.96 (0.93); the openings' fragility was not refitted.
 
 ## Walls and roofs
 
@@ -291,12 +294,20 @@ stone's 0.724 became 0.719
 
 | Chance (2,053 buildings × 10 yields) | Settings | Brier skill | Tenths, each within 0.1 of the runs |
 |---|---|---|---|
-| Concrete walls, moderate or worse | loads ×1.15, the whole scatter (the refit's load in 10 folds of 10) | 0.61 | pass |
+| Concrete walls, moderate or worse | loads ×1.15, the whole scatter (the refit's load in 9 folds of 10) | 0.60 | fails by 0.01: 0.8–0.9 says 0.84, 0.95 seen |
 | The same with field model 1's ground-floor peaks | peak ×1.15, impulse ×0.95, the whole scatter | 0.65 | pass |
-| The same with field model 2's peaks at every storey, its own scatter | as field model 1's | 0.66 | pass |
-| Concrete walls, heavy or worse (illustrative) | as the first | 0.53 | 0.1–0.5 high by 0.11–0.23 |
-| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.72 | 0.4–0.9 high by up to 0.19 |
+| The same with field model 2's peaks at every storey, its own scatter | as field model 1's | 0.65 | pass |
+| Concrete walls, heavy or worse (illustrative) | as the first | 0.51 | 0.1–0.5 high by 0.09–0.23 |
+| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.69 | 0.3–0.9 high by up to 0.27 |
 | Roofs, moderate or worse | loads ×1.3, scatter ×½ | 0.74 | 0.4–0.9 low by 0.11–0.18 |
+
+The table is on the façade terms refitted on clear-top runs and their scatter, adopted on 25
+October 2026 (emmettl/bombcad-work#99). On the terms of 23 October concrete at ×1.15 scored 0.61
+and passed, the field models 0.654 and 0.656, heavy or worse 0.53 and stone 0.72. On the new terms the walls'
+×1.15 was kept: its one tenth misses by 0.01, and held out the refit still picks ×1.15 in nine
+folds of ten (the impulse ×0.95 with it) and ×1.3 at 1.5 kt, passing at skill 0.58. The field
+models' factors were kept too
+([learned models](learned-models.md#on-the-clear-top-terms-25-october-2026)).
 
 On the façade terms before 23 October, fitted on 4 m cells, concrete took ×1.3 (skill 0.59), stone
 0.70 and heavy damage 0.49. The refitted terms give the 2 m runs' peaks at 5–10 m/kg^(1/3), so
@@ -313,11 +324,13 @@ the façade terms were refitted on 2 m air (23 October 2026). Stone and roofs to
 against both
 ([the first look](surrogate-first-look.md#the-walls-chances-re-judged-on-2-m-references-22-october-2026)).
 
-- **Concrete walls' damage is calibrated.** It passes the protective-design report's test, each
-  tenth holding 50 buildings or more within 0.1 of the share of runs.
+- **Concrete walls' damage is nearly calibrated.** Each tenth holding 50 buildings or more is
+  within 0.1 of the share of runs but one, 0.11 under at 0.8–0.9, so it misses the
+  protective-design report's test by 0.01 on the terms of 25 October (it passed on those of 23
+  October). With a field model it passes.
 - **Roofs' chances are skilful but low in the middle.** That is the unsafe side, even with a load
   factor fitted on these runs (their own terms read low).
-- **Stone's chances are high** by up to 0.19, the safe side. For masonry, moderate and heavy are
+- **Stone's chances are high** by up to 0.27, the safe side (0.19 on the terms of 23 October). For masonry, moderate and heavy are
   one level.
 - **No chance of failure is given.** Before the close-in branch the roofs' read far too high
   (skill −0.48), and the walls' were too few to judge. Concrete's heavy damage is illustrative.

@@ -32,9 +32,10 @@ public struct FarFieldSet: Codable, Sendable, Equatable {
     public var trendReach: Double?
     /// How the match fades past the reach (`HybridFarField.trendDamping`); nil holds it.
     public var trendDamping: Double?
-    /// Whether the match is carried flat, with no trend at all (emmettl/bombcad-work#98): a
-    /// candidate, not adopted. Against Beirut's runs with their top clear the trend fitted over the
-    /// near band fell and read the far field low (docs/hybrid-far-field.md); nil or false keeps it.
+    /// Whether the match is carried flat, with no trend at all (emmettl/bombcad-work#98): against
+    /// Beirut's runs with their top clear the trend fitted over the near band fell and read the far
+    /// field low (docs/hybrid-far-field.md). File ▸ New District sets it since 25 October 2026
+    /// (emmettl/bombcad-work#99); nil or false, as sets saved before have it, keeps the trend.
     public var matchFlat: Bool?
 
     public init(
@@ -98,8 +99,10 @@ extension DistrictLayout {
         // Corners a whole number of cells apart, so that the cells line up.
         let near = (nearHalfSide / cellSize).rounded(.up) * cellSize
         let whole = max((halfSide / cellSize).rounded(.up) * cellSize, near)
+        // Its top clear over the hand-over, which the near run's façades reach.
         let (nearScene, report) = try scene(
-            halfSide: near, cellSize: cellSize, name: name, footprintCells: footprintCells)
+            halfSide: near, cellSize: cellSize, name: name, footprintCells: footprintCells,
+            topRadius: handoverM)
         let (full, wholeReport) = try scene(
             halfSide: whole, cellSize: cellSize, radius: radius, height: nearScene.domainSize.z,
             footprintCells: footprintCells)

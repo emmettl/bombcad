@@ -14,7 +14,7 @@ enum HeadlessRun {
                            [--charge <kg>@<x>,<y>,<z>[+<delay ms>]]…
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
                            [--surrogate <file.json> [--surrogate-yields <samples.csv> | --surrogate-yield-within <factor>]
-                            [--surrogate-terms adopted|clear-top]]
+                            [--surrogate-terms clear-top|fitted]]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
@@ -75,8 +75,9 @@ enum HeadlessRun {
         blown out, drawn over the yield (from `scenebench infer-charge --samples`' masses with
         --surrogate-yields, or within --surrogate-yield-within either way nine times in ten, 1.5 by
         default), each building's glass strength and the estimate's own scatter: the glass only.
-        --surrogate-terms clear-top takes the candidate façade terms and scatter refitted on runs
-        whose top clears the far façades (not adopted); adopted, the default, the terms in use.
+        --surrogate-terms names the façade terms and scatter: clear-top, the default since 25
+        October 2026, refitted on runs whose top clears the far façades; fitted, those of 23
+        October, for earlier records.
         --charge adds a further charge of that much TNT at x, y, z m, fired the delay after the
         main charge (with it if none); give it again for more.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
@@ -247,7 +248,7 @@ enum HeadlessRun {
             }
             if let text = values["surrogate-terms"] {
                 guard let terms = FacadeLoadSurrogate.TermSet(rawValue: text) else {
-                    throw ProjectFileError.invalid("--surrogate-terms takes adopted or clear-top.")
+                    throw ProjectFileError.invalid("--surrogate-terms takes clear-top or fitted.")
                 }
                 options.surrogateTerms = terms
             }

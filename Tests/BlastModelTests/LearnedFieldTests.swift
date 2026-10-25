@@ -256,9 +256,11 @@ struct LearnedFieldTests {
                 let (glass, _) = FacadeLoadSurrogate.glassProbabilities(
                     sides: sides, mass: mass, cellSize: 2, uncertainty: uncertainty)
                 #expect(look.glass == glass)
+                // The walls whose peaks are the model's take its factors, as the look's do (on the
+                // clear-top terms of 25 October 2026 the two factors part on this row).
                 let (structure, _) = FacadeLoadSurrogate.structureProbabilities(
                     look.estimate, mass: mass, cellSize: 2, constructions: constructions,
-                    uncertainty: uncertainty)
+                    uncertainty: uncertainty, learnedPeaks: true)
                 #expect(look.structure == structure)
             }
         }
@@ -483,11 +485,11 @@ struct LearnedFieldTests {
                 ground: URL(filePath: "/m/a.bcfw"),
                 environment: [LearnedField.levelsEnvironmentKey: "/l.bcfw"]
             ).path == "/l.bcfw")
-        // The standing gives the walls' figures plainly (on the façade terms of 23 October 2026 the
-        // walls' chances pass the tenths test, emmettl/bombcad-work#56).
+        // The standing gives the walls' figures plainly (on the clear-top façade terms adopted on 25
+        // October 2026 the walls' chances pass the tenths test, emmettl/bombcad-work#99).
         let standing = LearnedField.standing.joined(separator: " ")
-        #expect(standing.contains("0.69 against field model 1's 0.43") && standing.contains("0.656"))
-        #expect(standing.contains("0.656 against field model 1's 0.654"))
+        #expect(standing.contains("0.72 against field model 1's 0.66") && standing.contains("0.653"))
+        #expect(standing.contains("0.653 against field model 1's 0.653"))
         #expect(standing.contains("pass the tenths test"))
     }
 

@@ -1,15 +1,22 @@
-kind: added
+kind: changed
 
-**Two candidate options for the far field, off by default.** "Façade terms refitted on clear-top
-runs" (Envelope Damage; headless `--surrogate-terms clear-top`) gives Quick Estimate and the far
-field the surrogate refitted on its fit runs remade with their tops clear of the far façades. The
-peak, impulse and rise-share terms are refitted, and so is the chances' load scatter. "Carry the
-run's match flat" (Far field) drops the trend with distance from the far field's match to the run.
-Against Beirut's clear-top runs, Quick Estimate's far loads at 0.5 kt go from 0.72–0.92 of the
-run's to 0.82–1.03. The glass chances' blown out passes the protective-design test (Brier 0.027
-against 0.038). With both options on, the far field's error in the share of sides blown out halves
-at every yield. Some glass broken still reads low at 0.2 kt beyond 1.75 km, and concrete walls'
-chances miss their tenths test by 0.01 in one tenth. Whether to adopt them is the user's decision
-([the surrogate](../../surrogate-first-look.md#refitted-on-clear-top-runs-25-october-2026)).
-Developers: `surrogate-judge`, `hybrid-judge` and `glass-calibrate` take `--terms clear-top`, and
-`glass-calibrate` takes `--load-scatter`.
+**Quick Estimate, the glass chances and the far field read the far façades higher, and New
+District's top is raised.** Their façade terms are now refitted on runs whose top clears the far
+façades, and so is the scatter the chances draw. Far fields that New District makes carry the
+run's match flat beyond the hand-over, with no trend with distance. New District's domain top is
+at least the highest ground plus a fifth of the radius; on Beirut's 2.5 km that is 608 m, against
+400–488 m before.
+
+Against Beirut's clear-top runs:
+- Quick Estimate's far loads at 0.5 kt are 0.82–1.03 of the run's, where they were 0.72–0.92.
+- The glass chances' blown out passes the protective-design test (Brier 0.027 against 0.038).
+- The far field's error in the share of sides blown out halves at every yield.
+
+Two things still fall short. Some glass broken reads low at 0.2 kt beyond 1.75 km. Concrete walls'
+chances, which keep their ×1.15, miss their tenths test by 0.01 in one tenth.
+
+The earlier terms stay by name, to reproduce earlier estimates: Envelope Damage ▸ "Façade terms of
+23 October", headless `--surrogate-terms fitted`, and `--terms fitted` in the benches. Projects
+saved before keep their far field's trend, and Far field ▸ "Carry the run's match flat" changes it.
+Details are in [the surrogate](../../surrogate-first-look.md#adopted-25-october-2026) and
+[the hybrid far field](../../hybrid-far-field.md#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026).

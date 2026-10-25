@@ -87,13 +87,14 @@ struct EnvelopeDamageSection: View {
                     CloseCallsRow(model: model)
                 }
                 Toggle(
-                    "Façade terms refitted on clear-top runs (candidate)",
-                    isOn: $model.quickEstimateClearTopTerms
+                    "Façade terms of 23 October (earlier estimates)",
+                    isOn: $model.quickEstimateFirstFitTerms
                 )
                 .help(
-                    "For Quick Estimate and the far field: the surrogate's peak and impulse terms, and the "
-                        + "scatter its chances draw, refitted on runs whose top clears the far façades "
-                        + "(docs/surrogate-first-look.md). A candidate, not adopted: off, the terms in use.")
+                    "For Quick Estimate and the far field: the surrogate's terms and scatter fitted on runs "
+                        + "whose top drained the far loads, in use until 25 October 2026, to reproduce an earlier "
+                        + "estimate. Off, the terms refitted on clear-top runs (docs/surrogate-first-look.md)."
+                )
                 Toggle(
                     "Learned field model for façade peaks",
                     isOn: Binding(
@@ -588,11 +589,12 @@ struct FarFieldSection: View {
                         set.buildings.count, Double(set.handoverM))
                 )
                 .font(.caption).fixedSize(horizontal: false, vertical: true)
-                Toggle("Carry the run's match flat (candidate)", isOn: $model.farFieldMatchFlat)
+                Toggle("Carry the run's match flat", isOn: $model.farFieldMatchFlat)
                     .help(
                         "The far field meets the run at the hand-over and carries that match on with no trend "
-                            + "with distance (docs/hybrid-far-field.md). A candidate, not adopted: off, the trend "
-                            + "the run's strips inside the hand-over give.")
+                            + "with distance (docs/hybrid-far-field.md), as New District's districts do since 25 "
+                            + "October 2026. Off, the trend the run's strips inside the hand-over give, as districts "
+                            + "made before then do. Saved with the project.")
                 if model.judgingFarField { ProgressView().controlSize(.small) }
                 if !model.farFieldStatus.isEmpty {
                     // An estimate must never pass for a run.

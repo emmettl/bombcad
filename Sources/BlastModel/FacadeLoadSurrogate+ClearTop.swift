@@ -1,18 +1,23 @@
 import Foundation
 
 extension FacadeLoadSurrogate {
-    /// Which façade terms and load scatter the surrogate takes (emmettl/bombcad-work#98;
-    /// docs/surrogate-first-look.md): the adopted ones (`Coefficients.fitted`,
-    /// `Uncertainty.leaveOneOut`), the default; or the candidate refitted on runs whose top clears
-    /// the far façades (`Coefficients.clearTop`, `Uncertainty.clearTopLeaveOneOut`), an option.
+    /// Which façade terms and load scatter the surrogate takes (emmettl/bombcad-work#98, #99;
+    /// docs/surrogate-first-look.md): the terms refitted on runs whose top clears the far façades
+    /// (`Coefficients.clearTop`, `Uncertainty.clearTopLeaveOneOut`), adopted by the user on 25
+    /// October 2026 and the default (`adopted`); or those of 23 October, fitted on runs whose top
+    /// drained the far loads (`Coefficients.fitted`, `Uncertainty.leaveOneOut`), kept by name so
+    /// that earlier records can be reproduced.
     public enum TermSet: String, CaseIterable, Codable, Sendable {
-        case adopted
         case clearTop = "clear-top"
+        case fitted
+
+        /// The set in use unless another is named: `clearTop` since 25 October 2026.
+        public static let adopted = TermSet.clearTop
 
         /// The façade terms.
         public var coefficients: Coefficients {
             switch self {
-            case .adopted: .fitted
+            case .fitted: .fitted
             case .clearTop: .clearTop
             }
         }
@@ -20,7 +25,7 @@ extension FacadeLoadSurrogate {
         /// The load scatter the chances draw.
         public var loadScatter: [Uncertainty.LoadScatter] {
             switch self {
-            case .adopted: Uncertainty.leaveOneOut
+            case .fitted: Uncertainty.leaveOneOut
             case .clearTop: Uncertainty.clearTopLeaveOneOut
             }
         }
@@ -28,7 +33,19 @@ extension FacadeLoadSurrogate {
 }
 
 extension FacadeLoadSurrogate.Coefficients {
-    /// A candidate, not adopted (emmettl/bombcad-work#98): `fitted` with the peak's, impulse's and
+    /// The façade terms in use unless others are given: `TermSet.adopted`'s, `clearTop` since 25
+    /// October 2026 (emmettl/bombcad-work#99); `fitted` before.
+    public static let adopted = FacadeLoadSurrogate.TermSet.adopted.coefficients
+}
+
+extension FacadeLoadSurrogate.Uncertainty {
+    /// The load scatter the chances draw unless another is given: `TermSet.adopted`'s,
+    /// `clearTopLeaveOneOut` since 25 October 2026; `leaveOneOut` before.
+    public static let adoptedLoadScatter = FacadeLoadSurrogate.TermSet.adopted.loadScatter
+}
+
+extension FacadeLoadSurrogate.Coefficients {
+    /// Adopted on 25 October 2026 (emmettl/bombcad-work#98, #99): `fitted` with the peak's, impulse's and
     /// rise share's terms refitted by #56's fit on its runs remade with their top clear of the far façades
     /// (#96's rule, the highest ground plus a fifth of the farthest fitted strip's distance; the
     /// runs #56 fitted on had tops of 112–320 m, which drained their loads from about five times the
@@ -69,8 +86,8 @@ extension FacadeLoadSurrogate.Uncertainty {
     /// The clear-top runs' scatter about `Coefficients.clearTop` beyond Z 7, each of the nine held
     /// out of a fit to the other eight (emmettl/bombcad-work#98), as `leaveOneOut` is the first
     /// fit's: the root of the mean square, bias and spread together, each run alike. Within Z 7,
-    /// where the top drains nothing, `leaveOneOut`'s (on which the walls' load factor was set): a
-    /// candidate.
+    /// where the top drains nothing, `leaveOneOut`'s (on which the walls' load factor was set).
+    /// Adopted with `Coefficients.clearTop` on 25 October 2026.
     public static let clearTopLeaveOneOut: [LoadScatter] = [
         LoadScatter(upToZ: 7, peak: 0.41, impulse: 0.26, correlation: 0.51),
         LoadScatter(upToZ: 10, peak: 0.28, impulse: 0.16, correlation: 0.41),

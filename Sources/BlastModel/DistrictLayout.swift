@@ -80,10 +80,21 @@ public struct DistrictLayout: Sendable {
     /// `cellSize`: `faceClearance` above the charge, and at least half of it above the highest
     /// roof or ground. On Beirut's 0.5 kt (docs/beirut-2020.md) a top twice as high gave the same glass and
     /// structure in every band, and a top half as high did not.
-    public func top(chargeZ: Float, highestRoof: Float, cellSize: Float) -> Float {
-        let wanted = max(chargeZ + faceClearance, highestRoof + faceClearance / 2, chargeZ + 2 * cellSize)
+    ///
+    /// With `radius`, the buildings' reach, at least a fifth of it (`topRadiusParts`) above the highest
+    /// ground, `highestGround` (emmettl/bombcad-work#99, adopted 25 October 2026): an open top drains
+    /// the far façades' loads from about five times its clearance over the ground, which on Beirut
+    /// read the glass low beyond 1.5 km (docs/hybrid-far-field.md, "New District's top").
+    public func top(
+        chargeZ: Float, highestRoof: Float, cellSize: Float, radius: Float? = nil, highestGround: Float = 0
+    ) -> Float {
+        var wanted = max(chargeZ + faceClearance, highestRoof + faceClearance / 2, chargeZ + 2 * cellSize)
+        if let radius { wanted = max(wanted, highestGround + radius / Self.topRadiusParts) }
         return (wanted / cellSize).rounded(.up) * cellSize
     }
+
+    /// The parts of the buildings' reach of which the top keeps one above the highest ground (`top`).
+    public static let topRadiusParts: Float = 5
 
     /// The height above the ground over which a refined district's air need not be refined: all
     /// but the tallest 2% of the buildings within `radius`, by their tags or the heights grid, and
@@ -111,10 +122,11 @@ public struct DistrictLayout: Sendable {
     /// footprints on `footprintCells` if given), with the
     /// buildings within `radius` (all of them, nil) placed as envelopes with their constructions
     /// and glazing, on the ground's terrain if there is one, and the top at `height` (nil: by the
-    /// open-face rule, `top`).
+    /// open-face rule, `top`, kept clear over `topRadius`, or `radius` if that is nil; neither, no
+    /// floor).
     public func scene(
         halfSide: Float, cellSize: Float, radius: Float? = nil, height: Float? = nil, name: String? = nil,
-        footprintCells: Float? = nil
+        footprintCells: Float? = nil, topRadius: Float? = nil
     ) throws -> (scene: Scenario, report: MapBuildingReport) {
         let corner = SIMD2(
             charge.x - Double(halfSide) / (ElevationGrid.metresPerDegree * cos(charge.y * .pi / 180)),
@@ -146,7 +158,9 @@ public struct DistrictLayout: Sendable {
         scene.attributions = (scene.attributions ?? []) + attributions
         if height == nil {
             let roofs = max(report.placed.map(\.top).max() ?? 0, scene.terrain?.highest ?? 0)
-            scene.domainSize.z = top(chargeZ: scene.charge.position.z, highestRoof: roofs, cellSize: cellSize)
+            scene.domainSize.z = top(
+                chargeZ: scene.charge.position.z, highestRoof: roofs, cellSize: cellSize,
+                radius: topRadius ?? radius, highestGround: scene.terrain?.highest ?? 0)
         }
         return (scene, report)
     }

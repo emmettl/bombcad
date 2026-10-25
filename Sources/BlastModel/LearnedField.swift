@@ -640,7 +640,7 @@ public enum LearnedField {
         /// or as they were where the network gives none.
         public func adjusted(
             _ features: FacadeLoadSurrogate.Features, of component: EnvelopeComponent, mass: Double,
-            cellSize: Double, coefficients: FacadeLoadSurrogate.Coefficients = .fitted
+            cellSize: Double, coefficients: FacadeLoadSurrogate.Coefficients = .adopted
         ) -> FacadeLoadSurrogate.Features {
             guard let (peak, level) = reading(at: component) else { return features }
             var plain = features

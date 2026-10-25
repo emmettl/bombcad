@@ -2536,6 +2536,53 @@ python train_field.py --data …/main-levels-fixed --out OUT --model unet --crop
 zsh /Volumes/StudioData/bombcad/ml/r5/judge.sh field-unet-l5-g8f2 export rec tables glass walls
 ```
 
+## On the clear-top terms (25 October 2026)
+
+emmettl/bombcad-work#99. The surrogate's façade terms refitted on runs with their top clear were
+adopted on 25 October 2026
+([the first look](surrogate-first-look.md#adopted-25-october-2026)). The field models give the peak
+at the strips they read (`learnedPeakFactor` is taken over whichever terms are given), so their
+peaks do not move. Their impulses, their rise and every strip they do not read are the surrogate's,
+and the chances there draw its new scatter. The judges of [the near boxes run to their
+corners](#the-near-boxes-run-to-their-corners-23-october-2026) were run again on the new defaults,
+against the same ten 2 m references (`wall-recal/near2full-loads-*`, 320 m top), on main 45b1ddce
+with the change (`$BOMBCAD_DATA/scratch/issue99`, `judges.sh walls-a walls-c glass`; each 12–30
+minutes, at most 10 GB):
+
+| | Terms of 23 October | Clear-top terms |
+|---|---|---|
+| Concrete walls moderate+, field model 1, peak ×1.15, impulse ×0.95 (Brier / skill / tenths) | 0.0190 / 0.654 / pass | 0.0190 / 0.653 / pass |
+| … each yield held out | ×1.15, ×0.95 in every fold | ×1.15, ×0.95 in every fold (0.653) |
+| Concrete walls moderate+, field model 2, own scatter, peak ×1.15, impulse ×0.95 | 0.0188 / 0.656 / pass | 0.0190 / 0.653 / pass |
+| … each yield held out | ×1.15, ×0.95 in every fold (0.656) | ×1.15 in every fold, the impulse ×1.15 in 8 and ×0.95 in 2 (0.652, pass) |
+| … the largest tenth's miss | 0.09 unsafe (0.80–0.90: 0.84, seen 0.93) | 0.10 unsafe (0.80–0.90: 0.84, seen 0.94) |
+| Concrete walls heavy+, field model 2 | 0.0068 / 0.616 / fail | 0.0069 / 0.611 / pass |
+| Glass blown out, the app's sides: surrogate / field model 1 / field model 2 (Brier / skill) | 0.0666 / 0.39; 0.0621 / 0.43; 0.0333 / 0.69 | 0.0397 / 0.64; 0.0365 / 0.66; 0.0307 / 0.72 |
+| … above the ground floor: field model 1 (the surrogate's) / field model 2 | 0.0661 / 0.41; 0.0352 / 0.68 | 0.0393 / 0.65; 0.0323 / 0.71 |
+| … at the ground floor | 0.0691 / 0.26; 0.0311 / 0.66; 0.0285 / 0.69 | 0.0411 / 0.56; 0.0286 / 0.69; 0.0279 / 0.70 |
+| Glass by side, every storey, exact / Heidke | 0.901 / 0.65; 0.911 / 0.68; 0.957 / 0.81 | 0.946 / 0.77; 0.951 / 0.79; 0.961 / 0.81 |
+| Ground-floor peaks over the runs', median / log-SD: surrogate; field models | 0.97 / 0.24 (as before); 1.02 / 0.19 | 0.97 / 0.24; 1.02 / 0.19 |
+
+What it says:
+- **The field-model walls hold their factors.** At peak ×1.15 and impulse ×0.95 both pass the
+  tenths test on the new terms, at skill 0.653 (0.654 and 0.656 before). The impulses the walls
+  see rise 2–14% close in, and the skill gives back 0.001–0.003. Held out, field model 1's refit
+  still picks ×1.15 and ×0.95 every time. Field model 2's picks the impulse ×1.15 in eight folds
+  of ten and passes at 0.652, no better than the fixed pair. So the factors stay. A change to the
+  impulse's factor would be the user's decision, and nothing here asks for one.
+- **The glass gains, mostly where the network is not.** Above the ground floor and in the strips the
+  networks do not read, the new terms carry the far loads higher. The surrogate's blown-out skill
+  goes from 0.39 to 0.64, and field model 1's (the surrogate above the ground floor) from 0.43 to
+  0.66. Field model 2's goes from 0.69 to 0.72. The blown-out chances still fail the deciles' test,
+  underconfident in the middle.
+- These references keep the 320 m top, which drains the strips beyond about 1.1 km (a fifth of the
+  judged sides). The glass there is judged against the clear-top runs on [the first
+  look](surrogate-first-look.md#refitted-on-clear-top-runs-25-october-2026); the walls are damaged
+  well inside it.
+
+The standing's figures (`learnedModel2Glass`, `learnedModel2GlassUpper`, `learnedModel2Walls`) quote
+this section since 25 October 2026.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up

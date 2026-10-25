@@ -38,11 +38,12 @@ extension FacadeLoadSurrogate {
             String(
                 format:
                     "Walls' and roofs' chances, against Beirut's near runs at ten yields on air refined to 2 m: Brier skill "
-                    + "%.2f for concrete walls damaged, each tenth of chance within %.1f of the runs; %.2f for roofs, "
+                    + "%.2f for concrete walls damaged, each tenth of chance within %.1f of the runs but one, %.2f under "
+                    + "(the unsafe side); %.2f for roofs, "
                     + "their middle chances %.2f–%.2f low (the unsafe side), with a load factor fitted to those runs; "
                     + "masonry's high. Drawn over an assumed strength scatter. Heavy damage is illustrative for "
                     + "concrete, and no chance of failure is given.",
-                skill.low, under.low, skill.high, roof.low, roof.high)
+                skill.low, under.low, under.high, skill.high, roof.low, roof.high)
         ]
     }()
 
@@ -66,7 +67,9 @@ extension FacadeLoadSurrogate {
     /// yield held out in turn (`scenebench wall-calibrate`; docs/glass-probability.md, "Walls and
     /// roofs"). Since the façade terms were refitted on 2 m air (23 October 2026,
     /// emmettl/bombcad-work#56) concrete walls take ×1.15 with the whole scatter, the refit's
-    /// choice; on the terms before, fitted on 4 m cells, they took ×1.3. With the field model, the
+    /// choice; on the terms before, fitted on 4 m cells, they took ×1.3. On the clear-top terms
+    /// adopted on 25 October 2026 (emmettl/bombcad-work#99) ×1.15 is kept: it misses the tenths
+    /// test by 0.01 in one tenth, and held out the refit picks it in nine folds of ten. With the field model, the
     /// peak ×1.15 and the impulse ×0.95; stone ×1.0 with ½ and roofs ×1.3 with ½, as on 4 m cells.
     /// The 4 m runs read the walls' peaks 13–19% low at 400–600 m of 0.5 kt, and had given concrete
     /// ×1.0 (emmettl/bombcad-work#19).
@@ -88,7 +91,8 @@ extension FacadeLoadSurrogate {
     public static func structureProbabilities(
         _ estimate: Estimate, mass base: Double, cellSize: Float,
         constructions: (UUID) -> EnvelopeConstruction,
-        uncertainty: Uncertainty = Uncertainty(), binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
+        uncertainty: Uncertainty = Uncertainty(), binS: Double = 0.7e-3,
+        coefficients: Coefficients = .adopted,
         roofCoefficients: Coefficients? = .roofs, strengthScatter: Bool = true,
         loadFactor: (walls: Double, roof: Double)? = nil, scatterScale: (walls: Double, roof: Double)? = nil,
         impulseRatio: (walls: Double, roof: Double)? = nil, learnedPeaks: Bool = false

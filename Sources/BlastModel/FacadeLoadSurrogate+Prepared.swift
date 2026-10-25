@@ -62,7 +62,7 @@ extension FacadeLoadSurrogate {
         /// `learned`, the learned field model's peak at the ground-floor façade strips it reads
         /// (`LearnedField.PeakMap.adjusted`), the rest as without it.
         public func estimate(
-            charge: SIMD3<Float>, mass: Double, binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
+            charge: SIMD3<Float>, mass: Double, binS: Double = 0.7e-3, coefficients: Coefficients = .adopted,
             roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil
         ) -> Estimate {
             let start = ContinuousClock.now
@@ -118,8 +118,9 @@ extension FacadeLoadSurrogate {
                 format:
                     "A preview of the estimate, not the estimate: against the full estimate on Beirut at 0.5 kt, its glass "
                     + "chances came within 0.1 on %.0f–%.0f%% of sides, its walls' and roofs' on %.1f–%.1f%% of buildings, "
-                    + "and the damage's colour was the same for %.1f%% of buildings.",
-                glass.low * 100, glass.high * 100, walls.low * 100, walls.high * 100, damage.low * 100)
+                    + "and the damage's colour was the same for %.1f–%.1f%% of buildings.",
+                glass.low * 100, glass.high * 100, walls.low * 100, walls.high * 100, damage.low * 100,
+                damage.high * 100)
         }()
 
         /// A preview for dragging the charge: of each building's components of one kind on one side
@@ -129,7 +130,7 @@ extension FacadeLoadSurrogate {
         /// of the sight lines, damage and draws; its error against the full estimate is measured
         /// (`scenebench drag-time`), not assumed.
         public func preview(
-            charge: SIMD3<Float>, mass: Double, binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
+            charge: SIMD3<Float>, mass: Double, binS: Double = 0.7e-3, coefficients: Coefficients = .adopted,
             roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil
         ) -> (estimate: Estimate, sides: [GlassSideStrips]) {
             let start = ContinuousClock.now

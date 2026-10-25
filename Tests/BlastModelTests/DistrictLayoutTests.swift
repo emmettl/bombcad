@@ -61,6 +61,10 @@ struct DistrictLayoutTests {
         // 40 m above the charge, or 20 m above the highest roof if that is higher.
         #expect(layout.top(chargeZ: 6, highestRoof: 20, cellSize: 4) == 48)
         #expect(layout.top(chargeZ: 6, highestRoof: 40, cellSize: 4) == 60)
+        // With the buildings' reach, at least a fifth of it above the highest ground (emmettl/bombcad-work#99):
+        // 10 + 250 / 5 m; a reach whose fifth the rule already clears leaves it as it was.
+        #expect(layout.top(chargeZ: 6, highestRoof: 20, cellSize: 4, radius: 250, highestGround: 10) == 60)
+        #expect(layout.top(chargeZ: 6, highestRoof: 20, cellSize: 4, radius: 100, highestGround: 10) == 48)
         #expect(DistrictLayout.duration(radius: 2_500) == 7.8)
     }
 
@@ -89,7 +93,12 @@ struct DistrictLayoutTests {
         let roofs = report.placed.map(\.top).max()!
         #expect(scene.domainSize.z >= scene.charge.position.z + layout.faceClearance)
         #expect(scene.domainSize.z >= roofs + layout.faceClearance / 2)
-        #expect(scene.domainSize.z - 4 < max(scene.charge.position.z + 40, roofs + 20, terrain.highest + 20))
+        #expect(scene.domainSize.z >= terrain.highest + 250 / 5)
+        #expect(
+            scene.domainSize.z - 4
+                < max(
+                    scene.charge.position.z + 40, roofs + 20, terrain.highest + 20, terrain.highest + 250 / 5)
+        )
         #expect(scene.attributions?.contains(MapBuilding.openStreetMapAttribution) == true)
     }
 
@@ -138,7 +147,8 @@ struct DistrictLayoutTests {
         #expect(report.placed.allSatisfy { $0.base == 0 })
         #expect(
             scene.domainSize.z
-                == layout.top(chargeZ: 0, highestRoof: report.placed.map(\.top).max()!, cellSize: 5))
+                == layout.top(
+                    chargeZ: 0, highestRoof: report.placed.map(\.top).max()!, cellSize: 5, radius: 150))
     }
 
     @Test(

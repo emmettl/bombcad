@@ -300,7 +300,9 @@ public enum ProtectionModel {
         return condition
     }
 
-    /// The model of `scene`'s map buildings (those with a glazing mix) on cells `cellSize` m across.
+    /// The model of `scene`'s map buildings (those with a glazing mix) on cells `cellSize` m across,
+    /// on the façade terms of 23 October 2026 (`Coefficients.fitted`) and their scatter: not judged
+    /// again on the clear-top terms the quick estimate took on 25 October (emmettl/bombcad-work#99).
     public static func model(
         scene: Scenario, cellSize: Float, inputs: Inputs,
         coefficients: FacadeLoadSurrogate.Coefficients = .fitted
@@ -488,7 +490,10 @@ public enum ProtectionModel {
             for threat in threats where threat.weight > 0 {
                 let features = features(side, threat, barriers: built)
                 let middle = features.map(\.distanceM).sorted()[features.count / 2]
-                let scatter = FacadeLoadSurrogate.Uncertainty().scatter(atZ: middle / cbrt(threat.mass))
+                let scatter = FacadeLoadSurrogate.Uncertainty(
+                    loadScatter: FacadeLoadSurrogate.Uncertainty.leaveOneOut
+                )
+                .scatter(atZ: middle / cbrt(threat.mass))
                 var sum = 0.0
                 for k in 0..<draws {
                     let strength = ProtectionModel.strength(seed: seed, draw: k, object: s.object)

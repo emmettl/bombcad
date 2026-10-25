@@ -341,6 +341,8 @@ final class NewDistrictModel {
                     made = (split.near, split.report)
                     far = split.far
                     far?.trendReach = FarFieldSet.trendReachDefault
+                    // The match carried flat, adopted on 25 October 2026 (emmettl/bombcad-work#99).
+                    far?.matchFlat = true
                 } else {
                     made = try layout.scene(
                         halfSide: half, cellSize: air.cellSize, radius: radius, name: name,
@@ -419,7 +421,8 @@ final class NewDistrictModel {
         memory: Int
     ) -> (cost: RunCostEstimate, grid: BlastCore.Grid) {
         let half = layout.halfSide(radius: radius, cellSize: air.cellSize, clearFaces: clearFaces)
-        let top = layout.top(chargeZ: 0, highestRoof: 0, cellSize: air.cellSize)
+        // Clear over the buildings it reaches (on flat ground: the ground and roofs raise it once laid out).
+        let top = layout.top(chargeZ: 0, highestRoof: 0, cellSize: air.cellSize, radius: radius)
         let scenario = Scenario(
             name: "District", domainSize: SIMD3(2 * half, 2 * half, top), boxes: [],
             charge: Charge(mass: layout.mass, position: SIMD3(half, half, 0)))

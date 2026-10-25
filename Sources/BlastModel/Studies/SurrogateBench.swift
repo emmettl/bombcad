@@ -8,7 +8,7 @@ import simd
 /// features and its recorded peak and impulse, for fitting (`Scripts/fit-surrogate.py`).
 ///
 /// `scenebench surrogate-judge <inputs> [--radius 2500] --loads folder [--inside 0.85]
-/// [--coefficients fit.json | --terms adopted|clear-top] [--first-look] [--run-wall s] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
+/// [--coefficients fit.json | --terms clear-top|fitted] [--first-look] [--run-wall s] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
 /// through the same SDOF, side by side; and the surrogate's whole first look, timed.
 ///
 /// Strips saved before 19 October 2026 carry no boxes, so the scene is laid out again from the
@@ -24,8 +24,8 @@ package enum SurrogateBench {
         args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
     }
 
-    /// `--terms adopted|clear-top`: the named set of façade terms and load scatter to judge
-    /// (`FacadeLoadSurrogate.TermSet`), the adopted ones without it.
+    /// `--terms clear-top|fitted`: the named set of façade terms and load scatter to judge
+    /// (`FacadeLoadSurrogate.TermSet`), the adopted ones (clear-top since 25 October 2026) without it.
     package static func termSet(_ args: [String]) throws -> FacadeLoadSurrogate.TermSet {
         guard let name = value(args, "terms") else { return .adopted }
         guard let set = FacadeLoadSurrogate.TermSet(rawValue: name) else {

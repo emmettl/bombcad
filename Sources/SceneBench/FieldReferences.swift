@@ -4,7 +4,7 @@ import simd
 
 /// `scenebench field-refs <district-scene's inputs> [--radius 1320] --runs mass:folder,…
 /// --variants surrogate,name=weights.bcfw,name=upper.bcfw+ground.bcfw[@own],… [--inside 0.85] [--draws 50]
-/// [--scatter-tables tables.json] [--out judged.json]`:
+/// [--scatter-tables tables.json] [--coefficients terms.json | --terms clear-top|fitted] [--out judged.json]`:
 /// the quick estimate's glass by building side and its façade peaks at every storey, judged against
 /// a district's own runs at several yields (`district-compare --save-loads`; Beirut's near boxes on
 /// air refined to 2 m, emmettl/bombcad-work#19 and #69), as the app's estimate gives them:
@@ -97,13 +97,11 @@ enum FieldReferences {
         let cellSize = first!.cellSize
         let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: cellSize)
         // `--coefficients terms.json`: the terms the surrogate alone and the networks' variants
-        // (their impulse and rise, and every strip they don't read) are judged under; the fitted
-        // ones without it.
-        let baseTerms =
-            try value("coefficients").map {
-                try JSONDecoder().decode(
-                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
-            } ?? .fitted
+        // (their impulse and rise, and every strip they don't read) are judged under; `--terms`'
+        // without it (the adopted ones without either).
+        let baseTerms = try SurrogateBench.coefficients(args)
+        // The load scatter the chances draw: `--terms`' (or `--load-scatter`'s).
+        let loadScatter = try SurrogateBench.loadScatter(args)
         let variants:
             [(
                 name: String, estimator: LearnedField.Estimator?,
@@ -283,7 +281,7 @@ enum FieldReferences {
                 let (chances, _) = FacadeLoadSurrogate.glassProbabilities(
                     sides: glassSides, mass: run.mass, cellSize: cellSize,
                     uncertainty: FacadeLoadSurrogate.Uncertainty(
-                        masses: [run.mass], strengthLogSD: 0, samples: draws),
+                        masses: [run.mass], strengthLogSD: 0, loadScatter: loadScatter, samples: draws),
                     coefficients: variant.coefficients)
                 for (s, side) in sideKeys.enumerated() {
                     let truth = sides[side]!.reduce(GlazingBreakage()) { $0 + glass[$1][0] }

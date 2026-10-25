@@ -34,14 +34,20 @@ struct SurrogateGapTests {
     /// The predictions for `base` with one feature set by `set` to each of `values` in turn.
     private static func sweep(
         _ base: FacadeLoadSurrogate.Features, mass: Double, values: [Double],
+        terms: FacadeLoadSurrogate.TermSet = .adopted,
         set: (inout FacadeLoadSurrogate.Features, Double) -> Void
     ) -> [FacadeLoadSurrogate.Prediction] {
         values.map { value in
             var f = base
             set(&f, value)
-            return FacadeLoadSurrogate.predict(f, mass: mass, cellSize: cellSize)
+            return FacadeLoadSurrogate.predict(
+                f, mass: mass, cellSize: cellSize, coefficients: terms.coefficients)
         }
     }
+
+    /// The two named sets of terms (emmettl/bombcad-work#99): the clear-top terms adopted on 25
+    /// October 2026 and those of 23 October, each pinned where its own fit puts it.
+    static let termSets: [FacadeLoadSurrogate.TermSet] = [.clearTop, .fitted]
 
     /// Where in `values` (as indices of the later one) a value rises above the one before it.
     private static func rises(_ values: [Double]) -> [Int] {
@@ -195,22 +201,33 @@ struct SurrogateGapTests {
     /// (behind buildings the load builds up as the streets fill, docs/surrogate-first-look.md), not
     /// a fault in the code, so it is pinned where the fit puts it: measured on the Studio on
     /// 19 October 2026 at Z 12, one building raises the impulse to 1.07 (20 t) and 1.08 (500 t)
-    /// of the open face's, five to 1.15 and 1.21, while the peak falls to 0.98 and then 0.96. A refit
+    /// of the open face's, five to 1.15 and 1.21, while the peak falls to 0.98 and then 0.96. The
+    /// clear-top terms adopted on 25 October 2026 take the impulse's weight to about what the
+    /// length inside takes off: measured that day, the impulse stays within 0.999–1.005 of the open
+    /// face's for one to five buildings at 20 t and 500 t, while the peak falls as before. A refit
     /// that turns the impulse round, or raises it further, shows here.
-    @Test("More buildings in the way raise the impulse only as far as the fit does", arguments: masses)
-    func buildingsCrossedAndImpulse(mass: Double) {
+    @Test(
+        "More buildings in the way raise the impulse only as far as the fit does",
+        arguments: masses, termSets)
+    func buildingsCrossedAndImpulse(mass: Double, terms: FacadeLoadSurrogate.TermSet) {
         let root = cbrt(mass)
-        let p = Self.sweep(Self.open(12 * root), mass: mass, values: (0...5).map(Double.init)) {
+        let p = Self.sweep(Self.open(12 * root), mass: mass, values: (0...5).map(Double.init), terms: terms) {
             $0.buildingsCrossed = Int($1)
             $0.blockedM = 20 * $1
         }
         let impulses = p.map { $0.impulsePaS / p[0].impulsePaS }
         let peaks = p.map { $0.peakPa / p[0].peakPa }
-        // Rising with each building, but gently: the measured 1.07-1.08 for one and 1.15-1.21 for
-        // five, with a margin.
-        #expect(Self.rises(impulses).count == 5, "\(impulses)")
-        #expect(impulses[1] > 1.04 && impulses[1] < 1.11, "\(impulses)")
-        #expect(impulses[5] > 1.12 && impulses[5] < 1.26, "\(impulses)")
+        switch terms {
+        case .fitted:
+            // Rising with each building, but gently: the measured 1.07-1.08 for one and 1.15-1.21
+            // for five, with a margin.
+            #expect(Self.rises(impulses).count == 5, "\(impulses)")
+            #expect(impulses[1] > 1.04 && impulses[1] < 1.11, "\(impulses)")
+            #expect(impulses[5] > 1.12 && impulses[5] < 1.26, "\(impulses)")
+        case .clearTop:
+            // About flat: the measured 0.999–1.005, with a margin.
+            #expect(impulses.allSatisfy { $0 > 0.98 && $0 < 1.03 }, "\(impulses)")
+        }
         // The peak falls with each, as the shielding should.
         #expect(Self.rises(peaks).isEmpty && peaks[5] < 0.97, "\(peaks)")
     }
@@ -258,12 +275,17 @@ struct SurrogateGapTests {
     /// which computes the fitted form as written, but an artefact of that form: small against the
     /// fit's scatter (0.24 and 0.17 in the log), though a face turned slightly toward a charge is
     /// loaded less than one side-on. The test pins the dip at its measured depth, so that a refit
-    /// that deepens it, or moves the turn past 0.4, shows here.
-    @Test("Turning a face toward the charge lowers its load only by the fit's small dip", arguments: masses)
-    func monotoneInFacing(mass: Double) {
+    /// that deepens it, or moves the turn past 0.4, shows here. The clear-top terms adopted on 25
+    /// October 2026 dip the impulse to 0.903–0.908 (measured that day at Z 20 and 38).
+    @Test(
+        "Turning a face toward the charge lowers its load only by the fit's small dip",
+        arguments: masses, termSets)
+    func monotoneInFacing(mass: Double, terms: FacadeLoadSurrogate.TermSet) {
         let root = cbrt(mass)
         for z in [5.0, 20, 38] {
-            let p = Self.sweep(Self.open(z * root), mass: mass, values: (0...100).map { Double($0) / 100 }) {
+            let p = Self.sweep(
+                Self.open(z * root), mass: mass, values: (0...100).map { Double($0) / 100 }, terms: terms
+            ) {
                 $0.cosIncidence = $1
             }
             // From a facing of 0.4 on, the base's square has won.
@@ -276,7 +298,9 @@ struct SurrogateGapTests {
             let peaks = p.map { $0.peakPa / p[0].peakPa }
             let impulses = p.map { $0.impulsePaS / p[0].impulsePaS }
             #expect(peaks.min()! > 0.945, "Z \(z): the peak dips to \(peaks.min()!) of side-on")
-            #expect(impulses.min()! > 0.915, "Z \(z): the impulse dips to \(impulses.min()!) of side-on")
+            #expect(
+                impulses.min()! > (terms == .fitted ? 0.915 : 0.895),
+                "Z \(z): the impulse dips to \(impulses.min()!) of side-on")
         }
     }
 
@@ -321,17 +345,34 @@ struct SurrogateGapTests {
     /// the charge rises over the clamp's top and one behind a high ridge under its bottom. Behind
     /// buildings the load builds up as the streets fill (docs/surrogate-first-look.md), so the share
     /// must not fall with buildings crossed. No other test sets a feature that reaches the clamp.
-    @Test("The rise share stays in 0–0.9 and grows behind buildings", arguments: masses)
-    func riseShareClampAndShielding(mass: Double) {
+    /// The clear-top terms adopted on 25 October 2026 weigh the ground rise and the ridge far less
+    /// (+0.046 and −0.017), so the clamp is reached through the terms of 23 October here; on both
+    /// the share stays in range and grows behind buildings.
+    @Test("The rise share stays in 0–0.9 and grows behind buildings", arguments: masses, termSets)
+    func riseShareClampAndShielding(mass: Double, terms: FacadeLoadSurrogate.TermSet) {
         let root = cbrt(mass)
+        let coefficients = terms.coefficients
         var hill = Self.open(10 * root)
         hill.groundRiseM = 3 * root
-        #expect(FacadeLoadSurrogate.predict(hill, mass: mass, cellSize: Self.cellSize).riseShare == 0.9)
+        let hillShare = FacadeLoadSurrogate.predict(
+            hill, mass: mass, cellSize: Self.cellSize, coefficients: coefficients
+        ).riseShare
         var ridge = Self.open(10 * root)
         ridge.ridgeM = 3 * root
-        #expect(FacadeLoadSurrogate.predict(ridge, mass: mass, cellSize: Self.cellSize).riseShare == 0)
+        let ridgeShare = FacadeLoadSurrogate.predict(
+            ridge, mass: mass, cellSize: Self.cellSize, coefficients: coefficients
+        ).riseShare
+        if terms == .fitted {
+            #expect(hillShare == 0.9 && ridgeShare == 0)
+        } else {
+            // A hill raises the share and a ridge lowers it, inside the clamp.
+            #expect(
+                hillShare > ridgeShare && hillShare < 0.9 && ridgeShare > 0, "\(hillShare), \(ridgeShare)")
+        }
         for z in [5.0, 12, 30] {
-            let p = Self.sweep(Self.open(z * root), mass: mass, values: (0...8).map(Double.init)) {
+            let p = Self.sweep(
+                Self.open(z * root), mass: mass, values: (0...8).map(Double.init), terms: terms
+            ) {
                 $0.buildingsCrossed = Int($1)
                 $0.blockedM = 20 * $1
             }

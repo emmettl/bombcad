@@ -110,7 +110,9 @@ extension ChargeInference {
         /// whether its glass broke), with a façade on the air and a glazing mix; at most
         /// `maximumSides` of them, taken evenly. `reference` is the inference's origin in the
         /// scene's metres; the charge is weighed within `placeRadius` metres of it, at the scene's
-        /// charge's height above the ground. `cellSize` is the cells the surrogate's loads are for.
+        /// charge's height above the ground. `cellSize` is the cells the surrogate's loads are for;
+        /// the façade terms are those of 23 October 2026 (`fitted`), not judged again on the clear-top
+        /// terms the quick estimate took on 25 October (emmettl/bombcad-work#99).
         public init(
             scene: Scenario, observed: [(owner: UUID, axis: Int, outward: Int, damaged: Bool)],
             reference: SIMD2<Float>, placeRadius: Double, spacing: Double = 20, cellSize: Float,

@@ -5,7 +5,7 @@ import Metal
 import simd
 
 /// `scenebench threshold-refine <district-scene's inputs> [--radius 1000] [--move dx,dy]
-/// [--within 1.5] [--buildings 8] [--max-cells 40000000] [--budget 300] [--no-refine]`: the
+/// [--within 1.5] [--buildings 8] [--max-cells 40000000] [--budget 300] [--no-refine] [--terms clear-top|fitted]`: the
 /// quick estimate with the charge moved by `--move` (where a drag let it go), its close calls
 /// refined by the solver as the app refines them (`ThresholdRefinement`, emmettl/bombcad-work#34),
 /// and the time to each refined answer; each building's estimate beside its refined result.
@@ -35,9 +35,13 @@ enum ThresholdRefine {
         var layout = scene
         layout.charge.position = .zero
         let prepared = FacadeLoadSurrogate.Prepared(scene: layout, cellSize: dx)
+        // `--terms clear-top|fitted`: the façade terms and scatter (the adopted ones without it).
+        let terms = try SurrogateBench.termSet(args)
         let look = prepared.look(
             charge: scene.charge.position, mass: mass, constructions: constructions,
-            uncertainty: FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(within) / 1.645, samples: 100))
+            uncertainty: FacadeLoadSurrogate.Uncertainty(
+                yieldLogSD: log(within) / 1.645, loadScatter: terms.loadScatter, samples: 100),
+            terms: terms)
         print(
             String(
                 format: "Quick estimate of %d buildings in %.1f s (prepared and looked)",

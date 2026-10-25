@@ -227,7 +227,8 @@ struct NewDistrictTests {
         await model.lay()
         let preview = try #require(model.preview, "\(model.message ?? "")")
         let far = try #require(preview.far)
-        #expect(far.handoverM == 100 && far.trendReach == FarFieldSet.trendReachDefault)
+        #expect(
+            far.handoverM == 100 && far.trendReach == FarFieldSet.trendReachDefault && far.matchFlat == true)
         #expect(!far.buildings.isEmpty && !preview.scenario.envelopeObjects.isEmpty)
         // The air reaches the hand-over and its faces' clearance, and runs until it is loaded.
         #expect(preview.scenario.domainSize.x == 2 * (100 + 40))

@@ -187,7 +187,7 @@ struct FacadeLoadSurrogateTests {
         #expect(FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2, coefficients: unshielded) == plain)
         // Unmeasured, the fitted terms' shielding changes nothing either.
         f.chargeOpenM = .nan
-        #expect(FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2) == plain)
+        #expect(FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2, coefficients: .fitted) == plain)
         f.chargeOpenM = 5
         var shielded = FacadeLoadSurrogate.Coefficients.fitted
         shielded.closeIn?.shielding = .init(peak: -0.5, impulse: -0.2, openScale: 1, fittedTo: "test")
@@ -269,12 +269,19 @@ struct FacadeLoadSurrogateTests {
         #expect(memo.misses >= loads.count)
     }
 
-    @Test("The clear-top terms are a named set apart, the adopted ones the default; far out they read higher")
+    @Test(
+        "The clear-top terms are the default since 25 October, the first fit's kept by name; far out they read higher"
+    )
     func clearTopTerms() throws {
         typealias S = FacadeLoadSurrogate
-        #expect(S.TermSet.adopted.coefficients == .fitted)
-        #expect(S.TermSet.adopted.loadScatter == S.Uncertainty.leaveOneOut)
-        #expect(S.Uncertainty().loadScatter == S.Uncertainty.leaveOneOut)
+        // Adopted on 25 October 2026 (emmettl/bombcad-work#99): the defaults are the clear-top set's.
+        #expect(S.TermSet.adopted == .clearTop)
+        #expect(S.Coefficients.adopted == .clearTop)
+        #expect(S.Uncertainty().loadScatter == S.Uncertainty.clearTopLeaveOneOut)
+        #expect(S.Uncertainty.adoptedLoadScatter == S.Uncertainty.clearTopLeaveOneOut)
+        // The terms of 23 October, by name, for earlier records.
+        #expect(S.TermSet.fitted.coefficients == .fitted)
+        #expect(S.TermSet.fitted.loadScatter == S.Uncertainty.leaveOneOut)
         let clear = S.TermSet.clearTop.coefficients
         // The peak's, impulse's and rise's terms refitted; close in, the branch and the scatter the
         // walls were set on.
@@ -282,24 +289,29 @@ struct FacadeLoadSurrogateTests {
         #expect(clear.rise != S.Coefficients.fitted.rise && clear.closeIn == S.Coefficients.fitted.closeIn)
         #expect(clear.scaledRange == S.Coefficients.fitted.scaledRange)
         #expect(S.TermSet.clearTop.loadScatter.first == S.Uncertainty.leaveOneOut.first)
-        // The walls' chances keep the adopted rise their load factor was set on.
+        // The walls' chances keep the rise their load factor was set on.
         #expect(clear.forStructures.rise == S.Coefficients.fitted.rise)
         #expect(clear.forStructures.peak == clear.peak && clear.forStructures.impulse == clear.impulse)
         #expect(S.Coefficients.fitted.structureRise == nil && S.Coefficients.fitted.forStructures == .fitted)
         #expect(S.TermSet.clearTop.loadScatter.last?.upToZ == .infinity)
-        // 2 km from 500 t (Z 25) behind four buildings: the clear-top runs' loads are higher.
+        // 2 km from 500 t (Z 25) behind four buildings: the clear-top runs' loads are higher, and
+        // they are what a prediction takes unless told otherwise.
         var f = Self.facing(2_000)
         f.buildingsCrossed = 4
+        let first = S.predict(f, mass: 500_000, cellSize: 4, coefficients: .fitted)
         let adopted = S.predict(f, mass: 500_000, cellSize: 4)
-        let candidate = S.predict(f, mass: 500_000, cellSize: 4, coefficients: clear)
-        #expect(candidate.peakPa > adopted.peakPa && candidate.impulsePaS > adopted.impulsePaS)
+        #expect(adopted == S.predict(f, mass: 500_000, cellSize: 4, coefficients: clear))
+        #expect(adopted.peakPa > first.peakPa && adopted.impulsePaS > first.impulsePaS)
         // Its pulse rises over about a third of its length, as the runs' do.
-        #expect(candidate.riseShare > 0.2 && candidate.riseShare < 0.45, "\(candidate.riseShare)")
+        #expect(adopted.riseShare > 0.2 && adopted.riseShare < 0.45, "\(adopted.riseShare)")
         // The benches' names for them.
-        #expect(try SurrogateBench.termSet([]) == .adopted)
+        #expect(try SurrogateBench.termSet([]) == .clearTop)
         #expect(try SurrogateBench.termSet(["--terms", "clear-top"]) == .clearTop)
+        #expect(try SurrogateBench.termSet(["--terms", "fitted"]) == .fitted)
         #expect(throws: (any Error).self) { try SurrogateBench.termSet(["--terms", "drained"]) }
-        #expect(try SurrogateBench.coefficients(["--terms", "clear-top"]) == clear)
+        #expect(try SurrogateBench.coefficients([]) == clear)
+        #expect(try SurrogateBench.coefficients(["--terms", "fitted"]) == .fitted)
+        #expect(try SurrogateBench.loadScatter(["--terms", "fitted"]) == S.Uncertainty.leaveOneOut)
     }
 
     @Test("A far set saved before the flat match was an option reads with it off")

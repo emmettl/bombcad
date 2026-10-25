@@ -362,7 +362,10 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
 - **Extent**: the buildings whose footprint's centre lies within the radius are placed. The open
   faces are kept 4 m/kg^(1/3) from them: the sides beyond the outermost building (unless turned
   off), the top above the charge and at least half that above the highest roof or ground
-  ([open faces](air-blast-model.md#open-faces-near-a-structure)). **Air** is uniform cells, or
+  ([open faces](air-blast-model.md#open-faces-near-a-structure)). Since 25 October 2026 the top is
+  also at least a fifth of the radius above the highest ground, which keeps the far façades' loads
+  from draining out of it ([a city in minutes](hybrid-far-field.md#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026)).
+  **Air** is uniform cells, or
   a coarser base refined once, to half its cells, where the shock is (at a jump of 0.005 of the
   pressure) and only near the ground: to the height of all but the tallest 2% of the buildings and
   four base cells over them, the footprints on the finer cells. The advisor's choice is the finest
@@ -380,9 +383,10 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
   hand-over is brought in by tenths, to half of it and no nearer than 50 m, until the near run
   does; the sheet says which and why. The
   buildings beyond are kept beside the project, never voxelised, and judged in seconds when the run
-  ends on the load carried from it: painted with their damage and listed under **Far field
-  (estimate)** in Envelope damage, walls and roofs at the surrogate's standing, glass close to a
-  full run's to about 1.5 km at Beirut's yields. Their sides' glass chances are drawn over the far
+  ends on the load carried from it, the near run's match carried flat beyond the hand-over:
+  painted with their damage and listed under **Far field (estimate)** in Envelope damage, walls and
+  roofs at the surrogate's standing, glass close to a full run's to about 1.5 km at 0.2 kt and
+  2–2.5 km at 0.5–1.1 kt at Beirut. Their sides' glass chances are drawn over the far
   field's scatter and the glass's strength, and the view can colour by them as by the quick
   estimate's
   ([a city in minutes](hybrid-far-field.md#using-it)).

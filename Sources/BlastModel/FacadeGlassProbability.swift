@@ -21,13 +21,13 @@ extension FacadeLoadSurrogate {
             String(
                 format:
                     "Glass chances, against Beirut's full runs at 0.2, 0.5 and 1.1 kt with their top clear, drawn over "
-                    + "those yields: low, the unsafe side. Blown out: Brier %.3f, against %.3f giving every side the mean, "
-                    + "its tenths of chance up to %.2f under the share seen; thrown past 3 m (GSA 3b) Brier %.3f against "
-                    + "%.3f, and some glass broken, each well under. All three fail the protective-design test, each "
-                    + "tenth of chance within %.1f of the share seen; against runs whose top drained the far loads they "
-                    + "had passed it.",
+                    + "those yields, on the façade terms refitted on clear-top runs. Blown out: Brier %.3f, against %.3f "
+                    + "giving every side the mean, its tenths of chance up to %.2f under the share seen, which passes the "
+                    + "protective-design test, each tenth of chance within %.1f of the share seen. Thrown past 3 m (GSA "
+                    + "3b): Brier %.3f against %.3f, and some glass broken, each well under: low, the unsafe side, and "
+                    + "both fail it.",
                 brier.low,
-                brier.high, bins.high, thrown.low, thrown.high, test.high),
+                brier.high, bins.high, test.high, thrown.low, thrown.high),
             String(
                 format:
                     "Not judged against GEER's survey of Beirut's façades, whose classes are openings (frames and doors "
@@ -90,7 +90,7 @@ extension FacadeLoadSurrogate {
         public init(
             masses: [Double] = [], yieldLogSD: Double = 0, strengthMedian: Double = 1,
             strengthLogSD: Double = 0.25,
-            loadScatter: [LoadScatter] = Uncertainty.leaveOneOut, samples: Int = 100, seed: UInt64 = 1
+            loadScatter: [LoadScatter] = Uncertainty.adoptedLoadScatter, samples: Int = 100, seed: UInt64 = 1
         ) {
             self.masses = masses
             self.yieldLogSD = yieldLogSD
@@ -288,7 +288,7 @@ extension FacadeLoadSurrogate {
     /// they took.
     public static func glassProbabilities(
         scene: Scenario, cellSize: Float, uncertainty: Uncertainty = Uncertainty(), binS: Double = 0.7e-3,
-        coefficients: Coefficients = .fitted
+        coefficients: Coefficients = .adopted
     ) -> (sides: [SideGlass], seconds: Double) {
         let start = ContinuousClock.now
         let sides = glassSides(scene: scene, cellSize: cellSize)
@@ -307,7 +307,7 @@ extension FacadeLoadSurrogate {
     public static func glassProbabilities(
         sides: [GlassSideStrips], mass base: Double, cellSize: Float,
         uncertainty: Uncertainty = Uncertainty(),
-        binS: Double = 0.7e-3, coefficients: Coefficients = .fitted, keepDraws: Bool = false,
+        binS: Double = 0.7e-3, coefficients: Coefficients = .adopted, keepDraws: Bool = false,
         farField: HybridFarField? = nil, responses: GlassResponses? = nil
     ) -> (sides: [SideGlass], draws: [[GlassDraw]]?) {
         let draws = max(1, uncertainty.samples)

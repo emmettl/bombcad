@@ -28,15 +28,19 @@ drained the far loads, and everything first judged against them beyond 1.25 km w
 - **Holds: arrivals.** Beyond the hand-over, Kingery–Bulmash's arrival scaled to the near run's
   comes 2–4% before the full run's (1–4% before the clear-top run's). Against Rigby et al.'s observers past 1 km that is 0.95–1.08
   of the observed at 0.5 kt, and 0.91–1.02 at 1.1 kt.
-- **Does not: the loads beyond 1.5 km. They read low, the unsafe side.** Against the clear-top run
-  the far field's peaks are 0.67–0.99 of the run's over 1–2.5 km and its impulses 0.71–1.03, the
-  lower the smaller the yield and the further out (2–2.5 km: peaks 0.67, 0.73 and 0.82 at 0.2, 0.5
-  and 1.1 kt). At 0.2 kt it breaks glass on 0.37 of the sides at 1.75–2 km where the run breaks
-  0.90. Against the drained 4 m runs it had read 1.12–1.19 high at 1.1 kt
-  ([why](#the-full-runs-top-drains-its-far-loads-25-october-2026)).
+- **Holds: the loads to 2.5 km**, on the terms refitted on clear-top runs with the match carried
+  flat, both adopted on 25 October 2026
+  ([adopted](#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026)).
+  Against the clear-top run the far field's peaks are 0.82–1.05 of the run's over 1–2.5 km, the
+  lower the further out, and its impulses 1.05–1.14. On the terms and trend before they were
+  0.67–0.99 and 0.71–1.03, low; against the drained 4 m runs they had read 1.12–1.19 high at
+  1.1 kt ([why](#the-full-runs-top-drains-its-far-loads-25-october-2026)).
+- **Does not: the glass beyond 1.5 km at the smallest yield. It reads low, the unsafe side.** At
+  0.2 kt it breaks glass on 0.63 of the sides at 1.75–2 km where the run breaks 0.90 (0.37 before
+  25 October), and on 0.25 at 2–2.5 km against 0.75.
 - **Does not: blown-out glass beyond 1.25 km.** Its share falls short of the clear-top run's by up to
-  0.52 in a band (1.1 kt: 0.05 against 0.57 at 2–2.5 km; 0.5 kt: 0.33 against 0.84 at
-  1.25–1.5 km).
+  0.39 in a band (1.1 kt: 0.18 against 0.57 at 2–2.5 km; 0.5 kt: 0.65 against 0.84 at
+  1.25–1.5 km), against 0.52 before 25 October.
 - **Does not: walls and roofs beyond the hand-over.** They take the surrogate's standing, which
   says to run the scene for the structure.
 - **Inherits the full run's verdict against GEER.** Close in it breaks more glass than GEER saw;
@@ -299,7 +303,7 @@ Holding the trend past 1.5 times the hand-over, as the app does, moves none of t
   320 m at 0.5 kt. A whole district run to 2.5 km over hills has the same problem. From these runs,
   a top at the highest ground plus a fifth of the radius would keep the loads to the radius
   (590 m for Beirut at 2.5 km: 1.85 times the cells at 0.5 kt). That is a default, and the user's
-  decision. The near run handing over at 12 m/kg^(1/3) is clear on flat ground. Over hills 90 m
+  decision; it was adopted on 25 October 2026 (below). The near run handing over at 12 m/kg^(1/3) is clear on flat ground. Over hills 90 m
   high, at 0.2 kt, the reach, 5 × (234 − 90) m, is about the hand-over (702 m).
 
 The runs, extracts and judgements are in `$BOMBCAD_DATA/scratch/issue96`: `faces*/` (the tops and
@@ -457,7 +461,8 @@ refined air:
 radius. On Beirut it costs 25–52% more cells and 8–14% more time on refined air, and moves the
 glass only at 0.2 kt beyond 1.75 km (some broken 0.72 against 0.63 at 2–2.5 km). Its value is in
 districts without tall buildings, where today's top is the charge's 4 m/kg^(1/3). The default is
-the user's decision.
+the user's decision. (Adopted on 25 October 2026:
+[below](#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026).)
 
 The runs, scripts and judgements are in `$BOMBCAD_DATA/scratch/issue97`: `check/` (`check.sh`, the
 16 m check), `ref/` (`ref.sh`: the references, near runs and tops), `judges/` (`judges.sh`, each
@@ -469,9 +474,11 @@ tables.
 emmettl/bombcad-work#98. The surrogate's fit runs had drained tops too, so they were remade with
 their tops clear and the terms, the rise share and the chances' scatter refitted on them
 ([the surrogate](surrogate-first-look.md#refitted-on-clear-top-runs-25-october-2026), where the
-whole judgement is). Both are options, off by default: the candidate terms
-(`FacadeLoadSurrogate.TermSet.clearTop`, `hybrid-judge --terms clear-top`) and the match carried
-flat (`FarFieldSet.matchFlat`; `hybrid-judge` without `--trend-from`). Against the clear-top
+whole judgement is). Both were built as options, off by default, and adopted the same day
+([below](#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026)):
+the candidate terms (`FacadeLoadSurrogate.TermSet.clearTop`, `hybrid-judge --terms clear-top`) and
+the match carried flat (`FarFieldSet.matchFlat`; `hybrid-judge` without `--trend-from`). In the
+table, "adopted" is the terms of 23 October, adopted until then. Against the clear-top
 reference, over 1–2.5 km, mean error in the share of sides, some broken / blown out:
 
 | | 0.2 kt | 0.5 kt | 1.1 kt |
@@ -485,7 +492,50 @@ reference, over 1–2.5 km, mean error in the share of sides, some broken / blow
 - Their peaks over the reference's are 0.82–1.05 over 1–2.5 km, and the impulses 1.05–1.14.
 - At 0.2 kt the share with some glass broken is still 0.63 against the reference's 0.90 at
   1.75–2 km, and 0.25 against 0.75 at 2–2.5 km.
-- Adopting both is proposed to the user.
+- Adopting both was proposed to the user, and they were adopted the same day ([below](#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026)).
+
+### Adopted: the clear-top terms, the match carried flat and a higher top (25 October 2026)
+
+emmettl/bombcad-work#99. The user adopted all three on 25 October 2026:
+- **The clear-top terms** (`FacadeLoadSurrogate.TermSet.clearTop`) are the default for the far
+  field, as for the quick estimate and the glass chances. The terms of 23 October stay by name,
+  `--terms fitted` in the benches and "Façade terms of 23 October" in the app, so earlier records
+  can be reproduced.
+- **The match carried flat** (`FarFieldSet.matchFlat`) is on for every far set New District makes.
+  It is saved with the project. Sets saved before have it off and keep the trend, and Far field ▸
+  "Carry the run's match flat" changes it for a project.
+- **New District's top** (`DistrictLayout.top`) is at least the highest ground plus a fifth of the
+  district's radius, besides today's rule. On Beirut's 2.5 km that is 102 + 500 m, 608 m on 8 m
+  cells, against 400–488 m before: 25–52% more cells and 8–14% more time on refined air
+  ([measured above](#judged-again-against-a-clear-top-reference-25-october-2026)). The near run of a
+  hybrid takes the floor over its hand-over (302 m at 1 km), under today's rule there, so Beirut's
+  near runs are unchanged. The benches' scenes give `--height` and are unchanged too.
+
+The far field as New District now makes it, against the clear-top reference (sides with some glass
+broken, reference / hybrid; the hybrid's façade peak and impulse over the reference's, median):
+
+| Distance | 0.2 kt | 0.5 kt | 1.1 kt | Peak, 0.2 / 0.5 / 1.1 kt | Impulse, 0.2 / 0.5 / 1.1 kt |
+|---|---|---|---|---|---|
+| 1–1.25 km | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 1.04 / 1.04 / 1.02 | 1.05 / 1.05 / 1.05 |
+| 1.25–1.5 km | 1.00 / 0.99 | 1.00 / 1.00 | 1.00 / 1.00 | 1.02 / 1.03 / 1.01 | 1.06 / 1.07 / 1.08 |
+| 1.5–1.75 km | 0.98 / 0.85 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.04 / 1.04 | 1.10 / 1.10 / 1.11 |
+| 1.75–2 km | 0.90 / 0.63 | 1.00 / 0.99 | 1.00 / 1.00 | 0.96 / 1.04 / 1.05 | 1.13 / 1.13 / 1.14 |
+| 2–2.5 km | 0.75 / 0.25 | 0.99 / 0.88 | 1.00 / 1.00 | 0.82 / 0.88 / 0.91 | 1.07 / 1.07 / 1.08 |
+| 2.5–3 km | 0.50 / 0.08 | 0.96 / 0.58 | 1.00 / 0.99 | 0.81 / 0.76 / 0.82 | 1.08 / 1.05 / 1.06 |
+
+- **Peaks 0.82–1.05 of the reference's over 1–2.5 km, impulses 1.05–1.14** (`hybridFarPeak`,
+  `hybridFarImpulse`), against 0.67–0.99 and 0.71–1.03 on the terms and trend before. The impulses
+  now read a little high, the safe side.
+- **Glass with some broken** stays within 0.05 of the reference to 1.5 km at 0.2 kt, to 2 km at
+  0.5 kt and to 2.5 km at 1.1 kt, as before; at 0.2 kt it is 0.13–0.50 under at 1.5–2.5 km
+  (0.31–0.65 before). Blown out is up to 0.39 under in a band (1.1 kt, 2–2.5 km: 0.18 against
+  0.57), against 0.52 before.
+- **The mean error over 1–2.5 km**, some broken / blown out: 0.181 / 0.018, 0.024 / 0.062 and
+  0.000 / 0.108 at 0.2, 0.5 and 1.1 kt, against 0.294 / 0.040, 0.063 / 0.170 and 0.001 / 0.221.
+- The arrivals do not move. The standing quotes this table since 25 October 2026.
+
+The judges are #98's (`$BOMBCAD_DATA/scratch/issue98/judges-final`, `hybrid-clear-flat-*`); the
+new defaults reproduce its candidate's judges to the digit (`$BOMBCAD_DATA/scratch/issue99`).
 
 ## Using it
 
@@ -526,9 +576,12 @@ reference, over 1–2.5 km, mean error in the share of sides, some broken / blow
   ends they are judged in seconds on the cores and painted with their damage, labelled "far field
   estimate" in the Envelope damage section with the match and its standing. Their sides' glass
   chances are drawn over the far field's scatter and each building's glass strength, as the
-  quick estimate's are (`HybridFarField.judge(..., glass:)`), and the view colours by them. The app carries the
-  trend to 1.5 times the hand-over and holds it from there (`FarFieldSet.trendReachDefault`; see
-  below).
+  quick estimate's are (`HybridFarField.judge(..., glass:)`), and the view colours by them. Since
+  25 October 2026 New District's far sets carry the match flat (`FarFieldSet.matchFlat`; Far field
+  ▸ "Carry the run's match flat", saved with the project). Districts made before carry the trend to
+  1.5 times the hand-over and hold it from there (`FarFieldSet.trendReachDefault`; see below).
+  New District's top is at least the highest ground plus a fifth of the radius
+  ([adopted](#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026)).
 
 ## Channelling down a street (20 October 2026)
 

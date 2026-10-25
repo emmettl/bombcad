@@ -2,7 +2,7 @@ import BlastCore
 import Foundation
 
 /// `scenebench wall-calibrate <district-scene's inputs> [--radius 1320] --runs mass:folder,…
-/// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--coefficients fit.json]
+/// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--coefficients fit.json | --terms clear-top|fitted]
 /// [--learned weights.bcfw [--learned-ground ground.bcfw] [--own-scatter [--scatter-tables tables.json]]] [--out calibration.json]`: how well the walls' and roofs' chances
 /// (`FacadeLoadSurrogate.structureProbabilities`, Horizons 4) are calibrated against the district's
 /// own runs at several yields (`district-compare --save-loads`, with walls and roofs saved). Each
@@ -96,12 +96,10 @@ enum WallCalibration {
 
         // The chances, on the first run's layout, drawn over the runs' yields (all, or all but one).
         let first = references[0]
-        // `--coefficients fit.json`: the façades' terms to judge; the fitted ones without it.
-        let coefficients =
-            try value("coefficients").map {
-                try JSONDecoder().decode(
-                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
-            } ?? .fitted
+        // `--coefficients fit.json` or `--terms`: the façades' terms to judge, the adopted ones
+        // without either; and `--terms`' load scatter (or `--load-scatter`'s).
+        let coefficients = try SurrogateBench.coefficients(args)
+        let loadScatter = try SurrogateBench.loadScatter(args)
         let surrogateEstimate = FacadeLoadSurrogate.estimate(
             scene: first.scene, cellSize: first.cellSize, coefficients: coefficients)
         // `--learned weights.bcfw`: the learned field model's peak at the ground-floor façade strips
@@ -158,7 +156,8 @@ enum WallCalibration {
             let (drawn, seconds) = FacadeLoadSurrogate.structureProbabilities(
                 try estimate(at: masses[0]), mass: masses[0], cellSize: first.cellSize,
                 constructions: { construction(first.scene, $0) },
-                uncertainty: FacadeLoadSurrogate.Uncertainty(masses: masses, samples: draws),
+                uncertainty: FacadeLoadSurrogate.Uncertainty(
+                    masses: masses, loadScatter: loadScatter, samples: draws),
                 coefficients: coefficients, strengthScatter: false,
                 loadFactor: factor.map { ($0, $0) }, scatterScale: factor == nil ? nil : (scale, scale),
                 impulseRatio: ratio == 1 ? nil : (ratio, ratio), learnedPeaks: learned != nil)

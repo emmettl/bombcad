@@ -178,6 +178,10 @@ enum FieldWalls {
         let bases = objects.map { Double(SurrogateBench.bounds($0).0.z) }
         let root = cbrt(mass)
         let binS = 0.7e-3
+        // `--terms` or `--coefficients`: the surrogate's terms (the adopted ones without either), the
+        // walls on their own rise; and their load scatter (or `--load-scatter`'s).
+        let coefficients = try SurrogateBench.coefficients(args)
+        let loadScatter = try SurrogateBench.loadScatter(args)
         var results = [Building?](repeating: nil, count: owners.count)
         _ = SDOFResponseMemo.remembering {
             results.withUnsafeMutableBufferPointer { out in
@@ -211,7 +215,7 @@ enum FieldWalls {
                     func scatter(_ f: FacadeLoadSurrogate.Features) -> FacadeLoadSurrogate.Uncertainty
                         .LoadScatter?
                     {
-                        FacadeLoadSurrogate.Uncertainty.leaveOneOut.first { f.distanceM / root <= $0.upToZ }
+                        loadScatter.first { f.distanceM / root <= $0.upToZ }
                     }
                     var walls: [Part] = []
                     var wallTruth = 0
@@ -223,7 +227,8 @@ enum FieldWalls {
                         var f = FacadeLoadSurrogate.features(
                             component, owner: n, charge: charge, raster: reference.raster)
                         f.chargeOpenM = open
-                        let p = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: cell)
+                        let p = FacadeLoadSurrogate.predict(
+                            f, mass: mass, cellSize: cell, coefficients: coefficients.forStructures)
                         let loads = variants.map { v in
                             (v.peak.map { row[$0] } ?? p.peakPa, v.impulse.map { row[$0] } ?? p.impulsePaS)
                         }
