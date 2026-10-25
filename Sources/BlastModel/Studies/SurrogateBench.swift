@@ -15,6 +15,10 @@ import simd
 /// same inputs and each building's strips matched to its laid-out ones: the recorder leaves out a
 /// strip with no face on the air, found again here (`FacadeLoadSurrogate.facesAir`); a building
 /// whose strips do not then match one for one is left out.
+///
+/// A refined run's strips are laid out on its base cells but loaded by its finest
+/// (`--place-dx`): `--surrogate-dx m` predicts their loads as a run on those cells would give
+/// them (the surrogate's cell term), where the air's cells are taken otherwise.
 package enum SurrogateBench {
     package static func value(_ args: [String], _ name: String) -> String? {
         args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
@@ -36,6 +40,9 @@ package enum SurrogateBench {
         /// Matched strips: the saved strip, its object and its component.
         package var strips: [(saved: Int, object: Int, component: EnvelopeComponent)]
         package var cellSize: Float
+        /// The cells the surrogate predicts for (`--surrogate-dx`): a refined run's finest, which
+        /// load its façades; the air's cells otherwise.
+        package var predictionCell: Float
         package var radius: Float
         /// The walls', slabs' and roofs' saved loads (components.json, beside the façades' since 20
         /// October 2026), matched as the strips are; empty for older runs.
@@ -59,6 +66,7 @@ package enum SurrogateBench {
             self.radius = radius
             (scene, _) = try inputs.scene(radius: radius)
             cellSize = inputs.cellSize
+            predictionCell = SurrogateBench.value(args, "surrogate-dx").flatMap(Float.init) ?? inputs.cellSize
             objects = scene.envelopeObjects
             let dx = cellSize
             let raster = FacadeLoadSurrogate.Raster(
@@ -504,11 +512,12 @@ package enum SurrogateBench {
                         component, owner: n, charge: charge, raster: reference.raster)
                     f.chargeOpenM = open
                     let p = FacadeLoadSurrogate.predict(
-                        f, mass: mass, cellSize: Double(reference.cellSize), coefficients: coefficients)
+                        f, mass: mass, cellSize: Double(reference.predictionCell), coefficients: coefficients)
                     let q = FacadeLoadSurrogate.predict(
-                        f, mass: mass, cellSize: Double(reference.cellSize), coefficients: withoutCloseIn)
+                        f, mass: mass, cellSize: Double(reference.predictionCell),
+                        coefficients: withoutCloseIn)
                     let a = FacadeLoadSurrogate.predict(
-                        f, mass: mass, cellSize: Double(reference.cellSize), coefficients: inSight)
+                        f, mass: mass, cellSize: Double(reference.predictionCell), coefficients: inSight)
                     out[m] = String(
                         format:
                             "%d,%d,%d,%.2f,%.4f,%.2f,%.2f,%d,%.1f,%.1f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f",
@@ -577,7 +586,7 @@ package enum SurrogateBench {
                 var predicted = FacadeLoadSurrogate.load(
                     component,
                     FacadeLoadSurrogate.predict(
-                        f, mass: mass, cellSize: Double(reference.cellSize), coefficients: coefficients),
+                        f, mass: mass, cellSize: Double(reference.predictionCell), coefficients: coefficients),
                     binS: strip.binS)
                 predicted.supportEdges = nil
                 var triangle = FacadeLoadSurrogate.load(
@@ -762,7 +771,7 @@ package enum SurrogateBench {
                         component, owner: n, charge: charge, raster: reference.raster)
                     f.chargeOpenM = open
                     let prediction = FacadeLoadSurrogate.predict(
-                        f, mass: mass, cellSize: Double(reference.cellSize),
+                        f, mass: mass, cellSize: Double(reference.predictionCell),
                         coefficients: kind == .roof ? roofCoefficients : coefficients)
                     var predicted = FacadeLoadSurrogate.load(component, prediction, binS: strip.binS)
                     predicted.kind = kind

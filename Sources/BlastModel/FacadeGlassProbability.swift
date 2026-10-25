@@ -20,12 +20,14 @@ extension FacadeLoadSurrogate {
         return [
             String(
                 format:
-                    "Glass chances, against Beirut's full runs at 0.2, 0.5 and 1.1 kt, drawn over those yields: calibrated. "
-                    + "Blown out: Brier %.3f, against %.3f giving every side the mean, each tenth of chance within %.2f "
-                    + "of the share seen; thrown past 3 m (GSA 3b) skill %.2f; some glass broken a little high. All three "
-                    + "pass the protective-design test, each tenth of chance within %.1f of the share seen.",
+                    "Glass chances, against Beirut's full runs at 0.2, 0.5 and 1.1 kt with their top clear, drawn over "
+                    + "those yields: low, the unsafe side. Blown out: Brier %.3f, against %.3f giving every side the mean, "
+                    + "its tenths of chance up to %.2f under the share seen; thrown past 3 m (GSA 3b) Brier %.3f against "
+                    + "%.3f, and some glass broken, each well under. All three fail the protective-design test, each "
+                    + "tenth of chance within %.1f of the share seen; against runs whose top drained the far loads they "
+                    + "had passed it.",
                 brier.low,
-                brier.high, bins.high, thrown.low, test.high),
+                brier.high, bins.high, thrown.low, thrown.high, test.high),
             String(
                 format:
                     "Not judged against GEER's survey of Beirut's façades, whose classes are openings (frames and doors "

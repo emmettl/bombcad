@@ -7,7 +7,8 @@ import simd
 ///
 /// `scenebench hybrid-judge <district-scene's inputs> --radius 2500 --loads full-loads
 /// --near-loads near-loads --near-radius 1320 [--handover 1000] [--seed-from 800] [--trend-from 500] [--inside 0.85]
-/// [--full-report full/comparison.json] [--near-report near/comparison.json] [--out judged.json]`.
+/// [--full-report full/comparison.json] [--near-report near/comparison.json] [--coefficients fit.json]
+/// [--surrogate-dx m] [--out judged.json]`.
 ///
 /// The near run is the same district on a box reaching the hand-over and its open faces' clearance
 /// beyond (`--near-radius`, a multiple of the cells, so that its cells are the full run's), run
@@ -93,7 +94,13 @@ enum HybridBench {
         let mass = Double(scene.charge.mass)
         let charge = scene.charge.position
         let open = full.raster.openReach(around: charge)
-        let cell = Double(full.cellSize)
+        let cell = Double(full.predictionCell)
+        // `--coefficients fit.json`: the façades' terms to judge, as surrogate-judge takes them.
+        let coefficients =
+            try value("coefficients").map {
+                try JSONDecoder().decode(
+                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
+            } ?? .fitted
 
         // The near run's strips, by their box from the charge.
         func key(_ reference: SurrogateBench.Reference, _ component: EnvelopeComponent) -> [Int32] {
@@ -120,7 +127,8 @@ enum HybridBench {
                     var f = FacadeLoadSurrogate.features(
                         component, owner: n, charge: charge, raster: full.raster)
                     f.chargeOpenM = open
-                    out[m] = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: cell)
+                    out[m] = FacadeLoadSurrogate.predict(
+                        f, mass: mass, cellSize: cell, coefficients: coefficients)
                     // From the charge to the face, as `district-hybrid` and `HybridFarField.judge` take it.
                     far[m] = f.distanceM
                 }

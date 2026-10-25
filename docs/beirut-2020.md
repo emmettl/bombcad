@@ -14,8 +14,10 @@ At 0.5 kt on 4 m cells, against the surveys below:
 
 - **Holds: the shock's arrival.** Over the city's own geometry the model finds Rigby's yield
   again from his 30 observers; from 400 m out 25 of 27 arrive within 10% of the observed time.
-- **Holds: the glass's far edge, and its grid.** Beyond 1.5 km the share of façades blown out is
-  GEER's W3 (0.07 and 0.02 against 0.09 and 0.02), and the glass has converged by 4 m.
+- **Holds in part: the glass's far edge, and its grid.** The glass has converged by 4 m. Beyond
+  1.5 km the 4 m runs' share of façades blown out was GEER's W3 (0.07 and 0.02 against 0.09 and
+  0.02), but their top drained the loads there. With the top clear (25 October 2026, refined air)
+  it is 0.24 and 0.06: GEER's at 1.75–2 km, more than GEER saw at 1.5–1.75 km, as closer in.
 - **Holds: the silos' shadow close in, and a second set of arrivals.** Behind a block like the
   silos the model's peaks are Denny et al.'s measured third at 160 m and three fifths at 240 m, and at
   Stennett et al.'s six observers the shock arrives within 6% of their times.
@@ -210,7 +212,13 @@ out when nine in ten of its panes are expected broken (the model has no frames t
   some pane broken and nearly every side inside 1.25 km is blown out, where GEER found 117 of its
   750 façades at 0.5–0.75 km with no visible damage and W3 falling to 0.17–0.28 by 1 km. Beyond
   1.5 km the 0.5 kt blow-outs (0.07, 0.02) are GEER's (0.09, 0.02); the 2–2.5 km band's 0.15 W3 has
-  nothing in the model at any yield. Within a band the model's sides differ only by their mix and
+  nothing in the model at any yield. Those bands were drained by the runs' 320 m top. Judged again
+  with the top clear (25 October 2026: 8 m air refined once to 4 m, a 640 m top), at 0.5 kt the
+  sides blown out are 0.83, 0.24, 0.06 and 0.02 at 1.25–1.5, 1.5–1.75, 1.75–2 and 2–2.5 km (the
+  same air under the 320 m top: 0.75, 0.12, 0.03, 0.01), and sides with some pane broken 1.00 to
+  2 km and 0.99 at 2–2.5 km (GEER W1+ 0.38, 0.28, 0.26): the model over-breaks against GEER to
+  1.75 km, not 1.5 km, and matches its W3 only at 1.75–2 km ([the hybrid far
+  field](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)). Within a band the model's sides differ only by their mix and
   their shielding; a street's differ also by glass type (toughened, laminated, filmed), by open
   windows and shutters, and by repair in the two months before the photographs.
 - **Traced (19 October 2026)**: GEER's W3 is frames blown out, which follows the side's load as a

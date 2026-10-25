@@ -80,17 +80,17 @@ extension ValidationTables {
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
             quote: "the same for 99.7% of buildings"),
         Figure(
-            id: "glassChancesBrier", low: 0.017, high: 0.108,
+            id: "glassChancesBrier", low: 0.038, high: 0.104,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "Brier score 0.017, against 0.108"),
+            quote: "Brier score 0.038, against 0.104"),
         Figure(
-            id: "glassChancesBins", low: 0.06, high: 0.06,
+            id: "glassChancesBins", low: 0.16, high: 0.16,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "within 0.06 of the share of runs"),
+            quote: "up to 0.16 under the share of runs"),
         Figure(
-            id: "glassChancesThrown", low: 0.73, high: 0.73,
+            id: "glassChancesThrown", low: 0.096, high: 0.025,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "condition 3b: skill 0.73"),
+            quote: "condition 3b: Brier 0.096, against 0.025"),
         Figure(
             id: "glassChancesTest", low: 0.1, high: 0.1,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
@@ -108,9 +108,9 @@ extension ValidationTables {
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
             quote: "skill 0.19 (Brier 0.138"),
         Figure(
-            id: "surrogateGlassSides", low: 0.77, high: 0.84,
+            id: "surrogateGlassSides", low: 0.54, high: 0.75,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "agrees with the run's for 77–84%"),
+            quote: "agrees with the run's for 54–75%"),
         Figure(
             id: "surrogateConcrete", low: 0.29, high: 0.49,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
@@ -128,17 +128,17 @@ extension ValidationTables {
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "peaks 0.96–0.97"),
         Figure(
-            id: "surrogateFarLoads", low: 1.03, high: 1.65,
+            id: "surrogateFarLoads", low: 0.72, high: 0.92,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "1.03–1.65 times the run's on the median"),
+            quote: "0.72–0.92 times the run's on the median"),
         Figure(
-            id: "hybridFarPeak", low: 0.95, high: 1.19,
+            id: "hybridFarPeak", low: 0.67, high: 0.99,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
-            quote: "façade peaks 0.95–1.19 of the full run's to 2.5 km"),
+            quote: "façade peaks 0.67–0.99 of the full run's to 2.5 km"),
         Figure(
-            id: "hybridFarImpulse", low: 1.04, high: 2.0,
+            id: "hybridFarImpulse", low: 0.71, high: 1.03,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
-            quote: "impulses 1.04–2.0 times"),
+            quote: "impulses 0.71–1.03 times"),
         Figure(
             id: "inferredBeirut", low: 0.50, high: 0.54,
             document: "validation.md#the-charge-from-its-arrivals",

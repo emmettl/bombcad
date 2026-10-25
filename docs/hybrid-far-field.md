@@ -10,8 +10,11 @@ New District, and headless in SceneBench.
 
 ## What holds and what does not
 
-Judged on Beirut against the full 4 m runs at 0.2, 0.5 and 1.1 kt ([Beirut,
-2020](beirut-2020.md)), handing over at 1 km:
+Judged on Beirut at 0.2, 0.5 and 1.1 kt ([Beirut, 2020](beirut-2020.md)), handing over at 1 km:
+inside 1.25 km against the full 4 m runs, and beyond it, since 25 October 2026, against full runs
+with their top clear (8 m air refined to 4 m, a 640 m top;
+[below](#judged-again-against-a-clear-top-reference-25-october-2026)). The 4 m runs' 320 m top
+drained the far loads, and everything first judged against them beyond 1.25 km was judged again.
 
 - **Holds: inside the hand-over.** The near run is the full run there. On a box reaching 1,320 m
   (the hand-over and 4 m/kg^(1/3) beyond it), its façade strips' peaks are the full run's to within
@@ -20,22 +23,20 @@ Judged on Beirut against the full 4 m runs at 0.2, 0.5 and 1.1 kt ([Beirut,
   1,604, 2,017 and 2,464 s. The far field's loads take a few seconds, and laying out and judging
   all 14,169 buildings about a minute on the Studio. At 0.5 kt the whole district takes about
   7 minutes against 34.
-- **Holds: the glass to 1.75 km.** The share of building sides with some glass broken comes within
-  0.04 of the full run's to 1.75 km at 0.2 and 0.5 kt and to 2 km at 1.1 kt (on the surrogate's
-  terms refitted on 23 October 2026; [below](#on-the-refitted-surrogate-23-october-2026)).
+- **Holds: the glass to 1.5 km.** The share of building sides with some glass broken comes within
+  0.05 of the clear-top run's to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 2.5 km at 1.1 kt.
 - **Holds: arrivals.** Beyond the hand-over, Kingery–Bulmash's arrival scaled to the near run's
-  comes 2–4% before the full run's. Against Rigby et al.'s observers past 1 km that is 0.95–1.08
+  comes 2–4% before the full run's (1–4% before the clear-top run's). Against Rigby et al.'s observers past 1 km that is 0.95–1.08
   of the observed at 0.5 kt, and 0.91–1.02 at 1.1 kt.
-- **Does not: the loads at the large yield beyond 1.5 km.** At 1.1 kt the far field's peaks read
-  1.12–1.19 of the full run's from 1.5 to 2.5 km and its impulses 1.6–2.0 times. At 0.2 kt, where
-  the share broken fell 0.16–0.28 below the full run's on the terms before, it now falls 0.01–0.06
-  below. **But the full run is not a fair judge there** (25 October 2026,
-  [below](#the-full-runs-top-drains-its-far-loads-25-october-2026)): its 320 m top drains the loads
-  beyond about 1.25 km over the hills south of the port, at every yield. Against a run with its top
-  clear, on 8 m cells, the far field reads low, not high: peaks 0.72–0.99 of the run's at
-  1.5–2.5 km.
-- **Does not: blown-out glass in every band.** Its share differs from the full run's by up to 0.19
-  in a band (1.1 kt: 0.88 against 0.69 at 1.5–1.75 km; 0.5 kt: 0.42 against 0.60 at 1.25–1.5 km).
+- **Does not: the loads beyond 1.5 km. They read low, the unsafe side.** Against the clear-top run
+  the far field's peaks are 0.67–0.99 of the run's over 1–2.5 km and its impulses 0.71–1.03, the
+  lower the smaller the yield and the further out (2–2.5 km: peaks 0.67, 0.73 and 0.82 at 0.2, 0.5
+  and 1.1 kt). At 0.2 kt it breaks glass on 0.37 of the sides at 1.75–2 km where the run breaks
+  0.90. Against the drained 4 m runs it had read 1.12–1.19 high at 1.1 kt
+  ([why](#the-full-runs-top-drains-its-far-loads-25-october-2026)).
+- **Does not: blown-out glass beyond 1.25 km.** Its share falls short of the clear-top run's by up to
+  0.52 in a band (1.1 kt: 0.05 against 0.57 at 2–2.5 km; 0.5 kt: 0.33 against 0.84 at
+  1.25–1.5 km).
 - **Does not: walls and roofs beyond the hand-over.** They take the surrogate's standing, which
   says to run the scene for the structure.
 - **Inherits the full run's verdict against GEER.** Close in it breaks more glass than GEER saw;
@@ -304,6 +305,164 @@ Holding the trend past 1.5 times the hand-over, as the app does, moves none of t
 The runs, extracts and judgements are in `$BOMBCAD_DATA/scratch/issue96`: `faces*/` (the tops and
 boxes, `faces.sh`, `faces-more.sh`), `strips/` (the 4 m runs' strips with the surrogate),
 `fieldmaps/`, `near8/` and `judge8/` (`judge8.sh`). Each 8 m run took 18–35 s on the Studio.
+Judged again against 4 m-like runs with their top clear [below](#judged-again-against-a-clear-top-reference-25-october-2026).
+
+### Judged again against a clear-top reference (25 October 2026)
+
+Everything the drained 4 m runs judged beyond about 1.25 km was judged again against a reference
+with its top clear (emmettl/bombcad-work#97).
+
+**The reference.** Beirut's district on 8 m cells refined once to 4 m (threshold 0.005), under the
+ceiling New District uses (no air refined more than 63 m above the ground: 98% of the buildings to
+31 m, and four cells), the footprints on 4 m cells and the ground a staircase, as New District's
+refined air is. The box is the full runs' (5 km), the top 640 m, which clears the draining rule
+above (five to six times 550 m over the hills is beyond the 2.5 km radius). That is 31 million coarse
+cells and 188,458 components. A run to 8 s took 65–81 s on the Studio, with at most 26,938 refined
+blocks (the pool never ran out) and about 20 GB at its peak, most of it the histories being judged. The near runs are the same air on the
+1,324 m box (so their cells are the full run's), with the same top, run to 3.5 s (New District's
+length for a 1 km hand-over): 10–16 s. Its strips are laid on the 8 m cells and read the 4 m cells
+against each face, so the surrogate is asked for 4 m cells' loads when judged against it
+(`--surrogate-dx 4`, which `surrogate-judge`, `hybrid-judge` and `glass-calibrate` now take;
+`hybrid-judge` also takes `--coefficients`). Its peaks inside 1.5 km are 0.95–0.96 of the 4 m runs'
+(building sides matched by distance, 1.1 kt); beyond, 1.01 at 1.5–1.75 km rising to 1.46 at
+2.25–2.5 km, the drained runs' shortfall.
+
+**Checked one level up first.** 16 m cells refined to 8 m in the same way (ceiling 95 m by the same
+rule), against uniform 8 m cells, both on the staircase, 1.1 kt. Building sides' peaks, matched by
+the building's centre (the refined run's strips are 16 m wide, so strips cannot be matched one for
+one), refined over uniform:
+
+| Top | 0.5–1 km | 1–1.25 km | 1.25–1.5 km | 1.5–1.75 km | 1.75–2 km | 2–2.25 km | 2.25–2.5 km |
+|---|---|---|---|---|---|---|---|
+| 640 m | 0.94 | 0.95 | 0.94 | 0.93 | 0.92 | 0.92 | 0.91 |
+| 640 m, to the south | 0.93 | 0.94 | 0.93 | 0.94 | 0.93 | 0.93 | 0.93 |
+| 320 m | 0.94 | 0.94 | 0.89 | 0.88 | 0.87 | 0.88 | 0.87 |
+
+- **With the top clear the refined setup keeps the uniform grid's far strips:** its ratio to the
+  uniform run falls by 3% from 500 m to 2.5 km, and by none to the south.
+  The level itself, 6–9% low, is the coarser strips and the capped refinement, and it is there at
+  500 m too.
+- **Under the 320 m top it drains more than the uniform grid** (0.87–0.89 beyond 1.25 km; strip by
+  strip the 640 m top over the 320 m reads 1.32, 1.58 and 1.66 at 1.5–1.75, 1.75–2 and 2–2.25 km
+  where the uniform 8 m run reads 1.23, 1.45 and 1.61), so a refined run needs its top clear as
+  much.
+- The ceiling at 72 m in place of 95 m moves the sides by 1.5% or less, and cut cells in place of
+  the staircase by 1.7% or less (1.4% refined).
+
+**The hybrid against it.** As the 23 October table (trend from 500 m carried, a rising one held at
+nothing; the app's hold past 1.5 times the hand-over in brackets), sides with some glass broken,
+reference / hybrid, and the hybrid's façade peak and impulse over the reference's (median):
+
+| Distance | 0.2 kt | 0.5 kt | 1.1 kt | Peak, 0.2 / 0.5 / 1.1 kt | Impulse, 0.2 / 0.5 / 1.1 kt |
+|---|---|---|---|---|---|
+| 1–1.25 km | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.98 / 0.98 / 0.99 | 0.97 / 0.98 / 1.03 |
+| 1.25–1.5 km | 1.00 / 0.95 (0.95) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.91 / 0.93 / 0.96 | 0.90 / 0.93 / 1.02 |
+| 1.5–1.75 km | 0.98 / 0.67 (0.68) | 1.00 / 0.99 (1.00) | 1.00 / 1.00 (1.00) | 0.86 / 0.91 / 0.97 | 0.85 / 0.88 / 1.01 |
+| 1.75–2 km | 0.90 / 0.37 (0.40) | 1.00 / 0.96 (0.97) | 1.00 / 1.00 (1.00) | 0.80 / 0.89 / 0.97 | 0.82 / 0.84 / 0.99 |
+| 2–2.5 km | 0.75 / 0.10 (0.12) | 0.99 / 0.66 (0.71) | 1.00 / 0.99 (0.99) | 0.67 / 0.73 / 0.82 | 0.71 / 0.74 / 0.91 |
+| 2.5–3 km | 0.50 / 0.02 (0.03) | 0.96 / 0.25 (0.33) | 1.00 / 0.93 (0.94) | 0.63 / 0.60 / 0.72 | 0.64 / 0.65 / 0.84 |
+
+Blown out, reference / hybrid: at 0.5 kt 0.84 / 0.33 at 1.25–1.5 km and 0.25 / 0.04 at
+1.5–1.75 km; at 1.1 kt 0.98 / 0.82, 0.79 / 0.34 and 0.57 / 0.05 at 1.5–1.75, 1.75–2 and
+2–2.5 km. Over 1–2.5 km, the mean error in the share of sides, some broken / blown out:
+
+| Judged against | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| The drained 4 m runs (23 October, trend carried) | 0.026 / 0.002 | 0.036 / 0.042 | 0.014 / 0.046 |
+| The refined runs under the 320 m top, trend carried | 0.194 / 0.042 | 0.040 / 0.122 | 0.006 / 0.026 |
+| **The clear-top reference, trend carried** | **0.308 / 0.040** | **0.076 / 0.171** | **0.002 / 0.226** |
+| … the trend held past 1.5 times the hand-over (the app's) | 0.294 / 0.040 | 0.063 / 0.170 | 0.001 / 0.221 |
+| … the match carried flat (no trend) | 0.251 / 0.036 | 0.047 / 0.135 | 0.001 / 0.205 |
+
+- **The far field reads low, the unsafe side,** as the 8 m judge found: peaks 0.67–0.99 of the
+  reference's over 1–2.5 km on the median (0.95–1.19 against the drained runs), impulses
+  0.71–1.03 (1.04–2.0). At 0.2 kt it breaks glass on 0.10 of the sides at 2–2.5 km where the
+  reference breaks 0.75; at 1.1 kt it blows out 0.05 of them where the reference blows out 0.57.
+  Glass with some broken stays within 0.05 to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 2.5 km at
+  1.1 kt.
+- **Part of it is the trend.** The refined near runs fall against the surrogate over 500–1,000 m
+  (slopes −0.135 and −0.120 in the peak at 0.2 and 0.5 kt, where the uniform 4 m near runs gave
+  −0.01 and −0.02), and carried on that pulls the far field down. Carried flat, the far peaks at
+  1.5–2.5 km are 0.75–0.93 at 0.2 kt and 0.81–0.98 at 0.5 kt, and the errors fall (table); the rest
+  is the surrogate's own far form. The trend was not changed: what a near run on refined air
+  should hand over is the next thing to judge (Future work).
+- **Arrivals** beyond the hand-over come 1–4% before the reference's (median 2%), as before.
+
+**Elsewhere** (the details on each page):
+
+| Result | Against the drained 4 m runs | Against the clear-top reference |
+|---|---|---|
+| The quick estimate's loads beyond Z 20 at 0.5 kt (`surrogateFarLoads`) | 1.03–1.65 of the run's | 0.72–0.92 (the refined 320 m runs: 1.19–1.51) |
+| … its glass by side deep in the district, 0.2 / 0.5 / 1.1 kt (`surrogateGlassSides`) | 0.84 / 0.77 / 0.83 | 0.54 / 0.75 / 0.72 (0.73 / 0.81 / 0.87) |
+| Glass chances, blown out: Brier / skill; the test | 0.017 / 0.84; pass | 0.038 / 0.64; fail, tenths up to 0.16 under |
+| … thrown past 3b; some broken: skill; the test | 0.73; 0.66; both pass | −2.79; −5.35; both fail, the middle tenths 0.2–0.45 under |
+| Openings blown out against GEER (surrogate loads only): skill | 0.19 | 0.18 |
+| Beirut at 0.5 kt, sides blown out at 1.5–1.75 / 1.75–2 / 2–2.5 km (GEER W3 0.09 / 0.02 / 0.15) | 0.07 / 0.02 / 0.00 | 0.24 / 0.06 / 0.02 (0.12 / 0.03 / 0.01) |
+
+(In brackets, the same refined air under the 320 m top: its layout's own difference from the 4 m
+runs, apart from the top.) The glass chances were calibrated against runs that under-loaded the
+far façades; against the reference all three states read low and fail the protective-design test,
+and the standing says so ([glass by chance](glass-probability.md#judged-against-a-clear-top-reference-25-october-2026)).
+Beirut's far edge against GEER ([Beirut](beirut-2020.md#glass-as-a-mix-of-panes)) holds only at
+1.75–2 km now: at 1.5–1.75 km the model blows out more than GEER saw, as it does closer in.
+
+**The full-length peak refit of 23 October, judged again**
+([the surrogate](surrogate-first-look.md#the-peak-terms-on-the-full-length-boxes-23-october-2026)).
+Rejected then because the glass chances and the hybrid both got worse against the drained runs.
+Against the reference (the refit's terms as `--coefficients`, no special build):
+
+| | Adopted terms | Full-length refit |
+|---|---|---|
+| Glass chances, Brier: blown out / thrown past 3b / some broken | 0.038 / 0.096 / 0.053 | **0.030 / 0.077 / 0.036** |
+| … skill: blown out / thrown / some broken; the test | 0.64 / −2.79 / −5.35; fail | 0.71 / −2.05 / −3.37; fail |
+| Openings blown out against GEER, skill | 0.18 | 0.17 |
+| Quick estimate, loads beyond Z 20 at 0.5 kt; glass deep in the district, 0.2 / 0.5 / 1.1 kt | 0.72–0.92; 0.54 / 0.75 / 0.72 | 0.81–1.02; 0.61 / 0.82 / 0.77 |
+| Hybrid, held (the app's): mean error some broken, 0.2 / 0.5 / 1.1 kt | 0.294 / 0.063 / 0.001 | 0.301 / 0.062 / 0.001 |
+| … blown out | 0.040 / 0.170 / 0.221 | 0.043 / 0.173 / 0.214 |
+| … trend carried: some broken; blown out | 0.308 / 0.076 / 0.002; 0.040 / 0.171 / 0.226 | 0.326 / 0.088 / 0.002; 0.043 / 0.173 / 0.233 |
+
+So it would now go the other way. The glass chances, the reason it was kept out, are better on
+the refit in every state, and the quick estimate's glass and far loads come nearer the reference.
+The hybrid as the app runs it is unchanged within 0.007 of the share of sides; carried on, its
+steeper trend (−0.27 and −0.24 at 0.2 and 0.5 kt) costs 0.012–0.018. By the rule the user set on
+23 October (adopt if neither got worse beyond noise), the refit passes. Neither set of terms
+calibrates the chances against the reference, which needs the chances or the far terms refitted
+on clear-top runs. Adopting is the user's decision; `Coefficients.fitted` is unchanged.
+
+**New District's top.** `DistrictLayout.top` takes 4 m/kg^(1/3) above the charge and at least half
+of it above the highest roof or ground. On Beirut's 2.5 km the towers (roofs to 280 m) set it: 400,
+440 and 488 m at 0.2, 0.5 and 1.1 kt on 8 m cells (the 234 and 320 m given above are the rule's
+first term alone, as a district without towers would have it). The proposal is a top at least the
+highest ground plus a fifth of the radius: 102 + 500 m, 608 m on 8 m cells. Measured on the
+refined air:
+
+| | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| Top today / proposed (cells ×) | 400 / 608 m (×1.52) | 440 / 608 m (×1.38) | 488 / 608 m (×1.25) |
+| Run, 8 s on the Studio, today / 640 m | 57 / 65 s | 69 / 75 s | 75 / 81 s |
+| Side peaks today over 640 m, 2–2.25 / 2.25–2.5 km (south) | 1.00 / 0.93 (0.86 / 0.74) | 1.00 / 1.00 (0.99 / 0.92) | 1.00 / 1.00 (1.01 / 1.00) |
+| Some glass broken today / clear, 1.75–2 / 2–2.5 / 2.5–3 km | 0.88 / 0.63 / 0.24 → 0.91 / 0.72 / 0.39 | 1.00 / 0.99 / 0.84 → 1.00 / 0.99 / 0.87 | 1.00 / 1.00 / 0.97 → unchanged |
+| Panes broken, 2–2.5 / 2.5–3 km | 0.07 / 0.01 → 0.07 / 0.02 | 0.42 / 0.17 → 0.44 / 0.23 | 0.83 / 0.65 → 0.84 / 0.67 |
+
+- "Clear" is the 640 m run. The 608 m top gives the 640 m top's sides to the third figure at
+  0.5 kt (every band to 2.5 km), and its glass to the second.
+- On a refined run the cells above the ceiling are coarse, so the time grows by 8–14% for 25–52%
+  more cells; on uniform cells it would grow with the cells. A district without towers would move
+  far more: under its rule's 320 m at 0.5 kt the refined run broke glass on 0.77 of the sides at
+  2–2.5 km, against 0.99.
+- For a near run (radius the hand-over, 1 km) the proposal is 302 m, under today's rule, so the
+  hybrid's near runs would not change.
+
+**Proposed, not changed:** New District's top at least the highest ground plus a fifth of the
+radius. On Beirut it costs 25–52% more cells and 8–14% more time on refined air, and moves the
+glass only at 0.2 kt beyond 1.75 km (some broken 0.72 against 0.63 at 2–2.5 km). Its value is in
+districts without tall buildings, where today's top is the charge's 4 m/kg^(1/3). The default is
+the user's decision.
+
+The runs, scripts and judgements are in `$BOMBCAD_DATA/scratch/issue97`: `check/` (`check.sh`, the
+16 m check), `ref/` (`ref.sh`: the references, near runs and tops), `judges/` (`judges.sh`, each
+judge with the adopted and refit terms), and `sides.py`, `compare.py` and `hybtab.py` for the
+tables.
 
 ## Using it
 
@@ -467,12 +626,18 @@ The results are in `$BOMBCAD_DATA/canyon/`:
 - **The trend is a straight line in log distance**, fitted over the near run's half of the
   hand-over. Where the district changes beyond it (a ridge, the sea, a denser core), the surrogate's
   own terms must carry the change.
-- **Judged on one city.** Beirut's full runs are its reference, with their own limits on 4 m cells.
+- **Judged on one city.** Beirut's full runs are its reference, with their own limits on 4 m cells;
+  beyond 1.25 km, refined runs with their top clear, whose peaks are 0.95–0.96 of the 4 m runs'
+  where both hold.
 
 ## Future work
 
 - **A hand-over chosen by the run**, where the shock has weakened past a threshold, rather than
   given.
+- **The far field low beyond 1.5 km** (25 October 2026). Against the clear-top reference it reads the
+  far peaks 0.67–0.86 at 0.2 kt and blows out too few sides at every yield. Two things to judge: the
+  trend from a near run on refined air (carried flat it does better at 0.2 and 0.5 kt), and the far
+  terms refitted on clear-top runs (the full-length peak refit already reads them higher).
 - **The far edge at the small yield.** Neither holding the trend nor fading it to the surrogate's
   own form (above) closes the 0.2 kt shortfall at 1.75–2.5 km without overshooting the larger
   yields beyond 2.5 km. A trend fitted per yield from the near run's own spread, or a refit of the

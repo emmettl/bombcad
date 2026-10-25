@@ -357,7 +357,7 @@ package enum GlassCalibration {
             ] {
                 clock = .now
                 let (p, _) = FacadeLoadSurrogate.glassProbabilities(
-                    sides: sides, mass: yields[0], cellSize: dx, uncertainty: uncertainty,
+                    sides: sides, mass: yields[0], cellSize: first.predictionCell, uncertainty: uncertainty,
                     coefficients: coefficients)
                 timings["chances, \(name)"] = seconds(clock)
                 print(
@@ -478,7 +478,7 @@ package enum GlassCalibration {
             let used = Array(Set(matches.map(\.side))).sorted()
             let index = Dictionary(uniqueKeysWithValues: used.enumerated().map { ($1, $0) })
             let (p, kept) = FacadeLoadSurrogate.glassProbabilities(
-                sides: used.map { all[$0] }, mass: Double(scene.charge.mass), cellSize: dx,
+                sides: used.map { all[$0] }, mass: Double(scene.charge.mass), cellSize: first.predictionCell,
                 uncertainty: FacadeLoadSurrogate.Uncertainty(
                     masses: masses, strengthMedian: value("strength-median").flatMap(Double.init) ?? 1,
                     strengthLogSD: value("strength-sd").flatMap(Double.init) ?? 0.25, samples: draws),

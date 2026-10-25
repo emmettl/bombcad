@@ -216,6 +216,42 @@ same judge (`glass-calibrate`, 100 draws), against the runs and GEER, before and
 All three glass states still pass the test against the runs; the openings still fail their
 deciles against GEER, the middle tenths 0.09–0.16 under its shares.
 
+### Judged against a clear-top reference (25 October 2026)
+
+The three 4 m runs' 320 m top drained the façade loads beyond about 1.25 km, over the hills south
+of the port, at every yield ([the hybrid far field](hybrid-far-field.md#the-full-runs-top-drains-its-far-loads-25-october-2026)).
+The chances were judged again against Beirut's runs with their top clear: 8 m air refined once to
+4 m under the ceiling, footprints on 4 m cells, a 640 m top
+([the reference](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)),
+the surrogate predicting for 4 m cells (`glass-calibrate --dx 8 --place-dx 4 --surrogate-dx 4`),
+100 draws, the adopted terms:
+
+| | The 4 m runs (23 October) | The refined runs, 320 m top | The refined runs, 640 m top |
+|---|---|---|---|
+| Blown out, Brier / skill; worst tenth | 0.017 / 0.84; 0.06 | 0.022 / 0.84; 0.11 | 0.038 / 0.64; 0.16 under |
+| Thrown past 3b, Brier / skill; worst tenth | 0.032 / 0.73; 0.09 | 0.044 / 0.67; 0.13 | 0.096 / −2.79; 0.45 under |
+| Some broken, Brier / skill; worst tenth | 0.028 / 0.66 | 0.022 / 0.53; 0.12 | 0.053 / −5.35; 0.44 under |
+| The test (each tenth within 0.1) | all three pass | all three fail narrowly | all three fail |
+| Openings blown out against the runs, skill | 0.86 | 0.88 | 0.87 |
+| Openings blown out against GEER's W3, Brier / skill | 0.138 / 0.19 | 0.139 / 0.18 | 0.139 / 0.18 |
+
+- **With the top clear the chances read low, the unsafe side.** Where they give a side 0.4–0.5 of
+  being blown out, 0.58 of the runs blew it out; where they give 0.45 of a pane thrown past 3b,
+  0.82 had one. Nearly every side has some glass broken in all three runs with the top clear, so
+  that state's skill is set against a share near one: its Brier of 0.053 is the chances' shortfall
+  in the far bands.
+- **The refined air's own layout** (strips on 8 m cells, footprints on 4 m) costs the test
+  narrowly under the 320 m top; the rest is the top.
+- **The openings and GEER do not move**: they use the surrogate's loads alone. The fragility was
+  fitted on the 0.5 kt 4 m run's peaks, drained beyond 1.25 km, and has not been refitted.
+- **The full-length peak refit** (23 October, not adopted) does better against the clear-top runs
+  in every state (Brier 0.030, 0.077 and 0.036), though it fails the test too
+  ([judged again](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)).
+
+The glass chances' standing says this since 25 October 2026. Calibrating them again needs the
+far terms, or the chances' load scatter, refitted on clear-top runs: a refit, and the user's
+decision.
+
 ## Walls and roofs
 
 Since 20 October 2026 the quick estimate also gives each building three chances:

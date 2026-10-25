@@ -16,11 +16,14 @@ Judged against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt. The terms, refitte
 2026 ([below](#the-refit-on-post-fix-and-2-m-runs-and-shielding-by-the-charges-surroundings-23-october-2026)), took five of Beirut's near boxes about the same charge on 2 m air, but
 not these runs:
 
-- **Holds: the glass across the district.** Each building side's glass state (none broken, some,
-  blown out, as GEER classed façades) agrees with the run's for 78–84% of the 28,991 sides (75–84%
-  on the terms before), and is never two states apart. By distance band, the share of sides with
-  some glass broken and the share blown out come within about 0.1 of the run's to 2 km (and up to
-  0.23 for 0.5 kt's blown out at 1.25–1.5 km).
+- **Holds: the glass to about 1.5 km.** Each building side's glass state (none broken, some,
+  blown out, as GEER classed façades) agreed with the 4 m runs' for 78–84% of the 28,991 sides, never
+  two states apart. Those runs' top drained their loads beyond about 1.25 km; against runs with their
+  top clear (25 October 2026, [the hybrid far
+  field](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)) it agrees
+  for 54–75% of the sides deep in the district and 89–98% of those in sight or behind one to three
+  buildings. The share with some glass broken comes within 0.1 of the run's to 1.5 km at 0.2 kt,
+  2 km at 0.5 kt and 2.5 km at 1.1 kt; the share blown out falls short beyond 1.25 km.
 - **Holds: the speed.** The whole first look over Beirut's 724,512 components takes 22–28 s on
   the Studio while other jobs share it: 7–10 s for the loads, 14–22 s for the damage, against
 25–41 minutes for a full run on the CI mini. On a
@@ -30,9 +33,10 @@ not these runs:
   stone and, on the roofs' own terms, 29–64% of the roofs take the run's level ([below](#walls-and-roofs-20-october-2026)).
   The few damaged components lie close in, where one wrong factor of 1.3 moves a wall across a
   level. Run the scene for the structure.
-- **Does not: the far edge.** Beyond Z = 20 m/kg^(1/3) (1.6 km at 0.5 kt), over Beirut's hills
-  and toward its run's open faces, the surrogate's loads are 1.0–1.7 times the run's on the
-  median, and at 2.5–3 km it breaks glass on 0.42 of sides where the run broke 0.18.
+- **Does not: the far edge.** Beyond Z = 20 m/kg^(1/3) (1.6 km at 0.5 kt) the surrogate's loads
+  are 0.72–0.92 of the clear-top run's on the median, low, and at 2.5–3 km at 0.5 kt it breaks glass
+  on 0.39 of sides where that run broke 0.96. Against the drained 4 m runs they had read 1.0–1.7
+  times.
 
 ## How it predicts a load
 
@@ -929,6 +933,18 @@ The refit's terms were built in as the default in a test binary only, and judged
   +0.02–0.03) costs the full runs' glass chances and the hybrid. The 4 m full runs read the 2 m
   runs' peaks about 9% low beyond Z 7, which may explain some of the first. But the chances are
   judged against them, and the hybrid's trend was fitted on the adopted terms.
+
+**Judged again against a clear-top reference (25 October 2026).** The full 4 m runs' 320 m top
+drained their loads beyond about 1.25 km, so both judges above were set against loads too low far
+out. Against Beirut's runs with their top clear (8 m air refined to 4 m, a 640 m top), the refit
+does better on the glass chances in every state (Brier 0.030 / 0.077 / 0.036 for blown out,
+thrown past 3b and some broken, against the adopted terms' 0.038 / 0.096 / 0.053), and the
+hybrid as the app runs it is unchanged within 0.007 of the share of sides. The quick estimate's
+far loads at 0.5 kt go from 0.72–0.92 of the run's to 0.81–1.02, and its glass deep in the district
+from 0.54 / 0.75 / 0.72 to 0.61 / 0.82 / 0.77. By the rule of 23 October the refit would now be
+adopted; it is proposed again, for the user
+([the judgement](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)).
+Neither set of terms calibrates the chances against the clear-top runs.
 
 ## Using it
 
