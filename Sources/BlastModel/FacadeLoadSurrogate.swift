@@ -529,6 +529,54 @@ public enum FacadeLoadSurrogate {
         /// nil for none: the triangle rising from nothing, as before. Only the glass chances' panes
         /// take it, not the walls' (`forStructures`) or the first look's loads.
         public var glassFront: GlassFront?
+        /// The far terms (`Far`; emmettl/bombcad-work#104), nil for none: the fitted terms alone,
+        /// as before.
+        public var far: Far?
+
+        /// Terms for façades deep in a city, beyond the depth the fourteen were fitted on
+        /// (emmettl/bombcad-work#104; docs/surrogate-first-look.md): added to the fitted terms' log
+        /// peak, and with them given way to the close-in branch. Past a few dozen buildings in the
+        /// way, more of them shield less than log(1 + crossed) carries on saying: the runs' loads
+        /// there come over the roofs as much as through the streets. And a face turned away from
+        /// the charge takes more of the load the further out it is, in metres: there the wave is
+        /// longer against the streets that fill behind it. Both are nothing near the charge.
+        public struct Far: Codable, Sendable, Equatable {
+            /// The buildings crossed from which the depth term starts.
+            public var depthFrom: Double
+            /// The distance from which the facing-away term starts, m.
+            public var distanceFromM: Double
+            /// On max(0, log(1 + crossed) − log(1 + `depthFrom`)), in log peak.
+            public var peakDepth: Double
+            /// On max(0, log(distance / `distanceFromM`)) times facing away, in log peak.
+            public var peakAway: Double
+            /// What it was fitted to.
+            public var fittedTo: String
+
+            public init(
+                depthFrom: Double, distanceFromM: Double, peakDepth: Double, peakAway: Double,
+                fittedTo: String
+            ) {
+                self.depthFrom = depthFrom
+                self.distanceFromM = distanceFromM
+                self.peakDepth = peakDepth
+                self.peakAway = peakAway
+                self.fittedTo = fittedTo
+            }
+
+            /// The two terms for `f`: the depth beyond `depthFrom` and the facing away beyond
+            /// `distanceFromM`.
+            public func terms(_ f: Features) -> (depth: Double, away: Double) {
+                let depth = max(log(1 + Double(f.buildingsCrossed)) - log(1 + depthFrom), 0)
+                let out = f.distanceM > distanceFromM ? log(f.distanceM / distanceFromM) : 0
+                return (depth, out * max(-f.cosIncidence, 0))
+            }
+
+            /// What they add to `f`'s log peak.
+            public func peak(_ f: Features) -> Double {
+                let t = terms(f)
+                return peakDepth * t.depth + peakAway * t.away
+            }
+        }
 
         /// `prediction` as these terms give it to a pane at `distanceM` from a charge of `mass` kg:
         /// with their glass front, if any (`glassFront`); unchanged without one.
@@ -792,6 +840,8 @@ public enum FacadeLoadSurrogate {
         let (peak, impulse, arrival) = base(f, mass: mass)
         let x = terms(f, mass: mass, cellSize: cellSize, scaledRange: coefficients.scaledRange)
         var p = zip(coefficients.peak, x).reduce(0) { $0 + $1.0 * $1.1 }
+        // Far terms, where the set has them (emmettl/bombcad-work#104); none, nothing changes.
+        if let far = coefficients.far { p += far.peak(f) }
         var i = zip(coefficients.impulse, x).reduce(0) { $0 + $1.0 * $1.1 }
         let r = zip(coefficients.rise, x).reduce(0) { $0 + $1.0 * $1.1 }
         let root = cbrt(mass)

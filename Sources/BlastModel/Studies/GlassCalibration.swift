@@ -3,7 +3,7 @@ import simd
 
 /// `scenebench glass-calibrate <district-scene's inputs> [--radius 2500] --runs mass:folder,…
 /// [--masses samples.csv] [--geer Facade_damage.shp] [--draws 100] [--inside 0.85]
-/// [--coefficients fit.json | --terms clear-top|fitted|clear-top-front] [--load-scatter scatter.json] [--out calibration.json]`: how well the façade glass chances (`FacadeLoadSurrogate.glassProbabilities`,
+/// [--coefficients fit.json | --terms clear-top|fitted|clear-top-front|deep-city|deep-city-front] [--load-scatter scatter.json] [--out calibration.json]`: how well the façade glass chances (`FacadeLoadSurrogate.glassProbabilities`,
 /// docs/glass-probability.md) are calibrated.
 ///
 /// (a) Against the district's own runs at several yields (`district-compare --save-loads`): each

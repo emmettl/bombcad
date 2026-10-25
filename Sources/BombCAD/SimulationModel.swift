@@ -736,9 +736,23 @@ final class SimulationModel {
         }
     }
     static let glassFrontKey = "quickEstimate.glassFront"
+    /// Whether the façade terms take the far terms for façades deep in a city
+    /// (`FacadeLoadSurrogate.TermSet.deepCity`, with the glass front `.deepCityFront`;
+    /// emmettl/bombcad-work#104): a candidate, off unless chosen, and remembered. The terms of 23
+    /// October, where chosen, take precedence.
+    var quickEstimateDeepCity = UserDefaults.standard.bool(forKey: SimulationModel.deepCityKey) {
+        didSet {
+            learnedDefaults.set(quickEstimateDeepCity, forKey: Self.deepCityKey)
+            if envelopeDamageIsEstimate, !envelopeDamage.isEmpty { requestLook(preview: false) }
+            if !farFieldDamage.isEmpty { judgeFarField() }
+        }
+    }
+    static let deepCityKey = "quickEstimate.deepCity"
     /// The façade terms and load scatter the quick estimate and the far field take.
     var surrogateTerms: FacadeLoadSurrogate.TermSet {
-        quickEstimateFirstFitTerms ? .fitted : quickEstimateGlassFront ? .clearTopFront : .adopted
+        if quickEstimateFirstFitTerms { return .fitted }
+        if quickEstimateDeepCity { return quickEstimateGlassFront ? .deepCityFront : .deepCity }
+        return quickEstimateGlassFront ? .clearTopFront : .adopted
     }
     /// Whether the far field carries the near run's match flat, with no trend with distance: the
     /// far set's own choice (`FarFieldSet.matchFlat`, saved with the project), on for New District's

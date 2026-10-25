@@ -1213,6 +1213,173 @@ minutes.
 - **The standing** (`structureChancesUnderCall`) now says every tenth is within 0.1, and the skill
   stays 0.60.
 
+### Far terms past 2 km of city (25 October 2026)
+
+emmettl/bombcad-work#104. On the clear-top terms the surrogate reads Beirut's clear-top references
+6–12% high at 1–2 km and 14–21% low at 2.25–2.75 km, worst on faces turned away and behind more
+than 30 buildings ([glass by chance](glass-probability.md#why-some-broken-and-thrown-past-3b-read-low-the-pulses-front-and-the-far-loads-25-october-2026)).
+Its fit runs reach 1.56 km at most, so its far terms were being used past the depth of city they
+were fitted on.
+
+**The fit runs.** Two made-up districts 5 km across, dense to their corners
+(`$BOMBCAD_DATA/scratch/issue104/py/make_deep.py`, not real places), so that Beirut stays the
+judge:
+- **deep-a**: 35,202 buildings, perimeter blocks of 3–7 storeys with courtyards, towers in plazas,
+  parks, a 40 m avenue, a quarter turned 30°, a 50 m hill and a 25 m ridge; at 50, 200 and 1,000 t;
+- **deep-b**: 29,677 buildings, taller blocks (to 9 storeys), more towers (to 95 m), wider
+  streets, a 40 m hill and a 20 m rise; at 100 and 500 t.
+
+Each was run on #97's refined air (8 m cells refined once to 4 m, threshold 0.005, the auto ceiling,
+footprints on 4 m cells, the ground a staircase), the charge at the middle of a 5 km box. The fair
+part (0.85 of the half-side) reaches 3,005 m at its corners. So by #96's rule the top is the highest
+ground plus a fifth of that, 69 + 601 → 672 m. They ran full length, to 9.5 s, and took 75–150 s
+each on the Studio. The strips were extracted as #98 extracted Beirut's references, and taken as
+4 m cells, as the judges ask the surrogate for them. Beyond Z 40, where the extracts carry no base,
+the base was taken as `base` takes it (Kingery–Bulmash at Z 40, falling as 1/r).
+
+On the clear-top terms the deep runs read as Beirut does past 2 km. The median of the predicted
+peak over the run's, by distance (km):
+
+| Run | 1–1.5 | 1.5–1.75 | 1.75–2 | 2–2.25 | 2.25–2.5 | 2.5–2.75 | 2.75–3 |
+|---|---|---|---|---|---|---|---|
+| deep-a, 50 t | 0.98 / 0.92 | 0.96 | 0.99 | 0.98 | 0.94 | 0.94 | 0.94 |
+| deep-a, 200 t | 1.02 / 1.00 | 0.97 | 0.92 | 0.85 | 0.78 | 0.79 | 0.82 |
+| deep-a, 1 kt | 1.02 / 1.02 | 1.04 | 1.02 | 0.98 | 0.92 | 0.88 | 0.85 |
+| deep-b, 100 t | 1.17 / 1.10 | 1.02 | 0.98 | 1.01 | 0.97 | 0.96 | 0.99 |
+| deep-b, 500 t | 1.15 / 1.14 | 1.10 | 1.07 | 1.03 | 0.93 | 0.87 | 0.83 |
+| Beirut, 0.2 kt (judge) | 1.08 / 1.05 | 1.03 | 0.99 | 0.88 | 0.81 | 0.82 | – |
+| Beirut, 0.5 kt (judge) | 1.07 / 1.06 | 1.08 | 1.08 | 0.95 | 0.85 | 0.78 | 0.80 |
+| Beirut, 1.1 kt (judge) | 1.07 / 1.06 | 1.09 | 1.11 | 1.00 | 0.90 | 0.85 | 0.86 |
+
+Read against each run's level within 1.5 km, the fall past 2 km is 0.75–0.84 at every yield from
+100 t, in metres; the 50 t run falls least (0.94).
+
+**The refit** (`py/fitfar.py`, `py/sweep.py`). The fourteen terms were held at the clear-top set's,
+and far terms fitted on the log residual of the fourteen runs (#98's nine and the five deep ones,
+each run alike), peak only. Every form was judged held out run by run (the log RMS beyond 1.5 km)
+and on Beirut, which none of them saw:
+
+| Far terms (peak) | Held out, log RMS past 1.5 km | Beirut 2.25–2.5 / 2.5–3 km, 0.2 / 0.5 / 1.1 kt |
+|---|---|---|
+| none (clear-top) | 0.180 | 0.81 / 0.84; 0.85 / 0.78; 0.90 / 0.86 |
+| log of the distance beyond 1 km | 0.176 | 0.85 / 0.89; 0.89 / 0.83; 0.95 / 0.91 |
+| the same beyond 1.75 km, with its square | 0.178 | 0.88 / 0.95; 0.92 / 0.89; 0.98 / 0.98 |
+| the distance beyond 1 km, and times log(1 + crossed) | 0.177 | 0.84 / 0.92; 0.88 / 0.86; 0.94 / 0.94 |
+| scaled distance beyond Z 20 (with its square, or times the crossed) | 0.174–0.177 | 0.85–0.86 / 0.89–0.90; 0.87–0.88 / 0.81–0.82; 0.91 / 0.87–0.88 |
+| the incident wave's length, and it times log(1 + crossed) | 0.179 | 0.83 / 0.87; 0.89 / 0.84; 0.96 / 0.93 |
+| **depth beyond 30 buildings; facing away times the distance beyond 1.75 km** | **0.173** | **0.87 / 0.93; 0.91 / 0.88; 0.97 / 0.96** |
+
+The last is `Coefficients.Far.deepCity`: +0.0673 on max(0, log(1 + crossed) − log 31) and
++0.4181 on max(0, log(R / 1,750 m)) × max(−cos, 0), in log peak. Both are nothing near the charge,
+so the near and in-district terms stay as they are. The data say nothing against them: within
+1.5 km the deep runs read 0.92–1.17, inside the spread of the fit runs. Some notes on the fit:
+- **The two terms.** Past a few dozen buildings in the way, more of them shield less than
+  log(1 + crossed) keeps saying; and faces turned away far out take more load than the facing terms
+  give them.
+- **No yield term.** Scaled distance beyond the fitted range adds nothing held out (its
+  coefficient −0.03 to −0.05).
+- **No far terms on the impulse.** Fitted, they move the impulse by 1–3%; it reads 0.94–1.09
+  there already.
+- **The rise and the scatter stay.** The rise is unchanged. Held out, the fourteen runs scatter
+  about the new terms by 0.19 in the log peak beyond Z 28, as `clearTopLeaveOneOut` says, so the
+  chances draw that scatter.
+- **What is left.** The spread between runs is beyond any of these forms: at 2.75–3 km the deep
+  runs read 0.82–0.99 on the clear-top terms and 0.93–1.11 on these.
+
+**The front refitted alongside** (`py/fitfront.py`, as #103's on `glass-diagnose --fronts`; the
+deep runs' fronts in `fronts/`). On the fourteen runs the front's share is the same within Z 24.
+Beyond, it is a little less: 0.26 at Z 33.5 against 0.28, and 0.46 at Z 49 against 0.54, which only
+two runs reached before. There is a new point, 0.64 at Z 73.5, which only the deep runs reach. Whole
+from 20 t as before (`GlassFront.deepCity`).
+
+**Built as two named sets, off by default**:
+- `TermSet.deepCity` (`--terms deep-city`, `--surrogate-terms deep-city`);
+- `TermSet.deepCityFront` (`deep-city-front`), its glass with the refitted front.
+
+In the app, Envelope Damage ▸ "Far terms for façades deep in a city (candidate)" picks one, with
+"Glass pulses with a front" choosing which. With neither selected, every output is as before, bit
+for bit: a set without far terms (`far` nil) takes the same path as before.
+
+**Judged** as #103 judged clear-top and its front, against Beirut's clear-top references (8 m
+refined to 4 m, 640 m top, the surrogate for 4 m cells) and the near boxes
+(`$BOMBCAD_DATA/scratch/issue104`: `judges.sh`, `py/farloads.py`, `py/fulltab.py`, `py/hybsum.py`,
+`py/near104.py`; the old columns are #103's outputs):
+
+| | Clear-top (default) | Clear-top with front | **Deep-city** | **Deep-city with front** |
+|---|---|---|---|---|
+| Far peaks over the reference's (strips, median), 2–2.25 / 2.25–2.5 / 2.5–2.75 km, 0.5 kt | 0.95 / 0.85 / 0.78 | the same | 0.99 / 0.91 / 0.87 | the same |
+| … 0.2 kt; 1.1 kt | 0.88 / 0.81 / 0.82; 1.00 / 0.90 / 0.85 | the same | 0.92 / 0.87 / 0.91; 1.04 / 0.97 / 0.95 | the same |
+| … 1–2 km, every yield | 0.99–1.11 | the same | 1.01–1.13 | the same |
+| … past 1.5 km behind 45–70 / 70+ buildings, 0.5 kt; faces turned away | 0.85 / 0.73; 0.87 | the same | 0.92 / 0.82; 0.93 | the same |
+| … log RMS past 1.5 km, 0.2 / 0.5 / 1.1 kt | 0.228 / 0.225 / 0.218 | the same | 0.199 / 0.199 / 0.202 | the same |
+| Glass chances, some broken: Brier / skill; worst tenth; the test | 0.028 / −2.34; 0.35 under; fail | 0.006 / 0.27; 0.16 under; fail | 0.019 / −1.32; 0.24 under; fail | **0.004 / 0.51; 0.08 under; pass** |
+| … thrown past 3b | 0.047 / −0.85; 0.35 under; fail | 0.017 / 0.32; 0.23 under; fail | 0.038 / −0.49; 0.27 under; fail | 0.014 / 0.45; 0.13 under; fail |
+| … blown out | 0.027 / 0.74; 0.09 under; pass | 0.026 / 0.75; 0.07 over; pass | 0.025 / 0.76; 0.08 under; pass | 0.026 / 0.75; 0.07 over; pass |
+| First look's glass by side, exact, 0.2 / 0.5 / 1.1 kt | 0.67 / 0.87 / 0.81 | 0.83 / 0.89 / 0.83 | 0.69 / 0.90 / 0.82 | 0.85 / 0.90 / 0.83 |
+| … some broken at 2–2.5 / 2.5–3 km, 0.2 kt (run 0.75 / 0.51) | 0.28 / 0.09 | 0.63 / 0.43 | 0.32 / 0.13 | 0.66 / 0.49 |
+| … some broken at 2.5–3 km, 0.5 kt (run 0.96) | 0.64 | 0.90 | 0.78 | 0.97 |
+| … blown out at 1.5–1.75 km, 0.5 kt (run 0.24) | 0.25 | 0.43 | 0.25 | 0.44 |
+| … blown out at 1.75–2 / 2–2.5 km, 1.1 kt (run 0.78 / 0.57) | 0.81 / 0.24 | 0.98 / 0.57 | 0.89 / 0.27 | 0.98 / 0.82 |
+| Hybrid, held (the app's): mean error some broken, 0.2 / 0.5 / 1.1 kt | 0.224 / 0.094 / 0.004 | 0.101 / 0.035 / 0.000 | 0.214 / 0.066 / 0.000 | **0.095 / 0.012 / 0.000** |
+| … blown out | 0.024 / 0.081 / 0.115 | 0.004 / 0.040 / 0.059 | 0.024 / 0.081 / 0.109 | 0.003 / 0.035 / 0.062 |
+| Hybrid, the match carried flat: some broken | 0.166 / 0.062 / 0.001 | 0.034 / 0.012 / 0.000 | 0.152 / 0.036 / 0.000 | **0.022 / 0.000 / 0.000** |
+| … blown out | 0.015 / 0.040 / 0.089 | 0.016 / 0.030 / 0.054 | 0.015 / 0.039 / 0.076 | 0.015 / 0.033 / 0.039 |
+| … some broken at 2–2.5 / 2.5–3 km, 0.2 kt, flat (run 0.75 / 0.50) | 0.25 / 0.08 | 0.61 / 0.40 | 0.29 / 0.12 | 0.63 / 0.46 |
+| Near boxes (2 m, 440 m top), glass by side exact / Heidke | 0.947 / 0.78 | 0.947 / 0.78 | 0.947 / 0.78 | 0.947 / 0.78 |
+| … chances, blown out; some broken: Brier / skill; test | 0.039 / 0.64, fail; 0.0004 / −0.80, fail | 0.035 / 0.68, pass; 0.0001 / 0.76, pass | 0.039 / 0.64, fail; 0.0004 / −0.61, fail | 0.034 / 0.69, pass; 0.0001 / 0.75, pass |
+| #56's judges, peaks over the runs': streets held out; Warehouse 12; made-up pair; behind within Z 5 | 1.060; 0.971; 0.979; 1.23 / 1.16 / 1.00 | the same | 1.061; 0.971; 0.982; the same | the same |
+| Concrete walls, #102's pair (peak ×1.15, impulse ×0.95) on the ten boxes | as #103 judged it | the same | the same, bit for bit (`walls-*.json`) | the same, bit for bit |
+| GEER: openings blown out against W3, skill | 0.17 | 0.17 | 0.17 | 0.17 |
+| … glass blown out at 1.25–1.5 / 1.5–1.75 / 1.75–2 / 2–2.5 km (W3 0.17 / 0.09 / 0.02 / 0.16) | 0.67 / 0.45 / 0.32 / 0.25 | 0.74 / 0.57 / 0.47 / 0.37 | 0.67 / 0.45 / 0.32 / 0.27 | 0.75 / 0.57 / 0.46 / 0.38 |
+| Charge inference, glass alone: place free; held | 0.055 kt, 466 m off; 0.030 kt | 0.023 kt, 218 m off; 0.018 kt | 0.055 kt, 471 m off; 0.030 kt | 0.026 kt, 273 m off; 0.019 kt |
+
+What it shows:
+- **The far loads come about halfway to the reference.** At 2.25–3 km the median reading is now
+  0.87–0.98, against 0.78–0.90. Behind 45 or more buildings and on faces turned away, it gains
+  7–12%. The log RMS past 1.5 km falls by 0.02–0.03. In-district loads (1–2 km) gain at most 2%,
+  and still read 1.01–1.13 there. The deep runs read 0.92–1.10 at 1.5–2 km, about level taken
+  together, so that over-read is Beirut's own.
+- **On its own, deep-city does better than clear-top on every judge or matches it.**
+  - The chances' some broken moves from Brier 0.028 to 0.019, and thrown from 0.047 to 0.038.
+    Both still fail the test, their middle tenths 0.24–0.27 under. Blown out passes, as before.
+  - The first look's glass agrees a little more often (0.69 / 0.90 / 0.82).
+  - The hybrid's error in some broken falls at 0.2 and 0.5 kt, held and flat; blown out is the
+    same or lower.
+  - The near boxes, #56's judges and the walls do not move beyond 0.003. Inference from glass
+    alone does not move.
+  - It is not a large step: the shortfall in some broken at 2–2.5 km at 0.2 kt (0.32 against
+    0.75) is the pulse's front, as #103 found, not the loads.
+- **With the front, some broken passes the test for the first time against the clear-top runs**
+  (Brier 0.004, skill 0.51, every tenth within 0.08), and blown out passes. Thrown past 3b still
+  fails, 0.13 under in its middle tenths, against 0.23 with the front alone. The hybrid, flat, is
+  within 0.022 in some broken at every yield.
+- **The front's over-read in the transition band remains.** With the far terms it is no smaller:
+  blown out reads 0.44 against 0.24 at 1.5–1.75 km at 0.5 kt, and 0.98 against 0.78 at 1.75–2 km
+  at 1.1 kt. At 2–2.5 km at 1.1 kt it is worse, 0.82 against 0.57, where the front alone gave 0.57.
+  The bands are 1.25–2 km, inside the fitted depth, where the surrogate reads Beirut 6–12% high.
+  The far terms do not touch that, and the deep runs do not show it, so it is Beirut's in-district
+  level, not the far terms.
+- **Further from GEER, as before.** With the front, charge inference from glass alone reads 0.026
+  kt place free and 0.019 kt held (0.023 and 0.018 with the front alone): 19–34 times under the
+  published 0.50–0.64 kt. The openings' fragility, fitted to the survey, does not move.
+
+**Proposal (the user's decision).**
+- Adopt `TermSet.deepCity` as the default, in place of `clearTop`:
+  - on every judge it does better than clear-top or matches it;
+  - the near boxes, #56's judges and the walls' tenths test are unchanged, the walls bit for bit;
+  - the standings `surrogateFarLoads`, `surrogateGlassSides`, `glassChances*`, `hybridFarPeak` and
+    `hybridFarImpulse` would be re-derived from the table above.
+- Keep the front off by default:
+  - it now passes some broken and blown out, and the hybrid comes within 0.022;
+  - but the first look's blown out still over-reads by up to 0.25 in a band;
+  - and inference from glass alone reads 19–34 times low.
+- If a split default is wanted, the front could be taken for the hybrid far field's glass alone, as
+  #103 suggested; there, with the far terms, its error is lowest at every yield.
+- The next step for the front is the in-district level at 1–2 km.
+
+Both sets stay selectable by name either way. The protection planner and charge inference keep
+their own terms (`ProtectionModel.adoptedTerms`, `ChargeInferenceSurrogate`'s) whatever is adopted.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
@@ -1228,6 +1395,10 @@ minutes.
   ([above](#adopted-25-october-2026)), for earlier records: Envelope Damage ▸ "Façade terms of 23
   October (earlier estimates)" in the app, `--surrogate-terms fitted` headless, `--terms fitted` in
   the benches.
+- **The far terms for façades deep in a city**, a candidate ([above](#far-terms-past-2-km-of-city-25-october-2026)):
+  Envelope Damage ▸ "Far terms for façades deep in a city (candidate)" in the app (with "Glass
+  pulses with a front" for the fronted set), `--surrogate-terms deep-city` or `deep-city-front`
+  headless, `--terms deep-city` or `deep-city-front` in the benches.
 - **Bench**: `scenebench drag-time` times a drag and judges the preview (Sources/SceneBench/DragTime.swift,
   outputs under `bombcad/drag`); `scenebench surrogate-extract` and `surrogate-judge` (Sources/BlastModel/Studies/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under

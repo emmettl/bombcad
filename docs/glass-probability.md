@@ -411,6 +411,22 @@ front would then be judged again with them. Alternatively the front could be ado
 hybrid far field's glass alone, where it halves the error at every yield, if a split default is
 wanted.
 
+**With far terms past 2 km of city (25 October 2026).** emmettl/bombcad-work#104 made fit runs
+that reach 3 km across two made-up dense districts. It fitted far terms on them (the depth beyond
+30 buildings, and faces turned away beyond 1.75 km) and refitted the front alongside, as the
+candidates `TermSet.deepCity` and `deepCityFront`
+([the surrogate](surrogate-first-look.md#far-terms-past-2-km-of-city-25-october-2026)). Against
+the same clear-top runs:
+- with the far terms and the front, some broken passes the test for the first time (Brier 0.004,
+  skill 0.51, every tenth within 0.08), and blown out passes (0.026);
+- thrown past 3b still fails, 0.13 under in its middle tenths (Brier 0.014);
+- with the far terms alone, some broken scores 0.019 and thrown 0.038, both failing;
+- the first look's blown out with the front still over-reads in its transition band (0.44 against
+  0.24 at 1.5–1.75 km at 0.5 kt), where the surrogate reads Beirut high inside the fitted depth;
+- glass alone infers 0.026 kt.
+
+Neither set is the default; that is the user's decision.
+
 ## Walls and roofs
 
 Since 20 October 2026 the quick estimate also gives each building three chances:

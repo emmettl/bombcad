@@ -14,6 +14,13 @@ extension FacadeLoadSurrogate {
         /// (`Coefficients.GlassFront.clearTop`; emmettl/bombcad-work#103): a candidate, off by
         /// default. Its loads, its walls and its scatter are `clearTop`'s.
         case clearTopFront = "clear-top-front"
+        /// `clearTop` with far terms for façades deep in a city (`Coefficients.deepCity`;
+        /// emmettl/bombcad-work#104), fitted on runs that reach 3 km across a city: a candidate,
+        /// off by default. Its near and in-district terms and its scatter are `clearTop`'s.
+        case deepCity = "deep-city"
+        /// `deepCity` with the glass's front refitted alongside (`Coefficients.GlassFront.deepCity`):
+        /// a candidate, off by default.
+        case deepCityFront = "deep-city-front"
 
         /// The set in use unless another is named: `clearTop` since 25 October 2026.
         public static let adopted = TermSet.clearTop
@@ -24,6 +31,8 @@ extension FacadeLoadSurrogate {
             case .fitted: .fitted
             case .clearTop: .clearTop
             case .clearTopFront: .clearTopFront
+            case .deepCity: .deepCity
+            case .deepCityFront: .deepCityFront
             }
         }
 
@@ -31,7 +40,7 @@ extension FacadeLoadSurrogate {
         public var loadScatter: [Uncertainty.LoadScatter] {
             switch self {
             case .fitted: Uncertainty.leaveOneOut
-            case .clearTop, .clearTopFront: Uncertainty.clearTopLeaveOneOut
+            case .clearTop, .clearTopFront, .deepCity, .deepCityFront: Uncertainty.clearTopLeaveOneOut
             }
         }
     }
@@ -130,4 +139,57 @@ extension FacadeLoadSurrogate.Uncertainty {
         LoadScatter(upToZ: 28, peak: 0.19, impulse: 0.11, correlation: 0.42),
         LoadScatter(upToZ: .infinity, peak: 0.19, impulse: 0.12, correlation: 0.44),
     ]
+}
+
+extension FacadeLoadSurrogate.Coefficients.Far {
+    /// Fitted on 25 October 2026 (emmettl/bombcad-work#104; docs/surrogate-first-look.md) on the
+    /// clear-top fit runs (#98's nine, 2 m air) and five more that reach 3 km across a city: two
+    /// made-up districts 5 km across, dense to their corners (3–7 storeys at 50, 200 and 1000 t;
+    /// taller, with more towers, at 100 and 500 t), on 8 m air refined once to 4 m (#97's setup)
+    /// under a 672 m top (the highest ground plus a fifth of the fair part's farthest corner, #96's
+    /// rule), run to 9.5 s. Each run alike, the fourteen terms held at `clearTop`'s, the impulse and
+    /// the rise left as they are. Of the forms tried (distance in metres and its square, the depth
+    /// beyond a few dozen buildings, the depth times the distance, the incident wave's length,
+    /// scaled distance past the fitted range), these two did as well as any held out run by run.
+    /// Beirut's clear-top references, which no fit saw, judge it.
+    public static let deepCity = Self(
+        depthFrom: 30, distanceFromM: 1_750, peakDepth: 0.0673, peakAway: 0.4181,
+        fittedTo:
+            "the clear-top fit runs and five runs to 3 km across made-up dense districts (50 t to 1 kt, 8 m air "
+            + "refined to 4 m, the top clear)")
+}
+
+extension FacadeLoadSurrogate.Coefficients {
+    /// `clearTop` with the far terms (`Far.deepCity`), for `TermSet.deepCity`
+    /// (emmettl/bombcad-work#104): a candidate, off by default.
+    public static let deepCity: FacadeLoadSurrogate.Coefficients = {
+        var c = FacadeLoadSurrogate.Coefficients.clearTop
+        c.far = .deepCity
+        c.fittedTo = clearTop.fittedTo + "; far terms on runs to 3 km across made-up dense districts"
+        return c
+    }()
+
+    /// `deepCity` with the glass's front refitted alongside (`GlassFront.deepCity`), for
+    /// `TermSet.deepCityFront`.
+    public static let deepCityFront: FacadeLoadSurrogate.Coefficients = {
+        var c = FacadeLoadSurrogate.Coefficients.deepCity
+        c.glassFront = .deepCity
+        return c
+    }()
+}
+
+extension FacadeLoadSurrogate.Coefficients.GlassFront {
+    /// Refitted on 25 October 2026 (emmettl/bombcad-work#104) as `clearTop` was (#103), on its
+    /// nine runs and the five deep ones that reach 3 km across a city (8 m air refined to 4 m),
+    /// each run alike: the same within Z 24, a little less beyond (0.46 against 0.54 at Z 49), and
+    /// a point at Z 73.5, which only the deep runs reach. None within Z 8, as before.
+    public static let deepCity = Self(
+        points: [
+            SIMD2(8.4, 0), SIMD2(11.8, 0.05), SIMD2(16.7, 0.11), SIMD2(23.7, 0.18), SIMD2(33.5, 0.26),
+            SIMD2(49.0, 0.46), SIMD2(73.5, 0.64),
+        ],
+        minimumMassKg: 20_000,
+        fittedTo:
+            "the clear-top fit runs and the five deep runs (50 t to 1 kt, 8 m air refined to 4 m), the panes' "
+            + "stress under each strip's own history")
 }

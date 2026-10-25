@@ -102,6 +102,13 @@ struct EnvelopeDamageSection: View {
                             + "of its peak at once, as the runs' loads do, which breaks more glass far out "
                             + "(docs/glass-probability.md). A candidate, off by default."
                     )
+                Toggle("Far terms for façades deep in a city (candidate)", isOn: $model.quickEstimateDeepCity)
+                    .disabled(model.quickEstimateFirstFitTerms)
+                    .help(
+                        "For Quick Estimate and the far field: façade peaks raised behind more than 30 buildings and on "
+                            + "faces turned away beyond 1.75 km, fitted on runs to 3 km across a city "
+                            + "(docs/surrogate-first-look.md). A candidate, off by default."
+                    )
                 Toggle(
                     "Learned field model for façade peaks",
                     isOn: Binding(

@@ -537,6 +537,26 @@ broken, reference / hybrid; the hybrid's façade peak and impulse over the refer
 The judges are #98's (`$BOMBCAD_DATA/scratch/issue98/judges-final`, `hybrid-clear-flat-*`); the
 new defaults reproduce its candidate's judges to the digit (`$BOMBCAD_DATA/scratch/issue99`).
 
+### Far terms past 2 km of city (25 October 2026)
+
+emmettl/bombcad-work#104 fitted far terms for façades deep in a city, on runs that reach 3 km
+across made-up dense districts, as the candidates `--terms deep-city` and `deep-city-front` (with
+the glass front refitted alongside). The whole judgement is on
+[the surrogate's page](surrogate-first-look.md#far-terms-past-2-km-of-city-25-october-2026).
+
+For the far field against the clear-top reference, the match carried flat, the mean error over the
+bands from 500 m, some broken / blown out:
+
+| | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| clear-top (default) | 0.166 / 0.015 | 0.062 / 0.040 | 0.001 / 0.089 |
+| with the front | 0.034 / 0.016 | 0.012 / 0.030 | 0.000 / 0.054 |
+| deep-city | 0.152 / 0.015 | 0.036 / 0.039 | 0.000 / 0.076 |
+| deep-city with its front | **0.022 / 0.015** | **0.000 / 0.033** | **0.000 / 0.039** |
+
+At 0.2 kt, some broken at 2–2.5 / 2.5–3 km reads 0.63 / 0.46 with both, against the reference's
+0.75 / 0.50. The defaults have not changed; that is the user's decision.
+
 ## Using it
 
 - **Bench (headless):** two steps, the near run and then the district.
