@@ -191,4 +191,40 @@ struct DistrictLayoutTests {
         let combined = try far.combined(with: scene)
         #expect(combined.envelopeObjects.count == scene.envelopeObjects.count + far.buildings.count)
     }
+
+    @Test("Turned about the charge, the map keeps its buildings' heights and its ground (--turn)")
+    func turned() throws {
+        let layout = try Self.layout()
+        let inputs = DistrictInputs(
+            buildings: layout.buildings, ground: layout.ground, heights: layout.heights,
+            centre: layout.charge,
+            cellSize: 4, domainHeight: 120, mass: 1_000)
+        let turned = inputs.turned(degrees: 90, reach: 400)
+        #expect(turned.heights == nil)
+        #expect(turned.buildings.count == inputs.buildings.count)
+        var placement = MapBuildingPlacement(origin: layout.charge, resolution: 1)
+        placement.heightGrid = layout.heights
+        var turnedPlacement = MapBuildingPlacement(origin: layout.charge, resolution: 1)
+        turnedPlacement.heightGrid = nil
+        func centre(_ b: MapBuilding) -> SIMD2<Double> {
+            placement.position(b.rings[0].reduce(SIMD2<Double>.zero, +) / Double(b.rings[0].count))
+        }
+        for (before, after) in zip(inputs.buildings, turned.buildings) {
+            // A quarter turn anticlockwise: east goes north.
+            let p = centre(before)
+            #expect(simd_length(centre(after) - SIMD2(-p.y, p.x)) < 0.01)
+            #expect(placement.heights(before).top == turnedPlacement.heights(after).top)
+        }
+        // The ground where a point goes is the ground where it came from.
+        let ground = try #require(layout.ground)
+        let ground2 = try #require(turned.ground)
+        let east = ElevationGrid.metresPerDegree * cos(layout.charge.y * .pi / 180)
+        for p in [SIMD2<Double>(100, 0), SIMD2(-150, 220), SIMD2(37, -301)] {
+            let from = layout.charge + p / SIMD2(east, ElevationGrid.metresPerDegree)
+            let to = layout.charge + SIMD2(-p.y, p.x) / SIMD2(east, ElevationGrid.metresPerDegree)
+            let a = try #require(ground.elevation(at: from))
+            let b = try #require(ground2.elevation(at: to))
+            #expect(abs(a - b) < 0.01)
+        }
+    }
 }

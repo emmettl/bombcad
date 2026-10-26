@@ -53,12 +53,66 @@ package struct DistrictInputs {
             return grid
         }
         let centre = numbers("centre", [35.519042, 33.901425])
-        return DistrictInputs(
+        var inputs = DistrictInputs(
             buildings: buildings, ground: ground, heights: heights, centre: SIMD2(centre[0], centre[1]),
             cellSize: Float(value("dx").flatMap(Double.init) ?? 4),
             domainHeight: Float(value("height").flatMap(Double.init) ?? 120),
             mass: Float(value("mass").flatMap(Double.init) ?? 500_000), attributions: attributions,
             footprintCells: value("place-dx").flatMap(Float.init))
+        if let degrees = value("turn").flatMap(Double.init), degrees != 0 {
+            let reach = value("radius").flatMap(Double.init) ?? 1000
+            inputs = inputs.turned(degrees: degrees, reach: reach)
+            print(String(format: "Turned the map %g° anticlockwise about the charge", degrees))
+        }
+        return inputs
+    }
+
+    /// The district turned `degrees` anticlockwise about the charge, for a study of the solver's
+    /// grid (`--turn`, emmettl/bombcad-work#108): the buildings' outlines, and the ground over a
+    /// square of half side `reach` (plus a margin), turned in the map, so that the same city meets
+    /// the cells at another angle. A building's height from the heights grid is taken where it
+    /// stands before the turn, so that every building keeps its height; the ground is resampled
+    /// at an eighth of the DEM's spacing, bilinear, so that the terrain the scene samples is the
+    /// untouched DEM's to well under its own resolution.
+    package func turned(degrees: Double, reach: Double) -> DistrictInputs {
+        let angle = degrees * .pi / 180
+        let (c, s) = (cos(angle), sin(angle))
+        let east = ElevationGrid.metresPerDegree * cos(centre.y * .pi / 180)
+        let scale = SIMD2(east, ElevationGrid.metresPerDegree)
+        func turn(_ lonLat: SIMD2<Double>, by sign: Double) -> SIMD2<Double> {
+            let q = (lonLat - centre) * scale
+            return centre + SIMD2(c * q.x - sign * s * q.y, sign * s * q.x + c * q.y) / scale
+        }
+        var copy = self
+        copy.buildings = buildings.map { building in
+            var b = building
+            if !(b.height.map { $0 > 0 } ?? false), !(b.levels.map { $0 > 0 } ?? false), let grid = heights,
+                let h = MapBuildingPlacement.gridHeight(grid, building), h > 0
+            {
+                b.height = h
+            }
+            b.rings = b.rings.map { $0.map { turn($0, by: 1) } }
+            return b
+        }
+        copy.heights = nil
+        if let ground, ground.units == .degrees {
+            let step = ground.step / 8
+            let half = (reach + 64) * SIMD2(1, 1) / scale
+            let southWest = centre - half
+            let columns = Int((2 * half.x / step.x).rounded(.up)) + 1
+            let rows = Int((2 * half.y / step.y).rounded(.up)) + 1
+            var elevations = [Float](repeating: .nan, count: columns * rows)
+            for j in 0..<rows {
+                for i in 0..<columns {
+                    let point = southWest + SIMD2(Double(i), Double(j)) * step
+                    elevations[i + columns * j] = ground.elevation(at: turn(point, by: -1)) ?? .nan
+                }
+            }
+            copy.ground = ElevationGrid(
+                columns: columns, rows: rows, southWest: southWest, step: step, units: .degrees,
+                elevations: elevations)
+        }
+        return copy
     }
 
     /// The square scene of side `2 radius` about the centre, every building in it placed.
@@ -75,8 +129,9 @@ package struct DistrictInputs {
 
 /// `scenebench district-scene --osm map.osm [--dem dem.tif [--ground-radius m] [--sea m]]
 /// [--heights heights.tif] [--centre lon,lat] [--radius 1000] [--dx 4] [--height 120]
-/// [--mass 500000] [--dem-credit text] [--heights-credit text] --out layout.json`: a district as
-/// a layout the app opens and `BombCAD run` runs.
+/// [--mass 500000] [--dem-credit text] [--heights-credit text] [--turn degrees] --out layout.json`: a
+/// district as a layout the app opens and `BombCAD run` runs. `--turn`, read by every bench that
+/// lays out a district, turns the map about the charge (`DistrictInputs.turned`).
 package enum DistrictScene {
     package static func run(_ args: [String]) throws {
         func value(_ name: String) -> String? {

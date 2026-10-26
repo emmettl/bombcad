@@ -1701,6 +1701,50 @@ unchanged). The quick estimate's standing gives 59–90% on the diagonal lines
 0.12 under, failing the test (`glassChancesDiagonal`). The hybrid's gives peaks 0.82–0.99
 (`hybridFarPeakDiagonal`) ([validation](validation.md#estimates-beside-a-run)).
 
+### The grid turned 45°: the tool, and the reference waiting on memory (27 October 2026)
+
+emmettl/bombcad-work#108, #106's second step. The user decided on 26 October: "45° check, then
+adopt". So the plan is one Beirut reference at 0.5 kt with the city turned 45° to the cells. If the
+diagonal lines prove the clean ones, the glass front becomes the default.
+
+**The tool.** `--turn degrees`, read by every bench that lays out a district
+(`DistrictInputs.turned`), turns the map anticlockwise about the charge, in the scene and not the
+solver:
+- the buildings' outlines are turned;
+- each building's height from the heights grid is taken where it stood before the turn, so every
+  building keeps its height;
+- the ground is resampled turned, at an eighth of the DEM's spacing.
+
+Turning swaps which façades lie on axis lines and which on diagonals; the middle lines stay in the
+middle. Without the flag nothing changes.
+
+**The turned layout checked** (`$BOMBCAD_DATA/scratch/issue108`, `py/check_scene.py`): Beirut at
+0.5 kt as #97 laid it out (8 m air, footprints on 4 m cells, 640 m top, 5 km box), turned 45°:
+- within 2.125 km, 6,358 buildings in each layout and 6,350 in both;
+- the heights the same, building for building;
+- the centres where the turn puts them to a median 1.8 m (95% within 4 m, a footprint cell);
+- the terrain within 0.21 m of the unturned's, turned back, at 99% of its nodes. A turn of 0.0001°
+  gives the unturned terrain to 1 mm on average.
+
+**The box.** It is #97's, 5 km. Both runs' fair parts then hold every line to 2.125 km, which covers
+the 1–2 km band of #106's over-read. A box whose fair part reaches 2.5 km along the turned axes
+would need about 35 GB: gpu-slot recorded #97's 0.5 kt reference at a 27 GB peak, and this box
+has 39% more cells. That is beyond the Studio's budget.
+
+**The test, per angle class.** It holds if two things are true at 1–2 km:
+- the diagonal class reads the same in both runs, within a few percent: near 0.98 of the surrogate,
+  and near 1 run against run;
+- each physical façade's reading follows its line: up where it moves onto a diagonal, down where
+  it moves onto an axis.
+
+The per-façade view, buildings matched by their map id, is evidence that the error goes with the
+grid. It is not the pass test.
+
+**Waiting on memory.** The reference was not run. From 21:27 to 00:42, 26–27 October, free memory
+stayed at 14–18 GB, and the run wants about 28 GB. The run (`ref.sh`), its judges (`judges.sh`) and
+the comparison (`py/compare.py`) are ready; the unturned run's judges are done. Until the run is
+judged, `deepCity` stays the default and the front stays a candidate.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
