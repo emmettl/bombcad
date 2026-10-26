@@ -15,6 +15,7 @@ extension FacadeLoadSurrogate {
         let survey = ValidationTables.figure("glassChancesSurvey")
         let thrown = ValidationTables.figure("glassChancesThrown")
         let test = ValidationTables.figure("glassChancesTest")
+        let diagonal = ValidationTables.figure("glassChancesDiagonal")
         let openings = ValidationTables.figure("openingsSurvey")
         let openingsSkill = ValidationTables.figure("openingsSkill")
         return [
@@ -25,9 +26,10 @@ extension FacadeLoadSurrogate {
                     + "giving every side the mean, its tenths of chance up to %.2f under the share seen, which passes the "
                     + "protective-design test, each tenth of chance within %.1f of the share seen. Thrown past 3 m (GSA "
                     + "3b): Brier %.3f against %.3f, and some glass broken, each well under: low, the unsafe side, and "
-                    + "both fail it.",
+                    + "both fail it. On lines diagonal to the solver's cells, where the runs' glass is least the grid's, "
+                    + "blown out scores Brier %.3f, a tenth %.2f under, and fails it.",
                 brier.low,
-                brier.high, bins.high, test.high, thrown.low, thrown.high),
+                brier.high, bins.high, test.high, thrown.low, thrown.high, diagonal.low, diagonal.high),
             String(
                 format:
                     "Not judged against GEER's survey of Beirut's façades, whose classes are openings (frames and doors "

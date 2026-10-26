@@ -8,8 +8,10 @@ import simd
 /// features and its recorded peak and impulse, for fitting (`Scripts/fit-surrogate.py`).
 ///
 /// `scenebench surrogate-judge <inputs> [--radius 2500] --loads folder [--inside 0.85]
-/// [--coefficients fit.json | --terms deep-city|clear-top|fitted|…] [--first-look] [--run-wall s] [--sides-out sides.csv] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
-/// through the same SDOF, side by side; and the surrogate's whole first look, timed.
+/// [--coefficients fit.json | --terms deep-city|clear-top|fitted|…] [--first-look] [--run-wall s] [--sides-out sides.csv] [--by-angle] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
+/// through the same SDOF, side by side; and the surrogate's whole first look, timed. `--by-angle`
+/// adds the groups and bands on the diagonal lines and balanced by angle to the cells
+/// (`CellAngle`).
 ///
 /// Strips saved before 19 October 2026 carry no boxes, so the scene is laid out again from the
 /// same inputs and each building's strips matched to its laid-out ones: the recorder leaves out a
@@ -467,6 +469,36 @@ package enum SurrogateBench {
         /// The roofs (and the walls saved apart from the façades), by kind: the run against the
         /// surrogate and against its own triangle, with the surrogate's peak ratio (median, log sd).
         var parts: [String: PartsJudged]?
+        /// With `--by-angle`: the groups and bands again on all lines, the diagonal ones and
+        /// balanced by angle to the cells (emmettl/bombcad-work#107).
+        var byAngle: ByAngle?
+    }
+
+    /// The judge split by the line's angle to the cells (`CellAngle`): each figure on all sides
+    /// (or strips), on the diagonal lines alone, and balanced, each angle class weighted alike.
+    struct ByAngle: Codable {
+        struct Group: Codable {
+            var name: String
+            /// The surrogate's peak over the run's, median, by strip.
+            var peakRatio: CellAngle.Figure
+            /// Sides whose glass state the surrogate gives as the run does, and within one.
+            var glassExact: CellAngle.Figure
+            var glassWithinOne: CellAngle.Figure
+        }
+
+        struct Band: Codable {
+            var from: Double
+            var to: Double
+            var peakRatio: CellAngle.Figure
+            var runSidesAny: CellAngle.Figure
+            var surrogateSidesAny: CellAngle.Figure
+            var runSidesBlown: CellAngle.Figure
+            var surrogateSidesBlown: CellAngle.Figure
+            var glassExact: CellAngle.Figure
+        }
+
+        var groups: [Group] = []
+        var bands: [Band] = []
     }
 
     struct PartsJudged: Codable {
@@ -651,8 +683,10 @@ package enum SurrogateBench {
         }
         let root = cbrt(mass)
         var groups: [Group] = []
+        var groupMembers: [[Int]] = []
         func group(_ name: String, _ members: [Int]) {
             guard !members.isEmpty else { return }
+            groupMembers.append(members)
             var g = Group(name: name)
             g.strips = members.count
             func logs(_ f: (Outcome) -> (Double, Double)) -> [Double] {
@@ -705,6 +739,7 @@ package enum SurrogateBench {
 
         // GEER's bands, by building side over every matched strip (as district-glass).
         var bands: [Band] = []
+        var bandMembers: [[Int]] = []
         // `--sides-out sides.csv`: each building side in GEER's bands, where it stands against the
         // charge and its glass both ways, for tracing where the first look errs by direction
         // (emmettl/bombcad-work#106).
@@ -717,6 +752,7 @@ package enum SurrogateBench {
             }
             let sides = Dictionary(grouping: members, by: { sideOf[$0] })
             guard !sides.isEmpty else { continue }
+            bandMembers.append(members)
             var counts = (0.0, 0.0, 0.0, 0.0)
             // In the sides' order, so that two runs sum alike (a dictionary's order is its process's).
             for (_, list) in sides.sorted(by: { $0.key.lexicographicallyPrecedes($1.key) }) {
@@ -878,11 +914,94 @@ package enum SurrogateBench {
             }
         }
 
+        // `--by-angle`: the groups and bands again on all lines, the diagonal ones and balanced by
+        // the line's angle to the cells (emmettl/bombcad-work#107).
+        var byAngle: ByAngle?
+        if args.contains("--by-angle") {
+            let angleOf = kept.map { m -> CellAngle in
+                let centre = FacadeLoadSurrogate.outerFace(reference.strips[m].component).centre
+                return CellAngle(dx: Double(centre.x - charge.x), dy: Double(centre.y - charge.y))
+            }
+            func peaks(_ members: [Int]) -> CellAngle.Figure {
+                let kept = members.filter { all[$0].run.peak > 0 && all[$0].surrogate.peak > 0 }
+                return CellAngle.median(
+                    kept.map { log(all[$0].surrogate.peak / all[$0].run.peak) }, kept.map { angleOf[$0] })
+            }
+            // Each side's glass both ways and its angle (its first strip's, as `--sides-out`), in
+            // the sides' order.
+            func sides(_ members: [Int]) -> (
+                run: [GlazingBreakage], surrogate: [GlazingBreakage], angle: [CellAngle]
+            ) {
+                let grouped = Dictionary(grouping: members, by: { sideOf[$0] }).sorted {
+                    $0.key.lexicographicallyPrecedes($1.key)
+                }
+                return (
+                    grouped.map { $0.value.reduce(GlazingBreakage()) { $0 + all[$1].run.glass } },
+                    grouped.map { $0.value.reduce(GlazingBreakage()) { $0 + all[$1].surrogate.glass } },
+                    grouped.map { angleOf[$0.value[0]] }
+                )
+            }
+            func agreement(_ s: (run: [GlazingBreakage], surrogate: [GlazingBreakage], angle: [CellAngle]))
+                -> (CellAngle.Figure, CellAngle.Figure)
+            {
+                let pairs = zip(s.run, s.surrogate).map { (glassState($0), glassState($1)) }
+                return (
+                    CellAngle.mean(pairs.map { $0.0 == $0.1 ? 1 : 0 }, s.angle),
+                    CellAngle.mean(pairs.map { abs($0.0 - $0.1) <= 1 ? 1 : 0 }, s.angle)
+                )
+            }
+            var split = ByAngle()
+            for (g, members) in zip(groups, groupMembers) {
+                let (exact, withinOne) = agreement(sides(members))
+                split.groups.append(
+                    ByAngle.Group(
+                        name: g.name, peakRatio: peaks(members), glassExact: exact, glassWithinOne: withinOne)
+                )
+            }
+            for (b, members) in zip(bands, bandMembers) {
+                let s = sides(members)
+                let blown = { (g: GlazingBreakage) in g.fraction >= DistrictGlass.blownOutFraction ? 1.0 : 0 }
+                split.bands.append(
+                    ByAngle.Band(
+                        from: b.from, to: b.to, peakRatio: peaks(members),
+                        runSidesAny: CellAngle.mean(s.run.map(\.anyBroken), s.angle),
+                        surrogateSidesAny: CellAngle.mean(s.surrogate.map(\.anyBroken), s.angle),
+                        runSidesBlown: CellAngle.mean(s.run.map(blown), s.angle),
+                        surrogateSidesBlown: CellAngle.mean(s.surrogate.map(blown), s.angle),
+                        glassExact: agreement(s).0))
+            }
+            print(
+                "By the line's angle to the cells (emmettl/bombcad-work#107), each as all / diagonal (30–45°) / balanced:"
+            )
+            print(
+                "  group: peak ratio (median, by strip); glass exact; within one; sides axis / between / diagonal"
+            )
+            for g in split.groups {
+                print(
+                    "  \(g.name): peak \(CellAngle.show(g.peakRatio)); glass \(CellAngle.show(g.glassExact)); "
+                        + "\(CellAngle.show(g.glassWithinOne)); \(g.glassExact.counts.map(String.init).joined(separator: " / "))"
+                )
+            }
+            print(
+                "  band: peak ratio; some broken, run | surrogate; blown out, run | surrogate; glass exact; sides axis / between / diagonal"
+            )
+            for b in split.bands {
+                print(
+                    String(
+                        format: "  %4.0f–%4.0f m  ", b.from, b.to)
+                        + "\(CellAngle.show(b.peakRatio));  \(CellAngle.show(b.runSidesAny)) | "
+                        + "\(CellAngle.show(b.surrogateSidesAny));  \(CellAngle.show(b.runSidesBlown)) | "
+                        + "\(CellAngle.show(b.surrogateSidesBlown));  \(CellAngle.show(b.glassExact));  "
+                        + b.runSidesAny.counts.map(String.init).joined(separator: " / "))
+            }
+            byAngle = split
+        }
+
         let result = Judged(
             massKg: mass, strips: kept.count, inside: Double(share), groups: groups,
             components: estimate.loads.count, loadsS: estimate.seconds, damageS: damageS,
             runWallS: value(args, "run-wall").flatMap(Double.init), bands: bands,
-            parts: parts.isEmpty ? nil : parts)
+            parts: parts.isEmpty ? nil : parts, byAngle: byAngle)
         if let out = value(args, "out") {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

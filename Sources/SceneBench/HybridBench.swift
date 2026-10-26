@@ -8,7 +8,8 @@ import simd
 /// `scenebench hybrid-judge <district-scene's inputs> --radius 2500 --loads full-loads
 /// --near-loads near-loads --near-radius 1320 [--handover 1000] [--seed-from 800] [--trend-from 500] [--inside 0.85]
 /// [--full-report full/comparison.json] [--near-report near/comparison.json] [--coefficients fit.json |
-/// --terms deep-city|clear-top|fitted] [--surrogate-dx m] [--out judged.json]`.
+/// --terms deep-city|clear-top|fitted] [--surrogate-dx m] [--by-angle] [--out judged.json]`. `--by-angle` adds
+/// the bands on the diagonal lines and balanced by angle to the cells (`CellAngle`).
 ///
 /// The near run is the same district on a box reaching the hand-over and its open faces' clearance
 /// beyond (`--near-radius`, a multiple of the cells, so that its cells are the full run's), run
@@ -74,6 +75,25 @@ enum HybridBench {
         var nearWallS: Double?
         var fullWallS: Double?
         var farFieldS: Double
+        /// With `--by-angle`: the bands again on all lines, the diagonal ones and balanced by
+        /// angle to the cells (emmettl/bombcad-work#107).
+        var byAngle: [AngleBand]?
+    }
+
+    /// A band split by the line's angle to the cells (`CellAngle`): all / diagonal / balanced.
+    struct AngleBand: Codable {
+        var from: Double
+        var to: Double
+        /// The hybrid's peak and impulse over the full run's, median, by strip.
+        var peakRatio: CellAngle.Figure
+        var impulseRatio: CellAngle.Figure
+        var runAny: CellAngle.Figure
+        var hybridAny: CellAngle.Figure
+        var surrogateAny: CellAngle.Figure
+        var runBlown: CellAngle.Figure
+        var hybridBlown: CellAngle.Figure
+        var surrogateBlown: CellAngle.Figure
+        var glassExact: CellAngle.Figure
     }
 
     static func judge(_ args: [String]) throws {
@@ -188,6 +208,8 @@ enum HybridBench {
             var side: [Int]
             /// Inside the hand-over but not held by the near run, so on the far field.
             var unheld = false
+            /// The line from the charge's angle to the cells.
+            var angle = CellAngle.axis
         }
         var outcomes = [Outcome?](repeating: nil, count: kept.count)
         outcomes.withUnsafeMutableBufferPointer { out in
@@ -226,10 +248,12 @@ enum HybridBench {
                         FacadeLoadSurrogate.load(component, glass(prediction), binS: strip.binS).netPa,
                         binS: strip.binS)
                 }
+                let centre = FacadeLoadSurrogate.outerFace(component).centre
                 out[m] = Outcome(
                     run: run, hybrid: hybrid,
                     surrogate: judged(surrogate.netPa, binS: strip.binS).0, distance: d,
-                    side: [n, strip.axis, strip.outward], unheld: d < handover && held == nil)
+                    side: [n, strip.axis, strip.outward], unheld: d < handover && held == nil,
+                    angle: CellAngle(dx: Double(centre.x - charge.x), dy: Double(centre.y - charge.y)))
             }
         }
         let all = outcomes.compactMap { $0 }
@@ -307,6 +331,59 @@ enum HybridBench {
                     b.glassExact, b.glassWithinOne))
         }
 
+        // `--by-angle`: the bands again on all lines, the diagonal ones and balanced by the line's
+        // angle to the cells (emmettl/bombcad-work#107); each side's angle its first strip's.
+        var byAngle: [AngleBand]?
+        if args.contains("--by-angle") {
+            var split: [AngleBand] = []
+            for (lo, hi) in zip(edges, edges.dropFirst()) {
+                let members = all.filter { $0.distance >= lo && $0.distance < hi }
+                guard !members.isEmpty else { continue }
+                func ratio(_ f: (Outcome) -> (Double, Double)) -> CellAngle.Figure {
+                    let kept = members.filter { f($0).0 > 0 && f($0).1 > 0 }
+                    return CellAngle.median(kept.map { log(f($0).1 / f($0).0) }, kept.map(\.angle))
+                }
+                let sides = Dictionary(grouping: members, by: \.side).sorted {
+                    $0.key.lexicographicallyPrecedes($1.key)
+                }.map(\.value)
+                let angle = sides.map { $0[0].angle }
+                let run = sides.map { $0.reduce(GlazingBreakage()) { $0 + $1.run.glass } }
+                let hybrid = sides.map { $0.reduce(GlazingBreakage()) { $0 + $1.hybrid.glass } }
+                let surrogate = sides.map { $0.reduce(GlazingBreakage()) { $0 + $1.surrogate } }
+                let blown = { (g: GlazingBreakage) in g.fraction >= DistrictGlass.blownOutFraction ? 1.0 : 0 }
+                split.append(
+                    AngleBand(
+                        from: lo, to: hi, peakRatio: ratio { ($0.run.peak, $0.hybrid.peak) },
+                        impulseRatio: ratio { ($0.run.impulse, $0.hybrid.impulse) },
+                        runAny: CellAngle.mean(run.map(\.anyBroken), angle),
+                        hybridAny: CellAngle.mean(hybrid.map(\.anyBroken), angle),
+                        surrogateAny: CellAngle.mean(surrogate.map(\.anyBroken), angle),
+                        runBlown: CellAngle.mean(run.map(blown), angle),
+                        hybridBlown: CellAngle.mean(hybrid.map(blown), angle),
+                        surrogateBlown: CellAngle.mean(surrogate.map(blown), angle),
+                        glassExact: CellAngle.mean(
+                            zip(run, hybrid).map {
+                                SurrogateBench.glassState($0) == SurrogateBench.glassState($1) ? 1 : 0
+                            }, angle)))
+            }
+            print(
+                "By the line's angle to the cells (emmettl/bombcad-work#107), each as all / diagonal (30–45°) / balanced:"
+            )
+            print(
+                "  band: hybrid over run peak; impulse; some broken run | hybrid | surrogate; blown out run | hybrid | "
+                    + "surrogate; glass state exact; sides axis / between / diagonal")
+            for b in split {
+                print(
+                    String(format: "  %4.0f–%4.0f m  ", b.from, b.to)
+                        + "\(CellAngle.show(b.peakRatio)); \(CellAngle.show(b.impulseRatio));  "
+                        + "\(CellAngle.show(b.runAny)) | \(CellAngle.show(b.hybridAny)) | \(CellAngle.show(b.surrogateAny));  "
+                        + "\(CellAngle.show(b.runBlown)) | \(CellAngle.show(b.hybridBlown)) | "
+                        + "\(CellAngle.show(b.surrogateBlown));  \(CellAngle.show(b.glassExact));  "
+                        + b.runAny.counts.map(String.init).joined(separator: " / "))
+            }
+            byAngle = split
+        }
+
         // Arrivals beyond the hand-over: Kingery–Bulmash's, scaled to the near run's.
         var arrivals: [ArrivalRow] = []
         for a in fullReport?.arrivals ?? [] where a.distanceM >= handover {
@@ -335,7 +412,7 @@ enum HybridBench {
             massKg: mass, handoverM: handover, farField: far, bands: bands, unheld: unheldBand,
             arrivals: arrivals,
             nearWallS: nearReport?.wallS,
-            fullWallS: fullReport?.wallS, farFieldS: farFieldS)
+            fullWallS: fullReport?.wallS, farFieldS: farFieldS, byAngle: byAngle)
         if let out = value("out") {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

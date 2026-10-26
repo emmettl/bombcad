@@ -1038,6 +1038,7 @@ extension FacadeLoadSurrogate {
     /// standing table's figures (validation.md, "Estimates beside a run").
     public static let standing: [String] = {
         let glass = ValidationTables.figure("surrogateGlassSides")
+        let glassDiagonal = ValidationTables.figure("surrogateGlassSidesDiagonal")
         let concrete = ValidationTables.figure("surrogateConcrete")
         let stone = ValidationTables.figure("surrogateStone")
         let roof = ValidationTables.figure("surrogateRoof")
@@ -1052,7 +1053,8 @@ extension FacadeLoadSurrogate {
             "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
                 + "of sides deep in the district, hardly ever two states apart; the share of sides broken by distance "
                 + "came within 0.1 of the run's to 1.75 km at 0.2 kt and 2.5 km at 0.5 kt, and at 0.2 kt fell short "
-                + "beyond: low, the unsafe side.",
+                + "beyond: low, the unsafe side. On lines diagonal to the solver's cells, where the runs' glass is "
+                + "least the grid's, the sides deep in the district agreed for \(glassDiagonal.percent).",
             "Walls and roofs: not to be relied on. Of the components either called damaged, \(concrete.percent) of the "
                 + "concrete, \(stone.percent) of the stone and \(roof.percent) of the roofs took the run's level. Run the "
                 + "scene for the structure.",

@@ -155,12 +155,15 @@ public struct HybridFarField: Codable, Sendable, Equatable {
     public static let standing: [String] = {
         let peak = ValidationTables.figure("hybridFarPeak")
         let impulse = ValidationTables.figure("hybridFarImpulse")
+        let peakDiagonal = ValidationTables.figure("hybridFarPeakDiagonal")
         return [
             "Inside the hand-over: the near run's own loads, which on Beirut were the full run's (peaks 1.00, scatter 3–8%).",
             "Beyond it, against the full run with its top clear: façade peaks \(peak.ratio) of its to 2.5 km, the lower "
                 + "the further out, impulses \(impulse.ratio) times; sides with some glass broken within 0.05 of its to "
                 + "1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt, 0.12–0.46 under at 1.5–2.5 km at 0.2 kt; "
-                + "blown-out shares up to 0.36 under in a band. Glass low beyond 1.5 km at the smallest yield: the unsafe side.",
+                + "blown-out shares up to 0.36 under in a band. Glass low beyond 1.5 km at the smallest yield: the unsafe side. "
+                + "On lines diagonal to the solver's cells, where the reference's peaks are least the grid's, peaks "
+                + "\(peakDiagonal.ratio) of its.",
             "Arrivals beyond the hand-over: Kingery–Bulmash's scaled to the near run's, 2–4% earlier than the full run's.",
             "Walls and roofs beyond the hand-over take the façade load surrogate's standing: run the scene for the structure.",
         ]

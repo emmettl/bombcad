@@ -435,6 +435,18 @@ of the share seen, and passes. Some broken (0.019) and thrown past 3b (0.038) st
 fail. "Glass pulses with a front" in the app, or `deep-city-front`, gives the fronted set; the
 clear-top terms stay by name (`clear-top`, `clear-top-front`).
 
+**On lines balanced by angle to the cells (26 October 2026).** The runs' own glass depends on
+the line's angle to the solver's cells (emmettl/bombcad-work#106). So emmettl/bombcad-work#107
+judged the chances again on the diagonal lines alone, which the grid takes least off, and
+balanced by angle (`glass-calibrate --by-angle`;
+[the surrogate](surrogate-first-look.md#glass-judged-on-lines-balanced-by-angle-to-the-cells-26-october-2026)).
+- On the diagonals the default's blown out fails the test (Brier 0.026, a tenth 0.12 under), as
+  do some broken (0.029) and thrown past 3b (0.052).
+- With the front, some broken (0.006) and blown out (0.020, every tenth within 0.02) pass there.
+  Thrown past 3b still fails, 0.13 under.
+- The proposal there is to adopt the front for the glass. The standing now quotes the diagonal
+  figure beside the adopted one.
+
 ## Walls and roofs
 
 Since 20 October 2026 the quick estimate also gives each building three chances:

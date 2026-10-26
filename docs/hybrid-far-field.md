@@ -594,6 +594,19 @@ reference / hybrid; the hybrid's façade peak and impulse over the reference's, 
   the clear-top terms.
 - The arrivals do not move. The standing quotes this table since the adoption.
 
+### On lines balanced by angle to the cells (26 October 2026)
+
+emmettl/bombcad-work#107 judged the far field again with `hybrid-judge --by-angle`: on the
+diagonal lines alone (30–45° from a cell axis), which the solver's grid takes least off
+(emmettl/bombcad-work#106), and balanced by angle
+([the surrogate](surrogate-first-look.md#glass-judged-on-lines-balanced-by-angle-to-the-cells-26-october-2026)).
+- On the diagonals the peaks read 0.82–0.99 of the reference's over 1–2.5 km, against 0.87–1.07
+  on every line, and the impulses 0.99–1.07. The 1–2 km over-read is the axis lines'.
+- The glass's mean error over 1–2.5 km on the diagonals (some broken / blown out) is 0.219 / 0.044,
+  0.017 / 0.109 and 0.000 / 0.149 at 0.2, 0.5 and 1.1 kt. With the glass front it is 0.063 /
+  0.011, 0.001 / 0.031 and 0.000 / 0.027.
+- The standing quotes the diagonal peaks beside the adopted ones (`hybridFarPeakDiagonal`).
+
 ## Using it
 
 - **Bench (headless):** two steps, the near run and then the district.

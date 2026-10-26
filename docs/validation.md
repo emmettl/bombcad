@@ -6354,7 +6354,11 @@ clear (8 m air refined to 4 m, a 640 m top): the 4 m runs' 320 m top drained the
   1.75 km at 0.2 kt, 2.5 km at 0.5 kt and 3 km at 1.1 kt, and fall short beyond at 0.2 kt (0.69
   against 0.91 at 1.75–2 km). Its blown-out share comes within 0.07 of the run's to 2.5 km at
   0.5 kt and falls short at 1.1 kt beyond 2 km, by up to 0.30 in a band (0.27 against 0.57 at
-  2–2.5 km; 0.24 without the far terms, 0.49 on the terms of 23 October).
+  2–2.5 km; 0.24 without the far terms, 0.49 on the terms of 23 October). The runs' own glass
+  depends on the line's angle to the solver's cells (emmettl/bombcad-work#106), so these are also
+  judged on the diagonal lines alone, where the grid reads closest to a free burst: the sides deep
+  in the district agree for 59–90% on the diagonal lines alone
+  ([by angle](surrogate-first-look.md#glass-judged-on-lines-balanced-by-angle-to-the-cells-26-october-2026)).
 - **Walls and roofs**, against Beirut's near boxes (to 1,320 m) rerun with uncapped loads on 20
   October: the full runs' loads were capped at 65.5 kPa, which had put the concrete at 0–10%. Of
   the components either calls damaged, 29–51% of the concrete, 45–56% of the stone and, on the
@@ -6411,7 +6415,9 @@ strength and the surrogate's scatter (its spread taken from the made-up district
   (blown out Brier 0.038, tenths up to 0.16 under; thrown past 3b 0.096; some broken 0.053).
   Against the 4 m runs, whose 320 m top drained the loads beyond 1.25 km, all three had passed it
   on those terms (blown out Brier 0.017 against 0.108, thrown past 3b skill 0.73, some broken
-  0.66).
+  0.66). On the diagonal lines alone, where the runs' glass is least the solver's grid's
+  (emmettl/bombcad-work#106), blown out scores Brier 0.026, a tenth 0.12 under, and fails the test
+  ([by angle](surrogate-first-look.md#glass-judged-on-lines-balanced-by-angle-to-the-cells-26-october-2026)).
 - **Against GEER's survey** of 8,227 façades, drawn over the inferred yield. GEER's classes are
   openings (frames and doors with the windows), photographed two months on
   ([traced](glass-probability.md#why-it-over-breaks-against-geer-19-october-2026)), so the glass
@@ -6502,7 +6508,10 @@ against the same full runs:
   under and blown out up to 0.52 under; against the 4 m runs, whose top drained the loads beyond
   1.25 km, the peaks had read 0.95–1.19 and the impulses 1.04–2.0. Districts saved before 25
   October carry the near run's trend, a falling one held from 1.5 times the hand-over and a rising
-  one at nothing.
+  one at nothing. On the diagonal lines alone, where the reference's peaks are least the solver's
+  grid's (emmettl/bombcad-work#106), the façade peaks read 0.82–0.99 on the diagonal lines alone
+  over 1–2.5 km
+  ([by angle](surrogate-first-look.md#glass-judged-on-lines-balanced-by-angle-to-the-cells-26-october-2026)).
 - **Arrivals** beyond the hand-over 2–4% before the full run's; 0.95–1.08 of Rigby et al.'s
   observed past 1 km at 0.5 kt.
 - **Time:** the near runs took 135, 335 and 230 s on the CI mini against the full runs' 1,604,

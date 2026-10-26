@@ -99,6 +99,13 @@ extension ValidationTables {
             id: "glassChancesTest", low: 0.1, high: 0.1,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
             quote: "within 0.1 of the share seen"),
+        // The same judges on the diagonal lines alone (30–45° from a cell axis), where the runs'
+        // glass and peaks are least the solver's grid's (emmettl/bombcad-work#106, #107): notes
+        // beside the adopted figures, which stay judged on every line.
+        Figure(
+            id: "glassChancesDiagonal", low: 0.026, high: 0.12,
+            document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
+            quote: "blown out scores Brier 0.026, a tenth 0.12 under"),
         Figure(
             id: "glassChancesSurvey", low: 0.27, high: 0.96,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
@@ -115,6 +122,10 @@ extension ValidationTables {
             id: "surrogateGlassSides", low: 0.68, high: 0.90,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "agrees with the run's for 68–90%"),
+        Figure(
+            id: "surrogateGlassSidesDiagonal", low: 0.59, high: 0.90,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "59–90% on the diagonal lines alone"),
         Figure(
             id: "surrogateConcrete", low: 0.29, high: 0.51,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
@@ -139,6 +150,10 @@ extension ValidationTables {
             id: "hybridFarPeak", low: 0.87, high: 1.07,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
             quote: "façade peaks 0.87–1.07 of the full run's to 2.5 km"),
+        Figure(
+            id: "hybridFarPeakDiagonal", low: 0.82, high: 0.99,
+            document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
+            quote: "0.82–0.99 on the diagonal lines alone"),
         Figure(
             id: "hybridFarImpulse", low: 1.05, high: 1.14,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",

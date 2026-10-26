@@ -3,8 +3,9 @@ import simd
 
 /// `scenebench glass-calibrate <district-scene's inputs> [--radius 2500] --runs mass:folder,…
 /// [--masses samples.csv] [--geer Facade_damage.shp] [--draws 100] [--inside 0.85]
-/// [--coefficients fit.json | --terms clear-top|fitted|clear-top-front|deep-city|deep-city-front] [--load-scatter scatter.json] [--out calibration.json]`: how well the façade glass chances (`FacadeLoadSurrogate.glassProbabilities`,
-/// docs/glass-probability.md) are calibrated.
+/// [--coefficients fit.json | --terms clear-top|fitted|clear-top-front|deep-city|deep-city-front] [--load-scatter scatter.json] [--by-angle] [--out calibration.json]`: how well the façade glass chances (`FacadeLoadSurrogate.glassProbabilities`,
+/// docs/glass-probability.md) are calibrated. `--by-angle` adds the runs' tests on the diagonal
+/// lines and balanced by angle to the cells (`CellAngle`).
 ///
 /// (a) Against the district's own runs at several yields (`district-compare --save-loads`): each
 /// building side's chance that some pane breaks, and that it is blown out, drawn over the runs'
@@ -49,6 +50,9 @@ package enum GlassCalibration {
         var geerMatched: Int?
         var geerSurveyed: Int?
         var seconds: [String: Double]
+        /// With `--by-angle`: the runs' tests again on the diagonal lines alone and balanced, each
+        /// angle class to the cells weighted alike (emmettl/bombcad-work#107).
+        var byAngle: [Reliability]?
     }
 
     package static func reliability(_ name: String, predicted: [Double], observed: [Double]) -> Reliability {
@@ -71,6 +75,40 @@ package enum GlassCalibration {
         }
         return Reliability(
             name: name, count: predicted.count, brier: brier, climatology: climatology, bins: bins)
+    }
+
+    /// `reliability` with each side weighted (`CellAngle.weights`): the Brier score, its
+    /// reference and each decile's predicted and observed shares weighted means; the deciles'
+    /// counts the sides of weight in them, as the test reads them.
+    package static func reliability(
+        _ name: String, predicted: [Double], observed: [Double], weights: [Double]
+    ) -> Reliability {
+        let total = max(weights.reduce(0, +), .leastNonzeroMagnitude)
+        let brier =
+            predicted.indices.reduce(0) {
+                $0 + weights[$1] * (predicted[$1] - observed[$1]) * (predicted[$1] - observed[$1])
+            } / total
+        let mean = observed.indices.reduce(0) { $0 + weights[$1] * observed[$1] } / total
+        let climatology =
+            observed.indices.reduce(0) { $0 + weights[$1] * (observed[$1] - mean) * (observed[$1] - mean) }
+            / total
+        let edges = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0001]
+        var bins: [Bin] = []
+        for (a, b) in zip(edges, edges.dropFirst()) {
+            let members = predicted.indices.filter {
+                weights[$0] > 0 && predicted[$0] >= a && predicted[$0] < b
+            }
+            guard !members.isEmpty else { continue }
+            let w = members.reduce(0) { $0 + weights[$1] }
+            bins.append(
+                Bin(
+                    from: a, to: min(b, 1), count: members.count,
+                    predicted: members.reduce(0) { $0 + weights[$1] * predicted[$1] } / w,
+                    observed: members.reduce(0) { $0 + weights[$1] * observed[$1] } / w))
+        }
+        return Reliability(
+            name: name, count: weights.filter { $0 > 0 }.count, brier: brier, climatology: climatology,
+            bins: bins)
     }
 
     /// The protective-design report's test (cloud-reports/2026-10-19/protective-design.md, §4,
@@ -258,6 +296,7 @@ package enum GlassCalibration {
         }
         var clock = ContinuousClock.now
         var reliabilities: [Reliability] = []
+        var angleReliabilities: [Reliability]?
         let raster = first.raster
         // `--skip-runs`: GEER alone, the scene from the first run's inputs.
         if !args.contains("--skip-runs") {
@@ -298,10 +337,17 @@ package enum GlassCalibration {
 
             // The same sides for the surrogate, from the same strips.
             var sideStrips: [SideKey: [(features: FacadeLoadSurrogate.Features, areaM2: Double)]] = [:]
+            // Each side's line from the charge, its first strip's (`--by-angle`).
+            var sideAngle: [SideKey: CellAngle] = [:]
             let open = raster.openReach(around: charge)
             for strip in first.strips where common.contains(id(strip)) {
                 let key = SideKey(
                     object: strip.object, axis: strip.component.axis, outward: strip.component.outward)
+                if sideAngle[key] == nil {
+                    let centre = FacadeLoadSurrogate.outerFace(strip.component).centre
+                    sideAngle[key] = CellAngle(
+                        dx: Double(centre.x - charge.x), dy: Double(centre.y - charge.y))
+                }
                 var f = FacadeLoadSurrogate.features(
                     strip.component, owner: strip.object, charge: charge, raster: raster)
                 f.chargeOpenM = open
@@ -342,6 +388,10 @@ package enum GlassCalibration {
                         / Double(glasses.count))
             }
             let yields = runs.map(\.mass)
+            let angles = sideKeys.map { sideAngle[$0]! }
+            let diagonal = angles.map { $0 == .diagonal ? 1.0 : 0 }
+            let balanced = CellAngle.weights(angles)
+            if args.contains("--by-angle") { angleReliabilities = [] }
             for (name, uncertainty) in [
                 (
                     "with the load scatter",
@@ -377,8 +427,30 @@ package enum GlassCalibration {
                     reliability(
                         "runs, openings blown out (fitted), \(name)", predicted: p.map(\.openingsBlownOut),
                         observed: observedOpenings))
+                // The three glass states' tests on the diagonal lines and balanced by angle.
+                for (lines, weights) in [
+                    ("diagonal lines (30–45°)", diagonal), ("balanced by angle", balanced),
+                ] {
+                    for (state, predicted, observed) in [
+                        ("some broken", p.map(\.someBroken), observedSome),
+                        ("blown out", p.map(\.blownOut), observedBlown),
+                        ("thrown worse than condition 3b", p.map(\.thrownPast3b), observedThrown),
+                    ] {
+                        angleReliabilities?.append(
+                            reliability(
+                                "runs, \(state), \(name), \(lines)", predicted: predicted, observed: observed,
+                                weights: weights))
+                    }
+                }
             }
             reliabilities.forEach(show)
+            if let angleReliabilities {
+                print(
+                    "By the line's angle to the cells (emmettl/bombcad-work#107): sides axis / between / diagonal "
+                        + CellAngle.allCases.map { c in String(angles.filter { $0 == c }.count) }
+                        .joined(separator: " / "))
+                angleReliabilities.forEach(show)
+            }
         }
 
         // (b) GEER's façades.
@@ -546,7 +618,7 @@ package enum GlassCalibration {
         }
         let report = Report(
             draws: draws, runs: reliabilities, geer: geer, geerBands: geerBands, geerMatched: matchedCount,
-            geerSurveyed: surveyed, seconds: timings)
+            geerSurveyed: surveyed, seconds: timings, byAngle: angleReliabilities)
         if let out = value("out") {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

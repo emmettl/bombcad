@@ -1550,6 +1550,157 @@ a study option and reads nothing by default.
 - #104's far terms were fitted on box corners only (the deep runs past 2.1 km), so on axis lines
   past 2.1 km they are unjudged.
 
+### Glass judged on lines balanced by angle to the cells (26 October 2026)
+
+emmettl/bombcad-work#107, the first of #106's next steps, done at the desk on the existing runs.
+`surrogate-judge`, `hybrid-judge` and `glass-calibrate` take `--by-angle` (`CellAngle`). Each then
+also gives its figures:
+- **on the diagonal lines alone**, 30–45° from the nearer cell axis;
+- **balanced**: each angle class (0–15°, 15–30°, 30–45°) weighted alike, a class counted when it
+  holds 30 sides or more.
+
+Without the flag the outputs are as before. #106's `surrogate-judge` gives the same text and JSON
+apart from timings, and the same `--sides-out` file byte for byte. #104's `hybrid-judge` gives the
+same text, its JSON within 1e-15 (it sums sides in a dictionary's order).
+
+Why the diagonal. In a free burst the solver's peaks reach 92–97% of Kingery–Bulmash on the
+diagonal and 84–94% along an axis ([large scenes](large-scenes.md)). So the diagonal lines are the
+ones the grid takes least off, and the runs' glass there is the nearest they hold to a burst
+without the grid. The balanced figure is not free of the artefact: it gives the axis lines, where
+the run's glass is lowest, a third of the weight. They hold a tenth to a third of the sides in the
+1–2.5 km bands, so the balance mostly weights them more than the whole-band figure does.
+
+The runs and the judges are in `$BOMBCAD_DATA/scratch/issue107` (`judges.sh`, `summary.py`): #97's
+clear-top references at 0.2, 0.5 and 1.1 kt, and #98's near boxes at the same yields (4 m, 440 m
+top). They ran on the CPU, a minute each, with no new runs and no GPU.
+
+**The glass chances' tests** (with the load scatter; Brier, and the decile of 200 sides or more
+furthest from the share seen):
+
+| State | Lines | Deep-city (default) | Deep-city with front |
+|---|---|---|---|
+| Some broken | all | 0.019, −0.24, fails | 0.004, −0.08, passes |
+| | diagonal | 0.029, −0.25, fails | 0.006, −0.08, passes |
+| | balanced | 0.014, −0.22, fails | 0.003, −0.07, passes |
+| Blown out | all | 0.025, −0.07, passes | 0.026, +0.08, passes |
+| | diagonal | **0.026, −0.12, fails** | **0.020, +0.02, passes** |
+| | balanced | 0.024, −0.05, passes | 0.029, +0.10, passes |
+| Thrown past 3b | all | 0.038, −0.27, fails | 0.014, −0.13, fails |
+| | diagonal | 0.052, −0.28, fails | 0.019, −0.13, fails |
+| | balanced | 0.030, −0.26, fails | 0.012, −0.13, fails |
+
+- **On the diagonal lines the default's blown out fails the test**: every tenth reads under the
+  share seen, the 0.1–0.2 tenth by 0.12 and the 0.2–0.3 by 0.10. Over all lines it passed because
+  the axis lines' low glass pulls the share seen down towards it.
+- **With the front, every state is closer on the diagonal lines, and every tenth of blown out
+  within 0.02.**
+  Some broken passes on every line set; thrown past 3b still fails, 0.13 under.
+
+**The first look and the hybrid's glass by band**, the mean error of the share of sides over the
+bands from 1 to 2.5 km (some broken / blown out):
+
+| | Lines | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|---|
+| First look, deep-city | all | 0.149 / 0.006 | 0.010 / 0.024 | 0.000 / 0.083 |
+| | diagonal | 0.195 / 0.026 | 0.015 / 0.068 | 0.000 / 0.103 |
+| … with the front | all | 0.021 / 0.040 | 0.001 / 0.089 | 0.000 / 0.091 |
+| | diagonal | **0.051 / 0.010** | **0.000 / 0.037** | **0.000 / 0.030** |
+| Hybrid, deep-city | all | 0.168 / 0.018 | 0.012 / 0.060 | 0.000 / 0.087 |
+| | diagonal | 0.219 / 0.044 | 0.017 / 0.109 | 0.000 / 0.149 |
+| … with the front | all | 0.030 / 0.023 | 0.001 / 0.053 | 0.000 / 0.043 |
+| | diagonal | **0.063 / 0.011** | **0.001 / 0.031** | **0.000 / 0.027** |
+
+- **On the diagonal lines the front is nearer the run at every yield, in both states, in the
+  first look and in the hybrid.** Without it the hybrid's blown out is 0.11–0.15 under on the
+  diagonals at 0.5 and 1.1 kt. At 1.1 kt, 2–2.5 km, it gives 0.16 where the run gives 0.65; the
+  front gives 0.54.
+- **Over all lines the front's first look over-reads blown out** (0.040 against 0.006 at 0.2 kt,
+  0.089 against 0.024 at 0.5 kt): #104's transition-band over-read. It lies on the axis lines,
+  where the run's own glass is the grid's lowest. Balanced, which weights those lines more, it
+  reads further over (0.047 / 0.097 / 0.122 against 0.004 / 0.024 / 0.055).
+- **By band on the diagonals (the run / deep-city / front, blown out):** 0.5 kt, 1.5–1.75 km,
+  0.28 / 0.19 / 0.40; 1.75–2 km, 0.09 / 0.00 / 0.08. At 1.1 kt, 1.75–2 km, 0.97 / 0.88 / 1.00;
+  2–2.5 km, 0.64 / 0.22 / 0.76. At 0.2 kt, 2–2.5 km, some broken, 0.75 / 0.26 / 0.60.
+
+**Glass state by side**, the share whose state agrees with the run's:
+
+| Group, 0.2 / 0.5 / 1.1 kt | Lines | Deep-city | With front |
+|---|---|---|---|
+| Deep in the district (4 or more buildings in the way; `surrogateGlassSides`) | all | 0.68 / 0.90 / 0.81 | 0.85 / 0.90 / 0.82 |
+| | diagonal | 0.59 / 0.90 / 0.78 | 0.82 / 0.93 / 0.83 |
+| | balanced | 0.73 / 0.90 / 0.83 | 0.86 / 0.88 / 0.81 |
+| In sight of the charge | all | 0.88 / 0.91 / 0.98 | 0.84 / 0.88 / 0.97 |
+| | diagonal | 0.96 / 1.00 / 1.00 | 0.93 / 1.00 / 1.00 |
+| Behind one to three | all | 0.93 / 0.95 / 0.98 | 0.90 / 0.93 / 0.98 |
+| | diagonal | 0.98 / 0.99 / 1.00 | 0.98 / 0.99 / 1.00 |
+| The near boxes (4 m, 440 m top), every side | all | 0.85 / 0.96 / 1.00 | 0.85 / 0.97 / 1.00 |
+| | diagonal | 0.85 / 0.94 / 1.00 | 0.86 / 0.96 / 1.00 |
+
+- **Deep in the district, the front lifts the agreement from 59–90% to 82–93% on the diagonals**
+  (68–90% to 82–90% over all lines).
+- **In sight and behind a few buildings it costs up to 4 points over all lines**, and at most 3 on
+  the diagonals (0.96 against 0.93 in sight at 0.2 kt).
+- The near boxes hardly move: 0.94 against 0.96 on the diagonals at 0.5 kt.
+
+**Peaks by band**, which the front does not touch (it shapes only the glass's pulse; the hybrid's
+peaks are the same to three figures under either set). Over 1–2.5 km at the three yields:
+
+| Over the run's, median | All lines | Diagonal | Balanced |
+|---|---|---|---|
+| First look's peak | 0.89–1.13 | 0.85–1.02 | 0.95–1.12 |
+| Hybrid's peak (`hybridFarPeak`) | 0.87–1.07 | 0.82–0.99 | 0.92–1.06 |
+| Hybrid's impulse (`hybridFarImpulse`) | 1.05–1.14 | 0.99–1.07 | 1.05–1.13 |
+| Near boxes, the surrogate's peak, all sides | 0.99–1.00 | 0.96–0.97 | 1.00–1.02 |
+
+- **On the diagonals the far peaks read low, not high**: 0.82–0.99 for the hybrid, falling with
+  distance (0.2 kt, 2–2.5 km, 0.82). The 1–2 km over-read (#106) is the axis lines'.
+
+**What does not move.** The openings against GEER give the same figures under either set (Brier
+0.141 against 0.170, skill 0.17, the same bands): their fragility reads the peak, not the glass's
+pulse. The draws give a decile's count a side or two either way from one run to the next on the
+same binary, as before this change. The walls' tenths test (#104's
+`walls-deep-city` and `walls-deep-city-front`) is the same line for line, the walls never taking
+the glass's pulse. GEER and the walls have no angle split: GEER is the event, not the solver, and
+the walls are judged on the near boxes.
+
+**Proposal: adopt the front, for the glass** (the decision is yours). Judged on the lines the
+grid takes least off, the front is the better set wherever the glass is judged. With the front,
+blown out passes the test there and some broken passes everywhere; without it, blown out fails
+there. Its over-read lies on the axis lines, where #106 showed the run itself is the grid's.
+
+| | Now: `deepCity` | Proposed: `deepCityFront` |
+|---|---|---|
+| Glass chances, blown out: all lines; diagonal | 0.025 passes; **0.026 fails** (−0.12) | 0.026 passes; **0.020 passes** (+0.02) |
+| … some broken: all; diagonal | 0.019 fails; 0.029 fails | 0.004 passes; 0.006 passes |
+| … thrown past 3b: all; diagonal | 0.038 fails; 0.052 fails | 0.014 fails; 0.019 fails |
+| First look's glass, mean error 1–2.5 km on the diagonals, some / blown, 0.2; 0.5; 1.1 kt | 0.195 / 0.026; 0.015 / 0.068; 0.000 / 0.103 | 0.051 / 0.010; 0.000 / 0.037; 0.000 / 0.030 |
+| … over all lines | 0.149 / 0.006; 0.010 / 0.024; 0.000 / 0.083 | 0.021 / 0.040; 0.001 / 0.089; 0.000 / 0.091 |
+| Hybrid's glass, the same on the diagonals | 0.219 / 0.044; 0.017 / 0.109; 0.000 / 0.149 | 0.063 / 0.011; 0.001 / 0.031; 0.000 / 0.027 |
+| Sides deep in the district agreeing: all; diagonal (`surrogateGlassSides`) | 68–90%; 59–90% | 82–90%; 82–93% |
+| In sight and behind one to three, all lines | 88–98% | 84–98% |
+| Near boxes' glass state, all; diagonal | 85–100%; 85–100% | 85–100%; 86–100% |
+| Peaks, impulses, walls, GEER openings | — | the same |
+
+- **Standings, if adopted:** `glassChancesBrier` 0.025 → 0.026; `glassChancesBins` 0.08 under → 0.08
+  over; `glassChancesThrown` 0.038 → 0.014; some broken passes; `surrogateGlassSides` 68–90% →
+  82–90%. `hybridFarPeak`, `hybridFarImpulse` and `surrogateFarLoads` do not move.
+- **To judge on adoption,** as #105 did: the quick look's counts and the drag preview, and the
+  protection planner. The planner takes the quick estimate's terms (`ProtectionModel.adoptedTerms`),
+  so either it is judged again on #101's cases with the front, or it stays on `deepCity` until it
+  is.
+- **Not moved:** charge inference stays on the terms of 23 October. With the front, glass alone
+  infers lower (#104: 0.026 kt), so it should not follow without its own judge.
+- **What would undo the case:** #106's second step, a Beirut reference with the grid turned 45°.
+  If the glass the front matches on today's diagonals were itself the grid's, the front would
+  over-read. The free burst's diagonal reads nearer Kingery–Bulmash, not above it, so that seems
+  unlikely.
+
+**The standings now quote the diagonal figure alongside** (notes; the adopted figures are
+unchanged). The quick estimate's standing gives 59–90% on the diagonal lines
+(`surrogateGlassSidesDiagonal`). The glass chances' gives blown out's Brier 0.026 there, a tenth
+0.12 under, failing the test (`glassChancesDiagonal`). The hybrid's gives peaks 0.82–0.99
+(`hybridFarPeakDiagonal`) ([validation](validation.md#estimates-beside-a-run)).
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
