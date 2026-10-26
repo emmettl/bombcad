@@ -394,8 +394,8 @@ ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
 `Notarized Developer ID`, and is 0.7.3, build 18. It was published on 2026-10-25 at the user's
 word, with tag `v0.7.3` on `a36961f9`, as the latest release, its notes' links pointing at the docs
 as tagged. The copy downloaded back verified the same way. The Homebrew tap's cask is 0.7.3, with
-the release's checksum; `brew audit` was not run, as this Homebrew now refuses to load a tap that
-has not been trusted (`brew trust emmettl/tap`, the user's to run).
+the release's checksum. `brew audit --cask --strict --online` passed on 2026-10-26, once the user
+had trusted the tap (`brew trust emmettl/tap`), which this Homebrew now requires before loading it.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
