@@ -251,7 +251,8 @@ package enum SurrogateBench {
         /// Whether a point lies within `share` of the half-side of the charge, in plan: outside
         /// it the run's far-field faces drain the blast.
         package func inside(_ p: SIMD3<Float>, share: Float) -> Bool {
-            let c = scene.charge.position
+            // The square's centre: the charge's, unless `--box-offset` moved the square.
+            let c = scene.domainSize / 2
             return max(abs(p.x - c.x), abs(p.y - c.y)) < share * radius
         }
     }

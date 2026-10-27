@@ -123,26 +123,29 @@ public struct DistrictLayout: Sendable {
     /// buildings within `radius` (all of them, nil) placed as envelopes with their constructions
     /// and glazing, on the ground's terrain if there is one, and the top at `height` (nil: by the
     /// open-face rule, `top`, kept clear over `topRadius`, or `radius` if that is nil; neither, no
-    /// floor).
+    /// floor). With `offset`, the square's centre lies that far east and north of the charge, for a
+    /// study of one sector (`--box-offset`, emmettl/bombcad-work#108).
     public func scene(
         halfSide: Float, cellSize: Float, radius: Float? = nil, height: Float? = nil, name: String? = nil,
-        footprintCells: Float? = nil, topRadius: Float? = nil
+        footprintCells: Float? = nil, topRadius: Float? = nil, offset: SIMD2<Float> = .zero
     ) throws -> (scene: Scenario, report: MapBuildingReport) {
         let corner = SIMD2(
-            charge.x - Double(halfSide) / (ElevationGrid.metresPerDegree * cos(charge.y * .pi / 180)),
-            charge.y - Double(halfSide) / ElevationGrid.metresPerDegree)
+            charge.x - Double(halfSide - offset.x)
+                / (ElevationGrid.metresPerDegree * cos(charge.y * .pi / 180)),
+            charge.y - Double(halfSide - offset.y) / ElevationGrid.metresPerDegree)
+        let at = SIMD2(halfSide, halfSide) - offset
         let placed = radius.map { buildings(within: $0) } ?? buildings
         var scene = Scenario(
             name: name ?? "District \(Int(halfSide)) m",
             domainSize: SIMD3(2 * halfSide, 2 * halfSide, height ?? 0), boxes: [],
-            charge: Charge(mass: mass, position: SIMD3(halfSide, halfSide, 0)))
+            charge: Charge(mass: mass, position: SIMD3(at.x, at.y, 0)))
         if let ground {
             scene.terrain = try ground.terrain(
                 origin: corner, size: SIMD2(2 * halfSide, 2 * halfSide), spacing: cellSize, datum: 0,
                 base: seaBase, name: "DEM"
             ).terrain
             // On the ground at the centre.
-            scene.charge.position.z = scene.terrain!.height(at: SIMD2(halfSide, halfSide))
+            scene.charge.position.z = scene.terrain!.height(at: at)
         }
         if height == nil {
             // A top that holds any building while they are placed, brought down to the rule after.

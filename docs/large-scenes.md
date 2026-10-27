@@ -105,7 +105,9 @@ Reading these:
   m/kg^(1/3)) from Z = 2 to Z = 40. A captured shock is smeared over two or three cells, and the
   wave behind it is about 2 W^(1/3) long however far out, so the same cells resolve it about
   equally well everywhere. Peaks along the diagonal read 5–15% higher than along an axis, the
-  grid's own anisotropy.
+  grid's own anisotropy. In a city it shows as the quick estimate reading axis lines high
+  (emmettl/bombcad-work#106). A check with the map turned 45° to the cells (`--turn`) is set up,
+  and waits on memory ([the first look](surrogate-first-look.md#the-grid-turned-45-the-tool-and-the-reference-waiting-on-memory-27-october-2026)).
 - **Where the refined cells stop, the peak falls to the coarse cells' share** within 3–5
   m/kg^(1/3). The refinement follows the shock only where the pressure jumps by more than the
   threshold's fraction across a cell. At 0.1 (the default) that is out to about 20 kPa

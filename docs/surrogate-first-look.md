@@ -1745,6 +1745,43 @@ stayed at 14–18 GB, and the run wants about 28 GB. The run (`ref.sh`), its jud
 the comparison (`py/compare.py`) are ready; the unturned run's judges are done. Until the run is
 judged, `deepCity` stays the default and the front stays a candidate.
 
+#### A smaller box, and the wait again (27 October 2026)
+
+The user chose "Smaller box instead": run the check in a box that fits the memory there is,
+covering the 1–2 km band.
+
+**Like with like.** Both runs, the map as it is and turned, use the same smaller box, on #97's air:
+- 8 m cells refined once to 4 m at threshold 0.005, footprints on 4 m cells, the ground a staircase;
+- the 640 m top;
+- the ceiling at 63 m, #97's automatic value, given by number so that both runs take it;
+- run to 7 s.
+
+**The box.** It is 2.8 km square, its centre 996 m east and 1,004 m south of the charge
+(`--box-offset 996,-1004`, a study option of this change), with its corner on #97's cells. That is
+the quadrant south-east of the charge, where the city is dense: 9,127 buildings in the unturned
+layout. A centred box that keeps 1–2 km fair on both axes would need a half side of 2.36 km and
+about 23 GB. This one is judged 375 m inside its faces (`--inside 0.73`), the margin #97's fair
+part kept at 2.125 km. So:
+- 1–2 km is fair along both axes and the diagonal in each run;
+- 1,939 buildings lie in both runs' fair parts: 659 at 1–1.5 km and 888 at 1.5–2 km, on a 45°
+  sector seen on an axis in one run and on a diagonal in the other.
+
+**The layouts.** The unturned box lays out #97's buildings within a few 4 m cells. #97's layout
+has every building 0.66 m east of where the charge's own mapping puts it, the box's 0.10 m: the
+placement scales longitude at its corner's latitude. So about 60% of the buildings differ from
+#97's by a few edge cells.
+
+**Its memory, from gpu-slot's record of #97's runs:**
+- in those runs memory followed the refined patches, about 0.45 MB each, more than the cells;
+- about 6.5 GB of every run is fixed;
+- this box should hold about a third of #97's patches, so about 12–13 GB, declared as 13.
+
+**The wait.** gpu-slot holds any job of 8 GB or more until memory pressure is normal. From 18:05 to
+21:05 on 27 October it stayed at the warning level: free memory 39–43%, swap 7.7–8.6 GB of 9–10 GB,
+fseventsd at 27 GB. The job never started, and was withdrawn after three hours. Nothing has been
+run; nothing is adopted. The runs and judges are `ref2.sh`, `judges2.sh` and `py/compare2.py`,
+with `py/check_box.py` for the layouts.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings

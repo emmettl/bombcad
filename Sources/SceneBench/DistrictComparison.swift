@@ -125,8 +125,9 @@ enum DistrictComparison {
         let dx = inputs.cellSize
         let metresPerDegree = ElevationGrid.metresPerDegree
         let corner = SIMD2(
-            inputs.centre.x - Double(radius) / (metresPerDegree * cos(inputs.centre.y * .pi / 180)),
-            inputs.centre.y - Double(radius) / metresPerDegree)
+            inputs.centre.x - Double(radius - inputs.boxOffset.x)
+                / (metresPerDegree * cos(inputs.centre.y * .pi / 180)),
+            inputs.centre.y - Double(radius - inputs.boxOffset.y) / metresPerDegree)
         let placement = MapBuildingPlacement(origin: corner, resolution: dx)
         func ground(_ p: SIMD2<Float>) -> Float { scene.terrain?.height(at: p) ?? 0 }
 
@@ -145,7 +146,10 @@ enum DistrictComparison {
             }
         }
         // A line over the open side: north from the charge, over the basin and the sea.
-        let line = stride(from: 100, through: Double(radius) - 20, by: 100).map { Float($0) }
+        // (To the north face: `--box-offset` may bring it nearer.)
+        let line = stride(from: 100, through: Double(radius + inputs.boxOffset.y) - 20, by: 100).map {
+            Float($0)
+        }
         var gauges = observers.map { Gauge($0.name, at: SIMD3($0.at.x, $0.at.y, ground($0.at) + 2)) }
         gauges += line.map { d in
             let p = SIMD2(charge.x, charge.y + d)

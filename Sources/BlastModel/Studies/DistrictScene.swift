@@ -20,6 +20,10 @@ package struct DistrictInputs {
     package var attributions: [String] = []
     /// The footprints' cells (`--place-dx`), finer than the air's for refined runs; nil for the air's.
     var footprintCells: Float?
+    /// How far east and north of the charge the square's centre lies (`--box-offset east,north`, m):
+    /// one sector of the district in a smaller box, for a study (emmettl/bombcad-work#108); none
+    /// otherwise.
+    package var boxOffset: SIMD2<Float> = .zero
 
     package static func read(_ args: [String]) throws -> DistrictInputs {
         func value(_ name: String) -> String? {
@@ -59,8 +63,12 @@ package struct DistrictInputs {
             domainHeight: Float(value("height").flatMap(Double.init) ?? 120),
             mass: Float(value("mass").flatMap(Double.init) ?? 500_000), attributions: attributions,
             footprintCells: value("place-dx").flatMap(Float.init))
+        let offset = numbers("box-offset", [0, 0])
+        if offset.count == 2 { inputs.boxOffset = SIMD2(Float(offset[0]), Float(offset[1])) }
         if let degrees = value("turn").flatMap(Double.init), degrees != 0 {
-            let reach = value("radius").flatMap(Double.init) ?? 1000
+            let reach =
+                (value("radius").flatMap(Double.init) ?? 1000)
+                + Double(max(abs(inputs.boxOffset.x), abs(inputs.boxOffset.y)))
             inputs = inputs.turned(degrees: degrees, reach: reach)
             print(String(format: "Turned the map %g° anticlockwise about the charge", degrees))
         }
@@ -115,7 +123,8 @@ package struct DistrictInputs {
         return copy
     }
 
-    /// The square scene of side `2 radius` about the centre, every building in it placed.
+    /// The square scene of side `2 radius` about the centre (its own centre `boxOffset` from it),
+    /// every building in it placed.
     package func scene(radius: Float) throws -> (scene: Scenario, report: MapBuildingReport) {
         var layout = DistrictLayout(buildings: buildings, charge: centre, mass: mass)
         layout.ground = ground
@@ -123,7 +132,8 @@ package struct DistrictInputs {
         layout.seaBase = seaBase
         layout.attributions = attributions
         return try layout.scene(
-            halfSide: radius, cellSize: cellSize, height: domainHeight, footprintCells: footprintCells)
+            halfSide: radius, cellSize: cellSize, height: domainHeight, footprintCells: footprintCells,
+            offset: boxOffset)
     }
 }
 

@@ -227,4 +227,34 @@ struct DistrictLayoutTests {
             #expect(abs(a - b) < 0.01)
         }
     }
+
+    @Test("A box moved off the charge lays the same buildings and ground where they were (--box-offset)")
+    func offsetBox() throws {
+        let layout = try Self.layout()
+        let (whole, _) = try layout.scene(halfSide: 300, cellSize: 4, height: 120)
+        let (part, _) = try layout.scene(halfSide: 160, cellSize: 4, height: 120, offset: SIMD2(120, -100))
+        #expect(part.domainSize.x == 320)
+        #expect(part.charge.position.x == 40 && part.charge.position.y == 260)
+        #expect(abs(part.charge.position.z - whole.charge.position.z) < 1e-3)
+        // Each building wholly inside the smaller box lies where the whole box has it, from the charge.
+        func boxes(_ scene: Scenario, within: Float = .infinity) -> Set<[Int]> {
+            let c = scene.charge.position
+            let (low, high) = (scene.domainSize.x / 2 - within, scene.domainSize.x / 2 + within)
+            func kept(_ box: Box) -> Bool {
+                min(box.min.x, box.min.y) > low && max(box.max.x, box.max.y) < high
+            }
+            func key(_ box: Box) -> [Int] {
+                let low = box.min - c
+                let high = box.max - c
+                return [
+                    Int(low.x.rounded()), Int(low.y.rounded()), Int(high.x.rounded()), Int(high.y.rounded()),
+                ]
+            }
+            let solids: [[Box]] = scene.envelopeObjects.compactMap { $0.envelope?.solids }
+            return Set(solids.filter { $0.allSatisfy(kept) }.flatMap { $0 }.map(key))
+        }
+        let inPart = boxes(part, within: 140)
+        #expect(!inPart.isEmpty)
+        #expect(inPart.isSubset(of: boxes(whole)))
+    }
 }
