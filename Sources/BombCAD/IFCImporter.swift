@@ -523,6 +523,8 @@ enum IFCImporter {
         var inspectedElements: Int
         var repairs: [ElementRepair] = []
     }
+    /// The farthest a converted vertex may lie from the IFC's origin, in metres.
+    static let coordinateLimit = 1e10
     static func decodeOBJ(_ data: Data, metadata: [String: Element], scale: Double = 1) throws -> (
         elements: [ImportedMesh.BuildingElement], origin: SIMD3<Double>, repairs: [ElementRepair]
     ) {
@@ -553,7 +555,15 @@ enum IFCImporter {
                 guard f.count >= 4, let x = Double(f[1]), let y = Double(f[2]), let z = Double(f[3]),
                     [x, y, z].allSatisfy(\.isFinite), vertices.count < 3 * ImportedMesh.buildingTriangleLimit
                 else { throw ImportedMesh.ImportError.invalid("Invalid or excessive IFC vertices.") }
-                vertices.append(SIMD3(x, y, z) * scale)
+                let vertex = SIMD3(x, y, z) * scale
+                // Past ten million kilometres a vertex is no building's: welding it to 0.1 µm
+                // (IFCMeshRepair) trapped past 9 × 10¹¹ m, and its extent overflowed near 10³⁰⁸.
+                guard simd_reduce_max(simd_abs(vertex)) <= Self.coordinateLimit else {
+                    throw ImportedMesh.ImportError.invalid(
+                        "IFC geometry lies more than 10,000,000 km from its origin, at line \(line + 1): its coordinates are corrupt."
+                    )
+                }
+                vertices.append(vertex)
             }
             if f.first == "f" {
                 guard let guid, metadata[guid] != nil else {

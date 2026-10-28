@@ -369,7 +369,16 @@ enum IFCReinforcementReader {
                 guard vertices.count < 2_000_000 else {
                     throw ImportedMesh.ImportError.invalid("Reinforcement geometry exceeds its limits.")
                 }
-                vertices.append(SIMD3<Float>(SIMD3(x, y, z) * scale - origin))
+                // A NaN, infinite or far-off vertex made a bar at infinity, as the elements' own
+                // vertices are refused (IFCImporter.inspectOBJ).
+                let vertex = SIMD3(x, y, z) * scale
+                guard [x, y, z].allSatisfy(\.isFinite),
+                    simd_reduce_max(simd_abs(vertex)) <= IFCImporter.coordinateLimit
+                else {
+                    throw ImportedMesh.ImportError.invalid(
+                        "Reinforcement geometry has a vertex that is not finite or lies past 10,000,000 km.")
+                }
+                vertices.append(SIMD3<Float>(vertex - origin))
             }
             if tag == "f", let group, f.count == 4 {
                 let indices = f.dropFirst().compactMap { $0.split(separator: "/").first.flatMap { Int($0) } }

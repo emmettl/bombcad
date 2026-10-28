@@ -275,6 +275,103 @@ No numerical model changed.
 parse (`1e`, `--1`) is refused, naming its line and value, where it read as 0; an absent group still
 takes its default. A grid's first value of `nan` is read as no data, not taken as a header key.
 
-**Not covered.**
-- Not fuzzed: the IFC reader (macOS only), the GeoTIFF strips, tiles and Deflate (BlastCore), and
-  ContinuumKit's mesh files beyond what `ImportedMesh.inspect` reaches.
+**Not covered** then, and since fuzzed on a Mac ([28 October](#fuzzing-on-a-mac-and-threadsanitizer-on-the-slow-suites-28-october-2026)):
+- the IFC reader (macOS only), the GeoTIFF strips, tiles and Deflate, and ContinuumKit's mesh
+  files beyond what `ImportedMesh.inspect` reaches.
+
+## Fuzzing on a Mac, and ThreadSanitizer on the slow suites, 28 October 2026
+
+What emmettl/bombcad-work#74 left open of the cloud's round: its items 3 and 4. bombcad-pc had
+been offline for 20 hours (Tailscale), so both ran on the Studio, CPU only.
+
+**ThreadSanitizer: no race.** ProtectionSearchTests, FacadeGlassProbabilityTests and
+HalfSpaceGroundShockTests, which did not finish in the cloud's two hours, ran under TSan here in
+28 s (22 tests). Then the whole of BlastModelTests did: 933 tests in 204 suites in 26 minutes, at
+a load of 50 to 170 from other sessions' runs, with no report. A deliberately racy program
+compiled the same way was reported at once, so the runtime was catching races. (The build is
+BlastModel's targets alone, as on Linux: a copy of the manifest with its Linux branch taken, its
+folders linked in, `swift build --build-tests --sanitize=thread`.)
+
+**The fuzzer on a Mac.** `Scripts/fuzz/fuzz-importers.py` now runs on macOS as well: there the
+run's processes are the driver's descendants and their process groups, read from `ps` (memory
+by resident size), where Linux reads its session from /proc. It also reaches what it did not:
+- **the GeoTIFF reader whole** (`ElevationGrid(geoTIFF:)`: strips and tiles, LZW and Deflate,
+  the predictors, placement, then cropped as a terrain), from the samples and from eight TIFFs it
+  writes in the layouts they lack (BigTIFF, tiled floats, 64-bit floats, three samples, planar
+  bands, big-endian, each predictor), mutated by changing a raster tag's value, count or type, or
+  a strip's bytes;
+- **Deflate strips alone** (kind `zlib`): through Apple's Compression on a Mac, and beside it
+  BlastModel's `Inflate`, input by input;
+- **a mesh that passes inspection, placed** as the import sheet places it and sampled into its
+  preview's boxes;
+- **the app's IFC importer, headless** (`Tests/BombCADTests/IFCFuzzTests.swift`, kinds `ifc`,
+  `ifcxml`, `ifcobj`): the STEP text as BombCAD reads it itself, and with `--converter` the whole
+  import through the pinned IfcConvert (prepared, every supported element converted,
+  reinforcement attached, meshed as shells and beams), and IfcConvert's metadata and geometry as
+  the importer reads them, their seeds made from the seven sample IFCs.
+
+```sh
+# BlastModel's readers, from a build of its targets alone (or of the whole package)
+python3 -I Scripts/fuzz/fuzz-importers.py --work $BOMBCAD_DATA/scratch/fuzz --only tif,zlib,obj,stl \
+    --scratch-path .build --count 4000 --seed 74 --timeout 60 --memory-mb 3000
+# The IFC importer: the whole package's tests built, and the converter prepared
+python3 -I Scripts/fuzz/fuzz-importers.py --work $BOMBCAD_DATA/scratch/fuzz-ifc --only ifc,ifcxml,ifcobj \
+    --converter .build/ifc-converter/IfcConvert --count 900 --timeout 300 --memory-mb 4000
+```
+
+**What it found in the GeoTIFF reader, and what is fixed.** Of 4,062 inputs, 33 findings (27
+traps, 5 hangs, one run out of memory), each class now a test in `ElevationFileRobustnessTests`;
+replayed on the fixed reader, none, and the 4,062 read in 7 s where they had taken 466.
+- **Traps:** a BigTIFF value of 2⁶³ or more in a strip's offset or count, or in the image's size
+  or samples, trapped converting to Int; no samples per pixel left each row empty and trapped on
+  its first sample; sizes whose product passed Int's range.
+- **Out of memory and hangs:** a width of 2³² − 1 allocated 77 billion floats for 48 bytes of strip
+  before reading one; 32,767 samples a pixel held the reader for minutes, its 56 MB of rows padded
+  from 1,728 bytes and each row's bytes copied once for each of its samples. (Copied once now,
+  for any file: a 3,600 × 200 raster of integers read in 6.4 s where it took 7.4, debug build.)
+- **Misreads:** a strip or tile that holds fewer bytes than its rows read the rest as elevations of
+  0; a float sample of infinity, or a cell size or tie point of infinity or NaN, placed or raised
+  the grid at infinity (as an ESRI grid's did before 20 October).
+
+The fixes refuse such files with a message naming what is wrong: a raster tag past Int's range,
+1 to 1,024 samples a pixel, sizes multiplied without overflow, no image larger than its strips
+could hold however well compressed (1,032 bytes of Deflate's output for each byte stored, 3,000
+of LZW's), each strip or tile holding the rows of it that lie in the image (a last strip or foot
+tile may leave out what lies past the image, as before), and an infinite sample (not the nodata
+value), cell size, tie point or corner. NaN samples and the nodata value still read as no data.
+`Inflate` stops a block at its limit, as Apple's decoder stops at its buffer: one block can make
+1,032 times its size. The seed files read as before, outcome for outcome, and
+`ElevationGridTests` (the samples cell for cell) pass.
+
+**The two Deflate decoders.** Of 2,686 mutated streams, wherever both decoded they gave the
+same bytes (770 of 770). Where they differ, it is in what they refuse: Apple's returns what it
+decoded before a corrupt or cut-short block (133 streams that `Inflate` refuses), and refuses 8
+that `Inflate` reads in part. Corruption Deflate itself cannot see (it has no check of its own;
+zlib's Adler-32 follows the stream) reads as whatever it decodes to, on either.
+
+**Meshes and the other readers on a Mac.** 5,364 inputs over every kind (DXF, SVG, OBJ, STL, ESRI,
+TIFF, LZW, Deflate, OSM, GeoJSON) and a further 717 meshes: no finding. The meshes that pass
+inspection placed and previewed without fault.
+
+**The IFC importer.** 921 inputs in 19 minutes: 300 STEP files, 302 of IfcConvert's metadata and
+316 of its geometry. Of the STEP files 169 imported through to a structure of shells and beams,
+127 were refused preparing or converting them (7 crashed IfcConvert and one held it past the
+app's two minutes, each reported as the app reports it), and 4 meshing them. Three findings, one
+class: a converted vertex far off (−1e308 in the geometry, or 9.2 × 10¹⁸ mm in the STEP file)
+passed the check that it is finite and trapped where `IFCMeshRepair` welds vertices to 0.1 µm,
+past Int64's range. A converted vertex more than 10¹⁰ m (ten million kilometres) from the
+origin is now refused, naming its line; a reinforcement vertex that is not finite or is as far
+is refused too, its bars left unplaced with a note, as other unreadable reinforcement is (it had
+made bars at infinity). Tests: `IFCGeometryRobustnessTests`. Replayed on the fix, the 921 gave
+no finding (18 minutes), the seeds read as before, and the 43 outcomes that changed are each a
+far-off vertex refused.
+
+**Proposed, not changed** (it would refuse files that read today):
+- **Check each Deflate strip's Adler-32**, the four bytes zlib writes after the stream, to refuse a
+  strip corrupted in a way Deflate decodes. A strip whose writer pads it past the stream would then
+  be refused, so it waits for the user's word, with a corpus of real GeoTIFFs (Copernicus, USGS,
+  national LiDAR) read both ways first.
+
+**Not done:** item 5, swift-corelibs-foundation's XMLParser trapping on invalid UTF-8 names and
+leaking on parse errors on Linux, is left unreported upstream: filing it is for the user.
+

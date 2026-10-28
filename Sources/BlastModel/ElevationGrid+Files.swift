@@ -55,6 +55,12 @@ extension ElevationGrid {
 extension TIFFReader {
     /// The first band, row by row from the top, as floats.
     func raster() throws -> (width: Int, height: Int, values: [Float]) {
+        // Each tag the raster is laid out by must be readable where it is there: a BigTIFF
+        // value past Int's range, read as absent, would be taken for the default.
+        for tag: UInt16 in [256, 257, 258, 259, 273, 277, 278, 279, 284, 317, 322, 323, 324, 325, 339]
+        where entries[tag] != nil && integers(tag) == nil {
+            throw ElevationGrid.Failure.malformed("tag \(tag) is not an unsigned integer an Int holds")
+        }
         guard let width = integer(256), let height = integer(257), width > 0, height > 0 else {
             throw ElevationGrid.Failure.malformed("no image size")
         }
@@ -64,6 +70,11 @@ extension TIFFReader {
         let compression = integer(259) ?? 1
         let predictor = integer(317) ?? 1
         let planar = integer(284) ?? 1
+        // No samples per pixel left each row empty, and its first sample out of range.
+        guard samples >= 1, samples <= 1024, [1, 2].contains(planar) else {
+            throw ElevationGrid.Failure.malformed(
+                "\(samples) samples per pixel, planar configuration \(planar)")
+        }
         guard [8, 16, 32, 64].contains(bits), bits != 64 || format == 3, format != 3 || bits >= 32 else {
             throw ElevationGrid.Failure.unsupported("\(bits)-bit samples of format \(format)")
         }
@@ -86,28 +97,74 @@ extension TIFFReader {
             let offsets = integers(tiled ? 324 : 273), let counts = integers(tiled ? 325 : 279),
             offsets.count == counts.count
         else { throw ElevationGrid.Failure.malformed("no strips or tiles") }
-        let across = tiled ? (width + chunkWidth - 1) / chunkWidth : 1
-        let down = (height + chunkHeight - 1) / chunkHeight
-        guard offsets.count >= across * down else {
+        // Sizes a file can give past Int's range when multiplied (a width of 2³² by a height of
+        // 2³² trapped), and an image larger than its strips could hold however well they were
+        // compressed: Deflate makes at most 1,032 bytes of a byte it stores, LZW under 3,000 (a
+        // code of at most 12 bits makes at most 3,839 bytes). A claim past that is a corrupt file,
+        // and was taken as a raster to allocate before a strip was read (2³² columns ran the
+        // reader out of memory).
+        func product(_ factors: Int...) throws -> Int {
+            try factors.reduce(1) { total, factor in
+                let (value, overflow) = total.multipliedReportingOverflow(by: factor)
+                guard !overflow else {
+                    throw ElevationGrid.Failure.malformed("an image too large to address")
+                }
+                return value
+            }
+        }
+        let across = tiled ? (width - 1) / chunkWidth + 1 : 1
+        let down = (height - 1) / chunkHeight + 1
+        let chunks = try product(across, down)
+        guard offsets.count >= chunks else {
             throw ElevationGrid.Failure.malformed("too few strips or tiles")
         }
-        var values = [Float](repeating: .nan, count: width * height)
-        let rowBytes = chunkWidth * stride * bytes
-        for chunk in 0..<(across * down) {
+        let rowBytes = try product(chunkWidth, stride, bytes)
+        _ = try product(width, height, stride, bytes)
+        let ratio = compression == 1 ? 1 : compression == 5 ? 3_000 : 1_032
+        // The rows of a strip or tile within the image: those past its foot (a tile's, or the last
+        // strip's) are not read, and need not be there.
+        func rows(_ chunk: Int) -> Int { min(chunkHeight, height - (chunk / across) * chunkHeight) }
+        // A compressed tile is decoded whole, as it is written, up to what its bytes could make.
+        let tileBytes = rowBytes.multipliedReportingOverflow(by: chunkHeight)
+        func decoded(_ chunk: Int) -> Int {
+            let rowsOnly = rowBytes * rows(chunk)
+            guard tiled, !tileBytes.overflow else { return rowsOnly }
+            return min(tileBytes.partialValue, max(rowsOnly, ratio * counts[chunk]))
+        }
+        var needed = 0
+        var stored = 0
+        for chunk in 0..<chunks {
             let start = offsets[chunk]
-            guard start + counts[chunk] <= data.count else {
+            guard start <= data.count, counts[chunk] <= data.count - start else {
                 throw ElevationGrid.Failure.malformed("a strip runs past the end")
             }
+            stored += counts[chunk]
+            let (total, overflow) = needed.addingReportingOverflow(try product(rowBytes, rows(chunk)))
+            guard !overflow else { throw ElevationGrid.Failure.malformed("an image too large to address") }
+            needed = total
+        }
+        guard needed / ratio <= stored else {
+            throw ElevationGrid.Failure.malformed(
+                "\(width) × \(height) samples, more than its \(stored) bytes of strips or tiles could hold")
+        }
+        var values = [Float](repeating: .nan, count: width * height)
+        for chunk in 0..<chunks {
+            let start = offsets[chunk]
             let stored = data[(data.startIndex + start)..<(data.startIndex + start + counts[chunk])]
-            let expected = rowBytes * chunkHeight
+            let chunkRows = rows(chunk)
+            let expected = rowBytes * chunkRows
             var raw: [UInt8]
             switch compression {
             case 1: raw = Array(stored)
-            case 5: raw = try Self.lzw(Array(stored), expected: expected)
-            default: raw = try Self.inflate(Array(stored), expected: expected)
+            case 5: raw = try Self.lzw(Array(stored), expected: decoded(chunk))
+            default: raw = try Self.inflate(Array(stored), expected: decoded(chunk))
             }
-            if raw.count < expected { raw += [UInt8](repeating: 0, count: expected - raw.count) }
-            let chunkRows = tiled ? chunkHeight : min(chunkHeight, height - (chunk / across) * chunkHeight)
+            // A strip cut short was read as zeros where its rows were missing.
+            guard raw.count >= expected else {
+                throw ElevationGrid.Failure.malformed(
+                    "\(tiled ? "tile" : "strip") \(chunk + 1) holds \(raw.count) bytes of its rows' \(expected)"
+                )
+            }
             for r in 0..<chunkRows {
                 let row = Array(raw[(r * rowBytes)..<((r + 1) * rowBytes)])
                 let samplesOfRow = try decodeRow(
@@ -149,7 +206,9 @@ extension TIFFReader {
                 return bytes == 4 ? Float(bitPattern: UInt32(value)) : Float(Double(bitPattern: value))
             }
         }
-        var integers = (0..<count).map { Self.read(Data(row), bytes * $0, bytes, littleEndian) }
+        // The row made Data once: made for each sample, a row's decoding went as its width squared.
+        let bytesOfRow = Data(row)
+        var integers = (0..<count).map { Self.read(bytesOfRow, bytes * $0, bytes, littleEndian) }
         if predictor == 2 {
             let mask: UInt64 = bytes == 8 ? .max : (1 << (8 * UInt64(bytes))) - 1
             for n in stride..<count { integers[n] = (integers[n] &+ integers[n - stride]) & mask }

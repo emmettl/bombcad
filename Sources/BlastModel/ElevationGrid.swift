@@ -281,6 +281,11 @@ extension ElevationGrid {
         raster: (width: Int, height: Int, values: [Float]), tiff: TIFFReader, scale: SIMD2<Double>,
         tie: SIMD2<Double>, tiePixel: SIMD2<Double>, units: Units?
     ) throws {
+        // A cell size, tie point or corner that is not finite (an infinite or NaN double in the
+        // file) placed the grid at infinity, as an ESRI grid's did.
+        guard [scale.x, scale.y, tie.x, tie.y, tiePixel.x, tiePixel.y].allSatisfy(\.isFinite) else {
+            throw Failure.malformed("its cell size or tie point is not a finite number")
+        }
         guard scale.x > 0, scale.y > 0 else { throw Failure.unsupported("a rotated or flipped raster") }
         let keys = tiff.shorts(34735) ?? []
         func geoKey(_ id: UInt16) -> UInt16? {
@@ -306,14 +311,24 @@ extension ElevationGrid {
             let j = height - 1 - row
             for i in 0..<width {
                 let value = raster.values[i + width * row]
-                values[i + width * j] =
-                    noData.map { Double(value) == $0 || Float($0) == value } == true ? .nan : value
+                let missing = noData.map { Double(value) == $0 || Float($0) == value } == true
+                // NaN reads as no data, as the nodata value does; an infinite elevation (a float
+                // sample of infinity, or a double past a Float's range) is refused, as in an ESRI
+                // grid.
+                guard missing || !value.isInfinite else {
+                    throw Failure.malformed("sample \(i + width * row + 1) is out of range")
+                }
+                values[i + width * j] = missing ? .nan : value
             }
         }
         let centre = pixelIsPoint ? SIMD2<Double>.zero : SIMD2(0.5, 0.5)
         // Pixel (column, row) centre lies at tie + ((column, row) - tiePixel + centre) · (sx, -sy).
         let northWest = tie + (centre - tiePixel) * SIMD2(scale.x, -scale.y)
         let southWest = SIMD2(northWest.x, northWest.y - Double(height - 1) * scale.y)
+        let east = northWest.x + Double(width - 1) * scale.x
+        guard northWest.x.isFinite, northWest.y.isFinite, southWest.y.isFinite, east.isFinite else {
+            throw Failure.malformed("its corners lie past a double's range")
+        }
         self.init(
             columns: width, rows: height, southWest: southWest, step: scale,
             units: units ?? (geographic ? .degrees : .metres), elevations: values)
@@ -395,11 +410,23 @@ package struct TIFFReader {
         return value
     }
 
+    /// A tag's unsigned integers, nil if it is absent, of another type, or holds a BigTIFF value
+    /// past Int's range (which `raster` refuses by name).
     package func integers(_ tag: UInt16) -> [Int]? {
         guard let entry = entries[tag] else { return nil }
         let size = Self.typeSize(entry.type)
         guard [1, 3, 4, 16].contains(entry.type) else { return nil }
-        return (0..<entry.count).map { Int(Self.read(data, entry.offset + size * $0, size, littleEndian)) }
+        var values: [Int] = []
+        values.reserveCapacity(entry.count)
+        for n in 0..<entry.count {
+            // A LONG8 of 2⁶³ or more trapped converting to Int.
+            guard let value = Int(exactly: Self.read(data, entry.offset + size * n, size, littleEndian))
+            else {
+                return nil
+            }
+            values.append(value)
+        }
+        return values
     }
 
     package func integer(_ tag: UInt16) -> Int? { integers(tag)?.first }

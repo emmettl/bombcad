@@ -10,7 +10,7 @@ enum Inflate {
 
     /// The decoded bytes of `input`, a raw Deflate stream (no zlib header), at most `limit` of them.
     static func decode(_ input: [UInt8], limit: Int = .max) throws -> [UInt8] {
-        var state = State(input: input)
+        var state = State(input: input, limit: limit)
         var last = false
         while !last {
             last = try state.bits(1) == 1
@@ -48,10 +48,14 @@ enum Inflate {
         var bitBuffer = 0
         var bitCount = 0
         var output: [UInt8] = []
+        /// Past this many bytes a block stops being decoded: one block of codes can make 1,032
+        /// times its size, and so ran far past what a strip was to hold before its end was seen.
+        let limit: Int
 
-        init(input: [UInt8]) {
+        init(input: [UInt8], limit: Int = .max) {
             self.input = input
-            output.reserveCapacity(input.count * 4)
+            self.limit = limit
+            output.reserveCapacity(min(input.count * 4, limit))
         }
 
         mutating func bits(_ count: Int) throws -> Int {
@@ -137,6 +141,7 @@ enum Inflate {
                     let from = output.count - distance
                     for k in 0..<length { output.append(output[from + k]) }
                 }
+                if output.count > limit { return }
             }
         }
 
