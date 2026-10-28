@@ -391,6 +391,10 @@ public struct MapBuildingPlacement: Sendable {
     /// event's charge is often inside a building (Beirut's Warehouse 12), and one buried in a solid
     /// block releases nothing (`Scenario.blocks`). Off, the building stands and the charge is buried.
     public var clearsChargeBuilding = true
+    /// Keep each building's outline, in the scene's metres, on its envelope
+    /// (`BuildingEnvelope.outline`), for the façade surrogate's incidence from outlines
+    /// (emmettl/bombcad-work#109). Off, the envelopes are as before, to the byte.
+    public var keepsOutlines = false
 
     public init(origin: SIMD2<Double>, resolution: Float) {
         self.origin = origin
@@ -547,8 +551,13 @@ extension Scenario {
                 report.skipped.append((building.id, "more than 2,048 boxes at this resolution"))
                 continue
             }
+            var envelope = try BuildingEnvelope(solids: boxes)
+            if placement.keepsOutlines {
+                envelope.outline = rings.filter { $0.count >= 3 }.map { ring in ring.map { SIMD2<Float>($0) }
+                }
+            }
             let id = try copy.addEnvelopeObject(
-                try BuildingEnvelope(solids: boxes), name: building.name ?? "\(building.kind) \(building.id)")
+                envelope, name: building.name ?? "\(building.kind) \(building.id)")
             taken.formUnion(cells)
             // Its construction from its material tag, if any, and its windows from its kind and height.
             var construction =

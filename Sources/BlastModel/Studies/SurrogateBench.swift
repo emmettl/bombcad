@@ -50,6 +50,18 @@ package enum SurrogateBench {
         } ?? termSet(args).coefficients
     }
 
+    /// Where a bench's façades face from (`FacadeLoadSurrogate.Incidence`;
+    /// emmettl/bombcad-work#109): `--incidence cells|outline`, else that of the terms it judges
+    /// (`coefficients`). With `.outline` the district is laid out with its buildings' outlines
+    /// (`DistrictInputs.keepsOutlines`).
+    package static func incidence(_ args: [String]) -> FacadeLoadSurrogate.Incidence {
+        if let name = value(args, "incidence"), let incidence = FacadeLoadSurrogate.Incidence(rawValue: name)
+        {
+            return incidence
+        }
+        return (try? coefficients(args))?.incidence ?? .cells
+    }
+
     /// The load scatter a bench's chances draw: `--load-scatter scatter.json` (a list of
     /// `Uncertainty.LoadScatter`), else that of `--terms`.
     package static func loadScatter(_ args: [String]) throws -> [FacadeLoadSurrogate.Uncertainty.LoadScatter]
@@ -106,7 +118,8 @@ package enum SurrogateBench {
             objects = scene.envelopeObjects
             let dx = cellSize
             let raster = FacadeLoadSurrogate.Raster(
-                objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: dx)
+                objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: dx,
+                incidence: SurrogateBench.incidence(args))
             self.raster = raster
             let folder = URL(filePath: path)
             let index = try JSONDecoder().decode(

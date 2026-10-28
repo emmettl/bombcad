@@ -252,8 +252,9 @@ enum HeadlessRun {
             if let text = values["surrogate-terms"] {
                 guard let terms = FacadeLoadSurrogate.TermSet(rawValue: text) else {
                     throw ProjectFileError.invalid(
-                        "--surrogate-terms takes clear-top, fitted, clear-top-front, deep-city or deep-city-front."
-                    )
+                        "--surrogate-terms takes "
+                            + FacadeLoadSurrogate.TermSet.allCases.map(\.rawValue).joined(separator: ", ")
+                            + ".")
                 }
                 options.surrogateTerms = terms
             }

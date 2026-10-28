@@ -383,7 +383,8 @@ public enum ProtectionModel {
     ) throws -> Model {
         let objects = scene.envelopeObjects
         let raster = FacadeLoadSurrogate.Raster(
-            objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
+            objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize,
+            incidence: terms.coefficients.incidence)
         let moves = try Self.moves(inputs, scene: scene)
         let walls = try Self.barrierBoxes(inputs, scene: scene)
         var sides: [Side] = []
@@ -538,7 +539,7 @@ public enum ProtectionModel {
             if let known = rasters[barriers] { return known }
             let made = FacadeLoadSurrogate.Raster(
                 objects: objects, blocks: blocks + barriers.map { walls[$0] }, terrain: terrain,
-                cell: cellSize)
+                cell: cellSize, incidence: raster.incidence)
             rasters[barriers] = made
             return made
         }

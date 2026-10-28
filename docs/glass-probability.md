@@ -444,8 +444,14 @@ balanced by angle (`glass-calibrate --by-angle`;
   do some broken (0.029) and thrown past 3b (0.052).
 - With the front, some broken (0.006) and blown out (0.020, every tenth within 0.02) pass there.
   Thrown past 3b still fails, 0.13 under.
-- The proposal there is to adopt the front for the glass. The standing now quotes the diagonal
+- The proposal there was to adopt the front for the glass, and the standing quoted the diagonal
   figure beside the adopted one.
+- **Corrected on 28 October 2026.** With Beirut turned 45° to the cells (emmettl/bombcad-work#108)
+  the runs' glass went with the façades, not the line's angle, and on the turned diagonals the
+  front read 0.34 over the run. The diagonals were where the surrogate's facing, read off the
+  cells' staircase, reads fronts as oblique, not the lines the grid takes least off. The front was
+  not adopted and the diagonal figure is retired from the standing
+  ([incidence from outlines](surrogate-first-look.md#façade-incidence-from-map-outlines-28-october-2026)).
 
 ## Walls and roofs
 

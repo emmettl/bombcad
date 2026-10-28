@@ -225,7 +225,7 @@ struct SurrogateGapTests {
             #expect(Self.rises(impulses).count == 5, "\(impulses)")
             #expect(impulses[1] > 1.04 && impulses[1] < 1.11, "\(impulses)")
             #expect(impulses[5] > 1.12 && impulses[5] < 1.26, "\(impulses)")
-        case .clearTop, .clearTopFront, .deepCity, .deepCityFront:
+        case .clearTop, .clearTopFront, .deepCity, .deepCityFront, .deepCityOutline, .deepCityOutlineFront:
             // About flat: the measured 0.999–1.005, with a margin.
             #expect(impulses.allSatisfy { $0 > 0.98 && $0 < 1.03 }, "\(impulses)")
         }

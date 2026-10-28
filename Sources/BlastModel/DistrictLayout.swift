@@ -21,6 +21,10 @@ public struct DistrictLayout: Sendable {
     public var attributions: [String] = []
     /// Clear the building over the charge (`MapBuildingPlacement.clearsChargeBuilding`).
     public var clearsChargeBuilding = true
+    /// Keep the buildings' outlines on their envelopes (`MapBuildingPlacement.keepsOutlines`), for
+    /// the façade surrogate's incidence from outlines (emmettl/bombcad-work#109). Off, the scene is
+    /// as before, to the byte.
+    public var keepsOutlines = false
 
     public init(buildings: [MapBuilding], charge: SIMD2<Double>, mass: Float) {
         self.buildings = buildings
@@ -157,6 +161,7 @@ public struct DistrictLayout: Sendable {
         var placement = MapBuildingPlacement(origin: corner, resolution: footprintCells ?? cellSize)
         placement.heightGrid = heights
         placement.clearsChargeBuilding = clearsChargeBuilding
+        placement.keepsOutlines = keepsOutlines
         let report = try scene.addMapBuildings(placed, placement: placement)
         scene.attributions = (scene.attributions ?? []) + attributions
         if height == nil {

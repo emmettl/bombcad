@@ -34,10 +34,14 @@ extension FacadeLoadSurrogate {
         public static let previewQuantum = 0.10
         public static let previewStrengthSteps = 5.0
 
-        public init(scene: Scenario, cellSize: Float) {
+        /// With `incidence`, the façades face as it gives them: the terms' own
+        /// (`Coefficients.incidence`), for the looks to take those terms.
+        public init(scene: Scenario, cellSize: Float, incidence: Incidence = .cells) {
             let start = ContinuousClock.now
             let objects = scene.envelopeObjects
-            let raster = Raster(objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
+            let raster = Raster(
+                objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize,
+                incidence: incidence)
             var components = [[EnvelopeComponent]](repeating: [], count: objects.count)
             components.withUnsafeMutableBufferPointer { out in
                 concurrently(iterations: objects.count) { n in

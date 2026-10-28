@@ -15,7 +15,13 @@ public struct BuildingEnvelope: Hashable, Sendable, Codable {
     public let blocks: [Box]
     /// Where each block came from.
     public let blockSources: [BlockSource]
-    private enum CodingKeys: String, CodingKey { case solids, openings, panes }
+    /// The building's plan outline as its map drew it, in the scene's metres (x east, y north): its
+    /// rings, the first the outer, the rest courtyards; nil for a building not placed from a map,
+    /// or placed without it (`MapBuildingPlacement.keepsOutlines`). Only the façade surrogate's
+    /// incidence from outlines reads it (`FacadeLoadSurrogate.Incidence.outline`;
+    /// emmettl/bombcad-work#109): the air and the damage take the blocks.
+    public var outline: [[SIMD2<Float>]]?
+    private enum CodingKeys: String, CodingKey { case solids, openings, panes, outline }
 
     /// A block's source: a solid or a pane, by index.
     public enum BlockSource: Hashable, Sendable {
@@ -69,6 +75,7 @@ public struct BuildingEnvelope: Hashable, Sendable, Codable {
             solids: c.decode([Box].self, forKey: .solids),
             openings: c.decode([Box].self, forKey: .openings),
             panes: c.decodeIfPresent([Box].self, forKey: .panes) ?? [])
+        outline = try c.decodeIfPresent([[SIMD2<Float>]].self, forKey: .outline)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -77,6 +84,8 @@ public struct BuildingEnvelope: Hashable, Sendable, Codable {
         try c.encode(openings, forKey: .openings)
         // Written only when there are some, so that envelopes without glass encode as before.
         if !panes.isEmpty { try c.encode(panes, forKey: .panes) }
+        // Likewise the outline, which envelopes not kept with one encode without.
+        try c.encodeIfPresent(outline, forKey: .outline)
     }
 
     public func occupies(_ point: SIMD3<Float>) -> Bool {
@@ -181,7 +190,10 @@ extension BuildingEnvelope {
     /// The same envelope moved by `offset`, metres.
     public func translated(by offset: SIMD3<Float>) throws -> BuildingEnvelope {
         func move(_ box: Box) -> Box { Box(min: box.min + offset, max: box.max + offset) }
-        return try BuildingEnvelope(
+        var moved = try BuildingEnvelope(
             solids: solids.map(move), openings: openings.map(move), panes: panes.map(move))
+        let plan = SIMD2(offset.x, offset.y)
+        moved.outline = outline?.map { ring in ring.map { $0 + plan } }
+        return moved
     }
 }

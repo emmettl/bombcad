@@ -15,7 +15,6 @@ extension FacadeLoadSurrogate {
         let survey = ValidationTables.figure("glassChancesSurvey")
         let thrown = ValidationTables.figure("glassChancesThrown")
         let test = ValidationTables.figure("glassChancesTest")
-        let diagonal = ValidationTables.figure("glassChancesDiagonal")
         let openings = ValidationTables.figure("openingsSurvey")
         let openingsSkill = ValidationTables.figure("openingsSkill")
         return [
@@ -26,10 +25,9 @@ extension FacadeLoadSurrogate {
                     + "giving every side the mean, its tenths of chance up to %.2f under the share seen, which passes the "
                     + "protective-design test, each tenth of chance within %.1f of the share seen. Thrown past 3 m (GSA "
                     + "3b): Brier %.3f against %.3f, and some glass broken, each well under: low, the unsafe side, and "
-                    + "both fail it. On lines diagonal to the solver's cells, where the runs' glass is least the grid's, "
-                    + "blown out scores Brier %.3f, a tenth %.2f under, and fails it.",
+                    + "both fail it.",
                 brier.low,
-                brier.high, bins.high, test.high, thrown.low, thrown.high, diagonal.low, diagonal.high),
+                brier.high, bins.high, test.high, thrown.low, thrown.high),
             String(
                 format:
                     "Not judged against GEER's survey of Beirut's façades, whose classes are openings (frames and doors "
@@ -255,10 +253,15 @@ extension FacadeLoadSurrogate {
     }
 
     /// The façade sides of `scene`'s map buildings (those whose construction has a glazing mix),
-    /// their strips with a face on the air, on cells `cellSize` m across.
-    public static func glassSides(scene: Scenario, cellSize: Float) -> [GlassSideStrips] {
+    /// their strips with a face on the air, on cells `cellSize` m across, facing as `incidence`
+    /// gives them (the terms' own, `Coefficients.incidence`).
+    public static func glassSides(scene: Scenario, cellSize: Float, incidence: Incidence = .cells)
+        -> [GlassSideStrips]
+    {
         let objects = scene.envelopeObjects
-        let raster = Raster(objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
+        let raster = Raster(
+            objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize,
+            incidence: incidence)
         let charge = scene.charge.position
         let open = raster.openReach(around: charge)
         let mixes = objects.map { scene.envelopeConstruction(for: $0.id).glazing }
@@ -293,7 +296,7 @@ extension FacadeLoadSurrogate {
         coefficients: Coefficients = .adopted
     ) -> (sides: [SideGlass], seconds: Double) {
         let start = ContinuousClock.now
-        let sides = glassSides(scene: scene, cellSize: cellSize)
+        let sides = glassSides(scene: scene, cellSize: cellSize, incidence: coefficients.incidence)
         let (result, _) = glassProbabilities(
             sides: sides, mass: Double(scene.charge.mass), cellSize: cellSize, uncertainty: uncertainty,
             binS: binS,

@@ -605,7 +605,11 @@ diagonal lines alone (30–45° from a cell axis), which the solver's grid takes
 - The glass's mean error over 1–2.5 km on the diagonals (some broken / blown out) is 0.219 / 0.044,
   0.017 / 0.109 and 0.000 / 0.149 at 0.2, 0.5 and 1.1 kt. With the glass front it is 0.063 /
   0.011, 0.001 / 0.031 and 0.000 / 0.027.
-- The standing quotes the diagonal peaks beside the adopted ones (`hybridFarPeakDiagonal`).
+- The standing quoted the diagonal peaks beside the adopted ones (`hybridFarPeakDiagonal`). That
+  note was retired on 28 October 2026: with Beirut turned 45° to the cells
+  (emmettl/bombcad-work#108), the reference's peaks went with the façades, not the line's angle,
+  and the split by angle was the surrogate's facing, read off the cells' staircase
+  ([incidence from outlines](surrogate-first-look.md#façade-incidence-from-map-outlines-28-october-2026)).
 
 ## Using it
 

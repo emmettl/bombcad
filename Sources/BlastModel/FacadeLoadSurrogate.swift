@@ -99,13 +99,30 @@ public enum FacadeLoadSurrogate {
         /// street runs between.
         let tops: [Float]
         let terrain: Terrain?
+        /// Where the façades' facing is taken from (`Incidence`): the cells' faces, or each
+        /// building's map outline where it has one.
+        public let incidence: Incidence
+        /// With `incidence` `.outline`, each owner's outline edges (none for an owner without an
+        /// outline, and for every owner otherwise).
+        let edges: [[OutlineEdge]]
 
         /// The blocks of `objects`' envelopes on cells `cell` m across, each over the cells whose
         /// centres it covers, as the air's grid would hold it; and the scene's fixed `blocks`
         /// (barrier walls and the like), block n owned by −2 − n (−1 is no building), each over
         /// every cell it overlaps where it is thinner than a cell, so that a thin wall is not lost
         /// between cell centres.
-        public init(objects: [SceneObject], blocks: [Box] = [], terrain: Terrain?, cell: Float) {
+        ///
+        /// With `incidence` `.outline`, a façade strip of a building with an outline
+        /// (`BuildingEnvelope.outline`) faces as the outline's edge it lies on (`outlineNormal`).
+        public init(
+            objects: [SceneObject], blocks: [Box] = [], terrain: Terrain?, cell: Float,
+            incidence: Incidence = .cells
+        ) {
+            self.incidence = incidence
+            edges =
+                incidence == .outline
+                ? objects.map { OutlineEdge.edges($0.envelope?.outline ?? []) }
+                : [[OutlineEdge]](repeating: [], count: objects.count)
             var low = SIMD2<Float>(repeating: .greatestFiniteMagnitude)
             var high = SIMD2<Float>(repeating: -.greatestFiniteMagnitude)
             for block in objects.flatMap({ $0.envelope?.blocks ?? [] }) + blocks {
@@ -286,6 +303,44 @@ public enum FacadeLoadSurrogate {
             return sight
         }
 
+        /// The outward normal, in plan, of the edge of `owner`'s outline that a wall's face over
+        /// `region`, thin along `axis` (0 or 1) and facing out to `outward`, lies on: of the edges
+        /// whose normal is less than a right angle from the face's, the nearest to the face's middle
+        /// in plan within `outlineReach` cells; failing that, the nearest to any part of the face
+        /// within as far (a step of a staircase is often the open end of a longer face that the next
+        /// row covers). nil with `incidence` `.cells`, for a roof, for an owner without an outline,
+        /// or with no such edge near (the face's own normal then stands).
+        public func outlineNormal(region: Box, axis: Int, outward: Int, owner: Int) -> SIMD3<Float>? {
+            guard incidence == .outline, axis < 2, edges.indices.contains(owner), !edges[owner].isEmpty
+            else { return nil }
+            let (centre, _) = FacadeLoadSurrogate.outerFace(region: region, axis: axis, outward: outward)
+            let middle = SIMD2(centre.x, centre.y)
+            // The face in plan: a segment along the other axis.
+            let along = 1 - axis
+            var start = middle
+            var end = middle
+            start[along] = region.min[along]
+            end[along] = region.max[along]
+            let reach = Self.outlineReach * cell
+            var byMiddle: (distance: Float, normal: SIMD2<Float>)?
+            var byFace: (distance: Float, normal: SIMD2<Float>)?
+            for edge in edges[owner] {
+                // Less than a right angle from the face's normal: a step of the staircase faces
+                // part of the way out of the edge it stands for, never into the building.
+                guard edge.normal[axis] * Float(outward) > 1e-4 else { continue }
+                let d = edge.distance(to: middle)
+                if d < reach, d < byMiddle?.distance ?? .infinity { byMiddle = (d, edge.normal) }
+                guard byMiddle == nil else { continue }
+                let e = edge.distance(toSegment: start, end)
+                if e < reach, e < byFace?.distance ?? .infinity { byFace = (e, edge.normal) }
+            }
+            return (byMiddle ?? byFace).map { SIMD3($0.normal.x, $0.normal.y, 0) }
+        }
+
+        /// How far from a face, in cells, `outlineNormal` looks for its edge: a step of the staircase
+        /// lies within a cell of the outline it stands for.
+        public static let outlineReach: Float = 2
+
         /// The furthest `sight` follows the edge's obstruction to the side, m.
         public static let edgeSideReachM: Float = 200
 
@@ -415,6 +470,80 @@ public enum FacadeLoadSurrogate {
         public static let frontReachM: Float = 200
     }
 
+    /// Where a façade's facing, its cosine of incidence, is taken from (emmettl/bombcad-work#109;
+    /// docs/surrogate-first-look.md).
+    public enum Incidence: String, Codable, Sendable, CaseIterable {
+        /// Each strip's own face on the cells, as before: a front at a slant to the cells is a
+        /// staircase of faces along the two axes, read as facing up to 45° off the front.
+        case cells
+        /// Each wall strip's from its building's map outline: the outward normal of the outline's
+        /// edge it lies on (`Raster.outlineNormal`), so that the same front faces the same way
+        /// whatever the cells' orientation. A building without an outline, and a roof, keep the
+        /// cells'.
+        case outline
+    }
+
+    /// An edge of a building's outline, in plan: its ends and its outward unit normal.
+    struct OutlineEdge: Sendable {
+        var a: SIMD2<Float>
+        var b: SIMD2<Float>
+        var normal: SIMD2<Float>
+
+        /// From `point` to the nearest point of the edge, m.
+        func distance(to point: SIMD2<Float>) -> Float {
+            let ab = b - a
+            let t = min(max(simd_dot(point - a, ab) / simd_length_squared(ab), 0), 1)
+            return simd_distance(point, a + t * ab)
+        }
+
+        /// From the segment `p`–`q` to the nearest point of the edge, m: nothing where they cross.
+        func distance(toSegment p: SIMD2<Float>, _ q: SIMD2<Float>) -> Float {
+            func side(_ u: SIMD2<Float>, _ v: SIMD2<Float>, _ w: SIMD2<Float>) -> Float {
+                (v.x - u.x) * (w.y - u.y) - (v.y - u.y) * (w.x - u.x)
+            }
+            if side(a, b, p) * side(a, b, q) < 0, side(p, q, a) * side(p, q, b) < 0 { return 0 }
+            var nearest = min(distance(to: p), distance(to: q))
+            if simd_distance_squared(p, q) > 0 {
+                let face = OutlineEdge(a: p, b: q, normal: .zero)
+                nearest = min(nearest, face.distance(to: a), face.distance(to: b))
+            }
+            return nearest
+        }
+
+        /// `rings`' edges (the first ring the outer, the rest courtyards), each facing out of the
+        /// building: away from the inside, even-odd over every ring. Edges under a centimetre are
+        /// left out.
+        static func edges(_ rings: [[SIMD2<Float>]]) -> [OutlineEdge] {
+            func inside(_ p: SIMD2<Float>) -> Bool {
+                rings.reduce(false) { result, ring in
+                    var crossings = false
+                    var j = ring.count - 1
+                    for i in ring.indices {
+                        let (u, v) = (ring[i], ring[j])
+                        if (u.y > p.y) != (v.y > p.y), p.x < (v.x - u.x) * (p.y - u.y) / (v.y - u.y) + u.x {
+                            crossings.toggle()
+                        }
+                        j = i
+                    }
+                    return result != crossings
+                }
+            }
+            var list: [OutlineEdge] = []
+            for ring in rings where ring.count >= 3 {
+                for i in ring.indices {
+                    let a = ring[i]
+                    let b = ring[(i + 1) % ring.count]
+                    let length = simd_distance(a, b)
+                    guard length > 0.01 else { continue }
+                    var normal = SIMD2(b.y - a.y, a.x - b.x) / length
+                    if inside(0.5 * (a + b) + 0.01 * normal) { normal = -normal }
+                    list.append(OutlineEdge(a: a, b: b, normal: normal))
+                }
+            }
+            return list
+        }
+    }
+
     /// The middle of `component`'s outer face, and that face's outward normal.
     public static func outerFace(_ component: EnvelopeComponent) -> (
         centre: SIMD3<Float>, normal: SIMD3<Float>
@@ -445,16 +574,24 @@ public enum FacadeLoadSurrogate {
             raster: raster)
     }
 
-    /// The features of a component over `region`, thin along `axis`, facing out to `outward`.
+    /// The features of a component over `region`, thin along `axis`, facing out to `outward`: its
+    /// facing from the raster's `incidence` (`Raster.outlineNormal`), or from `facing`, a plan
+    /// normal given for it (a whole side's, `ChargeInference.SurrogateDamage.Side`), where given.
     public static func features(
-        region: Box, axis: Int, outward: Int, owner: Int, charge: SIMD3<Float>, raster: Raster
+        region: Box, axis: Int, outward: Int, owner: Int, charge: SIMD3<Float>, raster: Raster,
+        facing: SIMD3<Float>? = nil
     ) -> Features {
         let (centre, normal) = outerFace(region: region, axis: axis, outward: outward)
         // Half a cell out from the face, in the air beside it.
         let target = centre + 0.5 * raster.cell * normal
         let toCharge = charge - centre
         let distance = simd_length(toCharge)
-        let cosine = distance > 0 ? Double(simd_dot(normal, toCharge) / distance) : 1
+        let facing =
+            facing
+            ?? (raster.incidence == .outline
+                ? raster.outlineNormal(region: region, axis: axis, outward: outward, owner: owner) : nil)
+            ?? normal
+        let cosine = distance > 0 ? Double(simd_dot(facing, toCharge) / distance) : 1
         let sight = raster.sight(from: charge, to: target, excluding: owner)
         let ground = raster.terrain?.height(at: centre) ?? 0
         let chargeGround = raster.terrain?.height(at: charge) ?? 0
@@ -532,6 +669,13 @@ public enum FacadeLoadSurrogate {
         /// The far terms (`Far`; emmettl/bombcad-work#104), nil for none: the fitted terms alone,
         /// as before.
         public var far: Far?
+        /// Where the façades' facing is taken from (`Incidence`; emmettl/bombcad-work#109), nil for
+        /// the cells' faces, as these terms were fitted before: a raster for these terms is made with
+        /// it (`incidence`).
+        public var facing: Incidence?
+
+        /// The facing these terms were fitted on, for the raster their features are taken on.
+        public var incidence: Incidence { facing ?? .cells }
 
         /// Terms for façades deep in a city, beyond the depth the fourteen were fitted on
         /// (emmettl/bombcad-work#104; docs/surrogate-first-look.md): added to the fitted terms' log
@@ -986,7 +1130,9 @@ public enum FacadeLoadSurrogate {
     ) -> Estimate {
         let start = ContinuousClock.now
         let objects = scene.envelopeObjects
-        let raster = Raster(objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
+        let raster = Raster(
+            objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize,
+            incidence: coefficients.incidence)
         let charge = scene.charge.position
         let mass = Double(scene.charge.mass)
         let open = raster.openReach(around: charge)
@@ -1038,7 +1184,6 @@ extension FacadeLoadSurrogate {
     /// standing table's figures (validation.md, "Estimates beside a run").
     public static let standing: [String] = {
         let glass = ValidationTables.figure("surrogateGlassSides")
-        let glassDiagonal = ValidationTables.figure("surrogateGlassSidesDiagonal")
         let concrete = ValidationTables.figure("surrogateConcrete")
         let stone = ValidationTables.figure("surrogateStone")
         let roof = ValidationTables.figure("surrogateRoof")
@@ -1053,8 +1198,10 @@ extension FacadeLoadSurrogate {
             "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
                 + "of sides deep in the district, hardly ever two states apart; the share of sides broken by distance "
                 + "came within 0.1 of the run's to 1.75 km at 0.2 kt and 2.5 km at 0.5 kt, and at 0.2 kt fell short "
-                + "beyond: low, the unsafe side. On lines diagonal to the solver's cells, where the runs' glass is "
-                + "least the grid's, the sides deep in the district agreed for \(glassDiagonal.percent).",
+                + "beyond: low, the unsafe side. Its facing is read off the cells' faces, so a front at a slant to "
+                + "the cells reads as more oblique than it is: with Beirut turned 45°, a façade's peak read 15% lower "
+                + "on a line diagonal to the cells than the same façade's on a line along them; the run's own peaks "
+                + "moved alike on both, within 1%.",
             "Walls and roofs: not to be relied on. Of the components either called damaged, \(concrete.percent) of the "
                 + "concrete, \(stone.percent) of the stone and \(roof.percent) of the roofs took the run's level. Run the "
                 + "scene for the structure.",

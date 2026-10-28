@@ -34,7 +34,8 @@ enum ThresholdRefine {
         var clock = ContinuousClock.now
         var layout = scene
         layout.charge.position = .zero
-        let prepared = FacadeLoadSurrogate.Prepared(scene: layout, cellSize: dx)
+        let prepared = FacadeLoadSurrogate.Prepared(
+            scene: layout, cellSize: dx, incidence: SurrogateBench.incidence(args))
         // `--terms deep-city|clear-top|fitted`: the façade terms and scatter (the adopted ones without it).
         let terms = try SurrogateBench.termSet(args)
         let look = prepared.look(

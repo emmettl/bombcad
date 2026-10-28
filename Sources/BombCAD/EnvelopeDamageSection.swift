@@ -106,6 +106,17 @@ struct EnvelopeDamageSection: View {
                         + "more than 30 buildings and on faces turned away beyond 1.75 km "
                         + "(docs/surrogate-first-look.md)."
                 )
+                Toggle(
+                    "Façades facing as their map outlines (candidate)",
+                    isOn: $model.quickEstimateOutlineFacing
+                )
+                .disabled(model.quickEstimateFirstFitTerms || model.quickEstimateClearTopTerms)
+                .help(
+                    "For Quick Estimate and the far field: each wall faces as its building's map outline, not as "
+                        + "the cells' staircase of faces, so that a front at a slant to the cells is read as squarely "
+                        + "as one along them; on terms refitted so (docs/surrogate-first-look.md). Districts made "
+                        + "before 28 October 2026 have no outlines. A candidate, off by default."
+                )
                 Toggle("Glass pulses with a front (candidate)", isOn: $model.quickEstimateGlassFront)
                     .disabled(model.quickEstimateFirstFitTerms)
                     .help(

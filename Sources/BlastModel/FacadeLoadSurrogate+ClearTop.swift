@@ -24,6 +24,13 @@ extension FacadeLoadSurrogate {
         /// `deepCity` with the glass's front refitted alongside (`Coefficients.GlassFront.deepCity`):
         /// a candidate, off by default.
         case deepCityFront = "deep-city-front"
+        /// The deep-city terms refitted with each façade facing as its building's map outline, not
+        /// its cells' staircase (`Coefficients.deepCityOutline`; emmettl/bombcad-work#109): a
+        /// candidate, off by default. Its scatter is refitted with it.
+        case deepCityOutline = "deep-city-outline"
+        /// `deepCityOutline` with the glass's front (`Coefficients.deepCityOutlineFront`): a
+        /// candidate, off by default.
+        case deepCityOutlineFront = "deep-city-outline-front"
 
         /// The set in use unless another is named: `deepCity` since the evening of 25 October 2026
         /// (emmettl/bombcad-work#105), `clearTop` from that morning (#99), `fitted` before.
@@ -37,6 +44,8 @@ extension FacadeLoadSurrogate {
             case .clearTopFront: .clearTopFront
             case .deepCity: .deepCity
             case .deepCityFront: .deepCityFront
+            case .deepCityOutline: .deepCityOutline
+            case .deepCityOutlineFront: .deepCityOutlineFront
             }
         }
 
@@ -45,6 +54,7 @@ extension FacadeLoadSurrogate {
             switch self {
             case .fitted: Uncertainty.leaveOneOut
             case .clearTop, .clearTopFront, .deepCity, .deepCityFront: Uncertainty.clearTopLeaveOneOut
+            case .deepCityOutline, .deepCityOutlineFront: Uncertainty.outlineLeaveOneOut
             }
         }
     }
@@ -200,4 +210,73 @@ extension FacadeLoadSurrogate.Coefficients.GlassFront {
         fittedTo:
             "the clear-top fit runs and the five deep runs (50 t to 1 kt, 8 m air refined to 4 m), the panes' "
             + "stress under each strip's own history")
+}
+
+extension FacadeLoadSurrogate.Coefficients {
+    /// `deepCity` refitted with each wall facing as its building's map outline (`Incidence.outline`;
+    /// emmettl/bombcad-work#109; docs/surrogate-first-look.md), for `TermSet.deepCityOutline`: a
+    /// candidate, off by default. With Beirut turned 45° to the cells (#108), the cells' facing read
+    /// a front at a slant as up to 45° off square, and the estimate followed the line's angle to the
+    /// cells where the run followed the city. The same runs as `clearTop` and `deepCity`, their
+    /// strips extracted again with the outline's facing and fitted the same way, each run alike: the
+    /// peak's, impulse's and rise share's fourteen terms on #98's nine runs, then the far terms on
+    /// those and #104's five deep runs with the fourteen held. The walls' rise (`structureRise`), the
+    /// canyon terms, the close-in branch and its shielding, the range and the fit's `scatter` are
+    /// `clearTop`'s; the chances' scatter is refitted (`Uncertainty.outlineLeaveOneOut`). The
+    /// made-up runs' blocks are mostly square to the cells, so the refit moves the terms little;
+    /// Beirut's façades it moves most.
+    public static let deepCityOutline: FacadeLoadSurrogate.Coefficients = {
+        var c = FacadeLoadSurrogate.Coefficients.clearTop
+        c.peak = [
+            -2.1213, -0.4455, -0.1212, -0.0659, 0.0009, 0.7159, -0.3190, -0.0895, 0.0350, -0.1239, -0.4122,
+            0.0000, 0.6830, 0.0000,
+        ]
+        c.impulse = [
+            -0.1344, -0.5358, -0.0979, 0.0009, -0.0020, 0.0939, -0.0748, -0.1093, 0.1355, -0.0018, 0.0389,
+            0.0000, 0.0000, 1.3340,
+        ]
+        c.rise = [
+            0.3706, 0.0031, 0.0440, 0.0312, -0.0049, 0.0651, -0.0095, -0.0175, 0.0450, -0.0185, 0.0684,
+            0.0000, 0.0000, 0.0000,
+        ]
+        c.far = .deepCityOutline
+        c.facing = .outline
+        c.fittedTo =
+            clearTop.fittedTo + "; far terms on runs to 3 km across made-up dense districts; "
+            + "every wall facing as its map outline"
+        return c
+    }()
+
+    /// `deepCityOutline` with the glass's front (`GlassFront.deepCity`, which the facing does not
+    /// enter: it is fitted on each strip's own history), for `TermSet.deepCityOutlineFront`.
+    public static let deepCityOutlineFront: FacadeLoadSurrogate.Coefficients = {
+        var c = FacadeLoadSurrogate.Coefficients.deepCityOutline
+        c.glassFront = .deepCity
+        return c
+    }()
+}
+
+extension FacadeLoadSurrogate.Coefficients.Far {
+    /// `deepCity`'s far terms refitted with the outline's facing (emmettl/bombcad-work#109), on the
+    /// same fourteen runs and in the same forms: the depth term 0.066 against 0.067, the facing-away
+    /// term 0.402 against 0.418.
+    public static let deepCityOutline = Self(
+        depthFrom: 30, distanceFromM: 1_750, peakDepth: 0.0660, peakAway: 0.4020,
+        fittedTo:
+            "the clear-top fit runs and five runs to 3 km across made-up dense districts (50 t to 1 kt, 8 m air "
+            + "refined to 4 m, the top clear), every wall facing as its map outline")
+}
+
+extension FacadeLoadSurrogate.Uncertainty {
+    /// `deepCityOutline`'s scatter, drawn as `clearTopLeaveOneOut` was, each of #98's nine runs held
+    /// out of a fit to the other eight, on the outline's facing (emmettl/bombcad-work#109): beyond Z 7
+    /// within 0.01 of it. Within Z 7, `leaveOneOut`'s, as there.
+    public static let outlineLeaveOneOut: [LoadScatter] = [
+        LoadScatter(upToZ: 7, peak: 0.41, impulse: 0.26, correlation: 0.51),
+        LoadScatter(upToZ: 10, peak: 0.27, impulse: 0.15, correlation: 0.39),
+        LoadScatter(upToZ: 14, peak: 0.24, impulse: 0.14, correlation: 0.36),
+        LoadScatter(upToZ: 20, peak: 0.21, impulse: 0.14, correlation: 0.39),
+        LoadScatter(upToZ: 28, peak: 0.19, impulse: 0.11, correlation: 0.41),
+        LoadScatter(upToZ: .infinity, peak: 0.19, impulse: 0.12, correlation: 0.45),
+    ]
 }

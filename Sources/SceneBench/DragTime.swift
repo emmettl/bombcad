@@ -23,7 +23,8 @@ enum DragTime {
         let mass = Double(scene.charge.mass)
         func seconds(_ start: ContinuousClock.Instant) -> Double { DistrictBenchmark.seconds(start) }
 
-        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: dx)
+        let prepared = FacadeLoadSurrogate.Prepared(
+            scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
         print(
             String(
                 format: "Prepared %d buildings, %d components on the air, in %.2f s",
@@ -172,7 +173,8 @@ enum DragTime {
             var uncertainty = FacadeLoadSurrogate.Uncertainty(
                 yieldLogSD: log(1.5) / 1.645, samples: previewDraws)
             uncertainty.stratified = true
-            var dragged = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: dx)
+            var dragged = FacadeLoadSurrogate.Prepared(
+                scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
             dragged.glassResponses = previewResponses
             var learned: LearnedField.Estimator?
             if let weights = value("weights") {
@@ -243,7 +245,8 @@ enum DragTime {
             let whole = FacadeLoadSurrogate.estimate(scene: scene, cellSize: dx)
             let wholeS = seconds(clock)
             clock = .now
-            let wholeSides = FacadeLoadSurrogate.glassSides(scene: scene, cellSize: dx)
+            let wholeSides = FacadeLoadSurrogate.glassSides(
+                scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
             let sidesS = seconds(clock)
             let mine = prepared.estimate(charge: scene.charge.position, mass: mass)
             let mySides = prepared.glassSides(mine)

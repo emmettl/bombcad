@@ -133,7 +133,8 @@ enum WallCalibration {
             )
         }
         let prepared = learned.map { _ in
-            FacadeLoadSurrogate.Prepared(scene: first.scene, cellSize: first.cellSize)
+            FacadeLoadSurrogate.Prepared(
+                scene: first.scene, cellSize: first.cellSize, incidence: SurrogateBench.incidence(args))
         }
         var learnedEstimates: [Double: FacadeLoadSurrogate.Estimate] = [:]
         func estimate(at mass: Double) throws -> FacadeLoadSurrogate.Estimate {

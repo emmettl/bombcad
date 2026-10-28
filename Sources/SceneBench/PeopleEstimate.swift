@@ -50,7 +50,8 @@ enum PeopleEstimate {
             }
             print("Look read from \(path)")
         } else {
-            let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: dx)
+            let prepared = FacadeLoadSurrogate.Prepared(
+                scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
             let within = value("yield-within").flatMap(Double.init) ?? 1.5
             let uncertainty = FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(within) / 1.645, samples: 100)
             let look = prepared.look(

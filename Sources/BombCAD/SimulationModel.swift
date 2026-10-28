@@ -738,6 +738,19 @@ final class SimulationModel {
         }
     }
     static let glassFrontKey = "quickEstimate.glassFront"
+    /// Whether the façades face as their buildings' map outlines, on the deep-city terms refitted so
+    /// (`FacadeLoadSurrogate.TermSet.deepCityOutline`, with the glass front `.deepCityOutlineFront`;
+    /// emmettl/bombcad-work#109), in place of the cells' staircase faces: a candidate, off unless
+    /// chosen, and remembered. Districts laid out before 28 October 2026 carry no outlines, and keep
+    /// the cells' facing under it. The earlier terms, where chosen, take precedence.
+    var quickEstimateOutlineFacing = UserDefaults.standard.bool(forKey: SimulationModel.outlineFacingKey) {
+        didSet {
+            learnedDefaults.set(quickEstimateOutlineFacing, forKey: Self.outlineFacingKey)
+            if envelopeDamageIsEstimate, !envelopeDamage.isEmpty { requestLook(preview: false) }
+            if !farFieldDamage.isEmpty { judgeFarField() }
+        }
+    }
+    static let outlineFacingKey = "quickEstimate.outlineFacing"
     /// Whether the quick estimate and the far field take the clear-top façade terms of the morning of
     /// 25 October 2026, without the far terms for façades deep in a city (`FacadeLoadSurrogate
     /// .TermSet.clearTop`, with the glass front `.clearTopFront`), in place of the deep-city terms
@@ -757,6 +770,9 @@ final class SimulationModel {
     var surrogateTerms: FacadeLoadSurrogate.TermSet {
         if quickEstimateFirstFitTerms { return .fitted }
         if quickEstimateClearTopTerms { return quickEstimateGlassFront ? .clearTopFront : .clearTop }
+        if quickEstimateOutlineFacing {
+            return quickEstimateGlassFront ? .deepCityOutlineFront : .deepCityOutline
+        }
         return quickEstimateGlassFront ? .deepCityFront : .adopted
     }
     /// Whether the far field carries the near run's match flat, with no trend with distance: the

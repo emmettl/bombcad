@@ -108,7 +108,8 @@ enum FieldApp {
         let mass = Double(scene.charge.mass)
         let charge = scene.charge.position
         var clock = ContinuousClock.now
-        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: dx)
+        let prepared = FacadeLoadSurrogate.Prepared(
+            scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
         let preparedS = DistrictBenchmark.seconds(clock)
         clock = .now
         let estimator = LearnedField.Estimator(

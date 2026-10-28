@@ -86,8 +86,10 @@ extension SimulationModel {
         // The district laid out once for every place of the charge: the scene without it.
         var layout = scenario
         layout.charge.position = .zero
+        let incidence = surrogateTerms.coefficients.incidence
         let known = preparedDistrict.flatMap {
-            $0.scene == layout && $0.cellSize == cellSize ? $0.prepared : nil
+            $0.scene == layout && $0.cellSize == cellSize && $0.prepared.raster.incidence == incidence
+                ? $0.prepared : nil
         }
         let parts: FacadeLoadSurrogate.Prepared.Parts = waiting.preview ? previewParts : .all
         let within = quickEstimateYieldWithin
@@ -115,7 +117,7 @@ extension SimulationModel {
                 // hundred thousand.
                 let prepared =
                     known.flatMap { $0.memo.misses < 400_000 ? $0 : nil }
-                    ?? FacadeLoadSurrogate.Prepared(scene: scenario, cellSize: cellSize)
+                    ?? FacadeLoadSurrogate.Prepared(scene: scenario, cellSize: cellSize, incidence: incidence)
                 var estimator: LearnedField.Estimator?
                 var problem: String?
                 var networks: (LearnedFieldNetwork, LearnedFieldNetwork?)?

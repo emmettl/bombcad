@@ -95,7 +95,8 @@ enum FieldReferences {
             args, loads: runs[0].folder, radius: radius)
         let scene = first!.scene
         let cellSize = first!.cellSize
-        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: cellSize)
+        let prepared = FacadeLoadSurrogate.Prepared(
+            scene: scene, cellSize: cellSize, incidence: SurrogateBench.incidence(args))
         // `--coefficients terms.json`: the terms the surrogate alone and the networks' variants
         // (their impulse and rise, and every strip they don't read) are judged under; `--terms`'
         // without it (the adopted ones without either).

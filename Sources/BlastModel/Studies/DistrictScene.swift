@@ -24,6 +24,10 @@ package struct DistrictInputs {
     /// one sector of the district in a smaller box, for a study (emmettl/bombcad-work#108); none
     /// otherwise.
     package var boxOffset: SIMD2<Float> = .zero
+    /// Keep the buildings' outlines on their envelopes (`DistrictLayout.keepsOutlines`): where the
+    /// bench's façades face as their outlines (`SurrogateBench.incidence`, `--incidence outline`
+    /// or terms fitted so; emmettl/bombcad-work#109). Off, the scene is as before, to the byte.
+    package var keepsOutlines = false
 
     package static func read(_ args: [String]) throws -> DistrictInputs {
         func value(_ name: String) -> String? {
@@ -63,6 +67,7 @@ package struct DistrictInputs {
             domainHeight: Float(value("height").flatMap(Double.init) ?? 120),
             mass: Float(value("mass").flatMap(Double.init) ?? 500_000), attributions: attributions,
             footprintCells: value("place-dx").flatMap(Float.init))
+        inputs.keepsOutlines = SurrogateBench.incidence(args) == .outline
         let offset = numbers("box-offset", [0, 0])
         if offset.count == 2 { inputs.boxOffset = SIMD2(Float(offset[0]), Float(offset[1])) }
         if let degrees = value("turn").flatMap(Double.init), degrees != 0 {
@@ -131,6 +136,7 @@ package struct DistrictInputs {
         layout.heights = heights
         layout.seaBase = seaBase
         layout.attributions = attributions
+        layout.keepsOutlines = keepsOutlines
         return try layout.scene(
             halfSide: radius, cellSize: cellSize, height: domainHeight, footprintCells: footprintCells,
             offset: boxOffset)

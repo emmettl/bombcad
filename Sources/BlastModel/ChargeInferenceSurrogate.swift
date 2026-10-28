@@ -33,6 +33,10 @@ extension ChargeInference {
             /// The side's middle, in the inference's metres (east, north of the reference point).
             public var east: Double
             public var north: Double
+            /// With the façades facing as their outlines (`FacadeLoadSurrogate.Incidence.outline`),
+            /// the side's plan normal: its strips' outline normals by area, the strip's own face's
+            /// where it has none; nil, the side's face's, otherwise.
+            public var facing: SIMD3<Float>? = nil
         }
 
         public let sides: [Side]
@@ -141,7 +145,8 @@ extension ChargeInference {
             let start = ContinuousClock.now
             let objects = scene.envelopeObjects
             let raster = FacadeLoadSurrogate.Raster(
-                objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
+                objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize,
+                incidence: terms.coefficients.incidence)
             let seen = Dictionary(
                 observed.map { ("\($0.owner)/\($0.axis)/\($0.outward)", $0.damaged) },
                 uniquingKeysWith: { a, _ in a })
@@ -187,7 +192,7 @@ extension ChargeInference {
                         var f = FacadeLoadSurrogate.features(
                             region: side.region, axis: side.axis, outward: side.outward,
                             owner: side.owner,
-                            charge: charge, raster: raster)
+                            charge: charge, raster: raster, facing: side.facing)
                         f.chargeOpenM = open
                         out[node * sides.count + s] = CompactFeatures(f)
                     }
@@ -212,12 +217,14 @@ extension ChargeInference {
         /// façade glass): each envelope building with a glazing mix, its façade strips on the air
         /// taken side by side. Their `east` and `north` are the side's middle in the scene's metres;
         /// `damaged` is false.
-        public static func judgedSides(scene: Scenario, cellSize: Float) -> [Side] {
+        public static func judgedSides(
+            scene: Scenario, cellSize: Float, incidence: FacadeLoadSurrogate.Incidence = .cells
+        ) -> [Side] {
             judgedSides(
                 scene: scene, cellSize: cellSize,
                 raster: FacadeLoadSurrogate.Raster(
                     objects: scene.envelopeObjects, blocks: scene.boxes, terrain: scene.terrain,
-                    cell: cellSize))
+                    cell: cellSize, incidence: incidence))
         }
 
         static func judgedSides(scene: Scenario, cellSize: Float, raster: FacadeLoadSurrogate.Raster)
@@ -239,12 +246,22 @@ extension ChargeInference {
                         Box(min: simd_min($0.min, $1.region.min), max: simd_max($0.max, $1.region.max))
                     }
                     let area = members.reduce(0.0) { $0 + Double($1.spans.x * $1.spans.y) }
-                    let (centre, _) = FacadeLoadSurrogate.outerFace(
+                    let (centre, normal) = FacadeLoadSurrogate.outerFace(
                         region: region, axis: axis, outward: outward)
+                    // Facing as the outline, its strips' normals by area.
+                    var facing: SIMD3<Float>?
+                    if raster.incidence == .outline {
+                        let sum = members.reduce(SIMD3<Float>.zero) {
+                            $0 + $1.spans.x * $1.spans.y
+                                * (raster.outlineNormal(
+                                    region: $1.region, axis: axis, outward: outward, owner: n) ?? normal)
+                        }
+                        facing = simd_length(sum) > 0 ? simd_normalize(sum) : nil
+                    }
                     all.append(
                         Side(
                             owner: n, axis: axis, outward: outward, region: region, mix: mix, areaM2: area,
-                            damaged: false, east: Double(centre.x), north: Double(centre.y)))
+                            damaged: false, east: Double(centre.x), north: Double(centre.y), facing: facing))
                 }
             }
             return all

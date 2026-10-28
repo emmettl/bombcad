@@ -1,12 +1,10 @@
 kind: changed
 
-**The glass and far-field standings note how they read on lines diagonal to the solver's cells.**
-BombCAD's own reference runs read peaks high on lines from the charge near a cell axis, and their
-glass with them: at 1.1 kt, 1.75–2 km out in Beirut, the run blows out half the sides on those
-lines and nearly all on the diagonals. The judges now also give each figure on the diagonal lines
-alone and balanced by angle (`--by-angle` on `surrogate-judge`, `hybrid-judge` and
-`glass-calibrate`). The quick estimate's, glass chances' and hybrid far field's standings keep
-their figures and add the diagonal one beside them: the glass states agree for 59–90% of sides
-deep in the district, the chances' blown out scores Brier 0.026 with a tenth 0.12 under, and the
-far field's peaks read 0.82–0.99. No default changes. Details are in
-[the surrogate](../../surrogate-first-look.md#glass-judged-on-lines-balanced-by-angle-to-the-cells-26-october-2026).
+**The judges can split their figures by the line's angle to the solver's cells.** `surrogate-judge`,
+`hybrid-judge` and `glass-calibrate` take `--by-angle`, which also gives each figure on the lines
+diagonal to the cells alone and balanced by angle. For a few days the standings quoted the diagonal
+figure beside each adopted one, on the view that the grid takes least off those lines. With Beirut
+turned 45° to the cells, the runs' loads went with the façades whatever their angle, so the diagonal
+lines are not the cleaner ones; the split by angle was the quick estimate's own, its facing read off
+the cells' staircase faces. The standings no longer quote it. No default changes. Details are in
+[the surrogate](../../surrogate-first-look.md#façade-incidence-from-map-outlines-28-october-2026).

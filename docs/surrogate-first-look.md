@@ -1699,7 +1699,9 @@ there. Its over-read lies on the axis lines, where #106 showed the run itself is
 unchanged). The quick estimate's standing gives 59–90% on the diagonal lines
 (`surrogateGlassSidesDiagonal`). The glass chances' gives blown out's Brier 0.026 there, a tenth
 0.12 under, failing the test (`glassChancesDiagonal`). The hybrid's gives peaks 0.82–0.99
-(`hybridFarPeakDiagonal`) ([validation](validation.md#estimates-beside-a-run)).
+(`hybridFarPeakDiagonal`) ([validation](validation.md#estimates-beside-a-run)). These notes were
+retired on 28 October 2026: the diagonals are not the cleaner lines
+([incidence from outlines](#façade-incidence-from-map-outlines-28-october-2026)).
 
 ### The grid turned 45°: the tool, and the reference waiting on memory (27 October 2026)
 
@@ -1867,6 +1869,133 @@ reads fronts as oblique.
   `glassChancesDiagonal`, `hybridFarPeakDiagonal`) rest on the diagonals being the cleaner lines.
   They are notes, not adopted figures, but they now read as a check that isn't one.
 
+### Façade incidence from map outlines (28 October 2026)
+
+emmettl/bombcad-work#109, the two steps #108 left for the user. The runs, extracts, fits and judges
+are in `$BOMBCAD_DATA/scratch/issue109` (`extract.sh`, `extract56.sh`, `judges.sh`, `box-judges.sh`,
+`py/turntest.py`, `py/summary.py`, `py/boxglass.py`, `py/near109.py`; the fits `py/fit98.py` and
+`py/fitfar.py`, #98's and #104's pointed at the new extracts). Only the CPU was used, apart from the
+near glass and the walls in gpu-slot at 8 and 10 GB.
+
+**The diagonal-line notes retired.** #107 put three notes on the standings: the glass sides on the
+diagonal lines (`surrogateGlassSidesDiagonal`, 59–90%), the glass chances' blown out there
+(`glassChancesDiagonal`, Brier 0.026, a tenth 0.12 under) and the hybrid's peaks there
+(`hybridFarPeakDiagonal`, 0.82–0.99). They rested on the diagonals being the lines the grid takes
+least off. #108 showed that they are not: the runs' loads and glass go with the façades, and the
+split by angle was the surrogate's facing. The notes are gone from the error bands, the standings
+and [validation](validation.md). The quick estimate's standing now says what the facing does
+instead. `--by-angle` stays on the judges as a tool. Nothing adopted changed.
+
+**The option.** `TermSet.deepCityOutline` (`deep-city-outline`, with the front
+`deep-city-outline-front`) takes each wall strip's facing from its building's map outline
+(`Incidence.outline`; `Raster.outlineNormal`):
+- of the outline's edges whose normal is less than a right angle from the strip's face, the one
+  nearest the face's middle within two cells, or failing that the one nearest any part of the face.
+  A step of a staircase is often the open end of a longer face that the next row covers.
+- Roofs, buildings without an outline and strips with no edge near keep the cells' facing.
+- The outline is the map's, kept on the envelope (`BuildingEnvelope.outline`) when the district is
+  laid out to keep it (`MapBuildingPlacement.keepsOutlines`). New District keeps it from today; the
+  benches keep it for these terms or `--incidence outline`. Without it, a scene's files and
+  outputs are as before byte for byte, apart from the objects' random ids. #108's box laid out
+  again matches #108's scenes, and `surrogate-extract` matches #98's and #104's extracts.
+- Every consumer takes it from its terms: the quick estimate, the drag preview, the glass chances,
+  the hybrid, the close calls, the planner (`ProtectionModel`) and charge inference. For
+  inference, a side faces as its strips' outline normals, weighted by area.
+
+**The refit.** #98's and #104's runs were extracted again with the outline's facing. On the
+made-up runs 0–38% of strips change cosine: none in the sparse district, a fifth in the deep ones
+and 38% in the dense one, which has a quarter turned 30°. On Beirut's near boxes 99% of strips change, by 0.28 on average. They were fitted as `clearTop` and `deepCity` were
+(`fit98.py --impulse all --rise`, `fitfar.py --far nf,mAway --from 1750`):
+- The fourteen terms hardly move: facing 0.446 against 0.439, the constant −2.121 against
+  −2.111. The fit's log RMS is 0.243 against 0.246 in the peak and 0.132 against 0.133 in the
+  impulse.
+- The far terms: depth 0.066 against 0.067, facing away 0.402 against 0.418.
+- Each run held out of the others, the chances' scatter is within 0.01 of `clearTopLeaveOneOut`
+  beyond Z 7 (`Uncertainty.outlineLeaveOneOut`).
+- The glass front's share is fitted on each strip's own history, its peak, impulse and rise
+  against its own stress, by scaled distance. The facing does not enter it, so the same runs give
+  the same points (`GlassFront.deepCity` kept).
+
+**The defining test passes.** #108's two box runs (Beirut at 0.5 kt, the south-east quadrant,
+the map as it is and turned 45°). On 1,351 buildings judged in both, each building's front strips
+by the outline's facing, the turned over the plain at 1–2 km, median by building:
+
+| Plain → turned line | Buildings | Run peak | `deep-city` | `deep-city-outline` |
+|---|---|---|---|---|
+| Axis → diagonal | 248 | 0.979 | 0.878 | **0.989** |
+| Between → between | 390 | 0.969 | 1.027 | **0.997** |
+| Diagonal → axis | 416 | 0.954 | 1.080 | **1.004** |
+
+- **With the outline's facing, the estimate is the same whichever way the city meets the cells**,
+  within 1.5% from class to class. The run's spread between classes is 2.5%; the cells' facing
+  gave 20%. The impulse is 0.999–1.001 (the cells' facing: 0.93–1.06).
+- The run reads every class 2–5% lower turned; the estimate does not follow that. It is the same
+  in every class, so it is not the facing.
+- What remains by class within each run is the city's own: at 1–2 km the surrogate reads
+  1.28 / 1.17 / 1.14 of the plain run on axis / between / diagonal lines, and 1.15 / 1.20 / 1.40 of
+  the turned one, the same façades at both angles.
+- **The glass in the box** (blown out by side, by class and 0.25 km band at 1–2 km, the mean
+  error against each run): plain 0.042 → 0.036, turned 0.064 → 0.041. With the front it is
+  0.114 / 0.153 (`deep-city-front`) and 0.097 / 0.136 (`deep-city-outline-front`).
+
+**Judged on Beirut's clear-top references** (the map as it is; `deep-city` and `deep-city-front` are
+#107's judges, which this change's binary gives again, to 5e-15 in the hybrid):
+
+| | `deep-city` (default) | `deep-city-outline` | `deep-city-front` | `deep-city-outline-front` |
+|---|---|---|---|---|
+| First look's peak over the run's, 1–2.5 km by band, 0.2 / 0.5 / 1.1 kt | 0.89–1.08 / 0.95–1.09 / 1.00–1.13 | 0.88–1.07 / 0.94–1.09 / 0.99–1.12 | (the same as without) | (the same as without) |
+| Hybrid's peak, the same | 0.87–1.04 / 0.92–1.06 / 0.96–1.07 | 0.87–1.05 / 0.93–1.07 / 0.97–1.09 | | |
+| Glass chances, some broken: Brier, worst tenth | 0.019, −0.24, fails | 0.020, −0.26, fails | 0.004, −0.08, passes | 0.004, −0.10, passes at the limit |
+| … blown out | 0.025, −0.07, passes | 0.025, −0.07, passes | 0.026, +0.08, passes | 0.025, +0.07, passes |
+| … thrown past 3b | 0.038, −0.27, fails | 0.039, −0.28, fails | 0.014, −0.13, fails | 0.014, −0.15, fails |
+| First look's glass, mean error 1–2.5 km, some / blown, 0.2; 0.5; 1.1 kt | 0.149 / 0.006; 0.010 / 0.024; 0.000 / 0.083 | 0.152 / 0.010; 0.011 / 0.026; 0.000 / 0.084 | 0.021 / 0.040; 0.001 / 0.089; 0.000 / 0.091 | 0.022 / 0.030; 0.001 / 0.076; 0.000 / 0.082 |
+| Hybrid's glass, the same | 0.168 / 0.018; 0.012 / 0.060; 0.000 / 0.087 | 0.160 / 0.020; 0.012 / 0.051; 0.000 / 0.074 | 0.030 / 0.023; 0.001 / 0.053; 0.000 / 0.043 | 0.025 / 0.022; 0.001 / 0.058; 0.000 / 0.056 |
+| Sides deep in the district agreeing, 0.2 / 0.5 / 1.1 kt | 0.68 / 0.90 / 0.81 | 0.68 / 0.89 / 0.81 | 0.85 / 0.90 / 0.82 | 0.85 / 0.91 / 0.82 |
+| In sight; behind one to three | 0.88–0.98; 0.93–0.98 | 0.88–0.98; 0.93–0.98 | 0.84–0.97; 0.90–0.98 | 0.84–0.97; 0.90–0.98 |
+| Near boxes (4 m): glass state, every side; peak | 0.85 / 0.96 / 1.00; 0.99–1.00 | 0.85 / 0.96 / 1.00; 0.99–1.00 | 0.85 / 0.97 / 1.00 | 0.86 / 0.98 / 1.00 |
+| Near glass, the ten 2 m boxes (`field-refs`): exact, Heidke | 0.947, 0.78 | 0.947, 0.78 | 0.947, 0.78 | 0.947, 0.78 |
+| GEER's openings: Brier (climatology 0.170) | 0.141 | 0.142 | 0.141 | 0.142 |
+| Inference from glass alone, free; held at Warehouse 12 | 0.055; 0.030 kt | 0.056; 0.030 kt | 0.026; 0.019 kt | 0.027; 0.019 kt |
+
+- **On the city as it lies, the facing changes almost nothing** that a whole disc measures: band
+  medians move by 0.01–0.02, the glass tests keep their verdicts, and GEER moves 0.001. Beirut's
+  fronts meet the cells at every angle, so the over-read on one line and the under-read on another
+  average out over a disc. The hybrid's blown out comes nearer the run at 0.5 and 1.1 kt (0.060 →
+  0.051, 0.087 → 0.074).
+- With the front, some broken passes only at its limit, the worst tenth 0.10 under.
+
+**#56's judges** (`py/near109.py`: the peak and impulse over the run's, median). The 20 held-out
+street charges, the five Warehouse 12 charges, the made-up held-out runs and the near boxes the
+fits never saw are all within 0.01 in every band. The exception is behind buildings within Z 5:
+Warehouse 12 1.16 / 1.08 → 1.17 / 1.14, the near boxes 1.07 / 1.13 → 1.08 / 1.20. The close-in
+branch was fitted on the cells' facing of square blocks, and the base under it takes the
+outline's, which reads Beirut's fronts squarer.
+
+**The walls' tenths test** (the ten 2 m boxes, ×1.15, #104's judge). Concrete moderate or worse:
+Brier 0.0069 against 0.0075, skill 0.726 against 0.703. It still fails on the same tenth, 0.30–0.40,
+which holds 53 buildings against 50 and reads 0.18 under. Heavy or worse passes in both, its
+0.10–0.20 tenth now 0.06 under against 0.02. Roofs fail in both, as before.
+
+**The planner on #101's cases** (the sparse district at 0.5–50 t, two seeds, flag 2.5, each plan
+confirmed on its runs). With the outline's facing, 15 of 16 plans meet the 10% target, against 16.
+At 10 t, seed 1, one side reads 15%. Costs are within 2.5% elsewhere, and 10% lower at 1 t, seed 1.
+The sparse district's blocks are square to the cells, so this is the refit's terms, not the facing.
+
+**Proposal** (the decision is yours; nothing is adopted, and every default and digest is as
+before):
+- **Adopt `deep-city-outline` for the quick estimate, the glass chances, the hybrid and the close
+  calls**, in place of `deep-city`. The same city then gives the same estimate whatever its angle
+  to the solver's cells: within 1.5% by class turned against plain, where `deep-city` moved
+  −12% to +8%. The box's glass comes nearer both runs (0.036 and 0.041 against 0.042 and 0.064).
+  On Beirut as it lies, every judge keeps its verdict and moves by 0.01–0.02.
+- **Keep the planner on `deep-city`** until its one miss (10 t, seed 1, 15%) is understood, and
+  keep charge inference pinned where it is (`fitted`).
+- **Don't adopt the front.** In the turned box it reads blown out 0.10–0.15 over, by class and
+  band, against 0.04 without it.
+- **What it costs.** Districts laid out before 28 October 2026 carry no outlines, so the option
+  keeps the cells' facing for them; to take it, lay the district out again with New District.
+  Behind buildings close in the impulse reads 5–7% higher.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
@@ -1892,6 +2021,13 @@ reads fronts as oblique.
   "Glass pulses with a front (candidate)" in the app, on whichever terms are chosen;
   `--surrogate-terms deep-city-front` or `clear-top-front` headless, `--terms deep-city-front` in
   the benches.
+- **Façades facing as their map outlines**, a candidate
+  ([above](#façade-incidence-from-map-outlines-28-october-2026)): Envelope Damage ▸ "Façades facing
+  as their map outlines (candidate)" in the app, with the glass front's toggle giving
+  `deep-city-outline-front`; `--surrogate-terms deep-city-outline` headless, `--terms
+  deep-city-outline` in the benches (`--incidence outline` takes the facing alone, with other terms).
+  It needs the buildings' outlines, which New District keeps from 28 October 2026 and the benches
+  keep under these terms; a district laid out before has none and keeps the cells' facing.
 - **Bench**: `scenebench drag-time` times a drag and judges the preview (Sources/SceneBench/DragTime.swift,
   outputs under `bombcad/drag`); `scenebench surrogate-extract` and `surrogate-judge` (Sources/BlastModel/Studies/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under
