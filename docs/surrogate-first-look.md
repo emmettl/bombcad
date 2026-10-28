@@ -1782,6 +1782,91 @@ fseventsd at 27 GB. The job never started, and was withdrawn after three hours. 
 run; nothing is adopted. The runs and judges are `ref2.sh`, `judges2.sh` and `py/compare2.py`,
 with `py/check_box.py` for the layouts.
 
+### The grid turned 45°: the run's loads go with the city, the surrogate's angle split with the cells; the front not adopted (28 October 2026)
+
+emmettl/bombcad-work#108. After the Studio's restart both box runs were made: unturned and turned
+45°, as set up above, in gpu-slot at 13 GB declared. Each took 24–26 s on the GPU and peaked at
+14 GB. Judged with `surrogate-judge` (deep-city and deep-city-front) and compared in
+`$BOMBCAD_DATA/scratch/issue108/compare2.txt` (`py/compare2.py`, `py/cosines.py`).
+
+**The box against #97's 5 km run.** It is the same run where they overlap. On 22,860 strips matched
+strip for strip, the box's run peak over #97's median is 1.000–1.003 at 0.5–2 km (10–90% within
+0.95–1.05), and the impulse 0.999–1.002.
+
+**The test, by class in each run, fails.** Here is the surrogate's peak over the run's at 1–2 km
+(median; by building, its front strips; by strip, as #106 split it):
+
+| | Axis (0–15°) | Between (15–30°) | Diagonal (30–45°) |
+|---|---|---|---|
+| Unturned, by building | 1.38 | 1.14 | **1.08** |
+| Turned 45°, by building | 1.31 | 1.23 | **1.31** |
+| Unturned, by strip | 1.16 | 1.06 | **1.02** |
+| Turned 45°, by strip | 1.06 | 1.12 | **1.21** |
+
+- **The diagonal class does not read the same in both runs.** It is 1.02 by strip unturned and
+  1.21 turned.
+- **The over-read follows the physical façades.** Those on the unturned axis lines read high on
+  the turned diagonals too, and those on the unturned diagonals read near 1 on the turned axes:
+  1.06 by strip.
+
+**The evidence, per façade, shows why.** These are the same 1,153 buildings at 1–2 km, judged in both
+runs, the turned run over the unturned (median ratio):
+
+| Unturned → turned class | Buildings | Run peak | Run impulse | Surrogate peak | Front strips' cos of incidence (surrogate's feature) |
+|---|---|---|---|---|---|
+| Axis → diagonal | 296 | 0.965 | 1.006 | **0.846** | 0.99 → 0.71 |
+| Between → between | 423 | 0.969 | 1.030 | 1.109 | 0.65 → 0.73 |
+| Diagonal → axis | 434 | 0.960 | 1.001 | **1.195** | 0.69 → 0.99 |
+
+- **The solver's loads do not follow the line.** A façade reads 3–4% lower in the turned run
+  whichever class it moves to. The spread between the classes is under 1%, and the impulse within
+  3%. The free burst's 5–15% between axis and diagonal ([large scenes](large-scenes.md)) does not
+  show on the city's façades.
+- **The surrogate's prediction does follow the line.** It moves −15% when a façade goes onto a
+  diagonal and +20% when it goes onto an axis.
+  - A front perpendicular to an axis line is a flat run of cell faces, cos 0.99. Perpendicular to a
+    diagonal, it is a staircase whose strips face 45° away, cos 0.71.
+  - The surrogate's incidence term reads the staircase as an oblique face.
+  - The solver loads the staircase almost as it loads the flat front: the run's peak falls 4%
+    where the surrogate's falls 14%.
+- **So #106's split by angle is the surrogate reading the cells' staircases, not the solver's
+  grid.** The rest is the city's own: the unturned axis-line façades (south and east of the
+  charge) over-read on either line, about 1.21 by building when turned.
+
+**The glass.** The runs' glass also goes with the physical façades. On the shared buildings at
+1–2 km, the share of sides blown out, unturned / turned:
+- 0.37 / 0.36 where the axis goes onto the diagonal;
+- 0.48 / 0.45 between;
+- 0.58 / 0.51 where the diagonal goes onto the axis.
+
+The front's case was that it matches the runs on the diagonals (#107). It does not survive the
+turn. Blown out by side at 1.5–1.75 km, run / deep-city / front:
+
+| | Axis | Between | Diagonal |
+|---|---|---|---|
+| Unturned box | 0.16 / 0.29 / 0.48 | 0.23 / 0.24 / 0.43 | 0.21 / 0.15 / 0.37 |
+| Turned box | 0.13 / 0.24 / 0.34 | 0.09 / 0.24 / 0.35 | **0.26 / 0.40 / 0.60** |
+
+On the turned diagonals the front reads 0.34 over the run, and deep-city 0.14 over. At 1.75–2 km
+the front reads 0.05–0.22 over in every class of both runs, and deep-city 0.00–0.07.
+
+**Stopped: not adopted.** The criterion, settled on 27 October, was the diagonal class reading
+the same in both runs while each façade's reading follows its line. Neither holds. The diagonals
+are not the clean lines for judging the glass; they are where the surrogate's incidence feature
+reads fronts as oblique.
+- `deepCity` stays the default for everything; `deep-city-front` stays a candidate by name.
+- The planner and charge inference are untouched.
+- Nothing in the solver or the defaults changed, so the digests are as before.
+
+**For the user** (the decision is yours):
+- The quick estimate's incidence feature is measured on the cells' staircase faces. A façade's
+  cosine taken from its map outline, not from its strips' cell faces, would make the estimate
+  independent of the grid's orientation. That is a change to the surrogate's features and a
+  refit.
+- The diagonal-line figures #107 added to the standings' notes (`surrogateGlassSidesDiagonal`,
+  `glassChancesDiagonal`, `hybridFarPeakDiagonal`) rest on the diagonals being the cleaner lines.
+  They are notes, not adopted figures, but they now read as a check that isn't one.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
