@@ -2,7 +2,7 @@ import Foundation
 import simd
 
 /// `blastmodel glass-diagnose <district-scene's inputs> --runs mass:folder,… [--inside 0.85]
-/// [--draws 100] [--terms deep-city|clear-top|fitted] [--strips strips.csv] [--sides sides.csv]
+/// [--draws 100] [--terms deep-city-outline|deep-city|clear-top|fitted] [--strips strips.csv] [--sides sides.csv]
 /// [--fronts fronts.csv [--fronts-every 4]]
 /// [--out diagnosis.json]`: why the glass chances (`FacadeLoadSurrogate.glassProbabilities`) read
 /// as they do against a district's runs (emmettl/bombcad-work#103; docs/glass-probability.md).

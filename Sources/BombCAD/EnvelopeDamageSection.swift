@@ -107,15 +107,17 @@ struct EnvelopeDamageSection: View {
                         + "(docs/surrogate-first-look.md)."
                 )
                 Toggle(
-                    "Façades facing as their map outlines (candidate)",
-                    isOn: $model.quickEstimateOutlineFacing
+                    "Façades facing as the cells (earlier estimates)",
+                    isOn: $model.quickEstimateCellsFacingTerms
                 )
                 .disabled(model.quickEstimateFirstFitTerms || model.quickEstimateClearTopTerms)
                 .help(
-                    "For Quick Estimate and the far field: each wall faces as its building's map outline, not as "
-                        + "the cells' staircase of faces, so that a front at a slant to the cells is read as squarely "
-                        + "as one along them; on terms refitted so (docs/surrogate-first-look.md). Districts made "
-                        + "before 28 October 2026 have no outlines. A candidate, off by default."
+                    "For Quick Estimate and the far field: each wall faces as the cells' staircase of faces, on the "
+                        + "terms in use from 25 to 28 October 2026, to reproduce an earlier estimate. Off, each wall "
+                        + "faces as its building's map outline, on terms refitted so, and a front at a slant to the "
+                        + "cells is read as squarely as one along them (docs/surrogate-first-look.md). Districts "
+                        + "made before 28 October 2026 have no outlines and keep the cells' facing either way: make "
+                        + "them again with New District to take it."
                 )
                 Toggle("Glass pulses with a front (candidate)", isOn: $model.quickEstimateGlassFront)
                     .disabled(model.quickEstimateFirstFitTerms)

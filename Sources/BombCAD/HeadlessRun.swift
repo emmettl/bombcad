@@ -14,7 +14,7 @@ enum HeadlessRun {
                            [--charge <kg>@<x>,<y>,<z>[+<delay ms>]]…
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
                            [--surrogate <file.json> [--surrogate-yields <samples.csv> | --surrogate-yield-within <factor>]
-                            [--surrogate-terms clear-top|fitted|clear-top-front|deep-city|deep-city-front]]
+                            [--surrogate-terms deep-city-outline|deep-city|clear-top|fitted|…]]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
@@ -75,12 +75,14 @@ enum HeadlessRun {
         blown out, drawn over the yield (from `scenebench infer-charge --samples`' masses with
         --surrogate-yields, or within --surrogate-yield-within either way nine times in ten, 1.5 by
         default), each building's glass strength and the estimate's own scatter: the glass only.
-        --surrogate-terms names the façade terms and scatter: deep-city, the default since 25
-        October 2026, refitted on runs whose top clears the far façades, with far terms for façades
-        deep in a city (emmettl/bombcad-work#104, #105); clear-top, the same without the far terms,
-        the default earlier that day, and fitted, those of 23 October, for earlier records;
-        deep-city-front and clear-top-front, each with the glass's pulses arriving with a front
-        (candidates, emmettl/bombcad-work#103).
+        --surrogate-terms names the façade terms and scatter: deep-city-outline, the default since
+        28 October 2026, refitted on runs whose top clears the far façades, with far terms for
+        façades deep in a city, each wall facing as its building's map outline (a district laid out
+        before 28 October has none and keeps the cells' facing; emmettl/bombcad-work#104, #109);
+        deep-city, the same facing as the cells, the default from 25 October; clear-top, without
+        the far terms, the default earlier that day, and fitted, those of 23 October, for earlier
+        records; deep-city-outline-front, deep-city-front and clear-top-front, each with the
+        glass's pulses arriving with a front (candidates, emmettl/bombcad-work#103).
         --charge adds a further charge of that much TNT at x, y, z m, fired the delay after the
         main charge (with it if none); give it again for more.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the

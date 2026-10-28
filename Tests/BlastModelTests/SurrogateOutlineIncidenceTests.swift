@@ -105,9 +105,12 @@ struct SurrogateOutlineIncidenceTests {
         #expect(moved.outline?[0][0] == (envelope.outline?[0][0] ?? .zero) + SIMD2(5, -3))
     }
 
-    @Test("The outline sets are named, off by default, and save with their facing")
+    @Test("The outline sets are named, the default since 28 October, and save with their facing")
     func namedSets() throws {
-        #expect(S.TermSet.adopted == .deepCity && S.Coefficients.adopted.incidence == .cells)
+        // Adopted on 28 October 2026 (emmettl/bombcad-work#109), the front not.
+        #expect(S.TermSet.adopted == .deepCityOutline && S.Coefficients.adopted.incidence == .outline)
+        #expect(S.Coefficients.adopted.glassFront == nil)
+        #expect(SurrogateBench.incidence([]) == .outline)
         #expect(S.Coefficients.deepCity.facing == nil)
         #expect(try SurrogateBench.termSet(["--terms", "deep-city-outline"]) == .deepCityOutline)
         #expect(S.Coefficients.deepCityOutline.incidence == .outline)
@@ -122,6 +125,28 @@ struct SurrogateOutlineIncidenceTests {
         #expect(SurrogateBench.incidence(["--terms", "deep-city-outline"]) == .outline)
         #expect(SurrogateBench.incidence(["--terms", "deep-city"]) == .cells)
         #expect(SurrogateBench.incidence(["--incidence", "outline"]) == .outline)
+    }
+
+    @Test("A district laid out without outlines keeps the cells' facing under the default, silently")
+    func withoutOutlinesTheCells() throws {
+        // Districts laid out before 28 October 2026 carry no outlines (emmettl/bombcad-work#109):
+        // the default terms read their walls as the cells' faces, as the deep-city terms did, and
+        // the estimate, its prepared district and its glass sides all agree on it.
+        let plain = try Self.block(degrees: 45, keepsOutlines: false)
+        let adopted = S.estimate(scene: plain, cellSize: 2)
+        let cells = S.estimate(scene: plain, cellSize: 2, coefficients: .deepCity)
+        #expect(adopted.features.map(\.cosIncidence) == cells.features.map(\.cosIncidence))
+        #expect(S.Prepared(scene: plain, cellSize: 2).raster.incidence == .outline)
+        let sideCosines = { (sides: [S.GlassSideStrips]) in
+            sides.flatMap { $0.strips.map(\.features.cosIncidence) }
+        }
+        #expect(
+            sideCosines(S.glassSides(scene: plain, cellSize: 2))
+                == sideCosines(S.glassSides(scene: plain, cellSize: 2, incidence: .cells)))
+        // With them, the same default faces the front squarely.
+        let kept = S.estimate(scene: try Self.block(degrees: 45), cellSize: 2)
+        let front = { (e: S.Estimate) in Self.median(e.features.map(\.cosIncidence).filter { $0 > 0.5 }) }
+        #expect(front(kept) > 0.98 && front(adopted) < 0.75, "\(front(kept)) \(front(adopted))")
     }
 
     @Test("The quick estimate takes its terms' facing")

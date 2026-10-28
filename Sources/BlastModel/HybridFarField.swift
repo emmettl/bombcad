@@ -150,8 +150,9 @@ public struct HybridFarField: Codable, Sendable, Equatable {
 
     /// Its standing, from Beirut against full runs at 0.2, 0.5 and 1.1 kt with their top clear (8 m
     /// air refined to 4 m, since 25 October 2026), handing over at 1 km, on the clear-top terms with
-    /// far terms for façades deep in a city (the deep-city terms) and the match carried flat, adopted
-    /// the same day (docs/hybrid-far-field.md).
+    /// far terms for façades deep in a city and the match carried flat, adopted the same day, each
+    /// wall facing as its building's map outline since 28 October (the deep-city-outline terms;
+    /// docs/hybrid-far-field.md).
     public static let standing: [String] = {
         let peak = ValidationTables.figure("hybridFarPeak")
         let impulse = ValidationTables.figure("hybridFarImpulse")
@@ -159,8 +160,8 @@ public struct HybridFarField: Codable, Sendable, Equatable {
             "Inside the hand-over: the near run's own loads, which on Beirut were the full run's (peaks 1.00, scatter 3–8%).",
             "Beyond it, against the full run with its top clear: façade peaks \(peak.ratio) of its to 2.5 km, the lower "
                 + "the further out, impulses \(impulse.ratio) times; sides with some glass broken within 0.05 of its to "
-                + "1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt, 0.12–0.46 under at 1.5–2.5 km at 0.2 kt; "
-                + "blown-out shares up to 0.36 under in a band. Glass low beyond 1.5 km at the smallest yield: the unsafe side.",
+                + "1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt, 0.11–0.45 under at 1.5–2.5 km at 0.2 kt; "
+                + "blown-out shares up to 0.35 under in a band. Glass low beyond 1.5 km at the smallest yield: the unsafe side.",
             "Arrivals beyond the hand-over: Kingery–Bulmash's scaled to the near run's, 2–4% earlier than the full run's.",
             "Walls and roofs beyond the hand-over take the façade load surrogate's standing: run the scene for the structure.",
         ]

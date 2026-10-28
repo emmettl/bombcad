@@ -197,11 +197,14 @@ public enum ProtectionModel {
         public var description: String { kind == .off ? "none" : "\(kind.rawValue):\(value)" }
     }
 
-    /// The façade terms the planner takes unless others are named: the quick estimate's
-    /// (`TermSet.adopted`), with `Margin.adopted`. The clear-top terms with their load scatter since
-    /// the user's adoption of 25 October 2026 (emmettl/bombcad-work#102), and from that evening the
-    /// deep-city terms, the clear-top ones with far terms (#105): on #101's judge their plans are the
-    /// clear-top terms' byte for byte, since the sparse district reaches neither far term. The
+    /// The façade terms the planner takes unless others are named, with `Margin.adopted`: the
+    /// deep-city terms, each wall facing as the cells. The clear-top terms with their load scatter
+    /// since the user's adoption of 25 October 2026 (emmettl/bombcad-work#102), and from that
+    /// evening the deep-city terms, the clear-top ones with far terms (#105): on #101's judge their
+    /// plans are the clear-top terms' byte for byte, since the sparse district reaches neither far
+    /// term. The quick estimate took the outline's facing on 28 October (`TermSet.adopted`,
+    /// `deepCityOutline`; #109) and the planner stayed, as the user decided: on #101's cases those
+    /// terms meet 15 of 16 plans, one side at 10 t (seed 1) reading 15%, not yet understood. The
     /// clear-top terms (`TermSet.clearTop`) and those of 23 October (`TermSet.fitted`) stay by name;
     /// the latter with `Margin.off` are the planner before 25 October.
     public static let adoptedTerms = FacadeLoadSurrogate.TermSet.deepCity

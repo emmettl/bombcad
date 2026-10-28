@@ -509,9 +509,10 @@ are shipped):
   place), drawn over the surrogate's scatter and each building's glass strength
   ([glass by chance](glass-probability.md)), the threats weighted. `--samples` takes the threat
   from `infer-charge --samples` instead, places about the scene's charge.
-- **The façade terms** (`--terms deep-city|clear-top|fitted`): the quick estimate's, the deep-city
-  terms and their scatter, by default since 25 October 2026; the clear-top terms (the default
-  earlier that day) and the terms of 23 October by name
+- **The façade terms** (`--terms deep-city|deep-city-outline|clear-top|fitted`): the deep-city
+  terms and their scatter, by default since 25 October 2026 (kept when the quick estimate took
+  `deep-city-outline` on 28 October, [kept](#kept-on-the-deep-city-terms-28-october-2026)); the
+  clear-top terms (the default earlier that day) and the terms of 23 October by name
   ([adopted](#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026),
   [on the deep-city terms](#on-the-deep-city-terms-25-october-2026)).
 - **A margin for the scatter between sides** (`--margin`, or the inputs' `margin`; `flag:2.5` by
@@ -1051,6 +1052,24 @@ enough to reach them, with its runs.
 `--terms` or `--margin` is `--terms deep-city --margin flag:2.5`, and the app's Protective Design
 sheet takes the same. The clear-top terms stay by name (`--terms clear-top`), and "Planner of 23
 October (earlier plans)" still gives the planner before 25 October.
+
+## Kept on the deep-city terms (28 October 2026)
+
+That day the user adopted the deep-city terms refitted with each wall facing as its building's map
+outline (`deep-city-outline`, emmettl/bombcad-work#109) for the quick estimate, the glass chances,
+the far field and the close calls, and kept the planner on the deep-city terms, each wall facing as
+the cells. On #101's cases (the sparse district at 0.5–50 t, two seeds, flag 2.5, each plan
+confirmed on its runs) the outline's terms meet the 10% target in 15 of 16 plans, against 16: at
+10 t, seed 1, one side reads 15%. The sparse district's blocks are square to the cells, so the
+miss is the refit's terms, not the facing, and it is not yet understood
+([the surrogate](surrogate-first-look.md#façade-incidence-from-map-outlines-28-october-2026)).
+
+So `ProtectionModel.adoptedTerms` is `TermSet.deepCity` by name, no longer the quick estimate's
+(`TermSet.adopted`). `scenebench protect` without `--terms` is `--terms deep-city --margin
+flag:2.5`, and the app's Protective Design sheet takes the same; `--terms deep-city-outline` plans
+on the outline's terms. A plan and the quick estimate beside it now read a side's glass on
+slightly different terms: within 0.01–0.02 in a band on Beirut as it lies, more on fronts at a
+slant to the cells.
 
 ## Open questions
 

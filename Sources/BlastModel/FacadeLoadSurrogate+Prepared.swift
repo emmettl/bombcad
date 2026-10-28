@@ -35,8 +35,10 @@ extension FacadeLoadSurrogate {
         public static let previewStrengthSteps = 5.0
 
         /// With `incidence`, the façades face as it gives them: the terms' own
-        /// (`Coefficients.incidence`), for the looks to take those terms.
-        public init(scene: Scenario, cellSize: Float, incidence: Incidence = .cells) {
+        /// (`Coefficients.incidence`), for the looks to take those terms; by default the adopted
+        /// terms', each wall as its building's map outline since 28 October 2026
+        /// (emmettl/bombcad-work#109), the cells' faces for a building without one.
+        public init(scene: Scenario, cellSize: Float, incidence: Incidence = Coefficients.adopted.incidence) {
             let start = ContinuousClock.now
             let objects = scene.envelopeObjects
             let raster = Raster(
@@ -118,13 +120,17 @@ extension FacadeLoadSurrogate {
             let glass = ValidationTables.figure("dragPreviewGlass")
             let walls = ValidationTables.figure("dragPreviewWalls")
             let damage = ValidationTables.figure("dragPreviewDamage")
-            return String(
-                format:
-                    "A preview of the estimate, not the estimate: against the full estimate on Beirut at 0.5 kt, its glass "
-                    + "chances came within 0.1 on %.0f–%.0f%% of sides, its walls' and roofs' on %.1f–%.1f%% of buildings, "
-                    + "and the damage's colour was the same for %.1f–%.1f%% of buildings.",
-                glass.low * 100, glass.high * 100, walls.low * 100, walls.high * 100, damage.low * 100,
-                damage.high * 100)
+            // A range as percentages, one figure where its ends agree.
+            func percent(_ f: ValidationTables.Figure, _ digits: Int) -> String {
+                let low = String(format: "%.\(digits)f", f.low * 100)
+                let high = String(format: "%.\(digits)f", f.high * 100)
+                return low == high ? "\(low)%" : "\(low)–\(high)%"
+            }
+            return
+                "A preview of the estimate, not the estimate: against the full estimate on Beirut at 0.5 kt, its glass "
+                + "chances came within 0.1 on \(percent(glass, 0)) of sides, its walls' and roofs' on "
+                + "\(percent(walls, 1)) of buildings, and the damage's colour was the same for \(percent(damage, 1)) of "
+                + "buildings."
         }()
 
         /// A preview for dragging the charge: of each building's components of one kind on one side

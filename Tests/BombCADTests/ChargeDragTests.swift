@@ -52,11 +52,12 @@ struct ChargeDragTests {
         #expect(!model.blastHazardSummary.contains { $0.contains("Injury preview") })
     }
 
-    @Test("The estimate takes the deep-city terms unless the terms of 23 or 25 October are chosen")
+    @Test("The estimate takes the outline's terms unless the terms of 23, 25 or 25–28 October are chosen")
     func termToggles() throws {
-        // emmettl/bombcad-work#105: the deep-city terms are the default, the glass front an option on
-        // them; the clear-top terms of 25 October and those of 23 October stay as toggles, the
-        // latter taking precedence.
+        // emmettl/bombcad-work#109: the deep-city-outline terms are the default, the glass front an
+        // option on them; the deep-city terms facing as the cells (25–28 October), the clear-top
+        // terms of 25 October and those of 23 October stay as toggles, the earlier taking
+        // precedence.
         let temporary = try TemporaryDefaults()
         defer { temporary.remove() }
         let model = SimulationModel(
@@ -67,10 +68,19 @@ struct ChargeDragTests {
         model.learnedDefaults = temporary.defaults
         model.quickEstimateFirstFitTerms = false
         model.quickEstimateClearTopTerms = false
+        model.quickEstimateCellsFacingTerms = false
         model.quickEstimateGlassFront = false
-        #expect(model.surrogateTerms == .adopted && model.surrogateTerms == .deepCity)
+        #expect(model.surrogateTerms == .adopted && model.surrogateTerms == .deepCityOutline)
         model.quickEstimateGlassFront = true
+        #expect(model.surrogateTerms == .deepCityOutlineFront)
+        model.quickEstimateCellsFacingTerms = true
         #expect(model.surrogateTerms == .deepCityFront)
+        #expect(temporary.defaults.bool(forKey: SimulationModel.cellsFacingTermsKey))
+        model.quickEstimateGlassFront = false
+        #expect(model.surrogateTerms == .deepCity)
+        // A choice of the outline's candidate before its adoption does not turn the cells' on.
+        #expect(SimulationModel.cellsFacingTermsKey != "quickEstimate.outlineFacing")
+        model.quickEstimateGlassFront = true
         model.quickEstimateClearTopTerms = true
         #expect(model.surrogateTerms == .clearTopFront)
         model.quickEstimateGlassFront = false

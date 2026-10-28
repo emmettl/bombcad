@@ -145,7 +145,8 @@ struct HybridGapTests {
     /// shortfall at 0.2 kt from 1.5 to 2.5 km, each read off that page's table against the full
     /// runs with their top clear (emmettl/bombcad-work#97) on the defaults adopted on 25 October 2026
     /// (the clear-top terms and the match carried flat, emmettl/bombcad-work#99, with the far terms
-    /// for façades deep in a city that evening, #105). Nothing else reads the standing.
+    /// for façades deep in a city that evening, #105), each wall facing as its map outline since 28
+    /// October (#109). Nothing else reads the standing.
     @Test("The standing reports its four parts, its figures those of the page it cites")
     func standingMatchesPage() throws {
         let standing = HybridFarField.standing
@@ -159,11 +160,12 @@ struct HybridGapTests {
         let page = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appending(path: "docs/hybrid-far-field.md")
         let text = try String(contentsOf: page, encoding: .utf8)
-        // The table against the clear-top references on the adopted defaults, under its own heading.
+        // The table against the clear-top references on the adopted defaults, under its own heading
+        // (the outline's facing since 28 October 2026, emmettl/bombcad-work#109).
         let heading = try #require(
             text.range(
                 of:
-                    "### Adopted: the far terms (25 October 2026)"
+                    "### Adopted: facing as the outlines (28 October 2026)"
             ))
         let section = text[heading.upperBound...].prefix { _ in true }
         let refitted = String(section[..<(section.range(of: "\n## ")?.lowerBound ?? section.endIndex)])

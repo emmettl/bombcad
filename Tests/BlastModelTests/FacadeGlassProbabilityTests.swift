@@ -252,7 +252,7 @@ struct FacadeGlassProbabilityTests {
     @Test("The glass front is a named candidate: the defaults, the walls and the loads stay as they were")
     func frontCandidate() throws {
         typealias S = FacadeLoadSurrogate
-        #expect(S.TermSet.adopted == .deepCity && S.Coefficients.adopted.glassFront == nil)
+        #expect(S.TermSet.adopted == .deepCityOutline && S.Coefficients.adopted.glassFront == nil)
         #expect(S.Coefficients.fitted.glassFront == nil)
         let candidate = S.TermSet.clearTopFront
         #expect(candidate.loadScatter == S.TermSet.clearTop.loadScatter)
@@ -264,7 +264,7 @@ struct FacadeGlassProbabilityTests {
         let f = FacadeLoadSurrogateTests.facing(1_500)
         #expect(
             S.predict(f, mass: 500_000, cellSize: 4, coefficients: candidate.coefficients)
-                == S.predict(f, mass: 500_000, cellSize: 4))
+                == S.predict(f, mass: 500_000, cellSize: 4, coefficients: .clearTop))
         #expect(try SurrogateBench.termSet(["--terms", "clear-top-front"]) == .clearTopFront)
         // Saved terms without a front read as before, and a front survives JSON.
         let data = try JSONEncoder().encode(S.Coefficients.clearTop)
@@ -280,7 +280,8 @@ struct FacadeGlassProbabilityTests {
             abs(front.share(atZ: 30, mass: 2_000 * 10.0.squareRoot()) - 0.5 * front.share(atZ: 30)) < 1e-12)
         // So a 100 kg charge's glass chances are as without it.
         let scene = try Self.row()
-        let (plain, _) = S.glassProbabilities(scene: scene, cellSize: 2, uncertainty: .none)
+        let (plain, _) = S.glassProbabilities(
+            scene: scene, cellSize: 2, uncertainty: .none, coefficients: .clearTop)
         let (small, _) = S.glassProbabilities(
             scene: scene, cellSize: 2, uncertainty: .none, coefficients: candidate.coefficients)
         #expect(plain == small)

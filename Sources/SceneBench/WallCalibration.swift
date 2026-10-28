@@ -2,7 +2,7 @@ import BlastCore
 import Foundation
 
 /// `scenebench wall-calibrate <district-scene's inputs> [--radius 1320] --runs mass:folder,…
-/// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--coefficients fit.json | --terms deep-city|clear-top|fitted]
+/// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--coefficients fit.json | --terms deep-city-outline|deep-city|clear-top|fitted]
 /// [--learned weights.bcfw [--learned-ground ground.bcfw] [--own-scatter [--scatter-tables tables.json]]] [--out calibration.json]`: how well the walls' and roofs' chances
 /// (`FacadeLoadSurrogate.structureProbabilities`, Horizons 4) are calibrated against the district's
 /// own runs at several yields (`district-compare --save-loads`, with walls and roofs saved). Each

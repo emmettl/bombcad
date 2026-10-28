@@ -254,10 +254,10 @@ extension FacadeLoadSurrogate {
 
     /// The façade sides of `scene`'s map buildings (those whose construction has a glazing mix),
     /// their strips with a face on the air, on cells `cellSize` m across, facing as `incidence`
-    /// gives them (the terms' own, `Coefficients.incidence`).
-    public static func glassSides(scene: Scenario, cellSize: Float, incidence: Incidence = .cells)
-        -> [GlassSideStrips]
-    {
+    /// gives them (the terms' own, `Coefficients.incidence`; by default the adopted terms').
+    public static func glassSides(
+        scene: Scenario, cellSize: Float, incidence: Incidence = Coefficients.adopted.incidence
+    ) -> [GlassSideStrips] {
         let objects = scene.envelopeObjects
         let raster = Raster(
             objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize,

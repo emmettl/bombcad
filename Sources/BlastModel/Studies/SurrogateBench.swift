@@ -8,7 +8,7 @@ import simd
 /// features and its recorded peak and impulse, for fitting (`Scripts/fit-surrogate.py`).
 ///
 /// `scenebench surrogate-judge <inputs> [--radius 2500] --loads folder [--inside 0.85]
-/// [--coefficients fit.json | --terms deep-city|clear-top|fitted|…] [--first-look] [--run-wall s] [--sides-out sides.csv] [--by-angle] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
+/// [--coefficients fit.json | --terms deep-city-outline|deep-city|clear-top|fitted|…] [--first-look] [--run-wall s] [--sides-out sides.csv] [--by-angle] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
 /// through the same SDOF, side by side; and the surrogate's whole first look, timed. `--by-angle`
 /// adds the groups and bands on the diagonal lines and balanced by angle to the cells
 /// (`CellAngle`).
@@ -26,10 +26,11 @@ package enum SurrogateBench {
         args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
     }
 
-    /// `--terms deep-city|clear-top|fitted|…`: the named set of façade terms and load scatter to
-    /// judge (`FacadeLoadSurrogate.TermSet`), `otherwise` without it: the adopted ones (deep-city
-    /// since the evening of 25 October 2026, clear-top that morning) unless a consumer still pinned
-    /// to others names its own.
+    /// `--terms deep-city-outline|deep-city|clear-top|fitted|…`: the named set of façade terms and
+    /// load scatter to judge (`FacadeLoadSurrogate.TermSet`), `otherwise` without it: the adopted
+    /// ones (deep-city-outline since 28 October 2026, deep-city from the evening of 25 October,
+    /// clear-top that morning) unless a consumer still pinned to others names its own (the planner,
+    /// inference).
     package static func termSet(
         _ args: [String], otherwise: FacadeLoadSurrogate.TermSet = .adopted
     ) throws -> FacadeLoadSurrogate.TermSet {

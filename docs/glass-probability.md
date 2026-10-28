@@ -453,6 +453,28 @@ balanced by angle (`glass-calibrate --by-angle`;
   not adopted and the diagonal figure is retired from the standing
   ([incidence from outlines](surrogate-first-look.md#façade-incidence-from-map-outlines-28-october-2026)).
 
+**Adopted: facing as the outlines, the front still off (28 October 2026).** The user adopted
+`TermSet.deepCityOutline` as the default that day: the deep-city terms refitted with each wall
+facing as its building's map outline, with their scatter (`Uncertainty.outlineLeaveOneOut`, within
+0.01 of the clear-top scatter beyond Z 7; emmettl/bombcad-work#109;
+[the surrogate](surrogate-first-look.md#adopted-facing-as-the-outlines-28-october-2026)). The
+front is not adopted: in the box turned 45° it read blown out 0.10–0.15 over. Against the
+clear-top runs, as Beirut lies, every test keeps its verdict:
+- blown out scores Brier 0.025 against 0.104 (skill 0.76), each tenth within 0.07 of the share
+  seen, and passes, as on the deep-city terms (0.025, within 0.08);
+- some broken (0.020, the worst tenth 0.26 under) and thrown past 3b (0.039, 0.28 under) still
+  read low and fail, against 0.019 and 0.038 facing as the cells;
+- GEER's openings score Brier 0.142 against 0.141 (climatology 0.170);
+- glass alone infers 0.056 kt with the place free and 0.030 kt held, against 0.055 and 0.030 (the
+  inference itself stays on the terms of 23 October).
+
+In the box turned 45° the glass comes nearer both runs: blown out by side, by class and band at
+1–2 km, the mean error 0.036 on the plain run and 0.041 on the turned one, against 0.042 and 0.064
+facing as the cells. A district laid out before 28 October has no outlines, so its walls face as
+the cells' faces under the new terms. "Glass pulses with a front" in the app, or
+`deep-city-outline-front`, gives the fronted set; the deep-city terms stay by name (`deep-city`,
+`deep-city-front`, Envelope Damage ▸ "Façades facing as the cells (earlier estimates)").
+
 ## Walls and roofs
 
 Since 20 October 2026 the quick estimate also gives each building three chances:

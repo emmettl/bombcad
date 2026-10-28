@@ -21,7 +21,9 @@ struct SurrogateFarTermsTests {
 
     @Test("The default has the far terms; the earlier sets have none, and save as they did")
     func defaultsUntouched() throws {
-        #expect(S.TermSet.adopted == .deepCity && S.Coefficients.adopted.far == .deepCity)
+        // The outline's refit of them since 28 October 2026 (emmettl/bombcad-work#109).
+        #expect(S.TermSet.adopted == .deepCityOutline && S.Coefficients.adopted.far == .deepCityOutline)
+        #expect(S.Coefficients.deepCity.far == .deepCity)
         #expect(S.Coefficients.adopted.glassFront == nil)
         #expect(S.Coefficients.clearTop.far == nil && S.Coefficients.fitted.far == nil)
         #expect(S.Coefficients.clearTopFront.far == nil && S.Coefficients.roofs.far == nil)

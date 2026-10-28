@@ -83,7 +83,7 @@ swift run -c release blastbench perimeter --study wall
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.58–1.02 of DoD 4145.26-M's test-derived distances for two items, in flight; TP-12's own procedure 1.05–1.21 times it on the same fragments; Mott's scaling 1.00–1.36 times the masses of Sternberg's cylinders (TP-12 Table 1) |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance up to two-fifths short (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8). [Prairie Flat](ground-shock.md#against-prairie-flat) (Murrell 1972), 500 t of TNT, 84 to 1,150 ft out and 1.5 to 17 ft deep on two measured layers: inside the outrunning limit every model within a factor of two at under two-thirds of 34 vertical records (the column 13–14, the half-space at best 21), a fifth to a third of the measured 1.5 ft down and twice it at 17 ft, the column's arrivals within 10% at 18–20 of 24; past it the elastic half-space within three times at all 16 records (geometric mean 1.15); the outrunning limit found by arrival where Murrell found it. On the soil measured at Watching Hill (Jackson 1972) the peaks pass, 26 of 34 within two times, but the stress arrives late, 6–9 of 24 arrivals within 10% | Xia: far too high in the vertical, the safe side; the horizontal not modelled, the unsafe side. Prairie Flat: too low near the surface, the unsafe side; the half-space's motion ahead of the blast within two times. Illustrative |
 | A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.65–0.83 of Kingery–Bulmash at 4 m (0.68–0.79 at 0.5 kt); one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; glass converged by 4 m (3 m within 0.03), a mix of panes by building giving the tail beyond 2 km, GEER's W3 beyond 1.5 km but every façade blown out inside 1.25 km; structure under-damaged: 0.5 m stone cracks but rarely falls where GEER found partial collapse, 0.2 m concrete hardly damaged beyond 750 m where GEER's RC was D1–D3 to 2 km, and not converged at 3 m | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure low, the unsafe side (one construction for all, not converged) |
-| Estimates beside a run | [Against BombCAD's own runs](#estimates-beside-a-run): the quick estimate's glass by building side 68–90% as Beirut's full runs with their top clear, its walls and roofs 29–64%; the hybrid far field's glass within 0.05 to 1.5 km in a twelfth to a sixth of the time, low beyond; the charge from arrivals 0.50–0.54 kt at Beirut, 0.97–1.01 of BombCAD's own charges with its ratios | Glass and yields approximations against the model's own runs, not measurement, the glass to 1.5 km (low beyond: the unsafe side); walls and roofs from the estimate illustrative |
+| Estimates beside a run | [Against BombCAD's own runs](#estimates-beside-a-run): the quick estimate's glass by building side 68–89% as Beirut's full runs with their top clear, its walls and roofs 29–64%; the hybrid far field's glass within 0.05 to 1.5 km in a twelfth to a sixth of the time, low beyond; the charge from arrivals 0.50–0.54 kt at Beirut, 0.97–1.01 of BombCAD's own charges with its ratios | Glass and yields approximations against the model's own runs, not measurement, the glass to 1.5 km (low beyond: the unsafe side); walls and roofs from the estimate illustrative |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 2% on a wall and 6–7% close in, structural responses 3–15%, residual deflections and failure 21–34% (rerun 18 October on the day's defaults); the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -6342,19 +6342,22 @@ runs, but not these
 ([the refit](surrogate-first-look.md#refitted-on-clear-top-runs-25-october-2026); adopted the same
 day), and given far terms for façades deep in a city, fitted on runs to 3 km across made-up
 districts ([the far terms](surrogate-first-look.md#adopted-the-deep-city-terms-25-october-2026);
-adopted that evening). Since 25 October 2026 the glass and the far loads are judged against runs with their top
+adopted that evening). Since 28 October 2026 each wall faces as its building's map outline, the
+terms refitted so ([facing as the outlines](surrogate-first-look.md#adopted-facing-as-the-outlines-28-october-2026));
+a district laid out before has no outlines, and its walls face as the cells' faces. Since 25 October 2026 the glass and the far loads are judged against runs with their top
 clear (8 m air refined to 4 m, a 640 m top): the 4 m runs' 320 m top drained the loads beyond about
 1.25 km
 ([the hybrid far field](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)):
 
-- **Glass**, by building side (none broken, some, blown out): it agrees with the run's for 68–90%
+- **Glass**, by building side (none broken, some, blown out): it agrees with the run's for 68–89%
   of sides deep in the district (88–98% in sight of the charge and behind one to three buildings;
-  66–86% without the far terms, 54–75% and 89–98% on the terms of 23 October), never two states
-  apart; the shares with some glass broken by distance band come within 0.1 of the run's to
-  1.75 km at 0.2 kt, 2.5 km at 0.5 kt and 3 km at 1.1 kt, and fall short beyond at 0.2 kt (0.69
-  against 0.91 at 1.75–2 km). Its blown-out share comes within 0.07 of the run's to 2.5 km at
-  0.5 kt and falls short at 1.1 kt beyond 2 km, by up to 0.30 in a band (0.27 against 0.57 at
-  2–2.5 km; 0.24 without the far terms, 0.49 on the terms of 23 October). A note here gave the
+  68–90% facing as the cells, 66–86% without the far terms, 54–75% and 89–98% on the terms of 23
+  October), never two states apart; the shares with some glass broken by distance band come
+  within 0.1 of the run's to 1.75 km at 0.2 kt, 2.5 km at 0.5 kt and 3 km at 1.1 kt, and fall
+  short beyond at 0.2 kt (0.68 against 0.91 at 1.75–2 km). Its blown-out share comes within 0.08
+  of the run's to 2.5 km at 0.5 kt and falls short at 1.1 kt beyond 2 km, by up to 0.31 in a band
+  (0.26 against 0.57 at 2–2.5 km; 0.27 facing as the cells, 0.24 without the far terms, 0.49 on
+  the terms of 23 October). A note here gave the
   figure on the lines diagonal to the solver's cells alone (emmettl/bombcad-work#107), as the
   ones the grid takes least off. It was retired on 28 October 2026: with the city turned 45° to
   the cells, the runs' loads go with the façades, not the line's angle (emmettl/bombcad-work#108),
@@ -6371,9 +6374,10 @@ clear (8 m air refined to 4 m, a 640 m top): the 4 m runs' 320 m top drained the
   components a run damages are its loads' upper tail, which a single estimate undercounts. Not to
   be relied on for a building's level.
 - **Loads** at 0.5 kt against the clear-top runs, the surrogate's over the run's on the median:
-  peaks 0.97–1.07 and impulses 0.90–1.04 inside Z = 7–20 m/kg^(1/3), each strip scattered by about
-  ×1.2–1.3 (the logarithm's standard deviation 0.09–0.24); beyond it, 0.90–1.05 times the run's on the median,
-  scattered as closer in (0.82–1.03 without the far terms, which raise only the peaks there). On the
+  peaks 0.96–1.06 and impulses 0.90–1.03 inside Z = 7–20 m/kg^(1/3), each strip scattered by about
+  ×1.2–1.3 (the logarithm's standard deviation 0.09–0.24); beyond it, 0.89–1.04 times the run's on the median,
+  scattered as closer in (0.97–1.07, 0.90–1.04 and 0.90–1.05 facing as the cells; 0.82–1.03 beyond
+  without the far terms, which raise only the peaks there). On the
   terms of 23 October they read 0.95–1.00 inside Z 20 and 0.72–0.92 beyond, low (against the
   drained 4 m runs 1.03–1.65). The terms are fitted to runs on air
   refined to 2 m, which read the peaks 10–16% above 4 m runs within Z 7.
@@ -6401,17 +6405,20 @@ broken and of being blown out, drawn a hundred times over the yield, each buildi
 strength and the surrogate's scatter (its spread taken from the made-up districts, not Beirut):
 
 - **Against the runs**, drawn over their three yields, on the terms refitted on clear-top runs with
-  far terms for façades deep in a city, adopted on 25 October 2026
+  far terms for façades deep in a city, adopted on 25 October 2026, each wall facing as its
+  building's map outline since 28 October
   ([the refit](surrogate-first-look.md#refitted-on-clear-top-runs-25-october-2026),
-  [the far terms](surrogate-first-look.md#adopted-the-deep-city-terms-25-october-2026)), against the
+  [the far terms](surrogate-first-look.md#adopted-the-deep-city-terms-25-october-2026),
+  [facing as the outlines](surrogate-first-look.md#adopted-facing-as-the-outlines-28-october-2026)), against the
   runs with their top clear (8 m air refined to 4 m, a 640 m top,
   [the hybrid far field](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)).
   Blown out, Brier score 0.025, against 0.104 giving every side the mean chance (skill 0.76); each
-  tenth of chance within 0.1 of the share of runs (up to 0.08 under the share of runs), which passes the
+  tenth of chance within 0.1 of the share of runs (up to 0.07 under the share of runs), which passes the
   protective-design report's test, each tenth of chance holding 200 sides or more within 0.1 of
-  the share seen. Glass thrown worse than GSA's condition 3b: Brier 0.038, against 0.025 giving
-  every side the mean, the middle tenths 0.2–0.27 under; some glass broken likewise (Brier 0.019):
-  both read low, the unsafe side, and fail the test. Without the far terms they scored 0.027
+  the share seen. Glass thrown worse than GSA's condition 3b: Brier 0.039, against 0.025 giving
+  every side the mean, the middle tenths 0.2–0.28 under; some glass broken likewise (Brier 0.020):
+  both read low, the unsafe side, and fail the test. Facing as the cells they scored 0.025 (blown
+  out, up to 0.08 under), 0.038 and 0.019. Without the far terms they scored 0.027
   (blown out, up to 0.09 under), 0.047 and 0.028. On the terms of 23 October all three failed it
   (blown out Brier 0.038, tenths up to 0.16 under; thrown past 3b 0.096; some broken 0.053).
   Against the 4 m runs, whose 320 m top drained the loads beyond 1.25 km, all three had passed it
@@ -6468,6 +6475,11 @@ they were first judged on read the walls' peaks 13–19% low at
   learned field model's peaks, against 0.60, and the test passes; with field model 2's, 0.653,
   and it passes (0.654 and 0.656 on the terms of 23 October;
   [learned models](learned-models.md#on-the-clear-top-terms-25-october-2026)).
+- **On the outline's facing** (adopted on 28 October 2026, emmettl/bombcad-work#109), these
+  figures were not judged again with this set-up. On #104's judge of the same ten boxes (×1.15,
+  tenths of 50 buildings or more) concrete moderate or worse scores Brier 0.0069 against 0.0075
+  facing as the cells (skill 0.726 against 0.703), and fails on the same tenth as before
+  ([facing as the outlines](surrogate-first-look.md#façade-incidence-from-map-outlines-28-october-2026)).
 - **Roofs:** their middle chances are low by 0.11–0.18 (the unsafe side), even with a load factor
   of ×1.3 fitted to the runs. The test fails.
 - **On the mapped start:** the references were rerun on 22 October 2026 after a charge on terrain
@@ -6499,12 +6511,15 @@ against the same full runs:
 - **Beyond it**, against full runs with their top clear (25 October 2026,
   [judged again](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)),
   on the façade terms refitted on clear-top runs with far terms for façades deep in a city and the
-  match carried flat, all adopted on 25 October 2026 ([adopted](hybrid-far-field.md#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026),
-  [the far terms](hybrid-far-field.md#adopted-the-far-terms-25-october-2026)):
-  façade peaks 0.87–1.07 of the full run's to 2.5 km on the median, the lower the further out,
+  match carried flat, all adopted on 25 October 2026, each wall facing as its building's map
+  outline since 28 October ([adopted](hybrid-far-field.md#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026),
+  [the far terms](hybrid-far-field.md#adopted-the-far-terms-25-october-2026),
+  [facing as the outlines](hybrid-far-field.md#adopted-facing-as-the-outlines-28-october-2026)):
+  façade peaks 0.87–1.09 of the full run's to 2.5 km on the median, the lower the further out,
   impulses 1.05–1.14 times; the share of sides with some glass broken within 0.05 of the full
-  run's to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt, and 0.12–0.46 under it at
-  1.5–2.5 km at 0.2 kt; blown-out shares up to 0.36 under in a band. Without the far terms the
+  run's to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt, and 0.11–0.45 under it at
+  1.5–2.5 km at 0.2 kt; blown-out shares up to 0.35 under in a band. Facing as the cells the peaks
+  read 0.87–1.07, the glass 0.12–0.46 under and blown out up to 0.36 under. Without the far terms the
   peaks read 0.82–1.05, the glass 0.13–0.50 under and blown out up to 0.39 under. On the terms of 23 October
   with the trend held, the peaks read 0.67–0.99 and the impulses 0.71–1.03, the glass 0.31–0.65
   under and blown out up to 0.52 under; against the 4 m runs, whose top drained the loads beyond

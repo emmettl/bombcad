@@ -8,7 +8,7 @@ import simd
 /// `scenebench hybrid-judge <district-scene's inputs> --radius 2500 --loads full-loads
 /// --near-loads near-loads --near-radius 1320 [--handover 1000] [--seed-from 800] [--trend-from 500] [--inside 0.85]
 /// [--full-report full/comparison.json] [--near-report near/comparison.json] [--coefficients fit.json |
-/// --terms deep-city|clear-top|fitted] [--surrogate-dx m] [--by-angle] [--out judged.json]`. `--by-angle` adds
+/// --terms deep-city-outline|deep-city|clear-top|fitted] [--surrogate-dx m] [--by-angle] [--out judged.json]`. `--by-angle` adds
 /// the bands on the diagonal lines and balanced by angle to the cells (`CellAngle`).
 ///
 /// The near run is the same district on a box reaching the hand-over and its open faces' clearance

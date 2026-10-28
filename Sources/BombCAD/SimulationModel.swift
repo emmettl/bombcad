@@ -715,9 +715,9 @@ final class SimulationModel {
     @ObservationIgnored var learnedDefaults = UserDefaults.standard
     /// Whether the quick estimate and the far field take the façade terms and load scatter of 23
     /// October 2026, fitted on runs whose top drained the far loads (`FacadeLoadSurrogate.TermSet
-    /// .fitted`), in place of the terms adopted since (emmettl/bombcad-work#99, #105): to reproduce
-    /// an earlier estimate. Off unless chosen, and remembered; it takes precedence over
-    /// `quickEstimateClearTopTerms`.
+    /// .fitted`), in place of the terms adopted since (emmettl/bombcad-work#99, #105, #109): to
+    /// reproduce an earlier estimate. Off unless chosen, and remembered; it takes precedence over
+    /// `quickEstimateClearTopTerms` and `quickEstimateCellsFacingTerms`.
     var quickEstimateFirstFitTerms = UserDefaults.standard.bool(forKey: SimulationModel.firstFitTermsKey) {
         didSet {
             learnedDefaults.set(quickEstimateFirstFitTerms, forKey: Self.firstFitTermsKey)
@@ -727,9 +727,9 @@ final class SimulationModel {
     }
     static let firstFitTermsKey = "quickEstimate.firstFitTerms"
     /// Whether the glass chances' pulses arrive with a front (`FacadeLoadSurrogate.TermSet
-    /// .deepCityFront`, or `.clearTopFront` on the terms of 25 October; emmettl/bombcad-work#103,
-    /// #104): a candidate, off unless chosen, and remembered. The terms of 23 October, where
-    /// chosen, take precedence.
+    /// .deepCityOutlineFront`; `.deepCityFront` or `.clearTopFront` on the earlier terms;
+    /// emmettl/bombcad-work#103, #104, #109): a candidate, off unless chosen, and remembered. The
+    /// terms of 23 October, where chosen, take precedence.
     var quickEstimateGlassFront = UserDefaults.standard.bool(forKey: SimulationModel.glassFrontKey) {
         didSet {
             learnedDefaults.set(quickEstimateGlassFront, forKey: Self.glassFrontKey)
@@ -738,25 +738,33 @@ final class SimulationModel {
         }
     }
     static let glassFrontKey = "quickEstimate.glassFront"
-    /// Whether the façades face as their buildings' map outlines, on the deep-city terms refitted so
-    /// (`FacadeLoadSurrogate.TermSet.deepCityOutline`, with the glass front `.deepCityOutlineFront`;
-    /// emmettl/bombcad-work#109), in place of the cells' staircase faces: a candidate, off unless
-    /// chosen, and remembered. Districts laid out before 28 October 2026 carry no outlines, and keep
-    /// the cells' facing under it. The earlier terms, where chosen, take precedence.
-    var quickEstimateOutlineFacing = UserDefaults.standard.bool(forKey: SimulationModel.outlineFacingKey) {
+    /// Whether the quick estimate and the far field take the deep-city façade terms of 25 to 28
+    /// October 2026, each wall facing as the cells' staircase of faces (`FacadeLoadSurrogate.TermSet
+    /// .deepCity`, with the glass front `.deepCityFront`), in place of the terms refitted with each
+    /// wall facing as its building's map outline, adopted on 28 October (`.deepCityOutline`;
+    /// emmettl/bombcad-work#109): to reproduce an earlier estimate. Off unless chosen, and remembered
+    /// (the candidate toggle of #109 that chose the outline's facing is retired: it is the default).
+    /// Districts laid out before 28 October carry no outlines and keep the cells' facing either way.
+    /// The terms of 23 and 25 October, where chosen, take precedence.
+    var quickEstimateCellsFacingTerms = UserDefaults.standard.bool(
+        forKey: SimulationModel.cellsFacingTermsKey)
+    {
         didSet {
-            learnedDefaults.set(quickEstimateOutlineFacing, forKey: Self.outlineFacingKey)
+            learnedDefaults.set(quickEstimateCellsFacingTerms, forKey: Self.cellsFacingTermsKey)
             if envelopeDamageIsEstimate, !envelopeDamage.isEmpty { requestLook(preview: false) }
             if !farFieldDamage.isEmpty { judgeFarField() }
         }
     }
-    static let outlineFacingKey = "quickEstimate.outlineFacing"
+    /// A key of its own: "quickEstimate.outlineFacing" chose the outline's facing before #109's
+    /// adoption, the opposite of this.
+    static let cellsFacingTermsKey = "quickEstimate.cellsFacingTermsOf28October"
     /// Whether the quick estimate and the far field take the clear-top façade terms of the morning of
     /// 25 October 2026, without the far terms for façades deep in a city (`FacadeLoadSurrogate
     /// .TermSet.clearTop`, with the glass front `.clearTopFront`), in place of the deep-city terms
-    /// adopted that evening (emmettl/bombcad-work#105): to reproduce an earlier estimate. Off unless
-    /// chosen, and remembered (the candidate toggle of #104 that chose the deep-city terms is
-    /// retired: they are the default). The terms of 23 October, where chosen, take precedence.
+    /// adopted that evening (emmettl/bombcad-work#105) and the outline's terms since (#109): to
+    /// reproduce an earlier estimate. Off unless chosen, and remembered (the candidate toggle of #104
+    /// that chose the deep-city terms is retired). The terms of 23 October, where chosen, take
+    /// precedence.
     var quickEstimateClearTopTerms = UserDefaults.standard.bool(forKey: SimulationModel.clearTopTermsKey) {
         didSet {
             learnedDefaults.set(quickEstimateClearTopTerms, forKey: Self.clearTopTermsKey)
@@ -770,10 +778,8 @@ final class SimulationModel {
     var surrogateTerms: FacadeLoadSurrogate.TermSet {
         if quickEstimateFirstFitTerms { return .fitted }
         if quickEstimateClearTopTerms { return quickEstimateGlassFront ? .clearTopFront : .clearTop }
-        if quickEstimateOutlineFacing {
-            return quickEstimateGlassFront ? .deepCityOutlineFront : .deepCityOutline
-        }
-        return quickEstimateGlassFront ? .deepCityFront : .adopted
+        if quickEstimateCellsFacingTerms { return quickEstimateGlassFront ? .deepCityFront : .deepCity }
+        return quickEstimateGlassFront ? .deepCityOutlineFront : .adopted
     }
     /// Whether the far field carries the near run's match flat, with no trend with distance: the
     /// far set's own choice (`FarFieldSet.matchFlat`, saved with the project), on for New District's

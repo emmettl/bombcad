@@ -358,6 +358,14 @@ as the user decided. On the deep-city terms glass alone reads 0.055 kt with the 
 0.030 kt held, as on the clear-top terms
 ([the surrogate](surrogate-first-look.md#far-terms-past-2-km-of-city-25-october-2026)).
 
+**Still pinned on the outline's facing (28 October 2026).** That day the quick estimate, the glass
+chances and the far field took the deep-city terms refitted with each wall facing as its
+building's map outline (`deep-city-outline`, emmettl/bombcad-work#109); the planner stayed on the
+deep-city terms. The inference's glass keeps the terms of 23 October, as the user decided. On the
+outline's terms glass alone reads 0.056 kt with the place free and 0.030 kt held
+([the surrogate](surrogate-first-look.md#façade-incidence-from-map-outlines-28-october-2026)).
+`--terms deep-city-outline` names them; a side then faces as its strips' outline normals, by area.
+
 ## Against charges BombCAD ran
 
 ### Synthetic arrivals

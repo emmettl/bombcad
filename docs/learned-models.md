@@ -2611,6 +2611,19 @@ walls-c glass`; 11–16 minutes each in gpu-slot, at most 10 GB):
 The standing's figures (`learnedModel2Glass`, `learnedModel2GlassUpper`, `learnedModel2Walls`) are
 unchanged and still quote the section above.
 
+## On the outline's facing (28 October 2026)
+
+That day the surrogate's default became the deep-city terms refitted with each wall facing as its
+building's map outline (`deep-city-outline`, emmettl/bombcad-work#109;
+[the first look](surrogate-first-look.md#adopted-facing-as-the-outlines-28-october-2026)). The field
+models take the surrogate's peaks where they do not read and its impulses everywhere, so they move
+with it where the facing does: on Beirut's fronts at a slant to the cells, and behind buildings
+close in, where the surrogate's impulse reads 5–7% higher. Their own judges were not run again on
+the new default. The surrogate's alone on the same ten 2 m boxes: near glass by side exact 0.947,
+Heidke 0.78, as facing as the cells; concrete walls moderate or worse Brier 0.0069 against 0.0075.
+The standing's figures (`learnedModel2Glass`, `learnedModel2GlassUpper`, `learnedModel2Walls`)
+still quote the section on the clear-top terms.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up

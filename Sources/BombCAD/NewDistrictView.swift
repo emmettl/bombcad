@@ -235,7 +235,8 @@ final class NewDistrictModel {
         var layout = DistrictLayout(buildings: map.buildings, charge: charge, mass: mass)
         layout.heights = heights?.grid
         layout.clearsChargeBuilding = clearsChargeBuilding
-        // The outlines kept, for the quick estimate's facing from them where chosen (emmettl/bombcad-work#109).
+        // The outlines kept, for the quick estimate's facing from them, the default since 28 October 2026
+        // (emmettl/bombcad-work#109).
         layout.keepsOutlines = true
         if let heights { layout.attributions.append("Building heights: \(heights.name)") }
         if let terrain {

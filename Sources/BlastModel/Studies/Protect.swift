@@ -3,7 +3,7 @@ import simd
 
 /// `scenebench protect (<district-scene's inputs> | --scene layout.json) [--dx 4] --inputs
 /// protect.json [--samples posterior.csv [--sample-count 24]] [--confirm loads-folder] [--out
-/// plans.json] [--terms deep-city|clear-top|fitted] [--margin flag:2.5] [--option-table table.csv]`: the
+/// plans.json] [--terms deep-city-outline|deep-city|clear-top|fitted] [--margin flag:2.5] [--option-table table.csv]`: the
 /// least costly glazing and stand-off changes that keep each building side's chance of glass
 /// thrown worse than its target condition under the chance accepted
 /// (docs/protective-design.md, "In BombCAD"). The inputs file gives the threat, the target and
@@ -87,9 +87,9 @@ package enum Protect {
             }
         }
         let start = ContinuousClock.now
-        // `--terms deep-city|clear-top|fitted`: the façade terms and load scatter; the planner's own
+        // `--terms deep-city-outline|deep-city|clear-top|fitted`: the façade terms and load scatter; the planner's own
         // (`ProtectionModel.adoptedTerms`: clear-top from 25 October 2026, deep-city from that
-        // evening) without it.
+        // evening, kept there when the quick estimate took deep-city-outline on 28 October) without it.
         let terms = try SurrogateBench.termSet(args, otherwise: ProtectionModel.adoptedTerms)
         print("Façade terms: \(terms.rawValue)")
         if let text = value("margin") {

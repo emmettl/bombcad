@@ -1193,15 +1193,16 @@ extension FacadeLoadSurrogate {
         return [
             "An estimate, not a run. Against Beirut's full runs at 0.2, 0.5 and 1.1 kt, their top clear (8 m air refined "
                 + "to 4 m; its terms, refitted on runs with their top clear and given far terms from runs to 3 km across "
-                + "made-up districts, took five of Beirut's near boxes about the same charge, on 2 m air, not these "
-                + "runs):",
+                + "made-up districts, each wall facing as its building's map outline, took five of Beirut's near boxes "
+                + "about the same charge, on 2 m air, not these runs):",
             "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
                 + "of sides deep in the district, hardly ever two states apart; the share of sides broken by distance "
                 + "came within 0.1 of the run's to 1.75 km at 0.2 kt and 2.5 km at 0.5 kt, and at 0.2 kt fell short "
-                + "beyond: low, the unsafe side. Its facing is read off the cells' faces, so a front at a slant to "
-                + "the cells reads as more oblique than it is: with Beirut turned 45°, a façade's peak read 15% lower "
-                + "on a line diagonal to the cells than the same façade's on a line along them; the run's own peaks "
-                + "moved alike on both, within 1%.",
+                + "beyond: low, the unsafe side. Each wall faces as its building's map outline, so the same city gives "
+                + "the same estimate whatever its angle to the cells: with Beirut turned 45°, within 1.5% from line to "
+                + "line, as the run's own peaks moved within 2.5%. A district laid out before 28 October 2026 has no "
+                + "outlines, and its walls face as the cells' staircase of faces, which reads a front at a slant to "
+                + "the cells as more oblique than it is (up to 12% low on a diagonal): make it again with New District.",
             "Walls and roofs: not to be relied on. Of the components either called damaged, \(concrete.percent) of the "
                 + "concrete, \(stone.percent) of the stone and \(roof.percent) of the roofs took the run's level. Run the "
                 + "scene for the structure.",

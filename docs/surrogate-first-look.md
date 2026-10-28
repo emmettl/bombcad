@@ -15,19 +15,26 @@ own.
 Judged against Beirut's full runs at 0.2, 0.5 and 1.1 kt. The terms, refitted on 25 October 2026
 on runs whose top clears the far façades ([below](#refitted-on-clear-top-runs-25-october-2026)),
 with far terms for façades deep in a city fitted the same day on runs to 3 km across made-up
-districts, both adopted that day ([below](#adopted-the-deep-city-terms-25-october-2026)), took
-five of Beirut's near boxes about the same charge on 2 m air, but not these runs:
+districts, both adopted that day ([below](#adopted-the-deep-city-terms-25-october-2026)), and
+refitted on 28 October with each wall facing as its building's map outline, adopted that day
+([below](#adopted-facing-as-the-outlines-28-october-2026)), took five of Beirut's near boxes about
+the same charge on 2 m air, but not these runs:
 
 - **Holds: the glass to about 1.5 km at 0.2 kt and 2.5 km at 0.5–1.1 kt.** The 4 m runs' top
   drained their loads beyond about 1.25 km, so the glass is judged against runs with their top
   clear (25 October 2026, [the hybrid far
   field](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)). Each
   building side's glass state (none broken, some, blown out, as GEER classed façades) agrees with
-  theirs for 68–90% of the sides deep in the district and 88–98% of those in sight or behind one to
-  three buildings, never two states apart (66–86% without the far terms, 54–75% and 89–98% on the
-  terms of 23 October). The share with some glass broken comes within 0.1 of the run's to 1.75 km
-  at 0.2 kt, 2.5 km at 0.5 kt and 3 km at 1.1 kt; the share blown out within 0.07 to 2.5 km at
-  0.5 kt, and short beyond 2 km at 1.1 kt.
+  theirs for 68–89% of the sides deep in the district and 88–98% of those in sight or behind one to
+  three buildings, never two states apart (68–90% facing as the cells, 66–86% without the far
+  terms, 54–75% and 89–98% on the terms of 23 October). The share with some glass broken comes
+  within 0.1 of the run's to 1.75 km at 0.2 kt, 2.5 km at 0.5 kt and 3 km at 1.1 kt; the share
+  blown out within 0.08 to 2.5 km at 0.5 kt, and short beyond 2 km at 1.1 kt.
+- **Holds: the same city at any angle to the cells.** Each wall faces as its building's map
+  outline, so a front at a slant to the solver's cells is read as squarely as one along them: with
+  Beirut turned 45°, the estimate turned over plain is within 1.5% from line to line, where the
+  cells' facing moved it −12% to +8% ([below](#façade-incidence-from-map-outlines-28-october-2026)).
+  A district laid out before 28 October 2026 has no outlines and keeps the cells' facing.
 - **Holds: the speed.** The whole first look over Beirut's 724,512 components takes 22–28 s on
   the Studio while other jobs share it: 7–10 s for the loads, 14–22 s for the damage, against
 25–41 minutes for a full run on the CI mini. On a
@@ -38,8 +45,8 @@ five of Beirut's near boxes about the same charge on 2 m air, but not these runs
   The few damaged components lie close in, where one wrong factor of 1.3 moves a wall across a
   level. Run the scene for the structure.
 - **Holds, mostly: the far loads.** Beyond Z = 20 m/kg^(1/3) (1.6 km at 0.5 kt) the surrogate's
-  loads are 0.90–1.05 of the clear-top run's on the median (0.82–1.03 without the far terms,
-  0.72–0.92 on the terms of 23 October, low). **Does not: the far edge at the smallest yields.**
+  loads are 0.89–1.04 of the clear-top run's on the median (0.90–1.05 facing as the cells,
+  0.82–1.03 without the far terms, 0.72–0.92 on the terms of 23 October, low). **Does not: the far edge at the smallest yields.**
   At 0.2 kt it breaks glass on 0.32 of sides at 2–2.5 km where that run broke 0.75, and at 0.5 kt
   on 0.78 at 2.5–3 km against 0.96: what is missing there is the pulse's front, not the loads
   ([below](#far-terms-past-2-km-of-city-25-october-2026)).
@@ -426,14 +433,16 @@ on Beirut's district, with its standing still shown.
 
 **Against the full estimate** (Beirut's 4 m layout, 0.5 kt, yield within ×1.5, 100 draws; the
 charge where it was and 60 m east):
-- The glass's chances came within 0.1 of the full estimate's on 86–94% of sides: blown out 86%,
-  some broken 94%, with a mean difference of 0.03–0.05 and a bias of +0.01–0.02, on the deep-city
-  terms adopted on 25 October 2026 (87% and 94% on the clear-top terms of that morning, 89% and 92%
-  on those of 23 October, 88% and 93% before). The openings' came within 0.1 on all of them.
-- The walls' and roofs' chances came within 0.1 on 98.7–99.9% of buildings (the same on the
-  clear-top terms, 98.8–99.9% on the terms of 23 October).
-- The damage's colour was the same for 99.6–99.8% of buildings (99.6–99.7% on the clear-top terms,
-  99.7% on the terms of 23 October), and never more than one colour apart.
+- The glass's chances came within 0.1 of the full estimate's on 82–93% of sides: blown out 82%,
+  some broken 93%, with a mean difference of 0.03–0.06 and a bias of +0.02, on the deep-city
+  terms facing as the outlines, adopted on 28 October 2026 (86% and 94% on the deep-city terms
+  facing as the cells, 87% and 94% on the clear-top terms of 25 October, 89% and 92% on those of
+  23 October, 88% and 93% before). The openings' came within 0.1 on 99.7–99.8% of them.
+- The walls' and roofs' chances came within 0.1 on 98.6–99.9% of buildings (98.7–99.9% facing as
+  the cells and on the clear-top terms, 98.8–99.9% on the terms of 23 October).
+- The damage's colour was the same for 99.5% of buildings (99.6–99.8% facing as the cells,
+  99.6–99.7% on the clear-top terms, 99.7% on the terms of 23 October), and never more than one
+  colour apart.
 
 **Time a frame**, on the Studio while other sessions loaded it (load average 18–34 on 14 cores):
 
@@ -1981,8 +1990,8 @@ confirmed on its runs). With the outline's facing, 15 of 16 plans meet the 10% t
 At 10 t, seed 1, one side reads 15%. Costs are within 2.5% elsewhere, and 10% lower at 1 t, seed 1.
 The sparse district's blocks are square to the cells, so this is the refit's terms, not the facing.
 
-**Proposal** (the decision is yours; nothing is adopted, and every default and digest is as
-before):
+**Proposal** (put to the user, who adopted it that day:
+[below](#adopted-facing-as-the-outlines-28-october-2026)):
 - **Adopt `deep-city-outline` for the quick estimate, the glass chances, the hybrid and the close
   calls**, in place of `deep-city`. The same city then gives the same estimate whatever its angle
   to the solver's cells: within 1.5% by class turned against plain, where `deep-city` moved
@@ -1996,6 +2005,69 @@ before):
   keeps the cells' facing for them; to take it, lay the district out again with New District.
   Behind buildings close in the impulse reads 5–7% higher.
 
+#### Adopted: facing as the outlines (28 October 2026)
+
+The user decided that day: adopt `deep-city-outline` for the quick estimate, the glass chances, the
+hybrid and the close calls; keep the planner on `deep-city` and charge inference on `fitted`; don't
+adopt the front (emmettl/bombcad-work#109).
+- **`TermSet.deepCityOutline` is the default** (`TermSet.adopted`, `Coefficients.adopted`, and
+  its scatter `Uncertainty.outlineLeaveOneOut` as `Uncertainty.adoptedLoadScatter`) wherever the
+  deep-city terms were: the quick estimate and its drag preview, the glass chances, the walls'
+  chances, the far field and the hybrid, and the close calls' choice of buildings. A prepared
+  district and a scene's glass sides made without naming a facing take the adopted terms'
+  (`Coefficients.adopted.incidence`), so the defaults agree with one another.
+- **The planner stays on `deep-city`** (`ProtectionModel.adoptedTerms`, now named, no longer the
+  quick estimate's) until its one miss above is understood
+  ([protective design](protective-design.md#kept-on-the-deep-city-terms-28-october-2026)).
+- **Charge inference stays on the terms of 23 October**, as before.
+- **The front stays off**: `deep-city-outline-front`, and "Glass pulses with a front (candidate)"
+  in the app, give the fronted set.
+- **The deep-city terms stay by name**: `--terms deep-city`, `--surrogate-terms deep-city`, and
+  Envelope Damage ▸ "Façades facing as the cells (earlier estimates)" in the app, which replaces
+  the candidate toggle. It has a key of its own, so the candidate's earlier choice does not turn
+  it on.
+- **Districts laid out before 28 October** carry no outlines. Under the default their walls find no
+  outline edge and keep the cells' facing, on the outline's terms: no error and no warning, as
+  this page, the app's help and the standing say. Lay the district out again with New District,
+  which keeps the outlines from that day, to take the outline's facing. The benches keep them
+  unless given `--incidence cells` or terms that face as the cells.
+- **Projects saved before** take the new default, as on #99 and #105: no project holds the façade
+  terms. Their districts are as above.
+
+**The standing** is #109's judges above, which ran these terms by name
+(`$BOMBCAD_DATA/scratch/issue109/judges`); the defaults are the same terms, so the long judges were
+not run again. Re-derived from them, facing as the cells in brackets: `surrogateGlassSides` 68–89%
+(68–90%), `surrogateNearPeak` 0.96–1.06 (0.97–1.07), `surrogateFarLoads` 0.89–1.04 (0.90–1.05),
+`glassChancesBrier` 0.025 (the same), `glassChancesBins` 0.07 (0.08; the worst tenth 0.073 under
+against 0.075), `glassChancesThrown` 0.039 (0.038), `hybridFarPeak` 0.87–1.09 (0.87–1.07);
+`hybridFarImpulse` 1.05–1.14 is unchanged. The walls' and roofs' levels and chances, the field
+models' figures and GEER's openings were not judged again with their own set-ups; #109's judges
+moved them by 0.001–0.02, the walls' tenths test a little better (Brier 0.0069 against 0.0075).
+
+**One judge run again, on the default itself**: Beirut's quick look at 0.5 kt and the drag
+preview (`drag-time`, 10 draws against 100; `$BOMBCAD_DATA/scratch/issue109/adopt`, `drag.sh`, the
+binary built from the change, on the CPU in about 2 minutes). The scene laid out by the bench now
+keeps its outlines, so this is the outline's facing on Beirut's own fronts, as the app gives it for
+a district made with New District:
+
+| | Deep-city, facing as the cells | Deep-city-outline (adopted) |
+|---|---|---|
+| Beirut's quick look at 0.5 kt (14,169 buildings): none / glass broken alone / moderate / heavy / hazardous / failed | 9,291 / 4,853 / 18 / 3 / 1 / 3 | 9,297 / 4,847 / 18 / 4 / 1 / 2 |
+| … the charge 60 m east | 9,243 / 4,895 / 25 / 3 / 1 / 2 | 9,226 / 4,912 / 25 / 4 / 0 / 2 |
+| Drag preview within 0.1 of the full estimate (10 draws): glass blown out / some broken; walls and roofs; damage colour | 86% / 94%; 98.7–99.9%; 99.6–99.8% | 82% / 93%; 98.6–99.9%; 99.5% |
+
+- **The quick look hardly moves**: six fewer buildings with glass broken alone where the charge
+  is, one more heavy and one fewer failed.
+- **The drag preview's blown out agrees less often** (82% against 86%), its bias +0.024 against
+  +0.013. Not traced. The preview lets each side's nearest strip stand for its whole façade; a
+  likely reason is that the nearest strip of a slanted front, read squarely now, stands for strips
+  further along it that the full estimate reads as more oblique to the charge. Its standing
+  (`dragPreviewGlass` 82–93%, `dragPreviewWalls` 98.6–99.9%, `dragPreviewDamage` 99.5%) is
+  re-derived from this run. When the charge is let go the full estimate replaces the preview, as
+  before.
+- The close calls were not refined again (a GPU judge). They are chosen from the look above,
+  whose levels within 1 km move by a building or two.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
@@ -2007,9 +2079,18 @@ before):
   does not run (`--resolution` and `--mass` change the inputs as for a run).
 - **Beyond a near run**: the [hybrid far field](hybrid-far-field.md) carries a district past a 3-D
   run of its near field with these loads, matched to the run where they meet.
-- **The terms in use** are the deep-city terms, adopted on 25 October 2026
-  ([above](#adopted-the-deep-city-terms-25-october-2026)): `--surrogate-terms deep-city` headless
-  and `--terms deep-city` in the benches name them, as no option does.
+- **The terms in use** are the deep-city terms refitted with each wall facing as its building's
+  map outline, adopted on 28 October 2026
+  ([above](#adopted-facing-as-the-outlines-28-october-2026)): `--surrogate-terms deep-city-outline`
+  headless and `--terms deep-city-outline` in the benches name them, as no option does. They need
+  the buildings' outlines, which New District keeps from 28 October 2026 and the benches keep
+  unless told `--incidence cells` or given terms that face as the cells; a district laid out before has none, and its walls face as the
+  cells' faces under them, without a warning. Lay it out again with New District.
+- **The deep-city terms of 25 October**, each wall facing as the cells, in use until the outline's
+  facing was adopted, for earlier records: Envelope Damage ▸ "Façades facing as the cells (earlier
+  estimates)" in the app (the toggles of 23 and 25 October take precedence over it),
+  `--surrogate-terms deep-city` headless, `--terms deep-city` in the benches (`--incidence cells`
+  takes the cells' facing alone, with other terms). The protection planner keeps them.
 - **The clear-top terms of 25 October**, in use that day until the far terms were adopted, for
   earlier records: Envelope Damage ▸ "Façade terms of 25 October (earlier estimates)" in the app,
   `--surrogate-terms clear-top` headless, `--terms clear-top` in the benches.
@@ -2019,15 +2100,8 @@ before):
   `--surrogate-terms fitted` headless, `--terms fitted` in the benches.
 - **The glass front**, a candidate ([glass by chance](glass-probability.md)): Envelope Damage ▸
   "Glass pulses with a front (candidate)" in the app, on whichever terms are chosen;
-  `--surrogate-terms deep-city-front` or `clear-top-front` headless, `--terms deep-city-front` in
-  the benches.
-- **Façades facing as their map outlines**, a candidate
-  ([above](#façade-incidence-from-map-outlines-28-october-2026)): Envelope Damage ▸ "Façades facing
-  as their map outlines (candidate)" in the app, with the glass front's toggle giving
-  `deep-city-outline-front`; `--surrogate-terms deep-city-outline` headless, `--terms
-  deep-city-outline` in the benches (`--incidence outline` takes the facing alone, with other terms).
-  It needs the buildings' outlines, which New District keeps from 28 October 2026 and the benches
-  keep under these terms; a district laid out before has none and keeps the cells' facing.
+  `--surrogate-terms deep-city-outline-front`, `deep-city-front` or `clear-top-front` headless,
+  `--terms deep-city-outline-front` in the benches.
 - **Bench**: `scenebench drag-time` times a drag and judges the preview (Sources/SceneBench/DragTime.swift,
   outputs under `bombcad/drag`); `scenebench surrogate-extract` and `surrogate-judge` (Sources/BlastModel/Studies/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under
