@@ -26,6 +26,13 @@ and the twelve-storey bay comes down as far (gravity's work 20.3 against 19.0 MJ
 second sooner and in 2.6 times as many pieces; but that element's cracked concrete is too soft for
 the struck beams. Stopped, with the user's decision on what to offer.
 
+**28 October ([a range](#a-range-28-october-2026)):** the collapse is quoted as a range between the
+two elements, assumed strain the more damaging end. Twelve storeys: 245–321 m² of floor down,
+every storey, 21,000–54,000 elements failed, 31–80 t of rubble, nine tenths of the floor down within 1.0–2.0 s.
+Three storeys: 15–79% of the floor down, 2,500–22,700 failed. Neither end is a bound: on the
+member tests the measured value is outside the range four times in five, by 2–19%. The debris's
+reach is not from this cause: on the hard ground it is still creeping when the runs end.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -45,7 +52,7 @@ blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--eve
                       [--budget 80] [--checkpoint-every 0.5] [--frames 1,2,4,6,8,10]
                       [--awake] [--no-rubble] [--dir …] [--continue] [--watch 20] [--inspect <checkpoint>]
                       [--erode-crushed-bare] [--release-bare-hourglass] [--assumed-strain]
-                      [--breakdown <checkpoint>]
+                      [--breakdown <checkpoint>] [--outcome <checkpoint or run folder>]
 ```
 
 The street preset (500 kg of TNT 8 m from the east flank wall, 670,560 solid elements of 87.5 mm,
@@ -622,6 +629,120 @@ The collapse stays **illustrative** ([standing](standing.md#collapse)), and the 
 run is not ready to be offered: it would show a pile and a cloud on a collapse whose dissipation
 is the mesh's.
 
+## A range, 28 October 2026
+
+The user's decision on section 7 (emmettl/bombcad-work#36): quote the whole-event collapse as a
+range, today's element at one end and `--assumed-strain` at the other, so that a user sees how far
+the collapse could be off from this one cause, the hinges' energy taken by hourglass control or by
+the concrete. No default changed.
+
+**What a user reads from a run**, measured at each saved state by `blastbench wholeevent --outcome
+<checkpoint or run folder>` (`WholeEventOutcome.swift`; it reads the checkpoint and changes
+nothing):
+- **Extent:** the floor area down (a floor element whose concrete has gone, to rubble or bare
+  bars, or whose centre has dropped more than half a storey) and sagged (dropped 0.3 m); the
+  storeys losing more than 15% of their floor (Approved Document A's limit after a member is
+  removed).
+- **Failed elements**, by part, and the **rubble**, its mass against the block's.
+- **When:** the floor area down and gravity's work at each checkpoint (every 0.5 s), the times
+  gravity's work reaches half and nine tenths of its value at the end, and when the block is at
+  rest (kinetic energy under 5% of its peak, staying there).
+- **How far it came down:** gravity's work.
+- **Debris:** the mass outside the block's plan (more than 0.5 m from it, so not walls bowing),
+  beyond 2, 5 and 10 m, how far 90% and 99% of it reach and the furthest, and how much of it is
+  still moving across the ground.
+- **Dust:** not modelled (above).
+
+**The cases.** The two runs of each from section 7, reused: twelve storeys (rubble, the air awake,
+to 3.5 s; today's is section 6's `run12-barsc`, which section 7's build reproduced to the bit to
+1.35 s; `hinge/c2-assumed`), and three storeys (rubble, the air asleep), carried on from their 3 s
+checkpoints to 7 s on section 7's binary (`hinge/bin`, so the same to the bit as unbroken runs) to
+see where each comes to rest. Both twelve-storey runs are at rest by 3.5 s (kinetic energy 0.4 and
+0.3 MJ, from peaks of 6.3 and 7.6), both three-storey runs by 6 s.
+
+| Twelve storeys, 500 kg at 8 m, 3.5 s | Today's element | Assumed strain | Ratio |
+|---|---|---|---|
+| Comes down | the east bay, all twelve storeys | the east bay, all twelve storeys | |
+| Floor area down (of 1,378 m²) | 245 m² (18%) | 321 m² (23%) | 1.31 |
+| Sagged 0.3 m or more | 356 m² | 425 m² | 1.19 |
+| Storeys losing more than 15% of their floor | 12 (16–19% each) | 12 (17–25% each) | |
+| Elements failed: floors / walls / face walls | 20,847: 1,640 / 15,169 / 4,038 | 53,640: 7,470 / 36,523 / 9,647 | 2.6 |
+| Rubble (of the block's 938 t) | 31 t (3.3%) | 80 t (8.5%) | 2.5 |
+| Gravity's work (how far its mass came down) | 19.0 MJ | 20.3 MJ | 1.07 |
+| Nine tenths of the floor area down by | 1.5–2.0 s | 1.0–1.5 s | |
+| Gravity's work at half / nine tenths | 1.96 / 2.91 s | 1.41 / 2.30 s | 0.55–0.6 s sooner |
+| At rest | nearly, at 3.5 s (0.4 MJ left of a 6.3 MJ peak) | 3.0 s | |
+| Debris outside the plan; beyond 2 / 5 / 10 m | 67 t; 39 / 5.9 / 0.1 t | 67 t; 40 / 2.9 / 0.3 t | 1.0 |
+| Reach of 90% / 99% of it; the furthest | 4.9 / 6.0 m; 37 m | 4.2 / 7.9 m; 56 m | |
+| Of it still moving faster than 0.5 m/s; mean speed | 64 t; 2.5 m/s | 61 t; 1.5 m/s | |
+| Wall time | 2,481 s | 12,406 s | 5.0 |
+
+| Three storeys, 500 kg at 8 m, 7 s | Today's element | Assumed strain | Ratio |
+|---|---|---|---|
+| Comes down | parts of all three floors, 10–18% of each | the second floor and the roof whole, 37% of the first floor | |
+| Floor area down (of 345 m²), by floor from the first | 51 m² (15%): 10 / 16 / 18% | 273 m² (79%): 37 / 100 / 100% | 5.3 |
+| Sagged 0.3 m or more | 85 m² | 325 m² | 3.8 |
+| Storeys losing more than 15% of their floor | 2 | 3 | |
+| Elements failed: floors / walls / face walls | 2,514: 274 / 1,869 / 371 | 22,650: 7,960 / 9,425 / 5,265 | 9.0 |
+| Rubble (of the block's 235 t) | 3.8 t (1.6%) | 31.5 t (13%) | 8.3 |
+| Gravity's work | 1.44 MJ | 7.15 MJ | 5.0 |
+| Nine tenths of the floor area down by | 3.0–3.5 s | 2.5–3.0 s | |
+| Gravity's work at half / nine tenths | 2.70 / 3.31 s | 2.52 / 3.61 s | about the same |
+| At rest | 5.9 s | 4.8 s | |
+| Debris outside the plan; beyond 2 / 5 / 10 m | 18 t; 15 / 14.5 / 2.0 t | 47 t; 28 / 16 / 9.2 t | 2.6 |
+| Reach of 90% / 99% of it; the furthest | 10.1 / 11.8 m; 60 m | 15.1 / 16.9 m; 87 m | |
+| Of it still moving faster than 0.5 m/s; mean speed | 16 t; 1.2 m/s | 13 t; 0.4 m/s | |
+| Wall time to 3 s (alone on the GPU) | 504 s | 2,278 s | 4.5 |
+
+(The three-storey runs from 3 to 7 s shared the GPU, 2,840 and 3,930 s; their times are not
+compared.)
+
+**Which way each end errs.** Not assumed; read from the runs and the member tests.
+- **On these blocks, assumed strain is the more damaging end of every output but the debris's
+  reach.** It brings down more floor (1.3 times on twelve storeys, 5.3 on three), fails more
+  elements (2.6 and 9 times), makes more rubble and does more of gravity's work, and does it as
+  soon or sooner. The debris outside the plan is the same on twelve storeys (67 t) and its reach
+  goes both ways there (less beyond 5 m, further at 99%).
+- **On the member tests, assumed strain errs towards too much damage, today's both ways.** With
+  assumed strain Saatci's struck beam goes 20% further than its test and Wu's D8 26%, the contest
+  slab peaks 12% high, Janney's beam breaks at 13–26 mm against the test's 42, and SS0a-1 loses
+  621 elements where the test stayed whole; it is short only on Wu's S8 (5%) and the contest
+  slab's residual (2%). Today's element is within 1% on Saatci but 19% high on D8, loses 193
+  elements on SS0a-1 (still too many), and is short on the contest slab's residual (17%), S8 (9%)
+  and, blind, on Mendonça's slabs, the two that collapsed left standing.
+- **So assumed strain is the likely upper end for damage and the speed of collapse, and today's
+  the lower; neither is a bound.** Of the five member comparisons the measured value lies between
+  the two only for Saatci (at today's end); it is outside on the four others, by 2–19%, twice on
+  each side. The range is the spread from one cause, the hinges' mechanism. It leaves out the
+  others: cracked concrete's stiffness and shear (too soft in assumed strain, masked by hourglass
+  control in today's), a mesh of two elements through that has not converged, and the chaos of
+  collapse (one draw among roundings of each).
+- **Where the block is near the margin the range is wide.** Twelve storeys come down either way,
+  within 7% on how far and 31% on the floor area lost, but in 2.6 times as many pieces and half a
+  second sooner (section 7's "a second sooner" read the kinetic energy; by gravity's work it is
+  0.55–0.6 s). Three storeys lose 15% of their floor with today's element and 79% with assumed
+  strain, at about the same time.
+- **The debris's reach is not from this cause.** At the end of every run most of the debris
+  outside the plan is still moving across the ground, at 0.4–2.5 m/s on average, a few seconds
+  after the block has come to rest (the three-storey runs' 99% reach grows from 2.4 m at 3 s to
+  12 m at 7 s with today's element). On the hard ground the sliding speed of a node pressed into it
+  decays at 8/s, which a node chattering on and off the ground mostly escapes, so debris creeps on
+  for seconds ([on the ground](structural-model.md#on-the-ground); `groundFrictionCoefficient`, the
+  Coulomb friction Keys's walls are run with, is an option, off by default). How far debris reaches is the ground friction's question, not the element's,
+  and is not quoted as a range.
+
+**What it costs.** About 2.4 GPU hours: the three-storey runs from 3 to 7 s (2,790 and 3,930 s),
+and reading the checkpoints (about half an hour). Everything else is section 7's runs.
+
+**Where a user sees it.** The collapse's standing carries the range as evidence (`collapse()` in
+`EvidentialStanding+Structures.swift`): "Large-panel flats, today's element against assumed
+strain", with the twelve- and three-storey figures and which end errs which way. Its level stays
+illustrative, with no band. The whole-event run is still not offered in the app.
+
+Runs and tables: `/Volumes/StudioData/bombcad/whole-event/range/` (`a0-default`, `a2-assumed`
+carried on to 7 s, `outcome-*.csv` and `motion-*.csv` the checkpoints read; the runs are on section
+7's binary, the outcome reader on emmettl/bombcad@940ba3b2).
+
 ## Dust: what it would take
 
 Nothing is built for dust. What it would need, from what the model has:
@@ -673,3 +794,7 @@ Nothing is built for dust. What it would need, from what the model has:
    shear, not taken up; since 25 October the case for running it on the assumed-strain element,
    where the stabilisation no longer hides it (section 7).
 4. **Dust** after that, as sketched.
+5. **The debris's reach** needs the ground to stop it before it can be quoted: the runs of the
+   range end with most of the debris outside the plan still creeping at 0.4–2.5 m/s. A pair with
+   Coulomb friction on the ground (`groundFrictionCoefficient` 0.6, as Keys's walls) would say how
+   much of the reach is creep; whether that becomes the default is the user's decision.

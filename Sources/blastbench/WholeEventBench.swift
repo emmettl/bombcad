@@ -40,6 +40,9 @@ import simd
 // other element options (`applyHourglassOptions`) apply to the block. `--breakdown <checkpoint>`
 // prints where the elements' work went in a saved state, by part and by state, and the hourglass
 // forces the elements hold (emmettl/bombcad-work#36 step 3, docs/whole-event.md section 7).
+// `--outcome <checkpoint or run folder>` prints what a user reads from each saved state: floor
+// area down and storeys lost, failures by part, rubble, debris outside the plan and its reach
+// (WholeEventOutcome.swift; docs/whole-event.md, a range).
 
 private struct WholeEventState: Codable {
     var stepCount: Int
@@ -114,6 +117,25 @@ func runWholeEvent(device: MTLDevice) throws {
         solids.tracesWork = true
         let header = try solver.restoreCheckpoint(from: URL(filePath: path), scene: scenario)
         breakdownWork(solids, time: header.time)
+        return
+    }
+    if let path = option("outcome") {
+        // One checkpoint, or every checkpoint in a run's folder, in order.
+        let url = URL(filePath: path)
+        let fm = FileManager.default
+        let folders =
+            fm.fileExists(atPath: url.appending(path: "checkpoint.json").path)
+            ? [url]
+            : try fm.contentsOfDirectory(atPath: url.path).filter { $0.hasPrefix("step-") }.sorted().map {
+                url.appending(path: $0)
+            }
+        print(WholeEventOutcome.header)
+        for folder in folders {
+            solids.tracesWork = true
+            let header = try solver.restoreCheckpoint(from: folder, scene: scenario)
+            print(WholeEventOutcome(solids, storeys: storeys).row(time: header.time))
+            fflush(stdout)
+        }
         return
     }
 

@@ -872,6 +872,14 @@ extension StandingScene {
                     "The inquiry's estimates of what each wall needed, not measurements; the progressive "
                         + "collapse is the model's alone",
                     "large-panel-flats.md#against-the-inquirys-estimates"),
+                StandingEvidence(
+                    "Large-panel flats coming down: today's element against assumed strain (a range)",
+                    "Not a test: the spread from one cause, the hinges' energy taken by hourglass control or "
+                        + "by the concrete. Twelve storeys: 245–321 m² of floor down, every storey, 21,000–54,000 "
+                        + "elements failed, 31–80 t of rubble; three storeys: 15–79% of the floor down. Assumed "
+                        + "strain is the more damaging end, and errs that way on the member tests; neither end "
+                        + "is a bound, and the debris's reach is not from this cause",
+                    "whole-event.md#a-range-28-october-2026"),
             ],
             assumptions: [
                 "Collapse is chaotic: a slightly different input, rounding or mesh gives a different pattern and "

@@ -89,6 +89,11 @@ Since 19 October 2026 a structure's collapse is a result of its own (`ResultKind
   - **Steel connections** take their fracture from slow column-removal tests (NIST TN 1669,
     Weigand and Berman): a calibration. No frame has been compared losing a column.
   - **Large-panel flats:** against the Ronan Point inquiry's estimates only, not measurement.
+  - **Large-panel flats coming down, as a range** (28 October 2026): today's element against the
+    one that bends in its cracked concrete (assumed strain), the spread from how the hinges'
+    energy is taken. Twelve storeys lose 245–321 m² of floor, every storey, with 21,000–54,000
+    elements failed; three storeys 15–79% of their floor. Assumed strain is the more damaging
+    end; neither is a bound ([a range](whole-event.md#a-range-28-october-2026)).
 
   The office tower on fin plates and the large-panel flats coming down are the model's alone.
 
