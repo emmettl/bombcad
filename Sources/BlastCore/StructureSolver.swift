@@ -194,6 +194,18 @@ public final class StructureSolver {
     /// Whether substeps without face loads use the element kernel made for them; false only to
     /// check that it gives the same, to the bit.
     var specialisesUnloadedSubsteps = true
+    /// Whether the element pass of substeps without face loads runs in two (`lightPass` in
+    /// Structure.metal): a light kernel for the pristine concrete, without the paths it never takes,
+    /// then the general one for the elements it lists. The same to the rounding, not to the bit
+    /// (emmettl/bombcad-work#95); false only to compare. Not with the work or a node traced, elements
+    /// that bend in their cracked concrete, or nonlocal cracking; and not in loaded substeps, where it
+    /// was 10–20% slower (docs/performance.md#structure-step-cost).
+    var splitsElementPass = true
+    /// The light and heavy element kernels for substeps without face loads, made when first wanted;
+    /// and the list between them, with the kernel that sizes the heavy pass.
+    private var splitPipelines: (light: MTLComputePipelineState, heavy: MTLComputePipelineState)?
+    private var deferredDispatchPipeline: MTLComputePipelineState?
+    private var deferredList: MTLBuffer?
     private var tracingPipeline: MTLComputePipelineState?
     private let nodePipeline: MTLComputePipelineState
     /// The node kernel recording one node's forces each substep (`traceNode`), made when asked.
@@ -1130,6 +1142,7 @@ public final class StructureSolver {
             "structureElements", in: elementLibrary, constants: traced)
         elementPipelineConstants = traced
         unloadedPipeline = nil
+        splitPipelines = nil
         if tracesWork, let working = traced.copy() as? MTLFunctionConstantValues {
             working.setConstantValue(&on, type: .bool, index: 3)
             tracingPipeline = try ShaderLibrary.pipeline(
@@ -1235,6 +1248,7 @@ public final class StructureSolver {
                 "structureElements", in: elementLibrary, constants: traced)
             elementPipelineConstants = traced
             unloadedPipeline = nil
+            splitPipelines = nil
             if tracesWork, let working = traced.copy() as? MTLFunctionConstantValues {
                 working.setConstantValue(&on, type: .bool, index: 3)
                 tracingPipeline = try ShaderLibrary.pipeline(
@@ -1461,6 +1475,7 @@ public final class StructureSolver {
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         elementPipelineConstants = constants
         unloadedPipeline = nil
+        splitPipelines = nil
         // Tracing work's specialisation is the same with its work traced (constant 3).
         guard let tracing = constants.copy() as? MTLFunctionConstantValues else { return }
         var traced = true
@@ -2097,16 +2112,17 @@ public final class StructureSolver {
         // implicit form of its drag. There is none until something has failed.
         if prelude, let fluid, !fluid.debrisAreasPrepared { encodeDebrisAreas(encoder, fluid: fluid) }
         // Without air or a prescribed pressure, no face is loaded.
+        let unloaded = uniforms.coupled == 0 && uniforms.loadCount == 0 && specialisesUnloadedSubsteps
         let elements =
             tracesWork
             ? tracingPipeline ?? elementPipeline
-            : uniforms.coupled == 0 && uniforms.loadCount == 0 && specialisesUnloadedSubsteps
-                ? unloadedElementPipeline() : elementPipeline
+            : unloaded ? unloadedElementPipeline() : elementPipeline
+        let split = unloaded && !tracesWork ? splitElementPass() : nil
 
         for substep in substeps {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
-            encoder.setComputePipelineState(elements)
+            encoder.setComputePipelineState(split?.light ?? elements)
             encoder.setBuffer(stateBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
             encoder.setBuffer(flagBuffer, offset: 0, index: 2)
@@ -2136,14 +2152,33 @@ public final class StructureSolver {
             encoder.setBuffer(barForceBuffer, offset: 0, index: 25)
             encoder.setBuffer(barRateBuffers[substep % 2], offset: 0, index: 26)
             encoder.setBuffer(barRateBuffers[1 - substep % 2], offset: 0, index: 27)
+            // The work trace's buffer, or, with the pass split, the list of elements the light pass
+            // leaves to the heavy one.
             encoder.setBuffer(
-                tracesWork ? workBuffer ?? placeholderBuffer : placeholderBuffer, offset: 0, index: 28)
+                split?.list ?? (tracesWork ? workBuffer ?? placeholderBuffer : placeholderBuffer), offset: 0,
+                index: 28)
             encoder.setBuffer(crackedElementBuffer ?? placeholderBuffer, offset: 0, index: 29)
             encoder.setBuffer(
                 elementTraceBuffer ?? faceWorkBuffer ?? crackedPointBuffer ?? placeholderBuffer, offset: 0,
                 index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let split {
+                // The heavy pass, sized on the GPU from the light pass's list, over the same buffers
+                // (the sizing kernel rebinds the first two).
+                var width = UInt32(group.width)
+                encoder.setComputePipelineState(split.dispatch)
+                encoder.setBuffer(split.list, offset: 0, index: 0)
+                encoder.setBytes(&width, length: 4, index: 1)
+                encoder.dispatchThreads(
+                    MTLSize(width: 1, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+                encoder.setComputePipelineState(split.heavy)
+                encoder.setBuffer(stateBuffer, offset: 0, index: 0)
+                encoder.setBuffer(forceBuffer, offset: 0, index: 1)
+                encoder.dispatchThreadgroups(
+                    indirectBuffer: split.list, indirectBufferOffset: 4, threadsPerThreadgroup: group)
+            }
 
             if let rubble = rubbleSystem {
                 encoder.setComputePipelineState(rubble.convert)
@@ -2433,6 +2468,54 @@ public final class StructureSolver {
         }
         unloadedPipeline = pipeline
         return pipeline
+    }
+
+    /// The element pass's light and heavy kernels for substeps without face loads
+    /// (`splitsElementPass`), and the list between them; nil if the pass is not split, or they cannot
+    /// be made.
+    private func splitElementPass() -> (
+        light: MTLComputePipelineState, heavy: MTLComputePipelineState, dispatch: MTLComputePipelineState,
+        list: MTLBuffer
+    )? {
+        guard splitsElementPass, !tracesWork, tracingNodes == nil, crackedPointBuffer == nil,
+            model.crackAveraging == nil
+        else { return nil }
+        if deferredList == nil {
+            // A count, the heavy pass's threadgroups and count, then the listed elements. Private,
+            // so that no checkpoint holds it: between substeps the count is always zero.
+            let length = 4 * (8 + elementCount)
+            guard let list = device.makeBuffer(length: length, options: .storageModePrivate),
+                let command = commandQueue.makeCommandBuffer(), let blit = command.makeBlitCommandEncoder()
+            else { return nil }
+            list.label = "structure deferred elements"
+            blit.fill(buffer: list, range: 0..<length, value: 0)
+            blit.endEncoding()
+            command.commit()
+            command.waitUntilCompleted()
+            deferredList = list
+            deferredDispatchPipeline = try? ShaderLibrary.pipeline(
+                "structureDeferredDispatch", in: elementLibrary)
+        }
+        guard let list = deferredList, let dispatch = deferredDispatchPipeline else { return nil }
+        if splitPipelines == nil {
+            func made(_ index: Int) -> MTLComputePipelineState? {
+                guard let constants = elementPipelineConstants.copy() as? MTLFunctionConstantValues else {
+                    return nil
+                }
+                var on = true
+                var loaded = false
+                constants.setConstantValue(&on, type: .bool, index: index)
+                constants.setConstantValue(&loaded, type: .bool, index: ShaderLibrary.faceLoadsConstant)
+                return try? ShaderLibrary.pipeline(
+                    "structureElements", in: elementLibrary, constants: constants)
+            }
+            guard let light = made(ShaderLibrary.lightPassConstant),
+                let heavy = made(ShaderLibrary.listedPassConstant)
+            else { return nil }
+            splitPipelines = (light, heavy)
+        }
+        guard let pair = splitPipelines else { return nil }
+        return (pair.light, pair.heavy, dispatch, list)
     }
 
     /// The GPU's time for a substep lately, to size `advance`'s command buffers.

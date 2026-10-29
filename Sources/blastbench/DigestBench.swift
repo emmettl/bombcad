@@ -100,6 +100,7 @@ func runDigest() throws {
                 + (result.isStable ? "" : ", unstable")
                 + (solver.refinementPoolGrewLate ? ", a pool grew too late" : "")
                 + (frames > 0 ? ", \(frames) frames recorded" : ""))
+        printResultValues(name, solver: solver)
     }
     // The structure on its own, in solids and in shells: a wall struck hard enough to fail, over
     // more than one 2,000-substep run of `advance`, so that its contact joins in.
@@ -134,6 +135,7 @@ func runDigest() throws {
                 }
             }
             summary = solver.summary()
+            printResultValues("wall alone", solids: solver)
         }
         fnv(&hash, summary.maxDisplacement)
         fnv(&hash, summary.maxDamage)

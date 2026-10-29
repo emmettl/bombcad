@@ -2182,6 +2182,11 @@ package enum ShaderLibrary {
     /// element kernel for substeps without air or a prescribed pressure (`faceLoadsConstant` in
     /// Structure.metal).
     package static let faceLoadsConstant = 40
+
+    /// Indices of the optional function constants that make the element pass's light and heavy
+    /// kernels (`lightPassConstant` and `listedPassConstant` in Structure.metal).
+    package static let lightPassConstant = 41
+    package static let listedPassConstant = 42
 }
 
 // MARK: - Decoding layouts saved by earlier versions

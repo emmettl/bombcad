@@ -365,6 +365,31 @@ constant bool turnedGravity = is_function_constant_defined(turnedGravityConstant
 // substep, they are in.
 constant bool faceLoadsConstant [[function_constant(40)]];
 constant bool faceLoads = !is_function_constant_defined(faceLoadsConstant) || faceLoadsConstant;
+// The element pass in two (`StructureSolver.splitsElementPass`). Most of a body's concrete is
+// pristine, never cracked, crushed into compaction or yielded, and its laws take few of their paths;
+// but a kernel holding all of them runs every element far slower than one without the paths it never
+// takes (44% on a building under its own weight). So the light pass, `lightPass`, has the paths that
+// only cracked, framed, compacted or yielded concrete takes compiled out (the principal strains,
+// the crack axes' turning, open cracks' shear, dilatancy, pressed interlock, the second crack, the
+// turn back to the lattice, compaction's pressure, the search for bars bridging a crack, the cyclic
+// bar law): an element that is not pristine, or would take one of them this substep, is left
+// untouched and listed instead (in `work`, unused unless work is traced: a count, the heavy pass's
+// dispatch, and the list), and the heavy pass, `listedPass`, the general kernel, then runs the
+// listed elements alone. The order in which they run does not matter (see `ElementFlag`). The
+// paths both passes take are the same code, but the compiler rounds them a little differently in the
+// smaller kernel, so a pristine element's result agrees with the general kernel's to the rounding
+// (a few parts in 10^7 a substep), not to the bit: accepted on 28 October 2026 for the speed
+// (emmettl/bombcad-work#95, `ElementKernelSpeedTests`).
+constant bool lightPassConstant [[function_constant(41)]];
+constant bool lightPass = is_function_constant_defined(lightPassConstant) && lightPassConstant;
+constant bool listedPassConstant [[function_constant(42)]];
+constant bool listedPass = is_function_constant_defined(listedPassConstant) && listedPassConstant;
+// The list's header in `work` (uints): the light pass's count, the heavy pass's threadgroups (three)
+// and its count, then the compact indices.
+constant uint deferredCount = 0;
+constant uint deferredGroups = 1;
+constant uint deferredListed = 4;
+constant uint deferredHeader = 8;
 
 // Each cell of the contact grid holds up to this many nodes, as the shells' does. With four,
 // debris packed onto 25 mm elements overflowed it: the nodes left out sank into the others and
@@ -1016,7 +1041,7 @@ static inline float smearedBar(float green, thread float &plastic, device BarHis
             plastic = stress > 0.0f ? increment : -increment;
             stress = m.steelModulus * (fibre - plastic);
         }
-    } else {
+    } else if (!lightPass) {
         float inelastic = plastic;
         stress = cycleBar(bar, fibre, inelastic, yield, slope * factor, first * factors.x, m);
         plastic = inelastic;
@@ -1231,6 +1256,7 @@ struct ConcreteLawResult {
     float crack;
     float crushed;
     bool pulverised;
+    bool deferred;  // the light pass met a path compiled out of it (`lightPass`)
 };
 
 // The concrete model at one point (see the header): its cracks, crushing, confinement, interlock,
@@ -1302,11 +1328,12 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
     // axes are not turning with the principal directions, those are not needed: nothing below
     // uses them unless one passes the onset.
     bool belowOnset = !turning && eigenvaluesBelow(effective, onset);
-    if (!belowOnset) {
+    bool deferred = lightPass && (framed || !belowOnset);
+    if (!belowOnset && !lightPass) {
         symmetricEigen(effective, principal, axes);
     }
     bool cracking = !belowOnset && max(principal.x, max(principal.y, principal.z)) > onset;
-    if ((!framed && cracking) || turning) {
+    if (!lightPass && ((!framed && cracking) || turning)) {
         // The crack axes become the principal axes of this strain: at the first crack, and
         // every step while they still turn. Turning, each axis takes the principal direction
         // nearest to it, so that each plane's history stays with its own direction.
@@ -1385,6 +1412,8 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
         / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
     history = max(history, uniaxial);
     state.crackStrain = history;
+    // The light pass takes no cracked plane: open cracks' shear, dilatancy and bearing below.
+    deferred = deferred || (lightPass && any(history > planeOnset));
     if (nonlocalCracking && joints == 0u) {
         // A crack softens by its inelastic strain averaged over the 2r + 1 elements across its
         // band, along the lattice axis nearest its normal (as of the previous substep), its
@@ -1439,7 +1468,7 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
     // A crack that has slid cannot close: its faces ride up on each other's aggregate
     // (dilatancy), so it keeps at least `crackDilatancy` times its slip open, as of the last
     // step. Like the residual above, this never rises past the plane's own strain.
-    if (u.crackSlip != 0 && !turning && joints == 0u && m.crackDilatancy > 0.0f) {
+    if (!lightPass && u.crackSlip != 0 && !turning && joints == 0u && m.crackDilatancy > 0.0f) {
         float3 slid = abs(float3(state.jointSlip));  // xy, yz, zx
         float3 across = float3(length(float2(slid.x, slid.z)), length(float2(slid.x, slid.y)),
                                length(float2(slid.y, slid.z)));
@@ -1509,7 +1538,7 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
     // two shear strains, each over the plane's band.
     float cube = m.compressiveStrength / 0.8e6f;
     float3 openNow = float3(0.01f);  // each cracked plane's present opening, mm
-    if (u.pressedInterlock != 0 && joints == 0u && !turning) {
+    if (!lightPass && u.pressedInterlock != 0 && joints == 0u && !turning) {
         for (int i = 0; i < 3; ++i) {
             if (history[i] <= planeOnset[i]) {
                 continue;
@@ -1556,7 +1585,7 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
         // The cap's parts, for the work trace: interlock, dowel action and kinking.
         float3 capParts = float3(0.0f);
         bool capped = false;
-        if (opened > 0.0f) {
+        if (!lightPass && opened > 0.0f) {
             // Its width as the crack's own: one gathered in a row of elements is as wide as
             // its opening over that row, not over the crack spacing.
             float band = opening[a] >= opening[b] ? planeBand[a] : planeBand[b];
@@ -1701,7 +1730,7 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
     // crack carries at that opening (the multi-directional fixed crack of de Borst and
     // Nauta). This step's stress is corrected for the change in opening elastically; the
     // next step's sees it in full.
-    if (u.secondCracks != 0 && framed && !turning) {
+    if (!lightPass && u.secondCracks != 0 && framed && !turning) {
         float4 second = float4(state.secondCrack);
         // (Unless no principal stress can pass the strength, when it cannot form.)
         if (second.w == 0.0f && !eigenvaluesBelow(material, m.tensileStrength * tensionFactor)) {
@@ -1732,7 +1761,7 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
             crack = max(crack, state.secondHistory + onset);
         }
     }
-    if (framed) {
+    if (!lightPass && framed) {
         material = frame * material * transpose(frame);
     }
     // Under very high pressure the pores collapse: the concrete's mean stress is never less
@@ -1777,7 +1806,8 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
     // While confined, once it has passed that, an element follows the curve.
     // (Following it afterwards too, once the element was cracking and bending, pressed open
     // cracks shut and weakened a wall that had been briefly squeezed by the shock.)
-    if (confined && pores > 0.0f && state.compaction > crushVolume) {
+    deferred = deferred || (lightPass && confined && pores > 0.0f && state.compaction > crushVolume);
+    if (!lightPass && confined && pores > 0.0f && state.compaction > crushVolume) {
         float compacted = compactionPressure(pores, state.compaction, bulk, m.compressiveStrength);
         float pressure = -(material[0][0] + material[1][1] + material[2][2]) / 3.0f;
         if (compacted > pressure) {
@@ -1821,6 +1851,7 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
     result.crack = crack;
     result.crushed = crushed;
     result.pulverised = pulverised;
+    result.deferred = deferred;
     return result;
 }
 
@@ -1963,7 +1994,7 @@ static inline __attribute__((always_inline)) bool crackTorn(
     float3 intact, bool inclinedIntact, float3 inclined, uint joints, uint3 tid, uchar own,
     constant MaterialParameters &m, constant StructureUniforms &u, const device ElementSteel *steel,
     device uchar *flags, const device uint *cellElement, const device uchar *materialIndex,
-    const device float4 *plasticBefore) {
+    const device float4 *plasticBefore, thread bool &deferred) {
     bool torn = false;
     float4 second = float4(state.secondCrack);
     bool hasSecond = u.secondCracks != 0 && framed && !turning && second.w != 0.0f;
@@ -1987,6 +2018,10 @@ static inline __attribute__((always_inline)) bool crackTorn(
         int j = normal.x >= normal.y && normal.x >= normal.z ? 0 : (normal.y >= normal.z ? 1 : 2);
         if (intact[j] != 0.0f) {
             continue;
+        }
+        if (lightPass) {
+            deferred = true;
+            break;
         }
         bool bridged = false;
         int3 dims = int3(u.ex, u.ey, u.ez);
@@ -2019,6 +2054,34 @@ static inline __attribute__((always_inline)) bool crackTorn(
         torn = !bridged;
     }
     return torn;
+}
+
+// Whether concrete in `state` has never cracked, turned its axes, crushed into compaction or had its
+// bars yield: the light pass's elements (`lightPass`). Others go to the heavy pass at once.
+static inline bool pristine(thread const ElementState &state, constant MaterialParameters &m) {
+    float3 cracks = float3(state.crackStrain);
+    return all(float4(state.crackFrame) == 0.0f) && max(cracks.x, max(cracks.y, cracks.z)) <= m.crackOnset
+        && state.compaction == 0.0f && all(float3(state.steelPlastic) == 0.0f) && state.inclinedPlastic == 0.0f
+        && float4(state.secondCrack).w == 0.0f;
+}
+
+// Lists element `compact` for the heavy pass (`lightPass`).
+static inline void deferElement(device float *work, uint compact) {
+    device atomic_uint *count = (device atomic_uint *)work + deferredCount;
+    uint slot = atomic_fetch_add_explicit(count, 1u, memory_order_relaxed);
+    ((device uint *)work)[deferredHeader + slot] = compact;
+}
+
+// After the light pass: the heavy pass's threadgroups and count, and the light pass's count reset.
+kernel void structureDeferredDispatch(device uint *list [[buffer(0)]],
+                                      constant uint &groupSize [[buffer(1)]],
+                                      uint threadIndex [[thread_position_in_grid]]) {
+    uint count = list[deferredCount];
+    list[deferredGroups] = (count + groupSize - 1u) / groupSize;
+    list[deferredGroups + 1] = 1u;
+    list[deferredGroups + 2] = 1u;
+    list[deferredListed] = count;
+    list[deferredCount] = 0u;
 }
 
 kernel void structureElements(device ElementState *states [[buffer(0)]],
@@ -2062,6 +2125,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     // Element data is stored compactly, one entry per element the body started with, in the
     // order of `elementList`; `element` is the lattice cell, which flags and neighbours use.
     uint compact = threadIndex;
+    if (listedPass) {
+        // The heavy pass: the elements the light pass listed.
+        const device uint *list = (const device uint *)work;
+        if (threadIndex >= list[deferredListed]) {
+            return;
+        }
+        compact = list[deferredHeader + threadIndex];
+    }
     uint element = elementList[compact];
     uchar ownFlag = flags[element];
     if (ownFlag != elementActive && ownFlag != elementBare) {
@@ -2136,6 +2207,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float referenceVolume = u.h * u.h * u.h;
 
     ElementState state = states[compact];
+    if (lightPass && (bare || (m.materialModel != 0u && !pristine(state, m)))) {
+        deferElement(work, compact);
+        return;
+    }
     // The work trace counts each step's work at the mean of the stresses before and after it (see
     // below); these are the befores.
     float stressBefore[6];
@@ -2533,8 +2608,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
 
         // A crack at the centre wide enough to be a gap, that no intact bars bridge, as for today's
         // element.
+        bool unused = false;
         bool torn = crackTorn(state, history, centreFrame, centreFramed, centreTurning, onset, intact, inclinedIntact,
-                              inclined, joints, tid, own, m, u, steel, flags, cellElement, materialIndex, plasticBefore);
+                              inclined, joints, tid, own, m, u, steel, flags, cellElement, materialIndex, plasticBefore,
+                              unused);
 
         // The mean Cauchy stress, for what reads it: sigma = P F^T / J at the centre.
         float3x3 cauchy = crackedStress * transpose(deformation) * (1.0f / volume);
@@ -2648,6 +2725,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             concreteLaw(state, frame, framed, turning, strain, normalStrain, strainRate, tensionFactor, compressionFactor,
                         dt, volume, referenceVolume, bare, joints, tid, compact, own, m, u, steel, flags, cellElement,
                         materialIndex, crackOut, crackBefore, power);
+        if (lightPass && law.deferred) {
+            deferElement(work, compact);
+            return;
+        }
         float onset = law.onset;
         float3 planeFactor = law.planeFactor;
         float3 planeSoftening = law.planeSoftening;
@@ -2730,8 +2811,13 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // from the element to the member's surface, for an element with intact bars across it
         // (as of the previous substep). The three planes of the crack axes are looked at, and a
         // second crack if there is one.
+        bool tornDeferred = false;
         bool torn = crackTorn(state, history, frame, framed, turning, onset, intact, inclinedIntact, inclined, joints, tid,
-                              own, m, u, steel, flags, cellElement, materialIndex, plasticBefore);
+                              own, m, u, steel, flags, cellElement, materialIndex, plasticBefore, tornDeferred);
+        if (lightPass && tornDeferred) {
+            deferElement(work, compact);
+            return;
+        }
 
         // Push forward to the Cauchy stress: sigma = F S F^T / J.
         float3x3 deformation = float3x3(1.0f) + gradient;

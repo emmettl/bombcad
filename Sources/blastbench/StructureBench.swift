@@ -70,4 +70,5 @@ func runStructure() throws {
         "\(format(Double(steps) / seconds, 0)) steps/s, "
             + "\(format(Double(steps) * Double(solver.elementCount) / seconds / 1e6, 0)) M element-updates/s, "
             + "\(format(seconds / (Double(steps) * stepSeconds), 0))x slower than real time")
+    printResultValues("structure", solids: solver)
 }

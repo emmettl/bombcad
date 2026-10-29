@@ -669,6 +669,69 @@ does (the post-failure spread is of the size `--rounding` already shows,
 rate and rupture over their debonded length cost 12% by their presence, but skipping their loops
 at run time saves nothing, so gathering their neighbours once rather than twice would not help.
 
+#### 28–29 October 2026: the split pass, where it pays
+
+The user decided on 28 October to take the specialised kernels although they move results at
+the rounding level (emmettl/bombcad-work#95). Rebuilt on today's main: the light kernel with all
+ten rare paths compiled out, the elements it lists run by the general kernel. Timed with the
+perf series' commands (`make perf`'s scenarios, run by hand), three rounds interleaved with the
+base build (940ba3b2), each in `gpu-slot`, no other `gpu-slot` holder, load 4.5 to 6.8, the
+rounds within 1% of each other:
+
+| Scenario | Base | Split in every substep | Gas-model kernel as well | Split where unloaded (landed) |
+|---|---|---|---|---|
+| `structure-alone` | 1,367 steps/s | 1,476 (+8%) | 1,473 (+8%) | 1,481 (+8%) |
+| `structure-contact` | 1,175 steps/s | 1,254 (+7%) | 1,252 (+7%) | 1,258 (+7%) |
+| `coupled-box-1m` | 11.4 s | 13.7 s (20% slower) | 13.7 s | 11.4 s (the same) |
+| `coupled-storeys` | 11.0 s | 12.2 s (11% slower) | 12.2 s | 10.9 s (1% faster) |
+| `collapse-frame` | 51.7 s | 59.3 s (15% slower) | 60.2 s | 50.8 s (2% faster) |
+| `coupled-box-1m`, settling not cached | 25.7 s | | | 24.7 s (4% faster) |
+
+**Split in every substep, the pass was slower once the air loads the faces.** Counted on the GPU,
+the light pass left to the heavy one, in the substeps that left it any, a fifth of the three
+storeys' elements, half the box's and 94% of the collapsing frame's: those it reads, and some it
+takes most of the way through the law, before it lists them. In a loaded substep the light kernel
+holds the faces' loads and gains too little on the rest to pay for that and its two extra
+dispatches. Reading the state before the corners, so that what is not pristine is listed sooner,
+made the unloaded pass slower (1,407 steps/s) and the loaded ones no faster; keeping the principal
+strains in the light kernel, so that a loaded element below cracking is not listed, changed
+nothing. The gas-model specialisation (`airModelConstant`) gained nothing either, and was dropped.
+
+**So the pass is split only in substeps without face loads** (`splitsElementPass`, constants 41
+and 42): a structure alone, under a prescribed motion, settling under its own weight before every
+coupled run, and once the air has gone quiet and been frozen. A coupled substep runs the general
+kernel as before, to the bit. What a coupled run gains is its settling, 7% faster (14.3 s to
+13.3 s for the box's 225,000 elements, the first time; the settle cache keeps it after that), and
+its frozen tail.
+
+**What moved, and by how much.** `ElementKernelSpeedTests` runs a reinforced column pushed to
+failure, and pulled apart, to seven moments, then one substep with and without the split from the
+same state: every value of the elements' state and nodes agrees within 3 parts in 10^7 of its
+largest, the flags exactly. Over whole runs (`blastbench --values`, `--values-dump`, compared by
+`Scripts/compare-result-values.py`), against the same base run with `--rounding unfused`, which
+is the spread the [fast math](#fast-math-and-the-build) section describes:
+
+- `blastbench digest`: the five air scenes, the shells and the struck walls alone are bit for bit
+  as before in all six sets (the walls alone are loaded, so not split). The solid wall coupled to
+  the air moves through its settling: displacements by 2 to 6 parts in 10^7 (2 in 10^5 refined),
+  no element changing state, in five sets. In the sixth, on a hill with gravity, the wall settled
+  to the same 113,600 substeps still chattering on the ground at 0.6% of its peak speed, and its
+  20 µm sag differs by 2.5% (the base's own unfused run differs by 300%, the air there moving
+  too): the micrometres it moves under 80 steps of air read 20% apart, at 0.2 µm.
+- `structure-alone` and `structure-contact`: displacements within 3 parts in 10^6, no element
+  changing state (unfused: the same).
+- `coupled-box-1m`: 131,600 elements cracked against 131,640, 3,849 with yielded bars against
+  3,793 (unfused 131,865 and 3,895), the largest deflection 7.84 mm against 7.85, the mean 0.03%
+  apart. The elements that differ are on the crack front and at the onset of yield (their bars'
+  plastic strain a median 8e-5, against 1.4e-3 for the yielded), as many as unfused moves.
+- `coupled-storeys`: 170 elements failed against 180 (unfused 159); 42 flags differ (unfused 41).
+- `collapse-frame`: the frame falls in every build; 117 elements failed against 127 (unfused
+  121), the largest movement 4,895 mm against 4,910 (unfused 4,892).
+- `office-0.5s`: shells and members only, so bit for bit as before.
+
+No judged outcome changed beyond the spread a different rounding gives. Landed with `make ship
+ARGS=--full`, as a change meant to move results.
+
 ## Coupled runs
 
 ```bash

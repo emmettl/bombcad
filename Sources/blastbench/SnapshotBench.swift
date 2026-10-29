@@ -557,6 +557,7 @@ func runSnapshot() throws {
                         ? "; \(summary.hingesReleased) of \(summary.hinges) connections fractured" : ""))
         }
     }
+    printResultValues("snapshot", solver: solver)
     // `--hinges`: the steel connections by the height of their joints, 4 m bands: how many have
     // fractured, and the largest turn.
     if flag("hinges"), let shells = solver.shells {
