@@ -504,7 +504,7 @@ stone's 0.724 became 0.719
 | The same with field model 1's ground-floor peaks | peak ×1.15, impulse ×0.95, the whole scatter | 0.65 | pass |
 | The same with field model 2's peaks at every storey, its own scatter | as field model 1's | 0.65 | pass |
 | Concrete walls, heavy or worse (illustrative) | as the first | 0.54 | 0.1–0.5 high by 0.09–0.17 |
-| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.69 | 0.3–0.9 high by up to 0.31 (0.27 on the clear-top terms); ×0.8 reads low, ×0.85 with the whole scatter passes ([below](#stones-08-re-judged-not-adopted-28-october-2026)) |
+| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×0.85, the whole scatter (since 29 October 2026; the refit's pick in all 10 folds) | 0.75 | pass: every tenth within 0.06 ([adopted](#adopted-stone-085-with-the-whole-scatter-29-october-2026)) |
 | Roofs, moderate or worse | loads ×1.3, scatter ×½ | 0.74 | 0.4–0.9 low by 0.11–0.18 |
 
 The table is on the façade terms refitted on clear-top runs and their scatter, adopted on 25
@@ -539,8 +539,10 @@ against both
   as until 25 October 2026, it was 0.11 under and missed. With a field model it passes too.
 - **Roofs' chances are skilful but low in the middle.** That is the unsafe side, even with a load
   factor fitted on these runs (their own terms read low).
-- **Stone's chances are high** by up to 0.31 on the outline's terms, the safe side (0.27 on the clear-top terms, 0.19 on the terms of 23 October). For masonry, moderate and heavy are
-  one level.
+- **Stone's chances are calibrated** since 29 October 2026: at ×0.85 with the whole scatter each
+  tenth is within 0.06 of the runs. At ×1.0 with ½, as until then, they read high by up to 0.31 on
+  the outline's terms, the safe side (0.27 on the clear-top terms, 0.19 on the terms of 23
+  October). For masonry, moderate and heavy are one level.
 - **No chance of failure is given.** Before the close-in branch the roofs' read far too high
   (skill −0.48), and the walls' were too few to judge. Concrete's heavy damage is illustrative.
 - **Counts by distance band** come within about 20% of the runs' where damage is well
@@ -584,6 +586,22 @@ gives #99's figures to the digit (0.688 at ×1.0, 0.727 held out). On the defaul
   ×½ or ×1) picks it in all ten folds. It was not adopted: it is not the factor the user decided
   on, so it is proposed for their decision.
 - Roofs do not move (0.740), and nothing for concrete walls is touched.
+
+#### Adopted: stone ×0.85 with the whole scatter (29 October 2026)
+
+The user adopted the proposal on 29 October (emmettl/bombcad-work#111). In
+`FacadeLoadSurrogate.structureCalibration` walls of unreinforced masonry now take peak ×0.85 and
+impulse ×0.85 with the whole load scatter, where they took ×1.0 with ½. Its figures are the
+table's above: skill 0.746 against 0.687 (Brier 0.0553 against 0.0680), every tenth of 50
+buildings or more within 0.06 of the runs where ×1.0 missed six by up to 0.31, and the refit's
+pick in all ten folds. The walls' and roofs' standing now says stone passes the tenths test too
+(`structureChancesStone`).
+
+What moves is only stone's chances: each building with masonry walls in the quick estimate, its
+drag preview and the headless `walls`. Concrete walls, roofs, glass and the estimate's own levels
+(which take no factor) do not move; Beirut's map gives its buildings as concrete, so its quick
+look does not move either. The earlier setting is not kept by name: it is one factor that only the
+chances read, as the concrete walls' impulse of 25 October was not.
 
 ## Using it
 

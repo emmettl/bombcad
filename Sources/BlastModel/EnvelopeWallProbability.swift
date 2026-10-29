@@ -34,15 +34,16 @@ extension FacadeLoadSurrogate {
         let skill = ValidationTables.figure("structureChancesSkill")
         let under = ValidationTables.figure("structureChancesUnderCall")
         let roof = ValidationTables.figure("structureChancesRoofLow")
+        let stone = ValidationTables.figure("structureChancesStone")
         return [
             String(
                 format:
                     "Walls' and roofs' chances, against Beirut's near runs at ten yields on air refined to 2 m: Brier skill "
                     + "%.2f for concrete walls damaged, each tenth of chance within %.1f of the runs; %.2f for roofs, "
                     + "their middle chances %.2f–%.2f low (the unsafe side), with a load factor fitted to those runs; "
-                    + "masonry's high. Drawn over an assumed strength scatter. Heavy damage is illustrative for "
-                    + "concrete, and no chance of failure is given.",
-                skill.low, under.high, skill.high, roof.low, roof.high)
+                    + "%.2f for stone walls heavy or worse, each tenth within %.1f too. Drawn over an assumed "
+                    + "strength scatter. Heavy damage is illustrative for concrete, and no chance of failure is given.",
+                skill.low, under.high, skill.high, roof.low, roof.high, stone.low, under.high)
         ]
     }()
 
@@ -71,8 +72,11 @@ extension FacadeLoadSurrogate {
     /// adopted on 25 October 2026 (emmettl/bombcad-work#99) the peak keeps ×1.15 and, since the
     /// user's decision that day (emmettl/bombcad-work#102), the impulse takes ×0.95, as with the
     /// field model: the pair the refit picks held out in nine folds of ten, and with which the
-    /// tenths test passes (the impulse at ×1.15 missed it by 0.01 in one tenth). Stone ×1.0 with ½
-    /// and roofs ×1.3 with ½, as on 4 m cells.
+    /// tenths test passes (the impulse at ×1.15 missed it by 0.01 in one tenth). Stone takes ×0.85,
+    /// peak and impulse, with the whole scatter since the user's decision of 29 October 2026
+    /// (emmettl/bombcad-work#111): on the outline's terms every tenth within 0.06 of the runs and the
+    /// refit's pick in all ten folds, where ×1.0 with ½, as on 4 m cells, read up to 0.31 high and
+    /// ×0.8 up to 0.15 low. Roofs ×1.3 with ½, as on 4 m cells.
     /// The 4 m runs read the walls' peaks 13–19% low at 400–600 m of 0.5 kt, and had given concrete
     /// ×1.0 (emmettl/bombcad-work#19).
     public static func structureCalibration(walls kind: EnvelopeConstruction.Kind, learned: Bool = false) -> (
@@ -80,7 +84,7 @@ extension FacadeLoadSurrogate {
         roof: (peak: Double, impulse: Double, scatter: Double)
     ) {
         let walls: (peak: Double, impulse: Double, scatter: Double) =
-            kind == .unreinforcedMasonry ? (1.0, 1.0, 0.5) : (1.15, 0.95, 1.0)
+            kind == .unreinforcedMasonry ? (0.85, 0.85, 1.0) : (1.15, 0.95, 1.0)
         return (walls, (1.3, 1.3, 0.5))
     }
 

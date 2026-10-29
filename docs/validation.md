@@ -6590,18 +6590,20 @@ they were first judged on read the walls' peaks 13–19% low at
   ([learned models](learned-models.md#the-near-boxes-run-to-their-corners-23-october-2026)). The
   concrete walls' and roofs' figures held to the digit, since the walls are damaged well inside
   that ring. Stone's went from 0.724 to 0.719, still 0.72.
-- **Stone:** each building taken as 0.5 m stone, walls heavy or worse at skill 0.69, its factors as
-  on 4 m cells (0.72 on the terms of 23 October). Its middle chances are high by up to 0.31 on
-  the outline's terms (the safe side; 0.27 on the clear-top terms, 0.19 before). The test fails.
-  Held out, the refit picks ×0.8 in every fold (0.74), but ×0.8 reads up to 0.15 low, the unsafe
-  side, so it was not adopted; ×0.85 with the whole scatter passes at 0.75
-  ([re-judged, 28 October 2026](glass-probability.md#stones-08-re-judged-not-adopted-28-october-2026)).
+- **Stone:** each building taken as 0.5 m stone, walls heavy or worse at ×0.85 with the whole
+  scatter, adopted on 29 October 2026 (emmettl/bombcad-work#111): skill 0.75 for stone walls heavy
+  or worse, each tenth within 0.06 of the runs, which passes; the refit picks it in all ten folds.
+  At its factors before, as on 4 m cells (×1.0 with ½ the scatter), it scored 0.69 (0.72 on the
+  terms of 23 October) with its middle chances high by up to 0.31 on the outline's terms (0.27 on
+  the clear-top terms, 0.19 before), failing. ×0.8, the refit's pick on a coarser grid, reads up
+  to 0.15 low, the unsafe side
+  ([adopted](glass-probability.md#adopted-stone-085-with-the-whole-scatter-29-october-2026)).
 - **Heavy and failure:** concrete walls heavy or worse score skill 0.51 (0.53 on the terms of 23 October) but fail the test, so they
   are illustrative. No chance of failure is given: before the close-in branch, the roofs' read
   far too high (skill −0.48).
 
-Standing: an approximation for concrete walls' damage across a district, illustrative for roofs,
-stone and heavy damage; judged on one district.
+Standing: an approximation for concrete and stone walls' damage across a district (stone since 29
+October 2026), illustrative for roofs and heavy damage; judged on one district.
 
 ### The hybrid far field against Beirut's runs
 

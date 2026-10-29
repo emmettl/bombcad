@@ -19,6 +19,13 @@ extension ValidationTables {
             id: "structureChancesUnderCall", low: 0.1, high: 0.1,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
             quote: "each tenth of chance within 0.1 of the share of runs, which passes"),
+        // Stone walls (each building as 0.5 m stone), heavy or worse, at ×0.85 with the whole
+        // scatter since the user's decision of 29 October 2026 (emmettl/bombcad-work#111): each
+        // tenth within 0.06 of the runs (×1.0 with ½ before: 0.69, up to 0.31 high).
+        Figure(
+            id: "structureChancesStone", low: 0.75, high: 0.75,
+            document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
+            quote: "skill 0.75 for stone walls heavy or worse"),
         Figure(
             id: "structureChancesRoofLow", low: 0.11, high: 0.18,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
