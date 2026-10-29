@@ -89,6 +89,70 @@ struct PreparedDistrictTests {
     }
 
     @Test(
+        "Facing as its outline, a side's strips on differently facing edges each have a strip in the preview")
+    func previewByOutlineFacing() throws {
+        // A block turned 45° to the cells: each of its cells' sides (thin along one axis, out one way)
+        // holds the strips of two fronts at a right angle, one facing the charge and one away
+        // (emmettl/bombcad-work#110).
+        let scene = try SurrogateOutlineIncidenceTests.block(degrees: 45)
+        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+        #expect(prepared.raster.incidence == .outline)
+        let charge = scene.charge.position
+        let mass = Double(scene.charge.mass)
+        let full = prepared.estimate(charge: charge, mass: mass)
+        let (preview, sides) = prepared.preview(charge: charge, mass: mass)
+        let fullSides = prepared.glassSides(full)
+        try #require(!fullSides.isEmpty)
+        #expect(sides.count == fullSides.count)
+        // Each façade strip's facing, rounded: its outline edge's, else its cells' face's.
+        func facing(_ k: Int) -> SIMD2<Int> {
+            let c = full.components[k]
+            var n = SIMD3<Float>.zero
+            n[c.axis] = Float(c.outward)
+            n =
+                prepared.raster.outlineNormal(region: c.region, axis: c.axis, outward: c.outward, owner: 0)
+                ?? n
+            return SIMD2(Int((n.x * 1000).rounded()), Int((n.y * 1000).rounded()))
+        }
+        for (a, b) in zip(sides, fullSides) {
+            #expect(a.axis == b.axis && a.outward == b.outward)
+            let members = full.components.indices.filter {
+                full.components[$0].kind == .facade && full.components[$0].axis == a.axis
+                    && full.components[$0].outward == a.outward
+            }
+            let byFacing = Dictionary(grouping: members, by: facing)
+            #expect(byFacing.count >= 2)
+            // One strip for each facing: the nearest of it, standing for its area.
+            #expect(a.strips.count == byFacing.count)
+            for strip in a.strips {
+                let group = try #require(
+                    byFacing.values.first { group in
+                        group.contains { full.features[$0] == strip.features }
+                    })
+                #expect(strip.features.distanceM == group.map { full.features[$0].distanceM }.min()!)
+                let area = group.reduce(0.0) {
+                    let spans = full.components[$1].spans
+                    return $0 + Double(spans.x * spans.y)
+                }
+                #expect(abs(strip.areaM2 - area) < 1e-6)
+            }
+        }
+        // The estimate itself still takes the nearest of each kind and side, whichever way it faces.
+        func group(_ c: EnvelopeComponent) -> String { "\(c.kind)/\(c.axis)/\(c.outward)" }
+        let groups = Dictionary(grouping: full.components.indices, by: { group(full.components[$0]) })
+        #expect(preview.components.count == groups.count)
+        for (k, component) in preview.components.enumerated() {
+            let members = try #require(groups[group(component)])
+            #expect(preview.features[k].distanceM == members.map { full.features[$0].distanceM }.min()!)
+        }
+        // Without its outline, one strip a side, as facing as the cells.
+        let plain = try SurrogateOutlineIncidenceTests.block(degrees: 45, keepsOutlines: false)
+        let (_, plainSides) = FacadeLoadSurrogate.Prepared(scene: plain, cellSize: 2).preview(
+            charge: charge, mass: mass)
+        #expect(!plainSides.isEmpty && plainSides.allSatisfy { $0.strips.count == 1 })
+    }
+
+    @Test(
         "Stratified, a few draws spread evenly over their distributions, the yields' middle on the charge's")
     func stratified() {
         var uncertainty = FacadeLoadSurrogate.Uncertainty(yieldLogSD: 0.25, samples: 10)

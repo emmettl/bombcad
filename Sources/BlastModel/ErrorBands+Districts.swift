@@ -69,10 +69,12 @@ extension ValidationTables {
             id: "learnedModel2Walls", low: 0.653, high: 0.653,
             document: "learned-models.md#on-the-clear-top-terms-25-october-2026",
             quote: "both pass the tenths test on the new terms, at skill 0.653"),
+        // The drag preview, each side's glass a strip for each way its outline faces it since 29
+        // October 2026 (emmettl/bombcad-work#110; 82–93% with one strip for the side).
         Figure(
-            id: "dragPreviewGlass", low: 0.82, high: 0.93,
+            id: "dragPreviewGlass", low: 0.86, high: 0.95,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
-            quote: "within 0.1 of the full estimate's on 82–93% of sides"),
+            quote: "within 0.1 of the full estimate's on 86–95% of sides"),
         Figure(
             id: "dragPreviewWalls", low: 0.986, high: 0.999,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",

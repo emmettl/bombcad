@@ -416,7 +416,9 @@ on Beirut's district, with its standing still shown.
   also stops it working out the glass's sight lines twice.
 - **A preview while dragging.** Of each building's components of one kind on one side, only the
   one nearest the charge is judged; a glazed side's nearest strip stands for the side's whole
-  area. On Beirut that is 67,699 components, 9% of them. Only the colouring shown is worked out:
+  area. On Beirut that is 67,699 components, 9% of them. Facing as the outlines (since 28 October
+  2026), a side's glass takes the nearest strip of each way its outline faces it, each for its
+  own share of the area; see "The drag preview facing as the outlines" below. Only the colouring shown is worked out:
   - the damage;
   - the glass's chances, on 10 draws;
   - the walls' and roofs' chances, on 20 draws.
@@ -433,11 +435,13 @@ on Beirut's district, with its standing still shown.
 
 **Against the full estimate** (Beirut's 4 m layout, 0.5 kt, yield within ×1.5, 100 draws; the
 charge where it was and 60 m east):
-- The glass's chances came within 0.1 of the full estimate's on 82–93% of sides: blown out 82%,
-  some broken 93%, with a mean difference of 0.03–0.06 and a bias of +0.02, on the deep-city
-  terms facing as the outlines, adopted on 28 October 2026 (86% and 94% on the deep-city terms
-  facing as the cells, 87% and 94% on the clear-top terms of 25 October, 89% and 92% on those of
-  23 October, 88% and 93% before). The openings' came within 0.1 on 99.7–99.8% of them.
+- The glass's chances came within 0.1 of the full estimate's on 86–95% of sides: blown out 86%,
+  some broken 95%, with a mean difference of 0.03–0.05 and a bias of +0.01–0.02, on the deep-city
+  terms facing as the outlines, adopted on 28 October 2026, with each side's glass taking a strip
+  for each way its outline faces it (29 October 2026; 82% and 93% with one strip for the side, 86%
+  and 94% on the deep-city terms facing as the cells, 87% and 94% on the clear-top terms of 25
+  October, 89% and 92% on those of 23 October, 88% and 93% before). The openings' came within 0.1
+  on all of them (99.7–99.8% with one strip).
 - The walls' and roofs' chances came within 0.1 on 98.6–99.9% of buildings (98.7–99.9% facing as
   the cells and on the clear-top terms, 98.8–99.9% on the terms of 23 October).
 - The damage's colour was the same for 99.5% of buildings (99.6–99.8% facing as the cells,
@@ -2059,14 +2063,84 @@ a district made with New District:
 - **The quick look hardly moves**: six fewer buildings with glass broken alone where the charge
   is, one more heavy and one fewer failed.
 - **The drag preview's blown out agrees less often** (82% against 86%), its bias +0.024 against
-  +0.013. Not traced. The preview lets each side's nearest strip stand for its whole façade; a
-  likely reason is that the nearest strip of a slanted front, read squarely now, stands for strips
-  further along it that the full estimate reads as more oblique to the charge. Its standing
-  (`dragPreviewGlass` 82–93%, `dragPreviewWalls` 98.6–99.9%, `dragPreviewDamage` 99.5%) is
+  +0.013. Traced and mended the next day (emmettl/bombcad-work#110): see "The drag preview facing
+  as the outlines" below, which brings it back to 86% and +0.013. Its standing then
+  (`dragPreviewGlass` 82–93%, `dragPreviewWalls` 98.6–99.9%, `dragPreviewDamage` 99.5%) was
   re-derived from this run. When the charge is let go the full estimate replaces the preview, as
   before.
 - The close calls were not refined again (a GPU judge). They are chosen from the look above,
   whose levels within 1 km move by a building or two.
+
+#### The drag preview facing as the outlines (29 October 2026)
+
+The adoption's sanity judge (above) found the drag preview's blown-out glass agreeing less with
+the full estimate under the outline's facing: 82% of sides within 0.1 against 86%, its bias +0.024
+against +0.013 (emmettl/bombcad-work#110). Both come again from `drag-time` with this change's
+bench: 82.4% and +0.024 on the default, as the adoption's run gave; 85.8% and +0.013 with `--terms
+deep-city` (the bench now takes the named terms' coefficients and load scatter throughout, not only
+their facing). `--trace-sides` writes
+each glazed side's chances, preview and full, beside its strips' facings
+(`$BOMBCAD_DATA/scratch/issue110`, `drag.sh` and `analyse.py`).
+
+**The cause.** The preview groups a building's façade strips by the cells' side they lie on (thin
+along one axis, out one way), and lets each group's nearest strip stand for all of it. Facing as
+the cells, every strip of a group faces the same way. Facing as the outline, one group can hold
+strips on edges that face quite different ways: a corner cut at 45° and the front beside it, or
+both slanted fronts of a building turned to the grid. Its nearest strip, often square to the
+charge, then stood for strips facing away. The suspected cause was close: a strip read squarely
+standing for strips the full estimate reads obliquely. But it is not along one slanted front, whose
+strips all take that front's facing. It is across the edges that one cells' side gathers. At the
+charge, on Beirut's 0.5 kt:
+
+| Sides by the outline facings their strips take | Sides | Blown out within 0.1 | Bias |
+|---|---|---|---|
+| One | 29,546 | 86.1% | +0.012 |
+| Two | 18,820 | 77.9% | +0.038 |
+| Three | 3,921 | 78.6% | +0.040 |
+| Four or more | 1,243 | 73.5% | +0.047 |
+
+The 9,447 sides outside 0.1 had a preview strip whose cosine was 0.22 above their strips' mean
+(0.10 for those within). Facing as the cells the two cosines' difference averaged 0.000.
+
+**The mend.** Each façade strip's group now also has its outline's facing, one group for each way
+a building's outline faces (`Prepared.previewGroups`, worked out once when the district is laid
+out). A glazed side's glass takes the nearest strip of each facing, each for its own facing's
+area, as the full estimate's side sums its strips. The estimate the damage and the walls' chances
+are judged on still takes the one nearest strip of each kind and side, so they are unchanged,
+bit for bit. A district without outlines, or facing as the cells, previews exactly as before.
+
+| Drag preview against the full estimate (10 draws against 100; the charge, and 60 m east) | One strip a side | A strip for each facing |
+|---|---|---|
+| Glass blown out within 0.1; bias | 82.4%, 82.3%; +0.024 | 85.8%, 85.7%; +0.013, +0.012 |
+| Glass some broken within 0.1 | 93.1% | 94.6%, 94.5% |
+| Openings blown out within 0.1 | 99.7–99.8% | 100.0% |
+| Sides with two or more facings, blown out within 0.1 | 73.5–78.6% | 81.7–85.6% |
+| Walls and roofs; damage colour | 98.6–99.9%; 99.5% | the same |
+| Glass strips judged | 53,530 | 84,603 |
+
+So the preview follows the full estimate as closely as it did facing as the cells (85.8% and
++0.013 there). The standing is re-derived: `dragPreviewGlass` 86–95% (82–93%); `dragPreviewWalls`
+and `dragPreviewDamage` are unchanged.
+
+**What it costs.** Of 53,530 glazed sides, 23,984 have strips facing two or more ways. Each extra
+facing is one more sight line and one more strip in each draw, 31,073 of each. A drag's later
+frames on Beirut (`drag-time --drag 0,5,…,50`, 10 draws, the Studio at load 4–48 while other
+sessions ran), the mean of ten:
+
+| Colouring | One strip a side | A strip for each facing |
+|---|---|---|
+| Glass's chances | 0.44 s (sight lines 0.21, draws 0.23) | 0.64 s (0.28, 0.36) |
+| All three, damage and walls too | 1.30 s | 1.53 s |
+
+A glass frame takes about 0.2 s more, still within the second. Two cheaper variants were tried and
+not kept:
+- Folding facings with under a tenth, a fifth or three-tenths of their side's area into its
+  largest saves 2%, 9% and 20% of the strips. At three-tenths the agreement falls to 85.4–85.5%.
+- Letting a side's other facings borrow its nearest strip's sight line (crossings, shadow, edge,
+  canyon), recomputing only their distance, height and facing, agrees as well (85.8%). But it saves
+  only 0.04 s of the 0.2, and the draws' strips are most of the cost.
+
+`scenebench drag-time --agreement --trace-sides sides.tsv` judges it again.
 
 ## Using it
 

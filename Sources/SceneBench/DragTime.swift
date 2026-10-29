@@ -10,7 +10,10 @@ import simd
 /// `--check`, the prepared estimate and glass sides against `estimate(scene:)`'s and
 /// `glassSides(scene:)`'s, to the bit. With `--weights`, the drag's frames and the full look take the
 /// learned field model's peak at the ground-floor façade strips (emmettl/bombcad-work#67), each
-/// frame running the network again, as the app does with the option on.
+/// frame running the network again, as the app does with the option on. With `--terms`, the façade
+/// terms and load scatter of that set throughout (the adopted ones without it); with `--agreement
+/// --trace-sides file.tsv`, each glazed side's chances, preview and full, beside its strips' facing
+/// (emmettl/bombcad-work#110).
 enum DragTime {
     static func run(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
@@ -21,6 +24,13 @@ enum DragTime {
         let moves = (value("moves") ?? "0,20,50").split(separator: ",").compactMap { Float($0) }
         let drawList = (value("draws") ?? "100,20").split(separator: ",").compactMap { Int($0) }
         let mass = Double(scene.charge.mass)
+        // `--terms`: the façade terms and load scatter judged (the adopted ones without it).
+        let terms = try SurrogateBench.termSet(args)
+        let coefficients = terms.coefficients
+        func uncertainty(_ samples: Int) -> FacadeLoadSurrogate.Uncertainty {
+            FacadeLoadSurrogate.Uncertainty(
+                yieldLogSD: log(1.5) / 1.645, loadScatter: terms.loadScatter, samples: samples)
+        }
         func seconds(_ start: ContinuousClock.Instant) -> Double { DistrictBenchmark.seconds(start) }
 
         let prepared = FacadeLoadSurrogate.Prepared(
@@ -34,7 +44,7 @@ enum DragTime {
             var charge = scene.charge.position
             charge.x += move
             var clock = ContinuousClock.now
-            let estimate = prepared.estimate(charge: charge, mass: mass)
+            let estimate = prepared.estimate(charge: charge, mass: mass, coefficients: coefficients)
             let estimateS = seconds(clock)
             clock = .now
             let (_, damageS, _) = FacadeLoadSurrogate.damage(estimate, constructions: constructions)
@@ -46,15 +56,14 @@ enum DragTime {
                 estimateS,
                 damageS, sides.count, sidesS)
             for draws in drawList {
-                let uncertainty = FacadeLoadSurrogate.Uncertainty(
-                    yieldLogSD: log(1.5) / 1.645, samples: draws)
+                let drawn = uncertainty(draws)
                 clock = .now
                 _ = FacadeLoadSurrogate.glassProbabilities(
-                    sides: sides, mass: mass, cellSize: dx, uncertainty: uncertainty)
+                    sides: sides, mass: mass, cellSize: dx, uncertainty: drawn, coefficients: coefficients)
                 let glassS = seconds(clock)
                 let (_, structureS) = FacadeLoadSurrogate.structureProbabilities(
-                    estimate, mass: mass, cellSize: dx, constructions: constructions, uncertainty: uncertainty
-                )
+                    estimate, mass: mass, cellSize: dx, constructions: constructions, uncertainty: drawn,
+                    coefficients: coefficients)
                 line += String(format: "; %d draws: glass %.2f s, walls %.2f s", draws, glassS, structureS)
             }
             print(line)
@@ -86,19 +95,22 @@ enum DragTime {
         for move in moves {
             var charge = scene.charge.position
             charge.x += move
-            var uncertainty = FacadeLoadSurrogate.Uncertainty(
-                yieldLogSD: log(1.5) / 1.645, samples: previewDraws)
-            uncertainty.stratified = true
+            var previewUncertainty = uncertainty(previewDraws)
+            previewUncertainty.stratified = true
             var clock = ContinuousClock.now
-            let (preview, sides) = prepared.preview(charge: charge, mass: mass)
+            let (preview, sides) = prepared.preview(charge: charge, mass: mass, coefficients: coefficients)
             let previewS = seconds(clock)
             let (damage, damageS, _) = FacadeLoadSurrogate.damage(preview, constructions: constructions)
             clock = .now
             let (glass, _) = FacadeLoadSurrogate.glassProbabilities(
-                sides: sides, mass: mass, cellSize: dx, uncertainty: uncertainty, responses: previewResponses)
+                sides: sides, mass: mass, cellSize: dx, uncertainty: previewUncertainty,
+                coefficients: coefficients,
+                responses: previewResponses)
             let glassS = seconds(clock)
             let (structure, structureS) = FacadeLoadSurrogate.structureProbabilities(
-                preview, mass: mass, cellSize: dx, constructions: constructions, uncertainty: uncertainty)
+                preview, mass: mass, cellSize: dx, constructions: constructions,
+                uncertainty: previewUncertainty,
+                coefficients: coefficients)
             print(
                 String(
                     format:
@@ -106,14 +118,15 @@ enum DragTime {
                     move, preview.components.count, sides.count, previewS, damageS, previewDraws, glassS,
                     structureS, previewS + damageS + glassS + structureS))
             guard args.contains("--agreement") else { continue }
-            let full = prepared.estimate(charge: charge, mass: mass)
+            let full = prepared.estimate(charge: charge, mass: mass, coefficients: coefficients)
             let (fullDamage, _, _) = FacadeLoadSurrogate.damage(full, constructions: constructions)
-            let reference = FacadeLoadSurrogate.Uncertainty(
-                yieldLogSD: log(1.5) / 1.645, samples: referenceDraws)
+            let reference = uncertainty(referenceDraws)
             let (fullGlass, _) = FacadeLoadSurrogate.glassProbabilities(
-                sides: prepared.glassSides(full), mass: mass, cellSize: dx, uncertainty: reference)
+                sides: prepared.glassSides(full), mass: mass, cellSize: dx, uncertainty: reference,
+                coefficients: coefficients)
             let (fullStructure, _) = FacadeLoadSurrogate.structureProbabilities(
-                full, mass: mass, cellSize: dx, constructions: constructions, uncertainty: reference)
+                full, mass: mass, cellSize: dx, constructions: constructions, uncertainty: reference,
+                coefficients: coefficients)
             struct SideKey: Hashable {
                 var owner: UUID
                 var axis: Int
@@ -125,6 +138,61 @@ enum DragTime {
             let matched = glass.compactMap {
                 g -> (FacadeLoadSurrogate.SideGlass, FacadeLoadSurrogate.SideGlass)? in
                 fullSides[SideKey(owner: g.owner, axis: g.axis, outward: g.outward)].map { (g, $0) }
+            }
+            // `--trace-sides file.tsv`: each glazed side's chances, preview and full, with the
+            // preview's strip's facing and distance and the full side's strips' (area-weighted
+            // mean, nearest, and how many outline facings they take), for each move.
+            if let path = value("trace-sides") {
+                var text =
+                    move == moves.first
+                    ? "move\tside\tpreviewBlown\tfullBlown\tpreviewSome\tfullSome"
+                        + "\tpreviewCos\tpreviewDistance\tpreviewArea\tstrips\tmeanCos\tminCos\tmaxCos"
+                        + "\tnearestCos\tnearestDistance\tfacings\tshares\tpreviewStrips\n" : ""
+                let fullStrips = Dictionary(
+                    prepared.glassSides(full).map {
+                        (SideKey(owner: $0.owner, axis: $0.axis, outward: $0.outward), $0)
+                    }, uniquingKeysWith: { a, _ in a })
+                // Each full side's strips' facings: the distinct plan normals they take.
+                var facings = [SideKey: [SIMD2<Int>: Double]]()
+                for (k, n) in full.owners.enumerated() where full.components[k].kind == .facade {
+                    let c = full.components[k]
+                    let key = SideKey(owner: c.owner, axis: c.axis, outward: c.outward)
+                    var normal = SIMD3<Float>.zero
+                    normal[c.axis] = Float(c.outward)
+                    let facing =
+                        prepared.raster.outlineNormal(
+                            region: c.region, axis: c.axis, outward: c.outward, owner: n)
+                        ?? normal
+                    let rounded = SIMD2(Int((facing.x * 1000).rounded()), Int((facing.y * 1000).rounded()))
+                    facings[key, default: [:]][rounded, default: 0] += Double(c.spans.x * c.spans.y)
+                }
+                for (n, side) in sides.enumerated() {
+                    let key = SideKey(owner: side.owner, axis: side.axis, outward: side.outward)
+                    guard let f = fullSides[key], let strips = fullStrips[key], let mine = side.strips.first
+                    else { continue }
+                    let area = strips.strips.reduce(0) { $0 + $1.areaM2 }
+                    let meanCos =
+                        strips.strips.reduce(0) { $0 + $1.features.cosIncidence * $1.areaM2 }
+                        / max(area, 1e-9)
+                    let nearest = strips.strips.min { $0.features.distanceM < $1.features.distanceM }!
+                    text += String(
+                        format:
+                            "%.0f\t%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.4f\t%.1f\t%.1f\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.1f\t%d\t%@\t%d\n",
+                        move, n, glass[n].blownOut, f.blownOut, glass[n].someBroken, f.someBroken,
+                        mine.features.cosIncidence, mine.features.distanceM, mine.areaM2, strips.strips.count,
+                        meanCos, strips.strips.map(\.features.cosIncidence).min()!,
+                        strips.strips.map(\.features.cosIncidence).max()!, nearest.features.cosIncidence,
+                        nearest.features.distanceM, facings[key]?.count ?? 0,
+                        (facings[key] ?? [:]).values.sorted(by: >).map { String(format: "%.3f", $0 / area) }
+                            .joined(separator: ",") as NSString, side.strips.count)
+                }
+                if let handle = FileHandle(forWritingAtPath: path), move != moves.first {
+                    handle.seekToEndOfFile()
+                    handle.write(Data(text.utf8))
+                    try handle.close()
+                } else {
+                    try text.write(toFile: path, atomically: true, encoding: .utf8)
+                }
             }
             print("  glass, some broken, sides " + stats(matched.map { ($0.0.someBroken, $0.1.someBroken) }))
             print("  glass, blown out, sides " + stats(matched.map { ($0.0.blownOut, $0.1.blownOut) }))
@@ -170,9 +238,8 @@ enum DragTime {
         // from the frames before (the app's case), then the full look where it stops.
         if let dragText = value("drag") {
             let steps = dragText.split(separator: ",").compactMap { Float($0) }
-            var uncertainty = FacadeLoadSurrogate.Uncertainty(
-                yieldLogSD: log(1.5) / 1.645, samples: previewDraws)
-            uncertainty.stratified = true
+            var dragUncertainty = uncertainty(previewDraws)
+            dragUncertainty.stratified = true
             var dragged = FacadeLoadSurrogate.Prepared(
                 scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
             dragged.glassResponses = previewResponses
@@ -201,9 +268,9 @@ enum DragTime {
                 var charge = scene.charge.position
                 charge.x += step
                 let look = dragged.look(
-                    charge: charge, mass: mass, constructions: constructions, uncertainty: uncertainty,
+                    charge: charge, mass: mass, constructions: constructions, uncertainty: dragUncertainty,
                     preview: true,
-                    parts: parts, learned: learned)
+                    parts: parts, learned: learned, terms: terms)
                 print(
                     String(
                         format:
@@ -222,7 +289,7 @@ enum DragTime {
             charge.x += steps.last ?? 0
             let full = dragged.look(
                 charge: charge, mass: mass, constructions: constructions,
-                uncertainty: FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(1.5) / 1.645), learned: learned)
+                uncertainty: uncertainty(100), learned: learned, terms: terms)
             print(
                 String(
                     format:
