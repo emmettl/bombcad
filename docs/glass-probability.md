@@ -504,7 +504,7 @@ stone's 0.724 became 0.719
 | The same with field model 1's ground-floor peaks | peak ×1.15, impulse ×0.95, the whole scatter | 0.65 | pass |
 | The same with field model 2's peaks at every storey, its own scatter | as field model 1's | 0.65 | pass |
 | Concrete walls, heavy or worse (illustrative) | as the first | 0.54 | 0.1–0.5 high by 0.09–0.17 |
-| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.69 | 0.3–0.9 high by up to 0.27 |
+| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.69 | 0.3–0.9 high by up to 0.31 (0.27 on the clear-top terms); ×0.8 reads low, ×0.85 with the whole scatter passes ([below](#stones-08-re-judged-not-adopted-28-october-2026)) |
 | Roofs, moderate or worse | loads ×1.3, scatter ×½ | 0.74 | 0.4–0.9 low by 0.11–0.18 |
 
 The table is on the façade terms refitted on clear-top runs and their scatter, adopted on 25
@@ -539,7 +539,7 @@ against both
   as until 25 October 2026, it was 0.11 under and missed. With a field model it passes too.
 - **Roofs' chances are skilful but low in the middle.** That is the unsafe side, even with a load
   factor fitted on these runs (their own terms read low).
-- **Stone's chances are high** by up to 0.27, the safe side (0.19 on the terms of 23 October). For masonry, moderate and heavy are
+- **Stone's chances are high** by up to 0.31 on the outline's terms, the safe side (0.27 on the clear-top terms, 0.19 on the terms of 23 October). For masonry, moderate and heavy are
   one level.
 - **No chance of failure is given.** Before the close-in branch the roofs' read far too high
   (skill −0.48), and the walls' were too few to judge. Concrete's heavy damage is illustrative.
@@ -550,6 +550,40 @@ against both
 - **The roofs' factor is a calibration, not physics.** It is rejudged whenever the load terms are
   refitted (the judge is scripted:
   `$BOMBCAD_DATA/surrogate-walls/calibrate/judge19.sh`).
+
+### Stone's ×0.8 re-judged, not adopted (28 October 2026)
+
+The user's word of 28 October was to adopt stone's ×0.8, the refit's pick held out on the
+clear-top terms (emmettl/bombcad-work#99), if on today's terms it still read safe and its tenths
+test was no worse (emmettl/bombcad-work#111). It does not read safe, so it was not adopted: stone
+keeps ×1.0 with ½ of the scatter.
+
+**The judge** is #99's: `wall-calibrate --walls stone`, each building as 0.5 m stone against
+Beirut's ten 2 m near boxes at 0.15–1.5 kt, 50 draws, the grid peak ×0.8–1.5, scatter ×½ or ×1,
+impulse over peak 0.826 or 1, each yield held out in turn, on the CPU (about 30 minutes, 10 GB;
+`$BOMBCAD_DATA/scratch/issue111`, `judges.sh`, `judges-mid.sh`). Run on `--terms clear-top` it
+gives #99's figures to the digit (0.688 at ×1.0, 0.727 held out). On the default
+(deep-city-outline), heavy or worse over 20,530 building-yields:
+
+| Stone walls | Brier / skill | Tenths of 50+, chance minus runs' share | Tenths missed |
+|---|---|---|---|
+| ×1.0, scatter ×½ (kept) | 0.0680 / 0.687 | +0.03 to +0.31 in 0.1–0.9, high (safe) | 6 (0.3–0.9) |
+| ×0.8, scatter ×½ (the factor alone) | 0.0784 / 0.640 | −0.07 to −0.40, low (unsafe) | 7 |
+| ×0.8, the whole scatter | 0.0576 / 0.735 | −0.15 to 0.00, low | 3 (0.4–0.7) |
+| ×0.8, the whole scatter, impulse ×0.66 (the refit's pick, every fold) | 0.0573 / 0.736 | −0.14 to 0.00, low | 4 (0.4–0.8) |
+| ×0.85, the whole scatter | 0.0553 / **0.746** | −0.02 to +0.06 | **none: passes** |
+| ×0.9, the whole scatter | 0.0593 / 0.727 | +0.01 to +0.17, high | 5 |
+| ×0.9, scatter ×½ | 0.0585 / 0.731 | −0.13 to +0.07 | 2 (0.1–0.3, low) |
+| ×1.0, the whole scatter | 0.0831 / 0.618 | +0.01 to +0.37, high | 8 |
+
+- **×0.8 reads low in every form**, by up to 0.14–0.15 in the middle tenths with the whole scatter,
+  where today's ×1.0 reads high by up to 0.31. It was so on the clear-top terms too (0.13–0.15 low
+  held out): the "safe" of #99 was ×1.0's side, not ×0.8's.
+- **×0.85 with the whole scatter passes** the tenths test, every tenth within 0.06 of the runs,
+  at skill 0.746 against 0.687, and the refit on a grid with it (×0.85, ×0.9, ×1.0, ×1.3; scatter
+  ×½ or ×1) picks it in all ten folds. It was not adopted: it is not the factor the user decided
+  on, so it is proposed for their decision.
+- Roofs do not move (0.740), and nothing for concrete walls is touched.
 
 ## Using it
 
