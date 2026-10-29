@@ -15,7 +15,7 @@ import simd
 //   blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--every 0.05]
 //                         [--budget 80 (minutes)] [--checkpoint-every 1] [--frames 1,2,4,6,8,10]
 //                         [--awake] [--no-rubble] [--dir /Volumes/StudioData/bombcad/whole-event/<name>]
-//                         [--continue]
+//                         [--continue] [--ground-friction 0.6]
 //
 // Runs in pieces: after `--budget` minutes of wall time it saves a checkpoint at the next 64-step
 // boundary and stops; `--continue` (with the same options) carries on from the latest checkpoint
@@ -107,6 +107,13 @@ func runWholeEvent(device: MTLDevice) throws {
         exit(2)
     }
     solids.contactMode = .always
+    // `--ground-friction 0.6`: Coulomb friction on the ground, as Keys's walls are run with. Off by
+    // default, when what lands sheds its sliding speed at 8/s only while pressed into the ground,
+    // and debris creeps on for seconds (docs/whole-event.md, ground friction). Give it again with
+    // `--continue`.
+    if let friction = option("ground-friction").flatMap({ Float($0) }) {
+        solids.groundFrictionCoefficient = friction
+    }
     if let inspect = option("inspect") {
         solids.tracesWork = true
         let header = try solver.restoreCheckpoint(from: URL(filePath: inspect), scene: scenario)

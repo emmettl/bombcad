@@ -94,6 +94,10 @@ Since 19 October 2026 a structure's collapse is a result of its own (`ResultKind
     energy is taken. Twelve storeys lose 245–321 m² of floor, every storey, with 21,000–54,000
     elements failed; three storeys 15–79% of their floor. Assumed strain is the more damaging
     end; neither is a bound ([a range](whole-event.md#a-range-28-october-2026)).
+  - **On a ground with friction** (Coulomb 0.6, an option; 30 October 2026) the debris comes to
+    rest, 99% of it within 1.5–7.4 m of the plan, and three storeys stand with today's element
+    (none of their floor down, against 15%); assumed strain still brings down 74%, twelve storeys
+    237 m² against 245 ([ground friction](whole-event.md#ground-friction-30-october-2026)).
 
   The office tower on fin plates and the large-panel flats coming down are the model's alone.
 

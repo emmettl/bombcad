@@ -880,6 +880,14 @@ extension StandingScene {
                         + "strain is the more damaging end, and errs that way on the member tests; neither end "
                         + "is a bound, and the debris's reach is not from this cause",
                     "whole-event.md#a-range-28-october-2026"),
+                StandingEvidence(
+                    "Large-panel flats coming down on a ground with friction (0.6, an option)",
+                    "Not a test: on the default ground broken pieces slide on for seconds. With Coulomb "
+                        + "friction three storeys stand with today's element (none of the floor down, against "
+                        + "15%) and lose 74% with assumed strain (against 79%); twelve storeys lose 237 m² "
+                        + "against 245. The debris comes to rest, 99% of it within 1.5–7.4 m of the plan "
+                        + "where the frictionless runs ended at up to 16.9 m and growing",
+                    "whole-event.md#ground-friction-30-october-2026"),
             ],
             assumptions: [
                 "Collapse is chaotic: a slightly different input, rounding or mesh gives a different pattern and "
