@@ -1,0 +1,64 @@
+{
+  "source": "CODEC project bunker tests (INSEMEX Petrosani, 2016-2017) on two beam-column specimens, as reported in: FRAMEBLAST technical report, stage I, 2017 (Politehnica University Timisoara, frameblast_files/Raport_etapa_1_2017_05122017_rev.pdf, pp. 6-7); B. Ahmed, Damage characterization in building structures due to blast actions, SUSCOS master's thesis, CTU Prague, 2018 (hdl:10467/78301), section 4.2 and Table 5; F. Dinu, I. Marginean, D. Dubina, A. Khalil and E. De Iuliis, ASCCS 2018, doi:10.4995/ASCCS2018.2018.7186. The test paper itself, Dinu, Marginean, Dubina, Kovacs and Ghicioi, Procedia Engineering 210 (2017) 377-385, doi:10.1016/j.proeng.2017.11.091, was not obtained.",
+  "licence": "Numbers transcribed or read off figures (facts); the sources are not redistributed. ASCCS 2018 and Procedia Engineering 210 are CC BY-NC-ND; the report states no licence; Ahmed's thesis is for personal use under Czech copyright law.",
+  "specimen": {
+    "column": "HEB260, flanges cut to 160 mm wide, weak axis in the frame's plane",
+    "depth_m": 0.260,
+    "flangeWidth_m": 0.160,
+    "web_m": 0.010,
+    "flange_m": 0.0175,
+    "beams": "two half-span IPE beams on extended end plates (M24 10.9), one transverse half-span beam on cleats; tubular lateral restraints at the beams' ends",
+    "axialLoad": "none beyond self-weight (report, p. 7)",
+    "lengthNote": "column length and end conditions not given in the sources obtained"
+  },
+  "steel": [
+    { "element": "column web, 10 mm", "fy_MPa": 407, "fu_MPa": 539, "Agt_percent": 27.0 },
+    { "element": "column flange, 17.5 mm", "fy_MPa": 420, "fu_MPa": 529, "Agt_percent": 27.0 },
+    { "element": "beam flange IPE 270, 10.2 mm", "fy_MPa": 345, "fu_MPa": 464, "Agt_percent": 28.0 },
+    { "element": "beam web IPE 270, 6.6 mm", "fy_MPa": 353, "fu_MPa": 463, "Agt_percent": 30.4 },
+    { "element": "end plate, 20 mm", "fy_MPa": 305, "fu_MPa": 417, "Agt_percent": 17.1 }
+  ],
+  "shots": [
+    {
+      "name": "m3",
+      "charge_kg": null,
+      "standoff_m": null,
+      "gaugeS6_peak_microstrain": 3200,
+      "note": "elastic; S6 swung about +/-2,500 microstrain over 3 ms (report Fig. 8b, read off)"
+    },
+    {
+      "name": "m4",
+      "charge_kg": 1.815,
+      "chargeNote": "the report gives only the 0.5 m; 1.815 kg at 0.5 m is the ASCCS paper's 'little plastic deformations'",
+      "standoff_m": 0.5,
+      "gaugeS6_peak_microstrain": 17600,
+      "gaugeS6_peakTime_ms": 0.5,
+      "gaugeS6_after_microstrain": [5000, 10000],
+      "outcome": "little plastic deformation"
+    },
+    {
+      "name": "m5",
+      "charge_kg": 1.815,
+      "standoff_m": 0.2,
+      "outcome": "web removed over almost twice the flange width; flanges bowed and held (no axial load); gauges destroyed",
+      "breachLength_m_about": 0.32
+    }
+  ],
+  "gauges": "S1-S8 in pairs on the web, 100 mm then 200 mm apart down from the beams' level (report Fig. 8a); which face and their height relative to the charge are not given",
+  "fullScaleBuilding": {
+    "source": "FRAMEBLAST technical report, stage II, 2018, pp. 7-10: a 2 x 2 bay, two-storey frame of HEB260 columns at Petrosani, floors loaded to 10 kN/m2 by water tanks, charges 1.8 m above ground (1.5 m above the foundation) near the central ground-floor column, cumulative on the same column",
+    "shots": [
+      { "name": "P1", "charge_g": 140, "standoff_m": 0.5, "floorLoad": false },
+      { "name": "P2", "charge_g": 280, "standoff_m": 0.5, "floorLoad": false },
+      { "name": "E1", "charge_g": 280, "standoff_m": 0.5 },
+      { "name": "E2", "charge_g": 560, "standoff_m": 0.5 },
+      { "name": "E3", "charge_g": 1120, "standoff_m": 0.5, "outcome": "first permanent deformation: web at the charge and the flanges" },
+      { "name": "E4", "charge_g": 2240, "standoff_m": 0.5 },
+      { "name": "E5", "charge_g": 2240, "standoff_m": 0.2, "outcome": "web dished; the flanges act partly as a reflector" },
+      { "name": "E6", "charge_g": 2520, "standoff_m": 0.2, "outcome": "web holed" },
+      { "name": "E7", "charge_g": 2520, "standoff_m": 0.2 },
+      { "name": "E8", "charge_g": 2520, "standoff_m": 0.0, "outcome": "column removed; adjacent beams left with permanent deflection" }
+    ],
+    "explosiveNote": "explosive type not stated; below 560 g no plastic deformation"
+  }
+}

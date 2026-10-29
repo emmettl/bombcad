@@ -68,7 +68,7 @@ swift run -c release blastbench perimeter --study wall
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements 113–125 mm (104–115%) on 4 to 32 elements through, rising with refinement and not converged, the same on 32 with half the step (on the earlier 50-step average of the strain rate it, and a strip of it, ran away there; 92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. Its series' three slabs with half the steel (Reynolds's RSCR4–6), run openly after blind test 3 on shots of the same rig: peaks 0.91–1.06 of measured, all standing as tested; on such a shot's shape in place of the scaled record the lower shot reaches 87–97% ([below](#reynoldss-8-in-slabs-and-the-lower-shots-shape)). One beam bent to failure: peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24, holding to 60 mm, but breaking at 11 and 7 mm on 36 and 48, before the test's yield (12 October defaults; see [convergence](#convergence-on-todays-defaults)). One beam without stirrups failing in shear: 104–111% on 24 to 48 elements, 132% on 12, not converged, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–23% under light drops and −5% to −1% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements (16% before the strain-rate window, the beams that broke moving by up to two thirds either way) and 53% on 24 on the earlier defaults, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 4–11% too strong on 24 to 48 elements, 32% on 12, not converged, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–15% high under the contest's load, rising towards 19% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it, and the agreement leans on the elements' hourglass control, since an element without it sends the struck beams 20% further ([hourglass control](#hourglass-control); low). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
-| Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good |
+| Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed. A HEB260 column's web under 1.8 kg at 0.2 and 0.5 m ([web breached](#a-column-web-breached-close-in)): breached and held as tested on 10 and 5 mm shells, the breach 0.9 and 2.2 times the reported length, not breached on 20 mm shells; a full-flanged column holed by 2.2 kg where the building's only dished | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good. The steel web: right in outcome on fine shells, its breach not converged (weak, two outcomes) |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 81–86% with afterburning and hot air (76–84% with the open faces at the clearance rule); the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
 | Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's edge is left 25 mm up against 95 mm measured, a quarter, and peaks at 47–48 mm against 87 mm in the paper's own model, with the confined regime's pressed interlock (15 and 38 mm without), the same with the open faces at the clearance rule; on 25 mm elements the peak rises to 65 mm and the wall tops tear, so it has not converged | Unsafe side, too stiff: the roof's edge left a quarter as far up as measured (low); the joints' inclined cracking decides it, and the crack models disagree |
@@ -2929,9 +2929,108 @@ the shots near elastic and of the curtain shot are within 14%.
       Z = 0.16 m/kg^(1/3).
     - **Its tests, in words only.** 1.815 kg at 0.5 m from a column's web left "little plastic
       deformations". At 0.2 m it removed the web over almost twice the flange width.
-    - **No histories or deflections measured.** A column breach against those two outcomes, and
-      the frame as a code comparison, are planned but not built.
+    - **No histories or deflections measured.** The column breach is compared below
+      ([a column web breached close in](#a-column-web-breached-close-in)), with the tests' own
+      setup from FRAMEBLAST's report; the frame as a code comparison is not built.
 - **A frame as a whole.**
+
+## A column web breached close in
+
+*29 October 2026, emmettl/bombcad-work#77.* A steel column's web under a charge close in, meshed
+as shells that tear. Two outcomes in the bunker and two in a building: a weak, binary judge.
+
+**The tests.** The CODEC project's bunker tests at INSEMEX Petroșani, 2016–2017
+(`Fixtures/Dinu2017`). The test paper (Dinu et al., *Procedia Engineering* 210, 2017) was not
+obtained. The setup comes from three other sources:
+- FRAMEBLAST's stage I report (UPT, 2017, pp. 5–7);
+- Ahmed's SUSCOS thesis (CTU Prague, 2018, §4.2, Table 5);
+- Dinu et al.'s ASCCS 2018 paper.
+
+What those sources give:
+- **The specimens.** Two identical beam–column assemblies. Each is a HEB260 column, its flanges
+  cut to 160 mm, with IPE beams on end plates and no axial load.
+- **The steel**, measured. The web yields at 407 MPa and reaches 539 MPa; the flanges 420 and
+  529 MPa; both at 27% total elongation at the maximum force.
+- **The shots.** m1–m5 rose on the same specimens.
+  - m4 was at 0.5 m. 1.815 kg there left "little plastic deformations". Gauge S6 on the web read
+    17,600 µm/m at its peak, about 0.5 ms in, and 5,000–10,000 µm/m to 3 ms.
+  - m5 was 1.815 kg at 0.2 m from the web. It removed the web over almost twice the flange
+    width, about 0.3 m. The freed flanges bowed out and held.
+- **The full-scale building** (the 2018 report, pp. 7–9): a two-storey frame of HEB260 columns
+  with their full flanges, the floors loaded to 10 kN/m².
+  - Its central column took ten shots in turn. 2.24 kg at 0.2 m (E5) dished the web. 2.52 kg (E6)
+    then holed it.
+  - The explosive is not named.
+
+**The model** (`DinuColumnTest`, `blastbench dinu`):
+- **The column.** A 2.5 m HEB260 stub of shells, clamped at both ends. The web and flanges share
+  nodes at the junctions. The fillets are left out.
+- **The steel.** As measured, hardening linearly to f_u at 27%, with S275's rate law (Jones's mild
+  steel). A layer tears at 27% equivalent plastic strain. The beams, the bunker's walls and the
+  earlier shots are left out.
+- **The charge.** A TNT sphere at mid-height, on the web's centreline, its centre 0.2 or 0.5 m off
+  the web's face.
+- **The air.** The recommended air (mapped start, afterburning, hot air): 20 mm cells refined
+  twice by 2 to 5 mm near the shock, run for 5 ms.
+- **Assumed.** The column's length, its supports and the charge's height are not given in the
+  sources obtained.
+
+| Run | m4, 1.815 kg at 0.5 m: web | m5, 1.815 kg at 0.2 m: web | Load at the web's centre, m5 (m4) |
+|---|---|---|---|
+| Measured | Little plastic deformation; S6 1.76% at its peak | Removed over about 0.3 m | |
+| 10 mm shells, 5 mm air (the run) | Holds: 13.4 mm at its peak, 2.9 mm left; 3.3% plastic strain at most | **Breached: 280 mm along**, the web's whole width; flanges held (10% plastic), bowed out 2 mm | 57 MPa, 4,900 Pa s (15 MPa, 1,650 Pa s) |
+| 5 mm shells | Holds: 13.2 and 3.1 mm; 4.6% | Breached: **700 mm** along | The same |
+| 20 mm shells | Holds: 13.3 and 2.6 mm; 2.1% | **Holds**: 70 mm deep, 21% plastic | The same |
+| 10 mm air (40 mm refined) | Holds: 13.7 and 2.8 mm; 3.2% | Breached: 300 mm | 35 MPa, 3,560 Pa s (12 MPa, 1,320 Pa s) |
+| Tearing at 20%, the structural-steel preset's | Holds: 13.4 and 2.9 mm; 3.3% | Breached: 640 mm | |
+| Without the rate law | Holds: 17.4 and 8.9 mm; 6.0% | Breached: 900 mm | |
+
+The building's column, the same model with full 260 mm flanges, at 10 mm shells and 5 mm air:
+
+| Shot | Measured | Model | Load at the web's centre |
+|---|---|---|---|
+| E5, 2.24 kg at 0.2 m | Dished, not holed (after E1–E4) | **Breached over 1.02 m**; flange tips out 50 mm | 75 MPa, 8,150 Pa s |
+| E6, 2.52 kg at 0.2 m | Holed (after E5) | Breached over 1.20 m | 82 MPa, 8,810 Pa s |
+
+Each run took 1–9 minutes on the Studio, under 8 GB.
+
+**What it shows.**
+- **At 0.5 m, as tested.** Every variant holds with a few per cent of plastic strain in the web
+  and a dish of 3–9 mm left. The gauge's 1.76% (where and on which face is not given) is of the
+  same order as the model's 2–6% at the worst point.
+- **At 0.2 m, right on 10 and 5 mm shells, wrong on 20 mm.**
+  - The breach's size is not converged. On 10 mm shells it is 280 mm against about 300 mm
+    (0.93), and on 5 mm shells 700 mm (2.2 times).
+  - Tearing is judged per element at a fixed strain, with no length over which the strain at
+    fracture is taken. A smaller element reaches it sooner and tears further.
+  - That 10 mm shells match is a coincidence of the mesh. Without the rate law the tear also runs
+    on, to 900 mm.
+- **The full flanges hole too easily.** Between the 260 mm flanges the blast is held, and the web
+  takes 1.66 times m5's impulse for 1.23 times the charge. E5 breaches over a metre where the
+  building's web, already struck four times, only dished.
+- **The two series disagree with each other.** The bunker holed a web between 160 mm flanges
+  with 1.8 kg. The open building did not hole one between 260 mm flanges with 2.2 kg. So one
+  model for both cannot fit both, unless their explosives or the bunker's confinement differ.
+  Neither is given. Within the bunker the model sides with the test; against the building it
+  errs on the safe side, holing what held.
+- **The air matters less than the mesh.** On 10 mm air the load at the web is 72% of the 5 mm
+  air's, and the breach is 300 mm against 280 mm.
+
+**Standing.** A binary judge on four outcomes.
+- **The bunker.** The web holds at 0.5 m and is breached at 0.2 m, as tested, on 10 mm and 5 mm
+  shells. On 20 mm shells it is not breached. The breach's size is not converged.
+- **The building.** E5 is breached where the test only dished: the safe side.
+
+**Recorded and stopped.** Defaults are unchanged.
+
+**What could follow**, for the user's decision:
+- **A tearing strain that depends on the element's size.** Two published approaches would give
+  one: the measured elongation carried from the tensile test's gauge length to the element's;
+  or a Bao–Wierzbicki-type locus with a regularisation length. Either would have to
+  be judged on more than these four outcomes.
+- **The test paper.** It would give the specimens' length and supports and the charges m1–m3
+  (data wanted).
+- The frame as a code comparison (the issue's item 2) was not built.
 
 ## Profiled steel sheeting
 

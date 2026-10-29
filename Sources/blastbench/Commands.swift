@@ -31,6 +31,7 @@ let commands: [String: @Sendable () throws -> Void] = [
     "hillside": { try runHillside(device: device) },
     "lacroix": { try runLacroix(device: device) },
     "nassr": { try runNassr(device: device) },
+    "dinu": { try runDinu(device: device) },
     "removal": { try runColumnRemoval(device: device) },
     "kenny": { try runKenny(device: device) },
     "beam": { try runBeam() },
