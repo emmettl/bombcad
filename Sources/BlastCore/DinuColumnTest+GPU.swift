@@ -24,9 +24,19 @@ extension DinuColumnTest {
         let mesh = shells.mesh
         let length = settings.length
         let h = settings.elementSize
-        // The top is clamped as the base is.
+        // The top is clamped as the base is, or both are pinned; the joint holds what it holds.
         shells.mutateNodes { nodes in
-            for n in nodes.indices where mesh.positions[n].z > length - 1e-4 { nodes[n].isClamped = true }
+            for n in nodes.indices {
+                let p = mesh.positions[n]
+                if !settings.pinnedEnds {
+                    if p.z > length - 1e-4 { nodes[n].isClamped = true }
+                    continue
+                }
+                let held = restraint(at: p, settings: settings)
+                guard held.x || held.y || held.z else { continue }
+                nodes[n].isClamped = false
+                nodes[n].restrain(x: held.x, y: held.y, z: held.z)
+            }
         }
         let charge = chargePosition(shot, settings: settings)
         let webSolid = 2
@@ -64,6 +74,14 @@ extension DinuColumnTest {
         let elapsed = ContinuousClock.now - start
         let damage = shells.displayBuffer.contents().bindMemory(
             to: Float.self, capacity: max(shells.elementCount, 1))
+        // Gauge S6's place, each side: the web elements nearest it.
+        let gaugeElements = gaugeS6(settings).compactMap { g in
+            mesh.elements.indices.filter { mesh.elements[$0].solid == webSolid }.min {
+                simd_distance_squared(shells.elementCentre($0), g)
+                    < simd_distance_squared(shells.elementCentre($1), g)
+            }
+        }
+        var gaugeStrain: Float?
         var removedZ: [Float] = []
         var removedX: [Float] = []
         var flangeRemoved = 0
@@ -76,6 +94,7 @@ extension DinuColumnTest {
                 let strain = damage[e] * failure
                 if web {
                     webStrain = max(webStrain, strain)
+                    if gaugeElements.contains(e) { gaugeStrain = max(gaugeStrain ?? 0, strain) }
                 } else {
                     flangeStrain = max(flangeStrain, strain)
                 }
@@ -100,11 +119,14 @@ extension DinuColumnTest {
         for (a, b) in zip(samples, samples.dropFirst()) {
             impulse += Float(b.time - a.time) * max(0.5 * (a.pressure + b.pressure) - ambient, 0)
         }
+        let reach = reach(removedZ, from: charge.z, elementSize: h)
         return Result(
             shot: shot, webRemoved: removedZ.count, breachLength: extent(removedZ, elementSize: h),
-            breachWidth: extent(removedX, elementSize: h), flangeRemoved: flangeRemoved, webPeak: webPeak,
+            breachWidth: extent(removedX, elementSize: h), breachAbove: reach.above, breachBelow: reach.below,
+            flangeRemoved: flangeRemoved, webPeak: webPeak,
             webFinal: -shells.node(webCentre).displacement.y, webPlasticStrain: webStrain,
             flangePlasticStrain: flangeStrain, flangeSpread: spread, columnSway: sway,
+            gaugeS6PlasticStrain: gaugeStrain,
             reflectedPeak: (samples.map(\.pressure).max() ?? ambient) - ambient, reflectedImpulse: impulse,
             duration: solver.time,
             wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)

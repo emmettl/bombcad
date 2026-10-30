@@ -2931,13 +2931,17 @@ the shots near elastic and of the curtain shot are within 14%.
       deformations". At 0.2 m it removed the web over almost twice the flange width.
     - **No histories or deflections measured.** The column breach is compared below
       ([a column web breached close in](#a-column-web-breached-close-in)), with the tests' own
-      setup from FRAMEBLAST's report; the frame as a code comparison is not built.
+      setup from their paper (Procedia Engineering 210, 2017, obtained 30 October 2026); the
+      frame as a code comparison is not built.
 - **A frame as a whole.**
 
 ## A column web breached close in
 
 *29 October 2026, emmettl/bombcad-work#77.* A steel column's web under a charge close in, meshed
 as shells that tear. Two outcomes in the bunker and two in a building: a weak, binary judge.
+The test paper, obtained since, corrects the bunker's setup and its breach (0.5–0.6 m, not 0.3 m):
+see [against the test paper](#against-the-test-paper-30-october-2026), which supersedes this
+part's bunker verdicts.
 
 **The tests.** The CODEC project's bunker tests at INSEMEX Petroșani, 2016–2017
 (`Fixtures/Dinu2017`). The test paper (Dinu et al., *Procedia Engineering* 210, 2017) was not
@@ -3031,6 +3035,140 @@ Each run took 1–9 minutes on the Studio, under 8 GB.
 - **The test paper.** It would give the specimens' length and supports and the charges m1–m3
   (data wanted).
 - The frame as a code comparison (the issue's item 2) was not built.
+
+### Against the test paper, 30 October 2026
+
+The test paper was obtained: Dinu, Marginean, Dubina, Kovacs and Ghicioi, *Procedia Engineering*
+210 (2017) 377–385, doi:10.1016/j.proeng.2017.11.091 (CC BY-NC-ND 4.0; numbers only, in
+`Fixtures/Dinu2017`).
+
+**What it gives.**
+- **The specimens** (§2, Figs. 1–2). The HEB260 column, its flanges cut to 160 mm, is 1.99 m long
+  on pin-type supports at both ends, its top on the bunker's roof. The beams are IPE220, on
+  extended end plates 370 × 160 × 16 mm bolted to the flanges (M16 10.9). A transverse IPE220
+  sits on an L100×50×10 cleat on the web, its far end on the bunker's wall. No gravity load.
+- **The steel** (Table 1), as the earlier sources gave it: the web 407/539 MPa and the flanges
+  420/529 MPa, both at 27% total elongation at the maximum force. Neither the elongation after
+  fracture nor the gauge length is given.
+- **The charges** (§3). TNT equivalence 1, the explosive not named. Each is assembled from
+  cylindrical units of 0.121 kg, the units' size not given, and hung from the ceiling.
+  - They sat 1.25 m above the column's base and 0.30 m below the beams' bottom flange, facing the
+    web.
+  - m1–m4 were 0.121, 0.484, 0.968 and 1.815 kg at 0.5 m from the web's face; m5 was 1.815 kg at
+    0.2 m. The shots were cumulative on each specimen, and specimen 1 skipped m3.
+- **What was measured.**
+  - **After m4, the web's dish:** about 22 mm on specimen 1 and 3 mm on specimen 2, not
+    cracked. The paper puts the difference down to the charge's orientation.
+  - **Gauge S6** (specimen 2 only): 1.78% at its peak in m4, 0.61% after, at up to 100 s⁻¹. It
+    sits 0.5 m below the beams' bottom flange, 80 mm off the web's centreline (Fig. 2). By the
+    text that is 0.2 m below the charge.
+  - **After m5, the breach:** the web removed over almost 600 mm (specimen 1) and almost 500 mm
+    (specimen 2), torn along the fillets. In the photographs (Fig. 3b–c) the hole spans the web
+    between the fillets, and its top is at the beams' joint.
+  - **Pressure:** 0.31, 0.75, 1.22, 2.23 and 3.5 bar for m1–m5 at two sensors 3.5 m off. In the
+    open, Kingery–Bulmash gives 0.85 bar side-on (free air) to 3.7 bar face-on (hemispherical)
+    for 1.815 kg at 3.5 m. The bunker's first shock there is within that span. The later peaks of
+    1–1.6 bar over 30 ms (Fig. 6a) are the bunker ringing.
+
+**Where the earlier setup was wrong, and what changed.**
+
+| | 29 October (FRAMEBLAST's report, Ahmed's thesis) | The paper | The model now |
+|---|---|---|---|
+| Breach after m5 | About 0.3 m ("almost twice the flange width", read as twice 160 mm) | Almost 500 and 600 mm | Judged against 500–600 mm. The ASCCS paper's words fit twice the full 260 mm flange |
+| Column | Not given; assumed 2.5 m, clamped at both ends | 1.99 m, pinned at both ends | 1.99 m, both ends held from moving but free to turn |
+| Charge height | Not given; assumed mid-height (1.25 m) | 1.25 m above the base, 0.30 m below the beams | The same 1.25 m, now 0.74 m from the top |
+| Beams | IPE270 on 20 mm end plates, M24; left out | IPE220 on 16 mm end plates, M16; a cleat on the web | The joint kept as what it holds (below) |
+| Explosive | Not named; assumed TNT | TNT equivalence 1, from cylindrical units | TNT, still a sphere |
+| Flanges, axial load | 160 mm; none | 160 mm; none | Unchanged |
+| Confinement | A bunker, its effect unknown | A bunker; pressures at 3.5 m | Still in the open (below) |
+
+- **The joint.** The beams are long and heavy beside the few milliseconds of the web's response,
+  so what they hold is taken as held still. The flanges are held across and along the web over
+  the end plates' 370 mm, from 75 mm below the beams' bottom flange. The web's middle 100 mm is
+  held out of plane over the transverse beam's 220 mm depth, at its cleat. Rotations are left
+  free. The beams' own mass and give are left out.
+- **What stays assumed.**
+  - The charge is a sphere: the units' size and stacking are not given.
+  - The bunker's walls are left out. Its ringing loads both faces of the web alike, so it
+    pushes little on it, but it may add to the dish after m4.
+  - Each shot is on an undamaged column, where the tests' were cumulative.
+  - The drawing (Fig. 2) puts the beams' bottom flange about 1.27 m above the column's bottom,
+    where the text puts the charge at 1.25 m and 0.30 m below it. The text is followed.
+- **The building's column** (E5, E6) keeps the 29 October stand-in and was not rerun.
+
+**The runs** (`blastbench dinu`; 5 mm air, the mapped start; 5 ms; 6–27 minutes each on a shared
+Studio, 3–4 GB):
+
+| Shells; tearing strain | m4, 1.815 kg at 0.5 m: the web at the charge | m5, 1.815 kg at 0.2 m: breach along the column (above, below the charge) |
+|---|---|---|
+| Measured | Dished 22 and 3 mm; S6 1.78% at its peak, 0.61% after | **500–600 mm**, its top at the beams |
+| 10 mm; 27% (the measured elongation) | Holds: 9.2 mm at its peak, swinging 1.7–5.4 mm over the last 2 ms; 3.3% plastic at most, 0.16% at S6 | 390 mm (180, 210): **0.65–0.78** |
+| 10 mm; 23% | | 560 mm (260, 300): **within** |
+| 10 mm; 20% | | 650 mm (300, 350): 1.08–1.30, the top at the joint |
+| 5 mm; 27% | | 690 mm (300, 390): 1.15–1.38, the top at the joint |
+| 5 mm; 30% | | 615 mm (275, 340): 1.03–1.23 |
+| 20 mm; 27% | | **Holds**: 21% plastic at most |
+| 20 mm; 20% | | 180 mm (83, 96): 0.30–0.36 |
+| 20 mm; 15% | | 520 mm (243, 275): **within** |
+| 10 mm; 27%; 2.5 mm air (10 mm cells refined twice) | | 400 mm (190, 210): 0.67–0.80 |
+
+**The load.** At the web's centre, 3 mm in front of it, m5 gives 57 MPa and 4,930 Pa s on 5 mm air
+in every run, and m4 15 MPa and 1,660 Pa s. On 2.5 mm air m5 gives 123 MPa and 10,730 Pa s.
+Kingery–Bulmash's face-on values for the same charge in free air are 186 MPa and 10,600 Pa s at
+0.2 m, and 40 MPa and 2,390 Pa s at 0.5 m.
+
+**What it shows.**
+- **m4 holds, as tested.** The model's web swings about a dish of some 4 mm (1.7–5.4 mm over
+  the last 2 ms). That is near specimen 2's 3 mm and well short of specimen 1's 22 mm.
+  - Its plastic strain at S6's place, 0.16%, is a quarter of the gauge's 0.61% left after.
+  - The two are not the same measure: one is an equivalent plastic strain on the midsurface, the
+    other a strain along one direction on a face. But the gap says the model's web strains less
+    away from the charge.
+- **m5 breaks, as tested, on 10 and 5 mm shells, but not on 20 mm.** With the corrected setup and
+  the measured breach, the earlier verdict turns over:
+  - **10 mm shells** fall short, 0.65–0.78 of the measured length (it read 0.93 against the
+    wrong 0.3 m).
+  - **5 mm shells** run past it, 1.15–1.38.
+  - **The joint stops the tear upward**, as in the photographs. Every breach of 650 mm or more
+    reaches exactly the joint's 300 mm above the charge.
+- **The web's response is converged in the air; the gauge is not.** On 2.5 mm air the reading at
+  the web's centre doubles, to Kingery–Bulmash's impulse within 2%. The breach moves only from
+  390 to 400 mm, and the web's peak from 48.9 to 49.5 mm. The web takes its load from the face
+  as a whole, which 5 mm air already resolves. A point 3 mm off it, at the sharpest part of the
+  load, needs finer air. So what follows is a matter of the tearing, not of the load.
+- **The tearing strain that gives the measured breach falls with the element**, read off the runs
+  above for a breach of 550 mm (500–600):
+  - about 32% on 5 mm shells (31–33%);
+  - 23% on 10 mm shells (22–24%);
+  - about 15% on 20 mm shells (14–15%).
+  The measured 27% is right only near 7.5 mm.
+
+**The tearing proposal, sharpened** (for the user's decision; nothing is changed). A tearing
+strain that falls with the shell's size:
+- **The rule the runs give.** The three sizes fall on one line in the logarithm of the size:
+  ε_f(h) = 23% − 12.5% × ln(h / 10 mm). That is 8.7 points less for each doubling of the element,
+  through all three within a point. It makes the measured 27% the strain of a 7.5 mm element,
+  near the web's 10 mm thickness. It should not be carried far outside 5–20 mm.
+- **Two common forms fit worse.** A strain carried from the gauge length as 1/h (ε_f = 6% + 17% ×
+  10 mm / h), through the 10 and 20 mm points, gives 40% at 5 mm where 32% is wanted. A power
+  law through the same two, 23% × (10 mm / h)^0.66, gives 37%.
+- **What it would do.** On 10 mm shells, a column web's tearing strain would drop from 27% to
+  23%, breaching more readily. On 20 mm shells the web, which now holds at 0.2 m, would tear.
+  On 5 mm shells it would tear later than now.
+- **Its limits.**
+  - It rests on one test series and one stress state, a web torn along its fillets.
+  - Its target, 500–600 mm, is the two specimens' spread, with each "almost".
+  - The cumulative shots before m5 are left out.
+  - It should not be adopted on this alone. It would have to hold on other tearing comparisons,
+    which are not yet built.
+
+**Standing.**
+- **m4:** holds as tested; the dish is within the two specimens' spread, near the smaller.
+- **m5:** breached as tested on 10 and 5 mm shells at the measured 27%, but the breach's length
+  is 0.65–1.38 of the measured, by the mesh. On 20 mm shells it holds.
+- **Recorded and stopped.** Defaults unchanged.
+- **Still wanted:** the SDSS 2016 paper (data wanted), for the charge units and the bunker's size.
+  The frame as a code comparison (the issue's item 2) is not built.
 
 ## Profiled steel sheeting
 

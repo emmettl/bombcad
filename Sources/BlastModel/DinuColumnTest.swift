@@ -2,32 +2,35 @@ import Foundation
 import simd
 
 /// A steel column's web under a charge close in: the CODEC project's bunker tests at INSEMEX
-/// Petroșani (Timișoara and Petroșani, 2016–2017), as reported by the FRAMEBLAST project
-/// (emmettl/bombcad-work#77; Fixtures/Dinu2017/columns.json).
+/// Petroșani (emmettl/bombcad-work#77; Fixtures/Dinu2017/columns.json), from the test paper,
+/// Dinu, Marginean, Dubina, Kovacs and Ghicioi, Procedia Engineering 210 (2017) 377–385,
+/// doi:10.1016/j.proeng.2017.11.091.
 ///
-/// - **The specimens.** Two identical beam–column assemblies cut from a moment frame: a HEB260
-///   column with its flanges cut down to 160 mm, its weak axis in the frame's plane, two
-///   half-span IPE beams on extended end plates and a transverse half-span beam on cleats
-///   (B. Ahmed, SUSCOS master's thesis, CTU Prague, 2018, §4.2). No axial load beyond its own
-///   weight (FRAMEBLAST technical report, stage I, 2017, p. 7).
-/// - **The steel**, S275 J0 as measured (Ahmed's Table 5): the web 10 mm, f_y 407 MPa, f_u
-///   539 MPa; the flanges 17.5 mm, f_y 420 MPa, f_u 529 MPa; both 27% total elongation at the
-///   maximum force.
-/// - **The shots** (report, p. 6–7, and Dinu et al., ASCCS 2018, doi:10.4995/ASCCS2018.2018.7186):
-///   the specimens were loaded by charges of rising size and falling distance, m1 to m5, facing
-///   the web. m4 was at 0.5 m; m5 was 1.815 kg at 0.2 m from the web. 1.815 kg at 0.5 m left
-///   "little plastic deformations"; at 0.2 m the web was removed over almost twice the flange's
-///   width and the freed flanges bowed out. Gauge S6 on the web read 17,600 µm/m at its peak in
-///   m4 (about 0.5 ms) and 5,000–10,000 µm/m to 3 ms; m5 destroyed the gauges.
+/// - **The specimens** (§2, Figs. 1–2). Two identical beam–column assemblies cut from a moment
+///   frame: a HEB260 column 1.99 m long with its flanges cut down to 160 mm, its weak axis in the
+///   frame's plane, on supports at both ends; two half-span IPE220 beams on extended 16 mm end
+///   plates (M16 10.9) bolted to the flanges, and a transverse half-span IPE220 on an
+///   L100×50×10 cleat on the web, its far end on the bunker's wall. No gravity load.
+/// - **The steel**, S275 J0 as measured (Table 1): the web 10 mm, f_y 407 MPa, f_u 539 MPa; the
+///   flanges 17.5 mm, f_y 420 MPa, f_u 529 MPa; both 27% total elongation at the maximum force.
+/// - **The shots** (§3): charges of TNT equivalence 1, assembled from cylindrical units of
+///   0.121 kg and hung from the ceiling, 1.25 m above the column's base and 0.30 m below the
+///   beams' bottom flanges. m1–m4 (0.121, 0.484, 0.968 and 1.815 kg) at 0.5 m from the web's
+///   face, then m5, 1.815 kg at 0.2 m, cumulative on each specimen (specimen 1 skipped m3).
+///   - m4 left the web dished out of plane by about 22 mm (specimen 1) and 3 mm (specimen 2), not
+///     cracked. Gauge S6 on specimen 2's web, 0.5 m below the beams and 80 mm off the web's
+///     centreline, read 1.78% at its peak and 0.61% after, at up to 100 s⁻¹.
+///   - m5 removed the web over almost 600 mm (specimen 1) and almost 500 mm (specimen 2), torn
+///     along the fillets; the photographs (Fig. 3b–c) show the hole's top at the beams.
 /// - **The building's shots** (FRAMEBLAST report, stage II, 2018, pp. 7–9): on the full-scale
 ///   frame's central HEB260 column (full flanges), 2.24 kg at 0.2 m (E5) dished the web and
 ///   2.52 kg (E6) holed it, each after the shots before it on the same column.
 ///
-/// Assumed here (none is given): the charge is a sphere of TNT; m4 is 1.815 kg, as the ASCCS paper's
-/// outcome at 0.5 m reads; the column is 2.5 m long (a storey of the reference frame), clamped at
-/// both ends, the charge at mid-height and on the web's centreline, in the open above rigid ground
-/// (the bunker's walls are left out); the beams are left out; each shot is on an undamaged column,
-/// though the tests' were cumulative.
+/// Assumed here: the charge is a sphere, on the web's centreline, in the open above rigid ground
+/// (the bunker's walls are left out); both ends are held from moving but free to turn; the beams
+/// are reduced to what they hold at the joint (`restraint(at:settings:)`); each shot is on an
+/// undamaged column, though the tests' were cumulative. The building's column keeps the earlier
+/// stand-in: 2.5 m, clamped at both ends, no beams.
 public enum DinuColumnTest {
     /// HEB260 (EN 10365) with the test's flanges, fillets left out.
     public struct Section: Sendable, Hashable {
@@ -54,15 +57,17 @@ public enum DinuColumnTest {
         public var flangeWidth: Float = 0.160
 
         public var scaledDistance: Float { standoff / cbrt(charge) }
+        /// The FRAMEBLAST building's column rather than the bunker's specimen.
+        public var inBuilding: Bool { flangeWidth > 0.2 }
     }
 
     public static let shots: [Shot] = [
         Shot(
             name: "m4", charge: 1.815, standoff: 0.5, breached: false,
-            outcome: "little plastic deformation; web gauge S6 peaked at 17,600 µm/m"),
+            outcome: "web dished 22 and 3 mm, not cracked; gauge S6 1.78% at its peak, 0.61% after"),
         Shot(
             name: "m5", charge: 1.815, standoff: 0.2, breached: true,
-            outcome: "web removed over almost twice the flange width (about 0.3 m); flanges bowed, held"),
+            outcome: "web removed over almost 600 and 500 mm, torn along the fillets"),
         // The FRAMEBLAST building's central column (2018 report, pp. 7–9), cumulative on one column
         // after E1–E4 at 0.5 m, under floors loaded to 10 kN/m2; the explosive is not named.
         Shot(
@@ -73,22 +78,36 @@ public enum DinuColumnTest {
             outcome: "web holed (building, cumulative after E5)", flangeWidth: 0.260),
     ]
 
-    /// The breach's measure in the bunker: almost twice the flange's width. The building's was not
-    /// measured.
-    public static func reportedBreachLength(_ shot: Shot) -> Float? {
-        shot.breached && shot.flangeWidth < 0.2 ? 2 * shot.flangeWidth : nil
+    /// The breach's length along the column in the bunker, specimen 2's and specimen 1's ("almost"
+    /// 500 and 600 mm, §3). The building's was not measured.
+    public static func reportedBreachLength(_ shot: Shot) -> ClosedRange<Float>? {
+        shot.breached && !shot.inBuilding ? 0.5...0.6 : nil
     }
 
-    /// `settings` with the shot's flanges.
+    /// The web's permanent dish in m4, specimen 2's and specimen 1's (§3).
+    public static let reportedDish: ClosedRange<Float> = 0.003...0.022
+
+    /// `settings` with the shot's flanges, and for the building's column its earlier stand-in.
     public static func settings(_ settings: Settings, for shot: Shot) -> Settings {
         var settings = settings
         settings.section.flangeWidth = shot.flangeWidth
+        if shot.inBuilding {
+            settings.length = 2.5
+            settings.pinnedEnds = false
+            settings.joint = false
+        }
         return settings
     }
 
     public struct Settings: Sendable, Hashable {
         public var section = Section()
-        public var length: Float = 2.5
+        /// The column between its end plates (Fig. 2), and the charge's height above its base (§3).
+        public var length: Float = 1.99
+        public var chargeHeight: Float = 1.25
+        /// Ends held from moving but free to turn, as on the test's supports; false clamps them.
+        public var pinnedEnds = true
+        /// The beams' joint 0.30 m above the charge, reduced to what it holds (`restraint`).
+        public var joint = true
         public var elementSize: Float = 0.010
         public var shellLayers = 8
         /// Equivalent plastic strain at which a shell layer tears. Nil: the measured total
@@ -157,9 +176,47 @@ public enum DinuColumnTest {
         return model
     }
 
-    /// The charge's centre: `standoff` from the web's face, on its centreline, at mid-height.
+    /// The charge's centre: `standoff` from the web's face, on its centreline, `chargeHeight` up.
     public static func chargePosition(_ shot: Shot, settings: Settings) -> SIMD3<Float> {
-        SIMD3(axis.x, axis.y + settings.section.web / 2 + shot.standoff, settings.length / 2)
+        SIMD3(axis.x, axis.y + settings.section.web / 2 + shot.standoff, settings.chargeHeight)
+    }
+
+    /// The beams' bottom flanges, 0.30 m above the charge (§3).
+    public static func beamBottom(_ settings: Settings) -> Float { settings.chargeHeight + 0.30 }
+
+    /// Gauge S6's place on the web: 0.5 m below the beams' bottom flanges and 80 mm to either side
+    /// of the web's centreline (Fig. 2), on the web's midsurface.
+    public static func gaugeS6(_ settings: Settings) -> [SIMD3<Float>] {
+        let z = beamBottom(settings) - 0.5
+        return [Float(-1), 1].map { SIMD3(axis.x + $0 * 0.08, axis.y, z) }
+    }
+
+    /// What holds a node of the column still, by axis (x, y, z), its rotation left free:
+    /// - **the ends**, when pinned, in every direction;
+    /// - **the joint** (Fig. 2, section A-A), when kept. The end plates, 370 mm tall from 75 mm
+    ///   below the beams' bottom flanges, bolt the IPE220s to the flanges: the flanges there are
+    ///   held in x and y. The transverse beam's cleat holds the web's middle 100 mm in y over the
+    ///   beam's 220 mm depth, the beam's far end being on the bunker's wall. The beams are long and
+    ///   heavy beside the few milliseconds of the web's response, so held is taken as still.
+    public static func restraint(at p: SIMD3<Float>, settings: Settings) -> (x: Bool, y: Bool, z: Bool) {
+        let s = settings.section
+        let tolerance: Float = 1e-4
+        if settings.pinnedEnds && (p.z < tolerance || p.z > settings.length - tolerance) {
+            return (true, true, true)
+        }
+        guard settings.joint else { return (false, false, false) }
+        let bottom = beamBottom(settings)
+        let onFlange = abs(abs(p.x - axis.x) - (s.depth - s.flange) / 2) < 1e-3
+        if onFlange && p.z > bottom - 0.075 - tolerance && p.z < bottom + 0.295 + tolerance {
+            return (true, true, false)
+        }
+        let onWeb = abs(p.y - axis.y) < 1e-3 && !onFlange
+        if onWeb && abs(p.x - axis.x) < 0.05 + tolerance && p.z > bottom - tolerance
+            && p.z < bottom + 0.22 + tolerance
+        {
+            return (false, true, false)
+        }
+        return (false, false, false)
     }
 
     public static func scenario(_ shot: Shot, settings: Settings = Settings()) -> Scenario {
@@ -179,10 +236,14 @@ public enum DinuColumnTest {
     public struct Result: Sendable {
         public var shot: Shot
         /// Web shells removed, and the breach's extent along the column and across the web (m):
-        /// the span of the removed elements' centres plus an element.
+        /// the span of the removed elements' centres plus an element; and how far it reaches above
+        /// and below the charge's height (m, to the outer elements' edges, negative if it does not
+        /// reach that side).
         public var webRemoved: Int
         public var breachLength: Float
         public var breachWidth: Float
+        public var breachAbove: Float
+        public var breachBelow: Float
         public var flangeRemoved: Int
         /// The web's movement away from the charge at its centre, at the charge's height: the most
         /// it reached and at the end (m).
@@ -196,6 +257,9 @@ public enum DinuColumnTest {
         /// movement away from the charge at mid-height (m), the flanges' mean.
         public var flangeSpread: Float
         public var columnSway: Float
+        /// Equivalent plastic strain at the end in the web shells at gauge S6's place, the larger
+        /// side's (nil when torn away).
+        public var gaugeS6PlasticStrain: Float?
         /// Reflected load on the web's face at the charge's height: peak (Pa) and impulse (Pa s).
         public var reflectedPeak: Float
         public var reflectedImpulse: Float
@@ -203,15 +267,19 @@ public enum DinuColumnTest {
         public var wallSeconds: Double
 
         package init(
-            shot: Shot, webRemoved: Int, breachLength: Float, breachWidth: Float, flangeRemoved: Int,
-            webPeak: Float, webFinal: Float, webPlasticStrain: Float, flangePlasticStrain: Float,
-            flangeSpread: Float, columnSway: Float, reflectedPeak: Float, reflectedImpulse: Float,
+            shot: Shot, webRemoved: Int, breachLength: Float, breachWidth: Float, breachAbove: Float,
+            breachBelow: Float, flangeRemoved: Int, webPeak: Float, webFinal: Float,
+            webPlasticStrain: Float, flangePlasticStrain: Float, flangeSpread: Float, columnSway: Float,
+            gaugeS6PlasticStrain: Float?, reflectedPeak: Float, reflectedImpulse: Float,
             duration: Double, wallSeconds: Double
         ) {
             self.shot = shot
             self.webRemoved = webRemoved
             self.breachLength = breachLength
             self.breachWidth = breachWidth
+            self.breachAbove = breachAbove
+            self.breachBelow = breachBelow
+            self.gaugeS6PlasticStrain = gaugeS6PlasticStrain
             self.flangeRemoved = flangeRemoved
             self.webPeak = webPeak
             self.webFinal = webFinal
@@ -234,5 +302,14 @@ public enum DinuColumnTest {
     public static func extent(_ centres: [Float], elementSize: Float) -> Float {
         guard let low = centres.min(), let high = centres.max() else { return 0 }
         return high - low + elementSize
+    }
+
+    /// How far removed elements' centres (along the column) reach above and below `height`, to the
+    /// outer elements' edges; negative on a side none reaches, and both -1 when none is removed.
+    public static func reach(_ centres: [Float], from height: Float, elementSize: Float) -> (
+        above: Float, below: Float
+    ) {
+        guard let low = centres.min(), let high = centres.max() else { return (-1, -1) }
+        return (high + elementSize / 2 - height, height - (low - elementSize / 2))
     }
 }

@@ -6,6 +6,10 @@ import Metal
 //
 //   blastbench dinu [--shots m4,m5,E5,E6] [--dx 0.02] [--refine 2 --refine-levels 2] [--h 0.01]
 //                   [--ms 5] [--flange 0.16] [--failure 0.27] [--no-rate] [--layers 8]
+//                   [--clamped] [--no-joint]
+//
+// --clamped: the bunker's column clamped at both ends (no joint) rather than pinned with its joint;
+// --no-joint: pinned, without the beams' joint.
 
 func runDinu(device: MTLDevice) throws {
     setvbuf(stdout, nil, _IOLBF, 0)
@@ -16,6 +20,8 @@ func runDinu(device: MTLDevice) throws {
     if let failure = option("failure").flatMap({ Float($0) }) { settings.failureStrain = failure }
     if let layers = option("layers").flatMap({ Int($0) }) { settings.shellLayers = layers }
     if flag("no-rate") { settings.rateLaw = false }
+    if flag("clamped") { settings.pinnedEnds = false }
+    if flag("clamped") || flag("no-joint") { settings.joint = false }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.02
     let duration = (option("ms").flatMap { Double($0) } ?? 5) / 1000
     var refinement = SolverConfiguration.recommended
@@ -37,21 +43,30 @@ func runDinu(device: MTLDevice) throws {
         print(
             String(
                 format:
-                    "%@ %.3f kg at %.2f m (Z %.3f), flanges %.0f mm: web %@; %d web shells removed, breach %.0f mm along x %.0f mm across "
-                    + "(reported %.0f mm along); %d flange shells removed",
+                    "%@ %.3f kg at %.2f m (Z %.3f), flanges %.0f mm: web %@; %d web shells removed, breach %.0f mm along "
+                    + "%@x %.0f mm across (measured %@); %d flange shells removed",
                 shot.name, shot.charge, shot.standoff, shot.scaledDistance,
                 settings.section.flangeWidth * 1000,
                 r.webRemoved > 0 ? "breached" : "held",
-                r.webRemoved, r.breachLength * 1000, r.breachWidth * 1000,
-                (DinuColumnTest.reportedBreachLength(shot) ?? 0) * 1000, r.flangeRemoved))
+                r.webRemoved, r.breachLength * 1000,
+                r.webRemoved > 0
+                    ? String(
+                        format: "(%.0f above the charge, %.0f below) ", r.breachAbove * 1000,
+                        r.breachBelow * 1000)
+                    : "",
+                r.breachWidth * 1000,
+                DinuColumnTest.reportedBreachLength(shot).map {
+                    "\(format(Double($0.lowerBound * 1000), 0))-\(format(Double($0.upperBound * 1000), 0)) mm"
+                } ?? "none", r.flangeRemoved))
         print(
             String(
                 format:
                     "   web at the charge: peak %.1f mm, end %.1f mm; plastic strain web %.3f, flanges %.3f; "
-                    + "flange tips out %.1f mm; sway %.1f mm",
+                    + "flange tips out %.1f mm; sway %.1f mm; at gauge S6 %@",
                 r.webPeak * 1000, r.webFinal * 1000, r.webPlasticStrain, r.flangePlasticStrain,
                 r.flangeSpread * 1000,
-                r.columnSway * 1000))
+                r.columnSway * 1000,
+                r.gaugeS6PlasticStrain.map { String(format: "%.4f plastic", $0) } ?? "torn away"))
         print(
             String(
                 format: "   reflected at the web: %.1f MPa, %.0f Pa s; %@ the test (%@); %.0f s",

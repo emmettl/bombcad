@@ -1,7 +1,7 @@
-# A steel column's web under 1.815 kg close in (CODEC, FRAMEBLAST)
+# A steel column's web under 1.815 kg close in (the bunker tests, FRAMEBLAST)
 
-`columns.json` holds what the sources obtained say of the CODEC project's bunker tests on two
-HEB260 beam–column specimens (INSEMEX Petroșani, 2016–2017) and of the FRAMEBLAST full-scale
+`columns.json` holds what the test paper gives of the bunker tests on two HEB260 beam–column
+specimens (INSEMEX Petroșani), and what FRAMEBLAST's report gives of the full-scale
 building's shots (2018), for `blastbench dinu` (`DinuColumnTest`; emmettl/bombcad-work#77;
 [validation](../../docs/validation.md#a-column-web-breached-close-in)).
 
@@ -9,12 +9,17 @@ The sources (none is in the repository; copies are under `$BOMBCAD_DATA/sources/
 
 | Source | What it gives | Terms |
 |--------|---------------|-------|
-| Dinu et al., ASCCS 2018, doi:10.4995/ASCCS2018.2018.7186 | The outcomes in words: 1.815 kg at 0.5 m, little plastic deformation; at 0.2 m the web removed over almost twice the width | CC BY-NC-ND 3.0 |
-| FRAMEBLAST technical report, stage I (2017), UPT, via the Internet Archive's copy of 26 June 2023 | m5 = 1.815 kg at 0.2 m from the web; m4 at 0.5 m; flanges cut to 160 mm; no axial load; gauge S6's histories for m3 and m4 (Fig. 8, read off); photographs of both specimens holed | None stated |
-| FRAMEBLAST technical report, stage II (2018), the same | The full-scale building's ten shots, outcomes in words and photographs | None stated |
-| B. Ahmed, SUSCOS master's thesis, CTU Prague, 2018, hdl:10467/78301 | The specimens' sections and the measured steel (Table 5) | Personal use (Czech copyright law) |
+| Dinu, Marginean, Dubina, Kovacs and Ghicioi, Procedia Engineering 210 (2017) 377–385, doi:10.1016/j.proeng.2017.11.091 (obtained 30 October 2026) | The tests: the specimens' drawings, the measured steel (Table 1), the charges m1–m5, their shape, height and stand-offs, the web's dish after m4, the breaches after m5, gauge S6's peak, permanent strain and strain rate, the pressures at 3.5 m | CC BY-NC-ND 4.0 |
+| FRAMEBLAST technical report, stage II (2018), UPT, via the Internet Archive's copy of 26 June 2023 | The full-scale building's ten shots, outcomes in words and photographs | None stated |
 
-Readings off the report's Fig. 8 are to about ±500 µm/m. Not obtained: the test paper itself
-(Procedia Engineering 210 (2017) 377–385, CC BY-NC-ND, which ScienceDirect refuses to scripts),
-the SDSS 2016 paper (only its abstract page is archived), the SGEM 2020 paper on the full-scale
-building (paid), and Marginean's 2017 thesis (the archived copy is cut off at 1 MB).
+Before the paper, the setup came from FRAMEBLAST's stage I report (2017), Ahmed's SUSCOS thesis
+(CTU Prague, 2018) and Dinu et al., ASCCS 2018 (doi:10.4995/ASCCS2018.2018.7186). Where those
+differ from the paper, the paper's numbers are kept: the beams are IPE220 on 16 mm end plates
+with M16 bolts (not IPE270, 20 mm, M24), and the breach after m5 is almost 500 and 600 mm (not
+about 0.3 m: the ASCCS paper's "almost twice the flange width" fits the full HEB260 flange's
+260 mm, not the cut 160 mm).
+
+Readings off the paper's figures (strains in Fig. 4, the breach in the photographs) are to about
+±10%. Not obtained: the SDSS 2016 paper (only its abstract page is archived), the SGEM 2020 paper
+on the full-scale building (paid), and Marginean's 2017 thesis (the archived copy is cut off at
+1 MB).
