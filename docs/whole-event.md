@@ -39,6 +39,15 @@ debris comes to rest. The range is now quoted on that ground. Twelve storeys: 23
 down, 11–12 storeys past 15%, 22,600–52,400 elements failed, 34–78 t of rubble. Three storeys: none
 to 74% of the floor down. In every run 99% of the debris outside the plan lies within 1.5–7.4 m of it.
 
+**30 October ([energy budget](#energy-budget-30-october-2026)):** the budget closes, split by
+source. On twelve storeys with today's element, contact, the ground and the joints only take
+energy out, and what the census cannot place is 0.7% of gravity's work by 3.5 s, ready for the 10 s
+run. The work trace of the assumed-strain element had missed a third of its elements' work (its
+modes'). That is fixed, in the count alone. Asleep, the air pushes a collapsing three-storey block:
+up to a third of gravity's work, as falling faces meet the frozen field. With the air awake, the
+assumed-strain block loses 19% of its floor, not 74–81%. Keeping whole-event runs awake is
+proposed, for the user's decision.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -561,6 +570,9 @@ reproduces to the bit in every column to 1.35 s):
 - **The count is less exact.** The trace's elastic channels end at −1.2 MJ on twelve storeys and
   −0.7 MJ on three, which stored energy cannot be: the split by mechanism is off by that much for
   switched elements (not traced further). The budget still only falls after the blast.
+  (Traced on 30 October, [energy budget](#energy-budget-30-october-2026): the trace left out
+  switched elements' modes' work, about a third of their work, and the budget's fall with it.
+  Fixed in the count; the runs above are as they were.)
 - **The cost is five times**, nearly every element switching in the blast's first 50 ms; 10 s of
   the twelve-storey block would be about ten hours on the Studio.
 
@@ -949,6 +961,179 @@ Runs and tables: `/Volumes/StudioData/bombcad/whole-event/friction/` (`f12-assum
 `f12-assumed-to5` on to 5 s, `outcome-f12-assumed*.csv`; `lane-f12-assumed.sh` and
 `lane-12a-to5.sh` how they were run).
 
+## Energy budget, 30 October 2026
+
+Next's item 1 (emmettl/bombcad-work#36): close the energy budget, on the three-storey block first,
+before the 10 s run, which needs what the budget leaves unexplained held to a few per cent of
+gravity's work. Most of what the item named was done by sections 3–6 (23–24 October), whose
+record had not reached the list: the blow-up opposite the charge (the fixed step, then compaction
+from a distorted volume), the census split by source, contact's two pumps with rubble, and the
+bars-only nodes. What was left was to measure the budget by source on today's runs, on the ground
+with friction, at both ends of the range. That found one hole in the count and one push from
+outside, neither of them where the item looked.
+
+**How.** `blastbench wholeevent --split-work` from the start, on emmettl/bombcad@bf8b15bc with
+friction 0.6: three storeys with today's element (rubble, the air asleep, to 2 s), without rubble
+(to 1.5 s), and with `--assumed-strain` (to 4.5 s); twelve storeys with today's element (the air
+awake, to 3.5 s). Each source's work is summed over the way each node moved (section 5). What the
+census itself leaves is three terms of its own: the elements' force on their nodes less their
+work as the trace counts it, the step's share (½ m |Δv|² a substep), and what is left over. Each
+of the first two runs to megajoules over a run, and they cancel. Their sum is **the census's
+residual**: energy the budget cannot place.
+
+| By 2 s / 1.5 s / 2.5 s / 3.5 s, MJ | Three storeys, today's | Without rubble | Three, assumed strain | Twelve storeys, today's |
+|---|---|---|---|---|
+| The air (on faces, loose nodes, particles) | +1.32 (+0.01 after 0.3 s) | +1.32 | +1.87 (+0.55 after 0.5 s) | +1.47 (+1.69 by 0.5 s, then −0.22) |
+| Contact (nodes and particles) | −0.07 | −0.03 | −1.05 | −5.26 |
+| The joints' pairs and anchors | −0.09 | −0.09 | −0.13 | −0.21 |
+| The ground (friction 0.6) | −0.10 | −0.08 | −0.23 | −0.95 |
+| **The census's residual** | **+0.024** | **0.000** | **−0.11** | **+0.13** |
+| Gravity's work | 0.11 | 0.17 | 3.86 | 18.87 |
+| The residual as a share of it | (22%: the block stands) | 0% | −2.9% (−4.7% at most, at 1.8 s) | **+0.7%** |
+| Fastest node after 0.3 s | 16 m/s | 11 m/s | 26 m/s | 19 m/s median; 169 and 60 m/s at two samples of 67 |
+
+(The three-storey assumed-strain column is on the build with the fix below, and with the air's
+work on the faces of switched elements summed apart, a diagnostic not landed: see below. The
+twelve-storey column's sources come to 0.05 MJ less than its net external work, the few samples
+lost where its pieces joined.)
+
+**Today's element: the budget closes.**
+- **The event opposite the charge is gone.** Without rubble no node passes 11 m/s after 0.3 s,
+  with rubble 16 m/s, and the census's residual is nil without rubble and 24 kJ with it, all
+  gathered in the blast's first half second and flat after. That is 1.8% of the blast's 1.32 MJ.
+  (The block stands on the ground with friction, so gravity does only 0.11 MJ: a share of that
+  means little.) The run without rubble is the item's `--no-rubble --watch` case; there was
+  nothing left to watch.
+- **Contact and the joints only take energy out**, on both blocks. Between samples they give back
+  at most 1.7 kJ, a spring letting go, and the ground nothing. Over the
+  window of 22 October's sampling, 2.05–2.44 s on twelve storeys, contact takes 2.5 MW, the joints
+  5 kW, the ground 0.32 MW and the awake air 0.12 MW, and the census's residual gains 0.08 MW. On
+  22 October contact gave +1.3 MW, the joints +0.85 MW, and 7 MW was unplaced. That run predated
+  sections 3–6.
+- **Twelve storeys: the residual is 0.13 MJ by 3.5 s, 0.7% of gravity's 18.9 MJ.** Of the
+  4.9 MJ that left the body, contact took 5.3 MJ, the ground's friction 0.95 MJ and the joints
+  0.21 MJ, against the blast's 1.69 MJ. The awake air takes 0.22 MJ back as the bay falls through
+  it. This is the margin item 2 asked for.
+
+**Assumed strain: the trace missed a third of the elements' work (fixed).** With
+`--assumed-strain`, the split sums the census's residual and the air's work on the faces together,
+since the faces' slot is the switched elements' points'. On three storeys that sum fell by
+0.7 MJ by 2.8 s, where with today's element it holds. A free block of concrete set ringing until
+it cracked, with nothing outside it, told the trace's part apart. Its kinetic energy and the trace together
+stay at 101% of what it started with in today's element. Switched to assumed strain, they fell to
+62%.
+- **The cause.** A switched element takes each point's stress at the centre's rate of strain, as
+  the bars' rates are, for its rate effects. The trace counted the points' work at that rate too,
+  so it left out what each point strains beyond the centre: the modes' work, a hinge's bending and
+  a warp. Today's element counts that as hourglass control's, but a switched element has none.
+- **The fix**, landed with this record. A switched element's trace is now the work its forces
+  do on its nodes: the mean gradient's stress on the centre's velocity gradient, and the modes'
+  forces on their rates. These are the transposes of the forces' own assembly. The modes' work is
+  taken at the mean of their forces before and after the step, as the stresses' is (section 5); the
+  forces before are kept in the hourglass slot, which nothing reads while the element is switched.
+  It is shared among the points' mechanisms in proportion. The block keeps 101%, set spinning
+  100.3%, squashed until all 128 of its elements fail 102%, with bars 102%.
+  - Test: `ConcreteModelTests` "The work trace keeps a cracking block's energy, switched to
+    assumed strain or not". Without the fix, switched, it fails at 0.62.
+- **Before and after.** On three storeys at 4.5 s the trace counted 3.96 MJ of the elements' work
+  before and 5.81 MJ after: two thirds of it before. Its elastic channels, which ended at −1.0 MJ
+  (section 7's "−0.7 MJ, which stored energy cannot be"), end at +0.13 MJ.
+  - Before, the census's residual was about −1.6 MJ by 2.8 s, −31% of gravity's 5.1 MJ (taking the
+    faces' work as the split measured it after the fix).
+  - After, it is −0.11 MJ by 2.5 s, −2.9%, and at most −4.7%, at 1.8 s.
+  - The net external work that section 7 and the range read for this end was therefore mostly the
+    trace's shortfall: −2.5 MJ on three storeys by 7 s, −11.8 MJ on twelve by 3.5 s. With the fix,
+    three storeys read −0.90 MJ at 4.5 s against −2.61 on the same code before it.
+- **What moves.** Only the count. The fix is in the traced kernel alone (`workTraced`, and
+  `crackedHex`), so every untraced run, the digests included, is unchanged. Traced runs of today's
+  element are the same to the bit: three storeys to 0.2 s, every column of `phases.csv` and
+  `work-split.csv`. Traced assumed-strain runs come out another draw of the same model, since the
+  added code changes how the kernel's fast arithmetic rounds, as a shader edit can (section 3). At
+  4.5 s the draws read:
+
+  | Assumed strain, three storeys, 4.5 s | The friction run (`friction/bin`) | Today, before the fix | Today, after it |
+  |---|---|---|---|
+  | Floor area down (by floor) | 255 m² (22 / 100 / 100%) | 269 m² (35 / 100 / 100%) | 280 m² (44 / 100 / 100%) |
+  | Elements failed | 21,221 | 21,833 | 23,059 |
+  | Gravity's work | 6.33 MJ | 6.60 MJ | 6.76 MJ |
+  | 99% of the debris within | 5.1 m | 4.4 m | 4.4 m |
+
+  The quoted range stands. Its three-storey upper end is one draw among spreads like this one's,
+  10% on the floor area down and twice over on the first floor's share. Section 7's figures for
+  this element's work are low by about a third. At 3 s the trace now reads 4.70 MJ against 3.33 on
+  the same code before (section 7 read 3.03). Of the 1.37 MJ difference, 0.94 MJ is the elastic
+  channels', from −0.83 to +0.11 MJ, and 0.39 MJ fracture and crushing's. Hourglass control's
+  share, all of it in bare bars and rubble, falls from 16% to 11% (section 7: 13%). The
+  twelve-storey figures (8.1 MJ, 22%) were not run again (12,400 s).
+
+**The sleeping air pushes a collapsing block.** With the faces' work summed apart (in the
+diagnostic build), the three-storey assumed-strain run shows the air's work rising after the air
+sleeps at 0.55 s, from 1.31 to 1.93 MJ at 1.8 s, and then 1.87 MJ at 2.5 s. That is +0.62 MJ at
+most, a third of gravity's work at 1.8 s, done on the falling floors and walls while the air does
+nothing else.
+- Asleep, the air is frozen as it was when it went to sleep, at 0.55 s here (its largest
+  overpressure under 2% of ambient, `airSleepThreshold`, or five crossings on). Faces that move
+  through that field, or come open to it as elements fail, are loaded by pressures that nothing
+  relieves. Which of the two does the work was not traced further.
+- On a block that stands it does nothing (today's element: +0.01 MJ after 0.3 s, and the same run
+  with the air awake differs by under a kilojoule). On one that comes down it pushes.
+- With the air awake the same run's air work is flat after the blast: 1.315 MJ at 0.5 and at 1 s,
+  where asleep it was 1.43 MJ by 1 s. It then takes 0.03 MJ back as the floors fall through it, and
+  the census's residual is −2.3% of gravity's work at 4.5 s.
+- **And the block does not come down.** Awake, the struck bay's first stage falls as it did asleep
+  (gravity's work 0.69 MJ at 1 s in either), and then it stops. Gravity's work is 1.46 MJ at 2 s
+  and 1.51 MJ at 4.5 s, where every run asleep went on to 6.3–6.8 MJ. A second draw, on the other
+  build and to 3 s, reads the same at 3 s: 64.6 m² of floor down, 8,074 elements failed and 1.49 MJ
+  of gravity's work, against the first's 65.2 m², 8,022 and 1.50 MJ (asleep, 5.05–5.59 MJ by then).
+
+  | Assumed strain, three storeys, 4.5 s | Asleep (three draws) | Awake |
+  |---|---|---|
+  | Floor area down (by floor) | 255–280 m², 74–81% (22–44 / 100 / 100%) | 65 m², 19% (15 / 19 / 22%) |
+  | Storeys losing more than 15% of their floor | 3 | 3 (2 in the second draw, its first floor at 15%) |
+  | Elements failed | 21,221–23,059 | 8,049 |
+  | Rubble | 29.7–31.9 t | 12.2 t |
+  | Gravity's work | 6.33–6.76 MJ | 1.51 MJ |
+  | Debris outside the plan; 99% of it within | 37.6–46.2 t; 4.4–5.1 m | 5.0 t; 3.0 m |
+
+  So the frozen air's push, a third of gravity's work while the bay starts down, is what takes
+  the three-storey block past its margin with assumed strain. The live air does not push.
+- Twelve storeys are run awake already (`--awake`), and there the air takes energy out.
+
+**For the user's decision** (no default changed). The three-storey range's upper end, 74% of the
+floor down, is a collapse the sleeping air drove. Two ways to take it out:
+1. **Whole-event runs keep the air awake** (`--awake` the default of `blastbench wholeevent`, as
+   the twelve-storey runs already are). It is the bench's choice alone, and a dust cloud needs it
+   anyway. It costs 1.3 times on today's three storeys (2,396 against 1,852 s to 2 s). With
+   assumed strain on three storeys it was no dearer here (5,259 s to 4.5 s against 6,867–8,752 s
+   asleep, on a GPU shared alike), since less of the block comes down. The three-storey range
+   would then read none to 19% of the floor down (two draws, 64.6 and 65.2 m² at 3 s), 1,079 to 8,049 elements
+   failed (today's end as quoted, at 7 s). Twelve storeys are unchanged.
+2. **Sleeping air loads faces at ambient.** That is a change to the solver for every scene with
+   sleeping air and moving structures, whose digests and comparisons would decide it.
+
+The first is proposed, with the range quoted again on it. Until the user decides, the range stands
+as quoted, with this caveat.
+
+**What is left.** On today's element, nothing the 10 s run needs: the residual is 0.7% of
+gravity's work by 3.5 s on twelve storeys. The assumed-strain end's residual is −3 to −5%, its
+remaining drift not traced further: elements going bare or eroded lose the last step's work from
+the trace. Its faces' work is summed apart only in the diagnostic build. Landing it would add a
+float per element to the switched points' pool, and so change its size in checkpoints, which then
+no longer restore assumed-strain checkpoints saved before. It was left out.
+
+**What it cost.** About 13 GPU hours as each process counted it, on a GPU shared three and four
+ways. Twelve storeys took 9,950 s to 3.5 s, and 1,775 s again for the stretch whose split a piece's
+restart had overwritten. (Fixed: a run carried on now appends to `work-split.csv`, and a piece writes
+its split's row as it stops.) The three-storey runs took 1,852 s, 1,097 s and 2,396 s (today's,
+without rubble, awake), 6,867 s and 8,752 s (assumed strain before and after the fix), 5,081 s (with
+the faces) and 5,259 s and 3,291 s (awake). The probes and tests took a few minutes.
+
+Runs and tables: `/Volumes/StudioData/bombcad/whole-event/energy/` (`s3-default`, `s3-norubble`,
+`s3-assumed`, `s3-assumed-fixed`, `f3-assumed-faces`, `s3-assumed-awake`, `s3-assumed-awake2`,
+`s3-default-awake`,
+`s12-default` with `s12-gap`; `lane*.sh` how they were run, `tools/split.py` the reader of the
+split, `bin*/` the builds, `bin-faces/` the diagnostic one; `outcome-*.csv` the outcome reader's).
+
 ## Dust: what it would take
 
 Nothing is built for dust. What it would need, from what the model has:
@@ -988,14 +1173,13 @@ Nothing is built for dust. What it would need, from what the model has:
 
 ## Next
 
-1. **Close the energy budget, on the three-storey block first** (a quarter of the cost, and its
-   event at 0.6 s repeats: the same fastest node, to 0.1 m/s, on two builds). Find what blows up the failed
-   elements opposite the charge without rubble (`--no-rubble --watch`, from its 0.5 s
-   checkpoint, sampling every batch); then why contact and the joints lean positive, and what is
-   left of the 7 MW (the air's work on the faces and the ground's would need counting too). With
-   rubble, a candidate for the bars-only nodes: when a bare element's bars break, their mass goes
-   with its particle, so that no node is left with a few grams.
-2. **Then the 10 s run**, in pieces, with the residual held to a few per cent of gravity's work.
+1. **Close the energy budget**: done ([energy budget](#energy-budget-30-october-2026)). The
+   blow-up opposite the charge, contact's and the joints' positive lean and the bars-only nodes
+   were sections 3–6. On today's element the census leaves 0.7% of gravity's work on twelve
+   storeys by 3.5 s. The assumed-strain trace's missing third is fixed. Left: the sleeping air's
+   push on a collapsing block, for the user's decision.
+2. **Then the 10 s run**, in pieces, with the residual held to a few per cent of gravity's work:
+   ready on today's element, the air awake, as the twelve-storey runs are.
 3. **Collapse earned** only after limitation 1's next attack, cracked concrete's stiffness and
    shear, not taken up; since 25 October the case for running it on the assumed-strain element,
    where the stabilisation no longer hides it (section 7).
