@@ -875,18 +875,19 @@ extension StandingScene {
                 StandingEvidence(
                     "Large-panel flats coming down: today's element against assumed strain (a range)",
                     "Not a test: the spread from one cause, the hinges' energy taken by hourglass control or "
-                        + "by the concrete. Twelve storeys: 245–321 m² of floor down, every storey, 21,000–54,000 "
-                        + "elements failed, 31–80 t of rubble; three storeys: 15–79% of the floor down. Assumed "
-                        + "strain is the more damaging end, and errs that way on the member tests; neither end "
-                        + "is a bound, and the debris's reach is not from this cause",
-                    "whole-event.md#a-range-28-october-2026"),
+                        + "by the concrete, on the whole-event runs' ground with Coulomb friction 0.6. Twelve "
+                        + "storeys: 237–309 m² of floor down, 11–12 storeys past 15%, 22,600–52,400 elements "
+                        + "failed, 34–78 t of rubble; three storeys: none to 74% of the floor down. The debris "
+                        + "comes to rest, 99% of it within 1.5–7.4 m of the plan. Assumed strain is the more "
+                        + "damaging end but for the twelve storeys' debris reach (5.8 against 7.4 m), and errs "
+                        + "that way on the member tests; neither end is a bound",
+                    "whole-event.md#adopted-ground-friction-06-30-october-2026"),
                 StandingEvidence(
-                    "Large-panel flats coming down on a ground with friction (0.6, an option)",
-                    "Not a test: on the default ground broken pieces slide on for seconds. With Coulomb "
-                        + "friction three storeys stand with today's element (none of the floor down, against "
-                        + "15%) and lose 74% with assumed strain (against 79%); twelve storeys lose 237 m² "
-                        + "against 245. The debris comes to rest, 99% of it within 1.5–7.4 m of the plan "
-                        + "where the frictionless runs ended at up to 16.9 m and growing",
+                    "Large-panel flats coming down on a frictionless ground (the runs before 30 October)",
+                    "Not a test: on the solver's frictionless ground broken pieces slide on for seconds, "
+                        + "99% of the debris out to 16.9 m and growing when the runs ended, and three storeys "
+                        + "lose 15% of their floor with today's element where with friction they stand. "
+                        + "Twelve storeys: 245–321 m² of floor down",
                     "whole-event.md#ground-friction-30-october-2026"),
             ],
             assumptions: [

@@ -15,7 +15,7 @@ import simd
 //   blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--every 0.05]
 //                         [--budget 80 (minutes)] [--checkpoint-every 1] [--frames 1,2,4,6,8,10]
 //                         [--awake] [--no-rubble] [--dir /Volumes/StudioData/bombcad/whole-event/<name>]
-//                         [--continue] [--ground-friction 0.6]
+//                         [--continue] [--ground-friction 0.6 (0 for the frictionless ground)]
 //
 // Runs in pieces: after `--budget` minutes of wall time it saves a checkpoint at the next 64-step
 // boundary and stops; `--continue` (with the same options) carries on from the latest checkpoint
@@ -53,7 +53,16 @@ private struct WholeEventState: Codable {
     var nextSample: Double
     var nextCheckpoint: Double
     var framesDone: [Double]
+    /// The ground's Coulomb friction the run was started with; nil in a run saved before it was
+    /// recorded (30 October 2026), whose ground was frictionless unless `--ground-friction` was given.
+    var groundFriction: Float?
 }
+
+/// Whole-event runs' ground friction by default: Coulomb 0.6, concrete on concrete or hard ground,
+/// as Keys's walls are run with; adopted on the user's word of 30 October 2026
+/// (emmettl/bombcad-work#36; docs/whole-event.md, adopted: ground friction 0.6). For whole-event
+/// runs only: the solver's own default stays frictionless.
+let wholeEventGroundFriction: Float = 0.6
 
 private func processFootprint() -> Double {
     var info = task_vm_info_data_t()
@@ -90,6 +99,11 @@ func runWholeEvent(device: MTLDevice) throws {
     let checkpointEvery = option("checkpoint-every").flatMap { Double($0) } ?? 1
     let frames = (option("frames") ?? "1,2,4,6,8,10").split(separator: ",").compactMap { Double($0) }.sorted()
     let awake = flag("awake")
+    let givenFriction = option("ground-friction").map { Float($0) ?? -1 }
+    if let givenFriction, givenFriction < 0 {
+        print("--ground-friction takes a coefficient, 0 or more (0 for the frictionless ground)")
+        exit(2)
+    }
     let name =
         "street-\(storeys)s-\(Int(scenario.charge.mass))kg-\(rubble ? "rubble" : "norubble")\(awake ? "-awake" : "")"
     let dir = URL(filePath: option("dir") ?? "/Volumes/StudioData/bombcad/whole-event/\(name)")
@@ -107,13 +121,12 @@ func runWholeEvent(device: MTLDevice) throws {
         exit(2)
     }
     solids.contactMode = .always
-    // `--ground-friction 0.6`: Coulomb friction on the ground, as Keys's walls are run with. Off by
-    // default, when what lands sheds its sliding speed at 8/s only while pressed into the ground,
-    // and debris creeps on for seconds (docs/whole-event.md, ground friction). Give it again with
-    // `--continue`.
-    if let friction = option("ground-friction").flatMap({ Float($0) }) {
-        solids.groundFrictionCoefficient = friction
-    }
+    // Coulomb friction on the ground, 0.6 by default (`wholeEventGroundFriction`). `--ground-friction 0`
+    // gives the frictionless ground of the runs before 30 October 2026, where what lands sheds its
+    // sliding speed at 8/s only while pressed into the ground and debris creeps on for seconds
+    // (docs/whole-event.md, ground friction). `--continue` carries on with the friction the run was
+    // started with, unless given again.
+    solids.groundFrictionCoefficient = givenFriction ?? wholeEventGroundFriction
     if let inspect = option("inspect") {
         solids.tracesWork = true
         let header = try solver.restoreCheckpoint(from: URL(filePath: inspect), scene: scenario)
@@ -160,6 +173,10 @@ func runWholeEvent(device: MTLDevice) throws {
         let header = try solver.restoreCheckpoint(from: folder, scene: scenario)
         state = try JSONDecoder().decode(
             WholeEventState.self, from: Data(contentsOf: folder.appending(path: "whole-event.json")))
+        if givenFriction == nil {
+            solids.groundFrictionCoefficient = state.groundFriction ?? 0
+        }
+        state.groundFriction = solids.groundFrictionCoefficient
         print(String(format: "Resumed from %@: step %d, %.4f s", folder.path, header.stepCount, header.time))
         // Rows written after this checkpoint by a piece that did not reach its next are dropped.
         if let text = try? String(contentsOf: csv, encoding: .utf8) {
@@ -177,16 +194,18 @@ func runWholeEvent(device: MTLDevice) throws {
         solids.tracesWork = true
         state = WholeEventState(
             stepCount: 0, time: 0, wallSeconds: 0, gpuSeconds: 0, baselineRise: solids.census().massTimesRise,
-            nextSample: 0, nextCheckpoint: checkpointEvery, framesDone: [])
+            nextSample: 0, nextCheckpoint: checkpointEvery, framesDone: [],
+            groundFriction: solids.groundFrictionCoefficient)
         try? fm.removeItem(at: csv)
     }
     print(
         String(
             format:
-                "%@: %d elements, %d nodes, %.2f m air cells (%d), rubble %@, air %@; structure step %.2f µs; to %.1f s in pieces of %.0f min",
+                "%@: %d elements, %d nodes, %.2f m air cells (%d), rubble %@, air %@, ground friction %.2f; structure step %.2f µs; to %.1f s in pieces of %.0f min",
             scenario.name, solids.elementCount, solids.nodeCount, cellSize,
             solver.grid.nx * solver.grid.ny * solver.grid.nz,
             rubble ? "on" : "off", awake ? "kept awake" : "sleeping as recommended",
+            solids.groundFrictionCoefficient,
             Double(solids.criticalTimeStep) * 1e6, end, budget / 60))
     fflush(stdout)
 

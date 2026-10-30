@@ -89,15 +89,18 @@ Since 19 October 2026 a structure's collapse is a result of its own (`ResultKind
   - **Steel connections** take their fracture from slow column-removal tests (NIST TN 1669,
     Weigand and Berman): a calibration. No frame has been compared losing a column.
   - **Large-panel flats:** against the Ronan Point inquiry's estimates only, not measurement.
-  - **Large-panel flats coming down, as a range** (28 October 2026): today's element against the
-    one that bends in its cracked concrete (assumed strain), the spread from how the hinges'
-    energy is taken. Twelve storeys lose 245–321 m² of floor, every storey, with 21,000–54,000
-    elements failed; three storeys 15–79% of their floor. Assumed strain is the more damaging
-    end; neither is a bound ([a range](whole-event.md#a-range-28-october-2026)).
-  - **On a ground with friction** (Coulomb 0.6, an option; 30 October 2026) the debris comes to
-    rest, 99% of it within 1.5–7.4 m of the plan, and three storeys stand with today's element
-    (none of their floor down, against 15%); assumed strain still brings down 74%, twelve storeys
-    237 m² against 245 ([ground friction](whole-event.md#ground-friction-30-october-2026)).
+  - **Large-panel flats coming down, as a range**: today's element against the one that bends in
+    its cracked concrete (assumed strain), the spread from how the hinges' energy is taken
+    ([a range](whole-event.md#a-range-28-october-2026)). It is quoted on the whole-event runs' ground,
+    which has Coulomb friction 0.6 by default since 30 October 2026
+    ([adopted](whole-event.md#adopted-ground-friction-06-30-october-2026)). Twelve storeys lose
+    237–309 m² of floor, 11–12 storeys past 15%, with 22,600–52,400 elements failed and 34–78 t of
+    rubble. Three storeys lose none to 74% of their floor. The debris comes to rest, 99% of it
+    within 1.5–7.4 m of the plan. Assumed strain is the more damaging end, except for the twelve
+    storeys' debris reach (5.8 against 7.4 m). Neither end is a bound.
+  - **On the frictionless ground** of the runs before then, the debris was still creeping when they
+    ended, its 99% reach out to 16.9 m and growing, and three storeys lost 15% of their floor with
+    today's element ([ground friction](whole-event.md#ground-friction-30-october-2026)).
 
   The office tower on fin plates and the large-panel flats coming down are the model's alone.
 

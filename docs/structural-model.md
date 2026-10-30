@@ -1266,10 +1266,13 @@ friction is μ times what bears on it however much it chatters, so the same slab
 0.17 s), and the toppled wall comes to rest. Keys's walls are run with it. Rubble particles land the same
 way. Nodes tied to the ground by a base connection are left to the connection's own friction,
 and shells keep the decay. Whether it should become the default for debris is for the debris comparisons to decide.
-On the large-panel block's whole event (`blastbench wholeevent --ground-friction 0.6`) it brings
-the debris to rest within 1–2.5 s of the block, and keeps the three-storey block standing with
-today's element, its broken ground-floor wall held at the foot
-([ground friction](whole-event.md#ground-friction-30-october-2026)).
+On the large-panel block's whole event it brings the debris to rest within 1–2.5 s of the block,
+and keeps the three-storey block standing with today's element, its broken ground-floor wall held
+at the foot ([ground friction](whole-event.md#ground-friction-30-october-2026)). Whole-event runs
+(`blastbench wholeevent`) take it at 0.6 by default since 30 October 2026, with
+`--ground-friction 0` for the frictionless ground. On that ground 99% of their debris comes to rest
+within 1.5–7.4 m of the plan ([adopted](whole-event.md#adopted-ground-friction-06-30-october-2026)).
+The solver's own default stays zero.
 
 `StructureSolver.groundStiffness` (an option, zero by default) makes the ground soft: with a
 subgrade modulus k (Pa/m), a node below the ground is pushed back as by a Winkler bed under

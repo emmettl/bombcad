@@ -33,6 +33,12 @@ Three storeys: 15–79% of the floor down, 2,500–22,700 failed. Neither end is
 member tests the measured value is outside the range four times in five, by 2–19%. The debris's
 reach is not from this cause: on the hard ground it is still creeping when the runs end.
 
+**30 October ([adopted: ground friction 0.6](#adopted-ground-friction-06-30-october-2026)):**
+whole-event runs take Coulomb friction 0.6 on the ground by default (the user's decision), and the
+debris comes to rest. The range is now quoted on that ground. Twelve storeys: 237–309 m² of floor
+down, 11–12 storeys past 15%, 22,600–52,400 elements failed, 34–78 t of rubble. Three storeys: none
+to 74% of the floor down. In every run 99% of the debris outside the plan lies within 1.5–7.4 m of it.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -53,6 +59,7 @@ blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--eve
                       [--awake] [--no-rubble] [--dir …] [--continue] [--watch 20] [--inspect <checkpoint>]
                       [--erode-crushed-bare] [--release-bare-hourglass] [--assumed-strain]
                       [--breakdown <checkpoint>] [--outcome <checkpoint or run folder>]
+                      [--ground-friction 0.6]
 ```
 
 The street preset (500 kg of TNT 8 m from the east flank wall, 670,560 solid elements of 87.5 mm,
@@ -61,6 +68,11 @@ air on 1.19 million cells of 0.25 m), with:
   a particle keeping its mass, pushed by the air and in contact with everything;
 - **the air kept awake** (`--awake`: no sleep), as a dust cloud would need; by default the air
   sleeps as the recommended settings have it;
+- **Coulomb friction 0.6 on the ground** by default since 30 October 2026
+  ([adopted](#adopted-ground-friction-06-30-october-2026)); `--ground-friction 0` gives the
+  frictionless ground of the earlier runs. A run carried on with `--continue` keeps the friction
+  it was started with (saved in its checkpoints), unless the option is given again. A checkpoint
+  saved before 30 October holds none, and carries on frictionless;
 - **pieces of at most `--budget` minutes**: a checkpoint at the next 64-step boundary, and
   `--continue` carries on from it, the same to the bit (checked on the three-storey block, the
   resumed run's rows equal to the straight run's in every column);
@@ -857,6 +869,86 @@ Runs and tables: `/Volumes/StudioData/bombcad/whole-event/friction/` (`f3-defaul
 `f12-default` and `f12-default-to5`, `outcome-*.csv` the reader's tables, `old-3-*-motion.csv` the
 range's three-storey checkpoints read again; `lane.sh` how they were run, `bin/` the build).
 
+## Adopted: ground friction 0.6, 30 October 2026
+
+The user's decision on the proposal above (emmettl/bombcad-work#36): whole-event runs take Coulomb
+friction 0.6 on the ground by default. `blastbench wholeevent` now sets
+`groundFrictionCoefficient` to 0.6 unless `--ground-friction` says otherwise; `--ground-friction 0`
+reproduces the runs before this date. This is for whole-event runs only. The structure solver's
+own default stays frictionless, so no other scene, test or digest moves (above: that would want
+the debris comparisons first). The whole-event run is not offered in the app, and nothing else
+builds it.
+
+**The missing end.** Twelve storeys with assumed strain and friction 0.6, run from the start as
+the other friction runs were (the same binary, `bin/`; the air awake). It ran to 3.5 s in three
+pieces (10,671 s). Its debris was still moving then (11 t faster than 0.5 m/s, the 99% reach growing
+from 4.3 m at 3 s to 5.5 m), so it was carried on to 5 s from its 3.5 s checkpoint, as today's had
+been (4,478 s more).
+
+| Twelve storeys, assumed strain | μ 0, 3.5 s (the range) | μ 0.6, 3.5 s | μ 0.6, 5 s |
+|---|---|---|---|
+| Floor area down (of 1,378 m²) | 321 m² (23%) | 309 m² (22%) | 309 m² (22%) |
+| Sagged 0.3 m or more | 425 m² | 413 m² | 414 m² |
+| Storeys losing more than 15% of their floor | 12 (17–25% each) | 12 (16–25%) | 12 (16–25%) |
+| Elements failed: floors / walls / face walls | 53,640: 7,470 / 36,523 / 9,647 | 51,036: 6,885 / 34,748 / 9,403 | 52,361: 6,984 / 35,817 / 9,560 |
+| Rubble (of the block's 938 t) | 80 t (8.5%) | 76 t (8.1%) | 78 t (8.3%) |
+| Gravity's work | 20.3 MJ | 20.1 MJ | 20.3 MJ |
+| Gravity's work at half / nine tenths | 1.41 / 2.30 s | 1.41 / 2.30 s | 1.41 / 2.35 s |
+| At rest (kinetic energy under 5% of its peak) | 3.0 s | 2.9 s | 2.9 s (0.03 MJ left at 5 s) |
+| Debris outside the plan; beyond 2 / 5 / 10 m | 67 t; 40 / 2.9 / 0.3 t | 56 t; 20 / 1.0 / 0.0 t | 62 t; 25 / 1.6 / 0.0 t |
+| Reach of 90% / 99% of it; the furthest | 4.2 / 7.9 m; 56 m | 3.4 / 5.5 m; 41 m | **3.8 / 5.8 m**; 55 m |
+| Of it still moving faster than 0.5 m/s; mean speed | 61 t; 1.5 m/s | 11 t; 0.52 m/s | 0.6 t; 0.14 m/s |
+
+Friction moves this end little, as it moved today's twelve storeys: 4% less floor down, 2–5% fewer
+failures, the same gravity's work and times. Its debris comes to rest: the 99% reach is 5.8–5.9 m
+from 4.0 s on, where without friction it was 7.9 m at 3.5 s and still creeping.
+
+**The range, on the ground with friction.**
+
+| | Twelve storeys, today's | Twelve, assumed strain | Three storeys, today's | Three, assumed strain |
+|---|---|---|---|---|
+| Floor area down | 237 m² (17%) | 309 m² (22%) | none (54 m² sagged) | 255 m² (74%) |
+| Storeys losing more than 15% of their floor | 11 | 12 | 0 | 3 |
+| Elements failed | 22,560 | 52,361 | 1,079 | 21,560 |
+| Rubble | 34 t | 78 t | 1.7 t | 30.1 t |
+| Gravity's work | 19.1 MJ | 20.3 MJ | 0.23 MJ | 6.43 MJ |
+| Gravity's work at half / nine tenths | 1.90 / 2.90 s | 1.41 / 2.35 s | (no collapse) | 2.52 / 3.61 s |
+| At rest | 3.6 s | 2.9 s | 0.7 s | 4.0 s |
+| Debris outside the plan; beyond 5 / 10 m | 64 t; 6.4 / 0.1 t | 62 t; 1.6 / 0.0 t | under 0.05 t | 40 t; 0.6 / 0.0 t |
+| Reach of 90% / 99%; the furthest | 5.0 / 7.4 m; 39 m | 3.8 / 5.8 m; 55 m | 1.0 / 1.5 m; 3.3 m | 3.9 / 5.2 m; 86 m |
+| Read at | 5 s | 5 s | 7 s | 7 s |
+
+Quoted, then: **twelve storeys lose 237–309 m² of their floor** (1.30 times between the ends),
+11–12 storeys past 15%, 22,600–52,400 elements failed (2.3 times), 34–78 t of rubble, 19.1–20.3 MJ
+of gravity's work (1.06 times), nine tenths of it by 2.35–2.90 s. **Three storeys lose none to 74%**
+of their floor, 1,079–21,560 elements failed. **The debris comes to rest, 99% of it within
+1.5–7.4 m of the plan**, under 0.1 t beyond 10 m in any run.
+
+**What reads differently.**
+- **On twelve storeys, today's element now throws the debris further.** Its 99% reach is 7.4 m
+  against assumed strain's 5.8 m, with 6.4 t beyond 5 m against 1.6 t, from about the same mass
+  outside the plan (64 and 62 t). Without friction the reach went both ways on twelve storeys
+  (6.0 against 7.9 m at 99%, 5.9 against 2.9 t beyond 5 m), both still creeping. So assumed strain
+  is still the more damaging end of every output except the debris's reach. On twelve storeys
+  that reach is the other way round. On three storeys it is not, since today's block stands.
+- **The three-storey today's end is a block that stands**, so on three storeys the range runs from
+  no collapse to most of the block. That reads as wide because it is: the block is near the margin,
+  and the element and the ground's friction each move it across.
+- As before, **neither end is a bound** ([a range](#a-range-28-october-2026)): the range is the
+  spread from the hinges' mechanism, now on a ground with friction.
+
+**What it cost.** 15,149 s of wall time for the missing end, 15,083 s of it on the GPU by the
+process's own count (10,671 s of it to 3.5 s, against 12,406 s without friction), at most
+4.3 GB of footprint at most, and 3 minutes reading its checkpoints.
+
+**Where a user sees it.** The collapse's standing quotes this range in place of the
+frictionless one, and its level stays illustrative, with no band. The whole-event run is still not
+offered in the app.
+
+Runs and tables: `/Volumes/StudioData/bombcad/whole-event/friction/` (`f12-assumed` to 3.5 s and
+`f12-assumed-to5` on to 5 s, `outcome-f12-assumed*.csv`; `lane-f12-assumed.sh` and
+`lane-12a-to5.sh` how they were run).
+
 ## Dust: what it would take
 
 Nothing is built for dust. What it would need, from what the model has:
@@ -908,7 +1000,8 @@ Nothing is built for dust. What it would need, from what the model has:
    shear, not taken up; since 25 October the case for running it on the assumed-strain element,
    where the stabilisation no longer hides it (section 7).
 4. **Dust** after that, as sketched.
-5. **The debris's reach** comes to rest with Coulomb friction 0.6 on the ground (30 October:
-   [ground friction](#ground-friction-30-october-2026)), which also keeps the three-storey block
-   standing with today's element. Whether whole-event runs take it by default is the user's
-   decision (proposed there); if so, the twelve-storey assumed-strain end wants rerunning with it.
+5. **The debris's reach**: done. Coulomb friction 0.6 on the ground is the whole-event default
+   since 30 October ([adopted](#adopted-ground-friction-06-30-october-2026)). The debris comes to
+   rest, 99% of it within 1.5–7.4 m, and the twelve-storey assumed-strain end has been run with it.
+   Whether the solver takes friction by default for every scene is a separate question, for the
+   debris comparisons to decide.
