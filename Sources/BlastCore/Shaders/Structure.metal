@@ -2305,6 +2305,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float3x3 crackedStress = float3x3(0.0f);
     float3x3 crackedFrame = float3x3(1.0f);
     float3 crackedModes[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
+    // Whether it switched this step, and whether it turns to its bars this step (the work trace's
+    // record of its modes' forces, below).
+    bool switchedNow = false;
+    bool baringNow = false;
     if (crackedHex && m.materialModel == 1u && joints == 0u && !bare && !flattened && !nonlocalCracking) {
         crackedSlot = crackedElements[1u + compact].slot;
         switched = crackedSlot != crackedNone;
@@ -2361,6 +2365,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                             state.hourglass[mode] = float3(0.0f);
                         }
                         switched = true;
+                        switchedNow = true;
                     }
                 }
                 if (!switched) {
@@ -2629,8 +2634,61 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             flags[element] = elementBaring;
             failureGate[0] = 1;
             eroded = false;
+            baringNow = true;
         }
         capacity = 0.0f;  // no hourglass control
+        if (workTraced) {
+            // The trace at the work the element's forces do on its nodes. The points' powers above
+            // are at the centre's rate of strain, which leaves out the modes' (a hinge's bending, a
+            // warp), and the switched element has no hourglass control to count them: a free block
+            // of switched concrete set ringing until it cracked lost 38% of its energy from the
+            // trace (emmettl/bombcad-work#36, docs/whole-event.md, energy budget). Its power is
+            // the mean gradient's stress on the centre's velocity gradient and the modes' forces on
+            // their rates, the transposes of the forces' assembly below, the modes' at the mean of
+            // their forces before and after the step (kept in the hourglass slot, unused once
+            // switched), as the stresses' are (the excess below). What the points' powers leave of
+            // it is shared among their mechanisms in proportion, as that excess is.
+            float3x3 velocityGradient = float3x3(0.0f);
+            float3 modeRates[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
+            for (uint a = 0; a < 8; ++a) {
+                float3 s = cornerSign(a);
+                velocityGradient[0] += s.x * v[a];
+                velocityGradient[1] += s.y * v[a];
+                velocityGradient[2] += s.z * v[a];
+                modeRates[0] += s.y * s.z * v[a];
+                modeRates[1] += s.x * s.z * v[a];
+                modeRates[2] += s.x * s.y * v[a];
+                modeRates[3] += s.x * s.y * s.z * v[a];
+            }
+            float actual = 0.0f;
+            for (int k = 0; k < 3; ++k) {
+                actual += dot(crackedStress[k], velocityGradient[k]) * (0.25f / u.h);
+            }
+            for (uint mode = 0; mode < 4; ++mode) {
+                float3 rate = transpose(crackedFrame) * (0.125f * modeRates[mode]);
+                float3 before = switchedNow ? crackedModes[mode] : hourglassBefore[mode];
+                actual += dot(0.5f * (before + crackedModes[mode]), rate);
+            }
+            actual /= referenceVolume;
+            float counted = 0.0f;
+            float spread = 0.0f;
+            for (uint c = 0; c < workChannels; ++c) {
+                if (c != workHourglass && c != workHourglassCapped && c != workViscosity) {
+                    counted += power[c];
+                    spread += fabs(power[c]);
+                }
+            }
+            float left = actual - counted;
+            if (spread > 0.0f) {
+                for (uint c = 0; c < workChannels; ++c) {
+                    if (c != workHourglass && c != workHourglassCapped && c != workViscosity) {
+                        power[c] += left * fabs(power[c]) / spread;
+                    }
+                }
+            } else {
+                power[workOther] += left;
+            }
+        }
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
     } else {
         // Green-Lagrange strain from the displacement gradient H = du/dX, in the lattice axes.
@@ -2975,7 +3033,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3 modeForce[4];
         for (uint mode = 0; mode < 4; ++mode) {
             modeForce[mode] = crackedFrame * crackedModes[mode];
-            state.hourglass[mode] = float3(0.0f);
+            // Traced, the slot keeps the modes' forces for the next step's trace; nothing else reads
+            // it while the element is switched, and it is clear when the element turns to its bars,
+            // whose hourglass control starts from it.
+            state.hourglass[mode] = workTraced && !baringNow ? crackedModes[mode] : float3(0.0f);
         }
         for (uint a = 0; a < 8; ++a) {
             float3 s = cornerSign(a);

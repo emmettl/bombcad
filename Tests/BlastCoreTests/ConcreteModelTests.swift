@@ -939,6 +939,49 @@ extension ConcreteModelTests {
             #expect(abs(energies[3] - energies[0]) < 0.03 * start, "\(energies) J at \(safety)")
         }
     }
+
+    @Test(
+        "The work trace keeps a cracking block's energy, switched to assumed strain or not",
+        arguments: [false, true])
+    func workTraceWhileCracking(switched: Bool) throws {
+        // A floating block of concrete set ringing hard enough to crack throughout, nothing outside
+        // it: its kinetic energy and the work the trace counts together stay what it started with.
+        // Switched to its eight points (`assumedStrainCracking`), the trace took the points' stresses
+        // at the centre's rate of strain and so left out the modes' work, which the switched
+        // element has no hourglass control to count: 62% of the energy was left, where
+        // today's element keeps 101% (emmettl/bombcad-work#36, docs/whole-event.md, energy budget).
+        let material = StructureMaterial.concrete(name: "Cracking", compressiveStrength: 30e6)
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(0.4, 0.2, 1.2))], material: material,
+            elementSize: 0.05, fixedBase: false)
+        model.assumedStrainCracking = switched
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.tracesWork = true
+        if switched { #expect(solver.switchToAssumedStrain { _, _, _ in true } == solver.elementCount) }
+        var seed: UInt64 = 12345
+        func next() -> Float {
+            seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Float(seed >> 40) / Float(1 << 24) - 0.5
+        }
+        solver.mutateNodes { nodes in
+            for n in 0..<nodes.count { nodes[n].velocity = SIMD3(next(), next(), next()) * 4 }
+        }
+        let start = solver.massMomentumEnergy().kinetic
+        let steps = Int((0.01 / Double(solver.criticalTimeStep)).rounded())
+        var energies: [Double] = []
+        for _ in 0..<4 {
+            solver.advance(steps: steps / 4)
+            energies.append(solver.massMomentumEnergy().kinetic + solver.workTotals().reduce(0, +))
+        }
+        // Most of it goes into cracking: the kinetic energy left is under a tenth.
+        #expect(solver.massMomentumEnergy().kinetic < 0.1 * start)
+        #expect(
+            energies.allSatisfy { abs($0 - start) < 0.03 * start },
+            "\(energies) J from \(start) J, switched \(switched)")
+        #expect(abs(energies[3] - energies[0]) < 0.01 * start, "\(energies) J, switched \(switched)")
+    }
 }
 
 /// The model against a real test: the normal-strength slab of the Blast Blind Simulation Contest.

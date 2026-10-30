@@ -263,7 +263,8 @@ func runWholeEvent(device: MTLDevice) throws {
     // work-split.csv: the residual's change since the split began, and each source's work since.
     var splitOut: FileHandle? = nil
     var splitStart: (residual: Double, internalWork: Double)? = nil
-    func sample() {
+    // `phases: false` writes the census split's row alone (`--split-work`, as a piece stops).
+    func sample(phases: Bool = true) {
         autoreleasepool {
             let c = solids.census()
             let totals = solids.workTotals()
@@ -343,6 +344,7 @@ func runWholeEvent(device: MTLDevice) throws {
                 String(format: "%.1f", c.jointSlipWork), String(format: "%.1f", c.jointPower),
                 String(format: "%.1f", c.contactPower), String(format: "%.1f", c.particleContactPower),
             ]
+            guard phases else { return }
             out.write((values.joined(separator: ",") + "\n").data(using: .utf8)!)
             print(
                 String(
@@ -451,11 +453,15 @@ func runWholeEvent(device: MTLDevice) throws {
     if flag("split-work") {
         try solids.traceExternalWork()
         let path = dir.appending(path: "work-split.csv")
-        try
-            ("t,residual_change,elements_less_trace,air_on_faces,air,contact,links,anchors,pairs,ground,step,particle_contact,"
-            + "particle_air,sum,left,particle_pairs_over,deepest_particle_m,node_pairs_over,"
-            + "deepest_node_m,own_corner_pairs_over,deepest_own_corner_m,contact_with_particles,capped_substeps\n")
-            .write(to: path, atomically: true, encoding: .utf8)
+        // A run carried on adds its piece's rows, each piece's split counted from zero at its first
+        // row (its sources' work since it began); a fresh run starts the file.
+        if !(state.stepCount > 0 && FileManager.default.fileExists(atPath: path.path)) {
+            try
+                ("t,residual_change,elements_less_trace,air_on_faces,air,contact,links,anchors,pairs,ground,step,particle_contact,"
+                + "particle_air,sum,left,particle_pairs_over,deepest_particle_m,node_pairs_over,"
+                + "deepest_node_m,own_corner_pairs_over,deepest_own_corner_m,contact_with_particles,capped_substeps\n")
+                .write(to: path, atomically: true, encoding: .utf8)
+        }
         splitOut = try FileHandle(forWritingTo: path)
         splitOut?.seekToEndOfFile()
         sample()
@@ -516,6 +522,8 @@ func runWholeEvent(device: MTLDevice) throws {
             while state.nextCheckpoint <= solver.time + 1e-9 { state.nextCheckpoint += checkpointEvery }
             try save()
         } else if wall() - state.wallSeconds >= budget {
+            // The split's work to the checkpoint, from which the next piece's split starts again.
+            if splitOut != nil { sample(phases: false) }
             try save()
             stopped = "stopped for the budget; carry on with --continue"
             break
@@ -668,6 +676,10 @@ private func breakdownWork(_ s: StructureSolver, time: Double) {
         let hourglass =
             w[w.startIndex + Channel.hourglass.rawValue] + w[w.startIndex + Channel.hourglassCapped.rawValue]
         guard hourglass > 1 else { continue }
+        // A switched element (`--assumed-strain`) has no hourglass control; a traced run keeps its
+        // modes' forces in the slot (the work trace's record), which are not hourglass forces.
+        let (i, j, k) = s.elementCoordinates(index)
+        guard !s.isSwitched(i, j, k) else { continue }
         let base = states.advanced(by: n * stride)
         var best: Float = 0
         var mode = 0
