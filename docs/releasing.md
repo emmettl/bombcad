@@ -151,6 +151,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.7.1 (16) | `e4434df6` | `6026e3d0-1d9d-4cb8-8615-30382779e280` | Published as v0.7.1           |
 | 0.7.2 (17) | `3eb8553e` | `7fec5f83-4313-47b6-8601-3e4f78e0d039` | Published as v0.7.2           |
 | 0.7.3 (18) | `a36961f9` | `3341c693-61a6-4abc-9ead-e1dd8284a3ca` | Published as v0.7.3           |
+| 0.7.4 (19) | `56cc7a8e` | `5867f3cd-4763-4bf6-bcbb-1662511d8dca` | Published as v0.7.4           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -396,6 +397,23 @@ word, with tag `v0.7.3` on `a36961f9`, as the latest release, its notes' links p
 as tagged. The copy downloaded back verified the same way. The Homebrew tap's cask is 0.7.3, with
 the release's checksum. `brew audit --cask --strict --online` passed on 2026-10-26, once the user
 had trusted the tap (`brew trust emmettl/tap`), which this Homebrew now requires before loading it.
+
+Build 19 (0.7.4) was prepared on 2026-10-29 from `56cc7a8e` on main (in the worktree
+`$BOMBCAD_DATA/release-0.7.4`), with its notes assembled from ten fragments and landed with the
+version by `make ship`. The user ran `make release` in the app's Terminal panel, once. It passed
+`make check` (451 app, 945 model and 665 core GPU tests, build-strict with no warnings; the log's
+"Full check: FAILED" is `test-nightly-suspects`' fixture, as before), the release smoke runs, and
+the app's own run and interface smoke from inside its bundle. Apple accepted it (submission
+`5867f3cd-4763-4bf6-bcbb-1662511d8dca`). A fresh expansion of its ZIP (42,751,215 bytes) matched
+the checksum (`063b1817f5130dda7908b3315b39a0709deedda7cae49cc6add89dc8290e5d8f`), validated its
+stapled ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, and is 0.7.4, build 19. It was published on 2026-10-30 at the user's
+word, with tag `v0.7.4` on `56cc7a8e`, as the latest release, its notes' links pointing at the docs
+as tagged. Before publishing, one sentence of its notes was corrected: they had compared the steel
+column's breach with 0.3 m, a misreading of the tests' report, where the tests' own paper, read
+the same day, gives almost 500 and 600 mm (`c2b7c28f`); the notes as published say so and judge
+no length. The copy downloaded back verified the same way. The Homebrew tap's cask is 0.7.4, with
+the release's checksum, and `brew audit --cask --strict --online` passed.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
