@@ -1298,6 +1298,23 @@ public final class StructureSolver {
         public var particleContact = 0.0
         public var particleAir = 0.0
         public var particleGround = 0.0
+        /// Of `elements`, their work over the part of their nodes' moves that no velocity carries,
+        /// which the elements' strain rates, and so the work trace, do not see: where the hard
+        /// ground set a node on its surface, and the rounding of each node's displacement. And the
+        /// node-substeps on which the ground stopped a node.
+        public var unseenMove = 0.0
+        public var groundStops = 0.0
+    }
+
+    /// The census split's sums node by node since the last `externalWork()` (four float4s a node,
+    /// as `structureNodes` keeps them), and the particles' (one float4 each), for a diagnostic.
+    public func externalWorkByNode() -> (nodes: Data, particles: Data)? {
+        guard let buffer = externalWorkBuffer else { return nil }
+        let nodes = Data(bytes: buffer.contents(), count: nodeCount * 64)
+        let particles = rubbleSystem?.work.map {
+            Data(bytes: $0.contents(), count: (rubbleSystem?.count ?? 0) * 16)
+        }
+        return (nodes, particles ?? Data())
     }
 
     /// The census split so far (`traceExternalWork`).
@@ -1311,6 +1328,8 @@ public final class StructureSolver {
             let c = values[4 * n + 3]
             w.contactWithParticles += Double(c.x)
             w.cappedSubsteps += Double(c.y)
+            w.unseenMove += Double(c.z)
+            w.groundStops += Double(c.w)
             // The particles' share of this substep's contact force stays for the next.
             values[4 * n] = .zero
             values[4 * n + 1] = .zero

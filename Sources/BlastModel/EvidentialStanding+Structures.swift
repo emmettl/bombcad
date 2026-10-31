@@ -876,21 +876,26 @@ extension StandingScene {
                     "Large-panel flats coming down: today's element against assumed strain (a range)",
                     "Not a test: the spread from one cause, the hinges' energy taken by hourglass control or "
                         + "by the concrete, on the whole-event runs' defaults, the air awake and the ground with "
-                        + "Coulomb friction 0.6. Twelve storeys: 237–309 m² of floor down, 11–12 storeys past "
-                        + "15%, 22,600–52,400 elements failed, 34–78 t of rubble; three storeys: none to 19% of "
-                        + "the floor down, 864–8,081 elements failed. The debris comes to rest, 99% of it within "
-                        + "1.3–7.4 m of the plan. Assumed strain is the more damaging end but for the twelve "
-                        + "storeys' debris reach (5.8 against 7.4 m), and errs that way on the member tests; "
-                        + "neither end is a bound",
-                    "whole-event.md#adopted-awake-air-31-october-2026"),
+                        + "Coulomb friction 0.6, read once the block is at rest, at 5 s. Twelve storeys: "
+                        + "237–309 m² of floor down, 11–12 storeys past 15%, 22,600–52,400 elements failed, "
+                        + "34–78 t of rubble; three storeys: none to 19% of the floor down, 861–8,059 elements "
+                        + "failed. The debris comes to rest, 99% of it within 1.3–7.4 m of the plan. Assumed "
+                        + "strain is the more damaging end but for the twelve storeys' debris reach (5.8 "
+                        + "against 7.4 m), and errs that way on the member tests; neither end is a bound. A "
+                        + "fifth of today's twelve-storey failures and rubble at 5 s is a rounding in the "
+                        + "solver, not the concrete (below)",
+                    "whole-event.md#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026"),
                 StandingEvidence(
                     "Large-panel flats carried to 10 s (twelve storeys, today's element)",
                     "Not a test: the collapse is over by 3.5 s, its floor area down (243 m²) and 99% of the "
-                        + "debris within 7.5 m holding to 10 s. But the block at rest does not settle: its walls "
-                        + "go on failing at 1,300–1,800 elements a second (31,400 failed and 48 t of rubble by "
-                        + "10 s, against 23,400 and 35 t at 5 s), and what the energy census cannot place grows "
-                        + "from 2.6% of gravity's work at 5 s to 7.5%. The range is read at 5 s",
-                    "whole-event.md#the-10-s-run-31-october-2026"),
+                        + "debris within 7.5 m holding to 10 s. Its walls go on failing at rest, at 1,300–1,800 "
+                        + "elements a second, so results are read at rest, at 5 s, and no later failure count or "
+                        + "rubble mass is quoted. The failing is the solver's, not the concrete's: the debris "
+                        + "fallen 16–26 m holds its displacements to a float's 1.9 µm, a fifth of the panels' "
+                        + "cracking strain across an element, and the rounding sets the pile humming. Kept "
+                        + "precisely (a prototype, not adopted), the pile settles, failing at a fortieth of the "
+                        + "rate, and the block comes down the same, with a fifth fewer failures and rubble at 5 s",
+                    "whole-event.md#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026"),
                 StandingEvidence(
                     "Large-panel flats coming down in sleeping air (the three-storey runs before 31 October)",
                     "Not a test: asleep, the air is frozen as it was, and its pressures on the falling faces "

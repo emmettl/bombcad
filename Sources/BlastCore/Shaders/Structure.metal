@@ -4312,6 +4312,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     }
     float referenceHeight = u.originZ + float(tid.z) * u.h;
     float penetration = -(referenceHeight + displacement.z);
+    bool groundStop = false;  // the hard ground set it on its surface this substep
     if (u.groundStiffness > 0.0f && penetration > 0.0f && u.groundFriction >= 0.0f && !anchoredNode
         && node.mass > 0.0f) {
         // Soft ground: the node presses into it as into a Winkler bed of the given modulus over
@@ -4334,6 +4335,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         float stopped = max(-velocity.z, 0.0f);
         displacement.z = -referenceHeight;
         velocity.z = max(velocity.z, 0.0f);
+        groundStop = true;
         if (u.groundCoulomb > 0.0f) {
             float sliding = length(velocity.xy);
             velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * stopped / sliding) : 0.0f;
@@ -4363,7 +4365,12 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
             - (elementWork + airWork + contactWork + linkWork + anchorWork + pairWork);
         device float4 *work = const_cast<device float4 *>(barNodeForce) + 4 * threadIndex;
         float4 fromParticles = contactEnabled(u, failureGate) ? work[2] : float4(0.0f, 0.0f, 0.0f, 1.0f);
-        work[3] += float4(dot(fromParticles.xyz, moved), fromParticles.w < 1.0f ? 1.0f : 0.0f, 0.0f, 0.0f);
+        // And the elements' work over the part of the move its velocity does not carry, which the
+        // elements' strain rates, and so the work trace, do not see: the hard ground setting it on
+        // its surface, and the rounding of its displacement (a node 16-32 m from where it started
+        // moves in steps of 1.9 µm); and the substeps the ground stopped it.
+        work[3] += float4(dot(fromParticles.xyz, moved), fromParticles.w < 1.0f ? 1.0f : 0.0f,
+                          dot(elementForce, moved - dt * velocity), groundStop ? 1.0f : 0.0f);
         work[0] += float4(elementWork, airWork, contactWork, linkWork);
         // Of what is left, the step's own: a free node's kinetic energy at half steps changes by
         // its force's work less half its mass times the square of its change in velocity.

@@ -158,3 +158,49 @@ struct WholeEventOutcome {
             .joined(separator: ",")
     }
 }
+
+/// When a whole-event run's results are read (the user's decision, 31 October 2026,
+/// emmettl/bombcad-work#36): once the block is at rest, at 5 s, or later only if it comes to rest
+/// later. Past that the block at rest goes on failing walls in its pile (docs/whole-event.md, the
+/// 10 s run), so no later failure count or rubble mass is quoted.
+enum WholeEventReading {
+    static let time = 5.0
+
+    /// When the block comes to rest by the run's phases.csv: its kinetic energy under 5% of its peak
+    /// from then on; nil without the file, or if it has not.
+    static func restTime(phases: URL) -> Double? {
+        guard let text = try? String(contentsOf: phases, encoding: .utf8) else { return nil }
+        let lines = text.split(separator: "\n")
+        guard let header = lines.first?.split(separator: ",").map(String.init),
+            let t = header.firstIndex(of: "t"), let nodes = header.firstIndex(of: "ke_nodes_J"),
+            let particles = header.firstIndex(of: "ke_particles_J")
+        else { return nil }
+        let rows: [(t: Double, ke: Double)] = lines.dropFirst().compactMap { line in
+            let f = line.split(separator: ",", omittingEmptySubsequences: false)
+            guard f.count > max(t, nodes, particles), let time = Double(f[t]), let a = Double(f[nodes]),
+                let b = Double(f[particles])
+            else { return nil }
+            return (time, a + b)
+        }
+        guard let peak = rows.map(\.ke).max(), peak > 0,
+            let last = rows.lastIndex(where: { $0.ke >= 0.05 * peak }), last + 1 < rows.count
+        else { return nil }
+        return rows[last + 1].t
+    }
+
+    /// The line `--outcome` ends a run folder's rows with: which row to quote.
+    static func note(times: [Double], phases: URL) -> String {
+        let rest = restTime(phases: phases)
+        let reading = max(time, rest ?? time)
+        let restText = rest.map { String(format: "at rest from %.2f s by phases.csv", $0) } ?? "no phases.csv"
+        guard let row = times.first(where: { $0 >= reading - 0.02 }) else {
+            return String(
+                format: "Read at rest: no saved state at %.1f s or after yet (%@); quote none of these rows",
+                reading, restText)
+        }
+        return String(
+            format:
+                "Read at rest: quote the row at %.3f s (%@; results are read at 5 s, or at rest if later, and no later failure count or rubble mass is quoted)",
+            row, restText)
+    }
+}

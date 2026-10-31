@@ -64,6 +64,18 @@ of the debris stays within 7.4–7.5 m from 5 s on. What the census cannot place
 net work from outside is flat. The split books its mirror to the ground, with or without friction.
 It is not held to a few per cent past 5 s; what to do is for the user's decision.
 
+**31 October ([read at rest](#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026)):** on
+the user's word, whole-event results are read once the block is at rest, at 5 s, and no later
+failure count or rubble mass is quoted. Read again there, three storeys lose 861–8,059 elements
+(864–8,081 at 7 s). The walls failing at rest are traced, and it is not the ground. The debris
+fallen 16–26 m keeps its displacements as floats, which there move in steps of 1.9 µm: a fifth of
+the panels' cracking strain across an element. The rounding sets the pile humming, hourglass
+control at its cap taking 344 kW while shear across cracks gives back 245 kW, and it is what the
+census could not place. Kept precisely, in a prototype, the pile from 5 to 10 s fails 193 elements
+where as run it failed 7,939, nothing outside the plan moves again, and the census stays at 1.7% of
+gravity's work. From 2 s the collapse comes down the same (243 m², 11 storeys), with a fifth fewer
+failures and rubble at 5 s. Adopting it is for the user's decision.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -84,7 +96,7 @@ blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--eve
                       [--sleeping-air] [--no-rubble] [--dir …] [--continue] [--watch 20] [--inspect <checkpoint>]
                       [--erode-crushed-bare] [--release-bare-hourglass] [--assumed-strain]
                       [--breakdown <checkpoint>] [--outcome <checkpoint or run folder>]
-                      [--ground-friction 0.6]
+                      [--ground-friction 0.6] [--split-work] [--dump-split <from s>]
 ```
 
 The street preset (500 kg of TNT 8 m from the east flank wall, 670,560 solid elements of 87.5 mm,
@@ -119,6 +131,12 @@ air on 1.19 million cells of 0.25 m), with:
 - `--inspect <checkpoint>` lists the fastest nodes of a saved state with their mass and the
   elements round them; `--watch 20` does it at each sample with a node faster than 20 m/s, and a
   run that goes unstable does it as it stops.
+- `--outcome <run folder>` reads every saved state in the folder, one row each, and ends by naming
+  the row to quote: the first saved at 5 s, or at rest if the block comes to rest later, by the
+  folder's `phases.csv` ([read at rest](#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026)).
+- `--split-work` splits the census by source (section 5); `--dump-split <from s>` also writes each
+  sample's split node by node from that time on (`split-nodes-<t>.bin`, four float4s a node as the
+  node kernel sums them, and `split-particles-<t>.bin`), a diagnostic.
 
 Each sample's row goes to `phases.csv` in the run's folder (on StudioData,
 `whole-event/run12-pairfix/`), with the frames.
@@ -318,7 +336,12 @@ with the sums compiled in, none of it when off), and writes `work-split.csv` at 
 - the ground, damping and held axes;
 - and two terms of the census's own:
   - the step's share: a node's kinetic energy at half steps changes by its force's work less ½ m |Δv|²;
-  - the elements' force on their nodes less their work as the trace counts it.
+  - the elements' force on their nodes less their work as the trace counts it;
+- and, since 31 October 2026, two diagnostics: of the elements' work on their nodes, the part done
+  over moves no velocity carries, which the trace cannot see (`elements_on_unseen_move`: the hard
+  ground setting a node on its surface, and the rounding of each node's displacement), and the
+  node-substeps the ground stopped a node (`ground_stops`)
+  ([the walls that fail at rest](#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026)).
 
 The split closes to within a joule in 1.5 MJ: the conversion to rubble passes energy across
 exactly. On the three-storey block, 0.3 to 1.5 s, it showed three things.
@@ -1359,6 +1382,10 @@ grows linearly, not as a blow-up, and more slowly as the run goes on (from 250 t
 3. Both. The dust (item 4) needs the run past the collapse with its pile still, so the hum is in its
    way either way.
 
+(Decided on 31 October: both. See [read at rest](#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026).
+The hum is traced there: it is not the ground. The cause is the rounding of the fallen debris's
+displacements.)
+
 **What it cost.** 8,211 s of GPU from 3.5 to 10 s by the process's own count (4,430 and 3,781 s; 8,395 s
 of wall time), at 1,260 s a simulated second on a shared GPU. The check of the
 build took 279 s, the frictionless probe 136 s, and reading 15 checkpoints and two breakdowns about
@@ -1373,6 +1400,222 @@ Runs and tables: `/Volumes/StudioData/bombcad/whole-event/ten-seconds/` (`run` w
 3.5, 5, 7 and 10 s, `phases.csv` from 0 s and `work-split.csv` from 3.5 s; `outcome.csv` the
 reader's rows at every half second; `breakdown-*.txt`; `probe-mu0` the frictionless probe;
 `piece.sh` how it was run, `bin/` the build; the split read with `energy/tools/split.py`).
+
+## Read at rest, and the walls that fail at rest, 31 October 2026
+
+The user's decision on the 10 s run's two proposals (emmettl/bombcad-work#36): both. Whole-event
+results are read once the block is at rest, at 5 s, and no failure count or rubble mass from
+later in a run is quoted; and the slow failing at rest is traced.
+
+### Read at rest
+
+- **The rule.** A whole-event run's results are read at 5 s, or at rest if the block comes to
+  rest later (kinetic energy under 5% of its peak and staying there). Every run so far is at rest
+  well before 5 s: twelve storeys from 2.9–3.6 s, three from 0.7–1.7 s. The floor area down, the
+  storeys lost and the debris's reach do not move after that; the failures and the rubble did, and
+  a later count of them is not quoted. `blastbench wholeevent --outcome <run folder>` now ends its
+  rows by naming the one to quote (`WholeEventReading`): on the 10 s run, "quote the row at
+  5.007 s (at rest from 3.30 s by phases.csv)".
+- **What moves.** Twelve storeys were already read at 5 s. The three-storey runs were read at 7 s
+  ([adopted: awake air](#adopted-awake-air-31-october-2026)); read again at 5 s, from the same runs'
+  5 s checkpoints, they lose 3 and 22 elements' failures, and assumed strain 0.6 t of the debris
+  outside the plan:
+
+  | Three storeys, 5 s (7 s as quoted before) | Today's element | Assumed strain |
+  |---|---|---|
+  | Floor area down | none (none) | 65.2 m² (65.3 m²): 15 / 19 / 22% |
+  | Elements failed | 861 (864) | 8,059 (8,081) |
+  | Rubble | 1.4 t (1.4 t) | 12.2 t (12.2 t) |
+  | Gravity's work | 0.11 MJ (0.11) | 1.51 MJ (1.52) |
+  | Debris outside the plan; 90 / 99% of it within | under 0.05 t; 1.0 / 1.3 m | 5.1 t (5.7); 2.0 / 3.0 m (1.9 / 3.0) |
+
+- **The range as quoted, at rest at 5 s.** Twelve storeys lose 237–309 m² of their floor, 11–12
+  storeys past 15%, with 22,600–52,400 elements failed and 34–78 t of rubble, 19.1–20.3 MJ of
+  gravity's work. Three storeys lose none to 19% of their floor (65 m²), with 861–8,059 elements
+  failed, 1.4–12.2 t of rubble, 0.11–1.51 MJ of gravity's work. The debris is at rest, 99% of it
+  within 1.3–7.4 m of the plan.
+
+### The walls that fail at rest: the rounding of the fallen debris's displacements
+
+**How.** The 10 s run carried on from its 5 s checkpoint to 5.5 s on a diagnostic build
+(emmettl/bombcad@4e03a04d with the split's two new columns and `--dump-split`). Without the
+diagnostics' use it is the same run to the bit: every column of `phases.csv` but the times equals
+the 10 s run's from 5.0 to 5.5 s. The split was summed node by node, set against the work trace
+element by element over the same half second (from the 5.0 and 5.5 s checkpoints), and the
+elements that failed were located.
+
+**Not the ground.** The suspect was the ground's stop: a node that would pass below the hard
+ground is set on it, a move no velocity carries, which the elements' strain rates (their nodes'
+velocities) and the trace do not see. Summed, the elements' work over that move is 13 kW. The
+2,210 nodes the ground stopped in the half second (36 million node-substeps) carry 15 kW of the
+ground term's 280 kW, and 14 kW of the census's residual of 251 kW (summed node by node). A probe that stopped nodes by
+their velocity, so that the elements see the move, read the same: 24,207 failed by 5.5 s against
+24,196.
+
+**Where the terms are.** The ground term and the residual sit at free nodes, nowhere near the
+ground's stop, and by how far those nodes have moved from where they started:
+
+| Largest displacement component | Nodes the ground did not stop | The ground term | The census's residual | A float's step there |
+|---|---|---|---|---|
+| under 8 m | 976,000 | −5 kW | −10 kW | 0.5 µm or less |
+| 8–16 m | 34,300 | −16 kW | +19 kW | 0.95 µm |
+| 16–32 m | 56,400 | **−244 kW** | **+229 kW** | **1.9 µm** |
+
+A node's displacement is kept as a float from where it started on the lattice. The debris that
+fell from the upper storeys lies 16–26 m from there, where a float moves in steps of 1.9 µm, while a node
+at rest moves 0.1–10 µm a substep. Each substep's move is rounded to that step. The elements'
+strains are their corners' displacements' differences, so they carry the rounding: 1.9 µm across
+an element of 87.5 mm is a strain of 2.2 × 10⁻⁵, a fifth of the panels' cracking strain, or
+0.57 MPa of stress, as large as the caps of the bare panels' hourglass control (0.21–0.73 MPa,
+section 7). The trace reads its work from the velocities, which do not round, so the rounding's
+work is what the census cannot place, and the split's "ground" (what the change in kinetic energy
+leaves at a node) is its mirror: for a free node that is the forces' work over the move rounded
+away. The split's new column reads it directly (`elements_on_unseen_move`, the landed build, the
+same run to the bit): from 5.0 to 5.1 s the elements' work over moves no velocity carries is
++294 kW, against the ground term's −288 kW and the census's residual of +241 kW.
+
+**What it drives.** Over the half second the work trace reads the rounding as a pump:
+
+- **The hum.** Hourglass control at its cap takes 344 kW. Shear across cracks gives back 245 kW,
+  which an elastic crack cannot do for long: 10,000 elements give back 211 kW between them, 21 J
+  each a second, where a cracked element holds about a tenth of a joule. The elements' net work
+  is 40 kW.
+- **The failures.** Of the 3,621 elements that fail from 5 to 7 s, 84% started in the seventh to the
+  eleventh storeys and lie 12–26 m below where they started, their lowest corner 0.1–1.5 m off the
+  ground. Only 3% touch it. The six lowest storeys, half the block, give 12% of them.
+
+**The proof: displacements kept precisely.** A prototype keeps each node's displacement as the
+float and the rounding error it leaves (one float3 a node more, in a buffer of its own). It takes
+the elements' displacement gradients from their corners' displacements relative to their first
+corner's, so that the 26 m they share is not rounded in the sum. It moves nothing else. From the
+5 s checkpoint, against the same run as it was:
+
+| 5.0 → 5.5 s, twelve storeys | As run | Displacements kept precisely |
+|---|---|---|
+| Elements failing | 770 (1,550 a second) | **39** (78 a second) |
+| Hourglass control's work | 353 kW | 27 kW |
+| Shear across cracks | −245 kW | −4 kW |
+| The elements' net work | 40 kW | 19 kW |
+| The census's residual; the split's ground term | +235 kW; −287 kW | −36 kW; −18 kW |
+| Gravity's work | 46 kW | 35 kW |
+
+**From 5 to 10 s**, the same prototype from the 5 s checkpoint, in two pieces, against the 10 s run:
+
+| Twelve storeys | 7 s as run | 7 s, kept precisely | 10 s as run | 10 s, kept precisely |
+|---|---|---|---|---|
+| Floor area down; sagged; storeys past 15% | 242.7; 355.1 m²; 11 | the same | the same | the same |
+| Elements failed (23,426 at 5 s) | 27,047 | **23,527** | 31,365 | **23,619** |
+| Failing, a second: 5–6 / 6–8 / 8–10 s | 1,708 / 1,818 / 1,300 | **60 / 38 / 28** | | |
+| Rubble (35.4 t at 5 s) | 41.1 t | 35.5 t | 47.9 t | **35.7 t** |
+| Debris outside the plan; beyond 2 / 5 m | 64.1 t; 27.9 / 5.0 t | 60.2 t; 25.6 / 4.6 t | 74.5 t; 40.5 / 7.5 t | 63.0 t; 27.7 / 4.9 t |
+| Reach of 90 / 99%; the furthest | 4.5 / 7.4 m; 30.8 m | 4.5 / 7.5 m; 30.8 m | 5.0 / 7.5 m; 30.8 m | 4.5 / 7.5 m; 30.8 m |
+| Of it moving faster than 0.5 m/s; mean speed | 3.0 t; 0.18 m/s | 0.1 t; 0.05 m/s | 17 t; 0.29 m/s | **0.1 t; 0.06 m/s** |
+| Hourglass control's work, 8–10 s; kinetic energy at 10 s | | | 267 kW; 8.2 kJ | 16 kW; 1.3 kJ |
+| What the census cannot place; as a share of gravity's work | 0.97 MJ; 5.0% | 0.44 MJ; 2.3% | 1.45 MJ; 7.5% | **0.32 MJ; 1.7%** |
+
+Kept precisely, the pile settles: its failing falls from 60 to 28 elements a second, its rubble
+grows by 0.3 t in 5 s where as run it grew by 12.5 t, nothing outside the plan moves again, and its
+kinetic energy falls to 1.3 kJ. What the census cannot place no longer grows. It drifts the other
+way at 38 kW (0.19 MJ from 5 to 10 s), mirroring contact's +45 kW; the body's own budget is flat
+from 7 s (−0.033 MJ of work from outside at 8, 9 and 10 s).
+
+**The collapse it leaves.** From the 3.5 s checkpoint to 5 s, displacements kept precisely, read
+at 5 s against the 10 s run there:
+
+| Twelve storeys, 5 s | As run | Kept precisely, from 3.5 s |
+|---|---|---|
+| Floor area down; sagged 0.3 m or more | 242.7 m²; 355.2 m² | 242.7 m²; 355.2 m² |
+| Storeys losing more than 15% of their floor (by floor) | 11 (14 / 18 / 17 / 19 / 17 / 17 / 17 / 19 / 21 / 18 / 18 / 17%) | the same, to the per cent |
+| Elements failed: floors / walls / face walls | 23,426: 1,582 / 17,871 / 3,973 | **21,945**: 1,582 / 16,572 / 3,791 |
+| Of them failing from 3.5 to 5 s | 1,809 | **328** |
+| Rubble | 35.4 t | 33.1 t |
+| Gravity's work | 19.15 MJ | 19.13 MJ |
+| Debris outside the plan; beyond 2 / 5 m | 58.0 t; 23.7 / 4.5 t | 57.3 t; 23.5 / 4.5 t |
+| Reach of 90% / 99%; the furthest | 4.5 / 7.5 m; 27.3 m | 4.6 / 7.5 m; 27.2 m |
+| What the census cannot place, 3.5 to 5 s; as a share of gravity's work at 5 s | +0.38 MJ; 2.0% | −0.08 MJ; −0.4% |
+
+So what comes down, and where it lies, does not move. What moves is the walls failing at rest:
+four fifths of the 1,809 failures from 3.5 to 5 s were the rounding's, 6% of those counted at 5 s,
+and 2.3 t of the rubble.
+
+**From 2 s.** The rounding is there whenever debris lies metres from where it started, and the
+bay is mostly down by 2.5 s. So the energy budget's run (`energy/s12-default`, the 10 s run's first
+3.5 s) was carried on from its 2 s checkpoint with displacements kept precisely, to 3.5 s and on
+to 5 s:
+
+| Twelve storeys, today's element | 3.5 s as run | 3.5 s, kept precisely from 2 s | 5 s as run | 5 s, kept precisely from 2 s |
+|---|---|---|---|---|
+| Floor area down; sagged | 242.7; 355.1 m² | 242.7; 355.1 m² | 242.7; 355.2 m² | 242.7; 355.1 m² |
+| Storeys past 15% (by floor) | 11 (the first floor 14%) | the same, to the per cent | 11 | the same, to the per cent |
+| Elements failed: floors / walls / face walls | 21,617: 1,581 / 16,394 / 3,642 | **18,289**: 1,596 / 12,821 / 3,872 | 23,426: 1,582 / 17,871 / 3,973 | **18,577**: 1,599 / 12,930 / 4,048 |
+| Rubble | 32.6 t | 27.2 t | 35.4 t | 27.6 t |
+| Gravity's work; nine tenths of it by | 18.87 MJ; 2.76 s | 18.83 MJ; 2.76 s | 19.15 MJ | 19.08 MJ |
+| Peak kinetic energy; at rest from | 6.09 MJ at 2.70 s; 3.30 s | 5.95 MJ at 2.55 s; 3.30 s | | |
+| Hourglass control's work from 2 s; fracture's | 6.32; 0.64 MJ | 4.88; 1.82 MJ | | |
+| Debris outside the plan; reach of 90 / 99%; the furthest | 51.4 t; 3.6 / 6.8 m; 20.5 m | 50.5 t; 3.7 / 7.3 m; 20.5 m | 58.0 t; 4.5 / 7.5 m; 27.3 m | 55.4 t; 4.3 / 8.2 m; 41.8 m |
+| What the census cannot place from 2 s; its share of gravity's work | +0.11 MJ; 0.6% | −0.35 MJ; −1.8% | +0.48 MJ; 2.5% | −0.41 MJ; −2.1% |
+
+- **What comes down does not move**: the floor area down, the sagged area and every floor's share
+  are the same at 3.5 and at 5 s, to the tenth of a square metre and the per cent, and gravity's
+  work within 0.4%.
+- **The failures and the rubble do.** A fifth fewer elements have failed at 5 s (18,577 against
+  23,426), nearly all of them walls (12,930 against 17,871), and there is a fifth less rubble
+  (27.6 against 35.4 t). Of the 4,849 fewer, 3,328 are gone by 3.5 s, the bay's debris humming as
+  soon as it lands, and 1,481 from 3.5 to 5 s. Some of the difference is the draw, a collapse
+  being chaotic: the two twelve-storey draws at 5 s read 22,560 and 23,426.
+- **The concrete takes the work hourglass control took**: from 2 to 3.5 s fracture's work is
+  1.82 MJ against 0.64, hourglass control's 4.88 against 6.32 MJ.
+- **The debris reaches a little further**: 99% within 8.2 m at 5 s against 7.5 m, the furthest
+  piece at 41.8 m against 27.3 m. Its 99% reach was 7.3 m at 3.5 s, with 16 t of it still moving
+  faster than 0.5 m/s (as run 21 t), which went on out. The reach is a draw's too: at 5 s the two draws read 7.4 and 7.5 m.
+- **What the census cannot place is negative, −2.1% of gravity's work, all of it taken while
+  the bay comes down** (−1.8% by 3.5 s), and flat at rest. As run, the rounding's positive share
+  hid it. It is within the few per cent the 10 s run wanted.
+
+### For the user's decision
+
+No default is changed: the prototype is a patch, not on main, and it borrows two buffer slots
+that this block leaves unused (the shell links' in the node kernel, the refined air's in the
+element kernel, each at Metal's limit of 31). Three ways on:
+
+1. **Keep displacements precisely in whole-event runs** (a function constant the bench sets, as it
+   sets friction and the awake air; recommended first). It needs a buffer slot of its own in the
+   node and element kernels: two of each kernel's buffers merged, or the node grown from 32 to 48
+   bytes. The buffer of rounding errors (16 bytes a node, 17 MB here) can stay on the GPU, out of
+   checkpoints: a restart then drops at most half a float's step, once. No other scene, test or
+   digest moves. On this draw it changes the twelve-storey reading at 5 s as above: the floor area
+   down and the storeys lost the same; a fifth fewer elements failed (18,577 against 23,426) and a
+   fifth less rubble (27.6 against 35.4 t); 99% of the debris within 8.2 m against 7.5. The range's
+   today's end (22,560 failed, 34 t, on the friction run's draw) would want running again, and its
+   assumed-strain end too (52,361), whose debris rounds as well. The pile then stays at rest to
+   10 s, and runs past 5 s, the dust's, become possible.
+2. **The same for every scene with structures.** Any structure whose pieces move metres from where
+   they started rounds the same way: the debris in the debris, fragment and envelope comparisons.
+   The digests would move (the gradients' sums are taken in another order), and those comparisons
+   would want running again. Worth doing after the first, if the user wants it.
+3. **Leave it.** Results stay read at rest, at 5 s, a fifth of whose failure count and rubble on
+   twelve storeys is the rounding's, and the dust (item 4) cannot be run on a pile that hums.
+
+Left over with the prototype: contact still gives back 30 kW at rest (+16 kJ over 5.0–5.5 s, as
+run 20 kJ). The likeliest source is the rubble particles: their positions are floats in the
+domain's frame (steps of 1.9 µm from 16 m out), and they press on each other by their overlaps. Not
+traced further.
+
+**What it cost.** 19,700 s of GPU by the processes' own count, about 5.5 hours, on a GPU shared two
+and three ways: 3,040 s for the six short runs from 5 s, 2,630 s from 3.5 to 5 s, 5,410 s from 2 to
+5 s and 8,620 s from 5 to 10 s, and about ten minutes reading eight checkpoints. At most 3.2 GB of
+footprint. The prototype's own cost could not be told on a shared GPU: its 5.0–5.5 s took 596 s
+against 422–763 s for the same stretch as run.
+
+Runs and tables: `/Volumes/StudioData/bombcad/whole-event/rest-failing/` (`base` the diagnostic
+build from the 5 s checkpoint to 5.5 s, `dump` the same with `--dump-split`, `fix` the ground's stop
+by velocity, `proto` the prototype to 5.5 s, `proto10` to 10 s and `proto35` from the 3.5 s
+checkpoint, `off` the prototype's build with it off; `bin*/` the builds, `lane*.sh` and `pieces.sh`
+how they were run; `tools/` the readers: `ckpt.py` a checkpoint's buffers, `where.py` where the
+failing elements are, `channels.py` the trace by element, `nodesplit.py` the split by node;
+`precise-displacements-prototype.patch` the prototype, on emmettl/bombcad@4e03a04d; `outcome-*.csv`
+the outcome reader's rows; checkpoints kept at 5.5 s in `base`, at 7 and 10 s in `proto10`, at 3.5
+and 5 s in `proto20`).
 
 ## Dust: what it would take
 
@@ -1420,10 +1663,10 @@ Nothing is built for dust. What it would need, from what the model has:
    a collapsing block is taken out by keeping the air awake, the default since 31 October
    ([adopted](#adopted-awake-air-31-october-2026)).
 2. **The 10 s run**: run ([the 10 s run](#the-10-s-run-31-october-2026)), twelve storeys with today's
-   element. The collapse is over by 3.5 s. What the census cannot place is 2.6% of gravity's work at
-   5 s, but the block at rest goes on failing walls at 1,300–1,800 elements a second, and the
-   residual grows to 7.5% by 10 s, booked at the ground. Left, for the user's decision: read results
-   at rest (5 s) and quote no later failure count, or trace the hum at rest first.
+   element. The collapse is over by 3.5 s, but the block at rest goes on failing walls. Since
+   31 October results are read at rest, at 5 s, and the failing at rest is traced to the rounding
+   of the fallen debris's displacements; keeping them precisely is prototyped and proposed
+   ([read at rest](#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026)).
 3. **Collapse earned** only after limitation 1's next attack, cracked concrete's stiffness and
    shear, not taken up; since 25 October the case for running it on the assumed-strain element,
    where the stabilisation no longer hides it (section 7).

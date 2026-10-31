@@ -101,16 +101,23 @@ Since 19 October 2026 a structure's collapse is a result of its own (`ResultKind
     ([a range](whole-event.md#a-range-28-october-2026)). It is quoted on the whole-event runs'
     defaults: Coulomb friction 0.6 on the ground since 30 October 2026
     ([adopted](whole-event.md#adopted-ground-friction-06-30-october-2026)), and the air kept awake
-    since 31 October ([adopted](whole-event.md#adopted-awake-air-31-october-2026)). Twelve storeys
+    since 31 October ([adopted](whole-event.md#adopted-awake-air-31-october-2026)), and read once the
+    block is at rest, at 5 s ([read at rest](whole-event.md#read-at-rest)). Twelve storeys
     lose 237–309 m² of floor, 11–12 storeys past 15%, with 22,600–52,400 elements failed and 34–78 t
-    of rubble. Three storeys lose none to 19% of their floor, with 864–8,081 elements failed. The
+    of rubble. Three storeys lose none to 19% of their floor, with 861–8,059 elements failed. The
     debris comes to rest, 99% of it within 1.3–7.4 m of the plan. Assumed strain is the more
     damaging end, except for the twelve storeys' debris reach (5.8 against 7.4 m). Neither end is a
-    bound.
+    bound. A fifth of today's twelve-storey failures and rubble at 5 s is a rounding in the solver,
+    not the concrete (below).
   - **Carried to 10 s** (twelve storeys, today's element), the floor area down and the debris's
     99% reach hold from 5 s, but the block at rest goes on failing walls at 1,300–1,800 elements a
-    second, and what the energy census cannot place grows to 7.5% of gravity's work; the range is
-    read at 5 s ([the 10 s run](whole-event.md#the-10-s-run-31-october-2026)).
+    second ([the 10 s run](whole-event.md#the-10-s-run-31-october-2026)), so no failure count or
+    rubble mass from after 5 s is quoted. That failing is the solver's, not the concrete's: debris
+    fallen 16–26 m holds its displacements to a float's 1.9 µm, a fifth of the panels' cracking
+    strain across an element, and the rounding sets the pile humming. Kept precisely (a prototype,
+    not adopted), the pile settles, failing at a fortieth of the rate, and the block comes down the
+    same, with a fifth fewer failures and rubble at 5 s
+    ([the walls that fail at rest](whole-event.md#the-walls-that-fail-at-rest-the-rounding-of-the-fallen-debriss-displacements)).
   - **On the frictionless ground** of the runs before then, the debris was still creeping when they
     ended, its 99% reach out to 16.9 m and growing, and three storeys lost 15% of their floor with
     today's element ([ground friction](whole-event.md#ground-friction-30-october-2026)).

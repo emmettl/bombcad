@@ -46,7 +46,8 @@ import simd
 // forces the elements hold (emmettl/bombcad-work#36 step 3, docs/whole-event.md section 7).
 // `--outcome <checkpoint or run folder>` prints what a user reads from each saved state: floor
 // area down and storeys lost, failures by part, rubble, debris outside the plan and its reach
-// (WholeEventOutcome.swift; docs/whole-event.md, a range).
+// (WholeEventOutcome.swift; docs/whole-event.md, a range); given a run's folder, it ends by naming
+// the row to quote, the first saved at rest at 5 s (`WholeEventReading`).
 
 private struct WholeEventState: Codable {
     var stepCount: Int
@@ -196,11 +197,19 @@ func runWholeEvent(device: MTLDevice) throws {
     if let folders = outcomeFolders {
         // One checkpoint, or every checkpoint in a run's folder, in order.
         print(WholeEventOutcome.header)
+        var times: [Double] = []
         for folder in folders {
             solids.tracesWork = true
             let header = try solver.restoreCheckpoint(from: folder, scene: scenario)
             print(WholeEventOutcome(solids, storeys: storeys).row(time: header.time))
+            times.append(header.time)
             fflush(stdout)
+        }
+        // A run's folder: which of its rows is the reading (at rest, at 5 s; `WholeEventReading`).
+        if let run = option("outcome").map({ URL(filePath: $0) }),
+            !fm.fileExists(atPath: run.appending(path: "checkpoint.json").path)
+        {
+            print(WholeEventReading.note(times: times, phases: run.appending(path: "phases.csv")))
         }
         return
     }
@@ -337,6 +346,15 @@ func runWholeEvent(device: MTLDevice) throws {
                 // The elements' work on the nodes and their own work as the trace counts it should
                 // cancel; what the sources leave of the residual's change is the conversion to
                 // rubble's (zero if it passes energy across exactly) and rounding.
+                // `--dump-split <from s>`: each sample's split node by node from then on, before it is
+                // folded, to split-nodes-<t>.bin and split-particles-<t>.bin (a diagnostic).
+                if let from = option("dump-split").flatMap({ Double($0) }), solver.time >= from,
+                    let raw = solids.externalWorkByNode()
+                {
+                    let stamp = String(format: "%.5f", solver.time)
+                    try? raw.nodes.write(to: dir.appending(path: "split-nodes-\(stamp).bin"))
+                    try? raw.particles.write(to: dir.appending(path: "split-particles-\(stamp).bin"))
+                }
                 let w = solids.externalWork()
                 let start = splitStart ?? (residual, internalWork)
                 splitStart = start
@@ -346,7 +364,7 @@ func runWholeEvent(device: MTLDevice) throws {
                     w.links, w.anchors, w.pairs,
                     w.ground + w.particleGround - w.step, w.step, w.particleContact, w.particleAir,
                 ]
-                let detail = [w.contactWithParticles, w.cappedSubsteps]
+                let detail = [w.contactWithParticles, w.cappedSubsteps, w.unseenMove, w.groundStops]
                 let sum = parts.reduce(0, +)
                 let overlaps = solids.rubbleOverlaps()
                 let row =
@@ -500,7 +518,8 @@ func runWholeEvent(device: MTLDevice) throws {
             try
                 ("t,residual_change,elements_less_trace,air_on_faces,air,contact,links,anchors,pairs,ground,step,particle_contact,"
                 + "particle_air,sum,left,particle_pairs_over,deepest_particle_m,node_pairs_over,"
-                + "deepest_node_m,own_corner_pairs_over,deepest_own_corner_m,contact_with_particles,capped_substeps\n")
+                + "deepest_node_m,own_corner_pairs_over,deepest_own_corner_m,contact_with_particles,capped_substeps,"
+                + "elements_on_unseen_move,ground_stops\n")
                 .write(to: path, atomically: true, encoding: .utf8)
         }
         splitOut = try FileHandle(forWritingTo: path)
