@@ -102,6 +102,10 @@ enum SceneBench {
             try PeopleEstimate.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "fire" {
+            try FireSpreadStudy.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "damage-yield" {
             try DamageYield.run(Array(args.dropFirst()))
             return

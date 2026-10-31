@@ -28,6 +28,13 @@ Results with a standing of their own: peak overpressure, impulse, structural def
 structural damage and failure, building surface exposure, freestanding objects' motion, thermal
 radiation, the rise and cloud, fragments and ground shock. A scene has the ones it produces.
 
+Two steps taken after a district's quick estimate, not part of a scene's run, print their
+standing with their figures (each `standing` in its model), both illustrative: the people hurt
+([People in the scene](people-in-the-scene.md), `OccupantInjury.standing`) and fire spreading
+from building to building over the hours after the blast ([Fire spread](fire-spread.md),
+`FireSpread.standing`). Neither changes a scene's standing; a scene still lists fire among what
+it leaves out.
+
 ## Derived from the scene
 
 The standing is worked out from the scene's actual settings each time they change

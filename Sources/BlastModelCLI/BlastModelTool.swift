@@ -28,6 +28,10 @@ enum BlastModelTool {
         ("protect", "protective design on the surrogate, confirmed on a run's saved loads", Protect.run),
         ("infer-charge", "the charge's yield and place from arrivals (and glass)", InferCharge.run),
         (
+            "fire", "fire spreading over a district's buildings after the blast, for hours (illustrative)",
+            FireSpreadStudy.run
+        ),
+        (
             "soil-column", "the layered soil column against its closed form, and its cost",
             GroundStudies.soilColumn
         ),
