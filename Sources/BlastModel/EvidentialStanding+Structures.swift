@@ -884,6 +884,14 @@ extension StandingScene {
                         + "neither end is a bound",
                     "whole-event.md#adopted-awake-air-31-october-2026"),
                 StandingEvidence(
+                    "Large-panel flats carried to 10 s (twelve storeys, today's element)",
+                    "Not a test: the collapse is over by 3.5 s, its floor area down (243 m²) and 99% of the "
+                        + "debris within 7.5 m holding to 10 s. But the block at rest does not settle: its walls "
+                        + "go on failing at 1,300–1,800 elements a second (31,400 failed and 48 t of rubble by "
+                        + "10 s, against 23,400 and 35 t at 5 s), and what the energy census cannot place grows "
+                        + "from 2.6% of gravity's work at 5 s to 7.5%. The range is read at 5 s",
+                    "whole-event.md#the-10-s-run-31-october-2026"),
+                StandingEvidence(
                     "Large-panel flats coming down in sleeping air (the three-storey runs before 31 October)",
                     "Not a test: asleep, the air is frozen as it was, and its pressures on the falling faces "
                         + "do a third of gravity's work as the struck bay starts down. With assumed strain three "

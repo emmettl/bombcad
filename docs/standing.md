@@ -107,6 +107,10 @@ Since 19 October 2026 a structure's collapse is a result of its own (`ResultKind
     debris comes to rest, 99% of it within 1.3–7.4 m of the plan. Assumed strain is the more
     damaging end, except for the twelve storeys' debris reach (5.8 against 7.4 m). Neither end is a
     bound.
+  - **Carried to 10 s** (twelve storeys, today's element), the floor area down and the debris's
+    99% reach hold from 5 s, but the block at rest goes on failing walls at 1,300–1,800 elements a
+    second, and what the energy census cannot place grows to 7.5% of gravity's work; the range is
+    read at 5 s ([the 10 s run](whole-event.md#the-10-s-run-31-october-2026)).
   - **On the frictionless ground** of the runs before then, the debris was still creeping when they
     ended, its 99% reach out to 16.9 m and growing, and three storeys lost 15% of their floor with
     today's element ([ground friction](whole-event.md#ground-friction-30-october-2026)).
