@@ -11,7 +11,7 @@ import Foundation
 ///      [--ignite-random n [--ignite-band from,to]]
 ///      [--wind m/s@from°] [--hours 12] [--step-minutes 10] [--members 100] [--seed 0]
 ///      [--cladding combustible|noncombustible] [--untagged residential]
-///      [--piloted 0.1] [--brands 0] [--roof 0.3]
+///      [--piloted 0.1] [--brands 0] [--roof 0.3] [--map-chance neighbour|caught]
 ///      [--json fire.json] [--csv timeline.csv] [--buildings-csv buildings.csv]
 /// ```
 ///
@@ -21,6 +21,11 @@ import Foundation
 /// from those whose centres lie `--ignite-band` m from the charge; any of them together. The blast's broken glass and failed
 /// walls come from the quick estimate's full look, as `scenebench people` makes it, kept in
 /// `--look` (the same file `people` keeps) or made and kept there.
+///
+/// Each building's chance is given two ways: of catching at all, over every draw, and of catching
+/// from a neighbour, over the draws in which it was not a starting fire. The app's map is coloured
+/// by the second since 31 October 2026; `--map-chance` picks which the table of the map's bands
+/// counts (`neighbour`, the default, or `caught`, the map's before).
 package enum FireSpreadStudy {
     /// The look kept between runs, as `scenebench people` keeps it: the buildings by their order.
     struct Kept: Codable {
@@ -40,7 +45,12 @@ package enum FireSpreadStudy {
         var use: BuildingUse
         var heightM: Double
         var floorM2: Double
+        /// Of catching at all, over every draw.
         var chance: Double
+        /// The draws in which it was a starting fire.
+        var seedDraws: Int
+        /// Of catching from a neighbour, over the draws in which it was not a starting fire.
+        var neighbourChance: Double
         var medianIgnitionH: Double?
         var mode: FireSpread.Mode?
     }
@@ -251,7 +261,7 @@ package enum FireSpreadStudy {
                 distanceM: (offset * offset).sum().squareRoot(), cladding: b.cladding, use: b.use,
                 heightM: b.height,
                 floorM2: b.footprintArea * max(1, (b.height / parameters.storeyM).rounded()),
-                chance: e.chance,
+                chance: e.chance, seedDraws: e.seedDraws, neighbourChance: e.neighbourChance,
                 medianIgnitionH: e.medianIgnitionS.map { $0 / 3600 }, mode: e.mode)
         }
 
@@ -304,6 +314,45 @@ package enum FireSpreadStudy {
                     min(bands[k + 1], 9999),
                     mine.count, mine.reduce(0) { $0 + $1.chance }))
         }
+        // The app's map at the horizon, counted in its bands, by the chance asked for.
+        let measure = value("map-chance").flatMap(FireSpread.MapChance.init(rawValue:)) ?? .neighbour
+        func mapChance(_ p: Place) -> Double { measure == .neighbour ? p.neighbourChance : p.chance }
+        print(
+            String(format: "The map at %.0f h, ", hours)
+                + (measure == .neighbour
+                    ? "by the chance of catching from a neighbour, over the draws a building was not a starting fire in"
+                    : "by the chance of catching at all, starting fires with it (the map before 31 October 2026)")
+                + " (--map-chance \(measure.rawValue)):")
+        print("  band, m      | buildings |  grey | ≤1%   | 1–2.5% | 2.5%–1/8 | >1/8")
+        var rows: [(String, [Place])] = (0..<(bands.count - 1)).map { k in
+            (
+                String(format: "%4.0f–%4.0f", bands[k], min(bands[k + 1], 9999)),
+                places.filter { $0.distanceM >= bands[k] && $0.distanceM < bands[k + 1] }
+            )
+        }
+        if random != nil,
+            let band = value("ignite-band").map({ $0.split(separator: ",").compactMap { Double($0) } }),
+            band.count > 1
+        {
+            rows.append(
+                (
+                    String(format: "%4.0f–%4.0f*", band[0], band[1]),
+                    places.filter { $0.distanceM >= band[0] && $0.distanceM < band[1] }
+                ))
+        }
+        rows.append(("all        ", places))
+        for (label, mine) in rows where !mine.isEmpty {
+            let c = mine.map(mapChance)
+            print(
+                String(
+                    format: "  %@ | %9d | %5d | %5d | %6d | %8d | %4d", label, mine.count,
+                    c.filter { $0 <= 0 }.count, c.filter { $0 > 0 && $0 <= 0.01 }.count,
+                    c.filter { $0 > 0.01 && $0 <= 0.025 }.count, c.filter { $0 > 0.025 && $0 <= 0.125 }.count,
+                    c.filter { $0 > 0.125 }.count))
+        }
+        if rows.last(where: { $0.0.hasSuffix("*") }) != nil {
+            print("  * the band the random starting fires are drawn from")
+        }
 
         if let path = value("json") {
             let output = Output(
@@ -333,7 +382,7 @@ package enum FireSpreadStudy {
         }
         if let path = value("buildings-csv") {
             var rows = [
-                "index,source,east_m,north_m,distance_m,cladding,use,height_m,floor_m2,chance,median_ignition_h,mode"
+                "index,source,east_m,north_m,distance_m,cladding,use,height_m,floor_m2,chance,median_ignition_h,mode,seed_draws,neighbour_chance"
             ]
             for p in places {
                 let fields = [
@@ -343,7 +392,7 @@ package enum FireSpreadStudy {
                     String(format: "%.1f", p.heightM), String(format: "%.0f", p.floorM2),
                     String(format: "%.3f", p.chance),
                     p.medianIgnitionH.map { String(format: "%.2f", $0) } ?? "",
-                    p.mode?.rawValue ?? "",
+                    p.mode?.rawValue ?? "", "\(p.seedDraws)", String(format: "%.3f", p.neighbourChance),
                 ]
                 rows.append(fields.joined(separator: ","))
             }

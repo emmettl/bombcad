@@ -55,6 +55,25 @@ extension FireSpread {
         }
     }
 
+    /// Which chance colours the map. Each earlier one stays selectable by name.
+    public enum MapChance: String, Codable, Sendable, CaseIterable {
+        /// Catching from a neighbour: over the draws in which the building was not itself a
+        /// starting fire, the share in which it caught. The map's since 31 October 2026, so that
+        /// random starting fires do not colour the buildings they happen to land on.
+        case neighbour
+        /// Catching at all, over every draw, the draws in which it was a starting fire with them: the
+        /// map's before 31 October 2026.
+        case caught
+
+        /// Its name in the app.
+        public var label: String {
+            switch self {
+            case .neighbour: "From a neighbour"
+            case .caught: "At all, seeds with it (earlier map)"
+            }
+        }
+    }
+
     /// The fire over a scene's buildings: the ensemble, and each building's ignition times.
     public struct Layer: Sendable {
         /// The buildings' envelope ids, in the ensemble's order.
@@ -62,6 +81,9 @@ extension FireSpread {
         public var ensemble: Ensemble
         /// Each building's ignition times over the draws in which it caught, s, earliest first.
         public var ignitions: [[Double]]
+        /// The same over only the draws in which it was not a starting fire: caught from a
+        /// neighbour. Its count of such draws is `members` less `ensemble.buildings[n].seedDraws`.
+        public var fromNeighbour: [[Double]]
         /// The buildings set alight at the blast in every draw, and those a draw picks among.
         public var fixedSeeds: Int
         public var randomCandidates: Int
@@ -78,22 +100,51 @@ extension FireSpread {
         public var horizonS: Double { ensemble.horizonS }
 
         /// Building `n`'s chance of having caught by `t` (s after the blast), or with `alight` of
-        /// burning then, over the draws.
+        /// burning then, over all the draws, the starting fires with them (`MapChance.caught`).
         public func chance(_ n: Int, at t: Double, alight: Bool = false) -> Double {
-            let times = ignitions[n]
-            guard !times.isEmpty else { return 0 }
-            let caught = Self.count(times, atMost: t)
-            guard alight else { return Double(caught) / Double(members) }
-            let out = Self.count(times, atMost: t - ensemble.buildings[n].burnS)
-            return Double(caught - out) / Double(members)
+            Self.share(ignitions[n], of: members, at: t, burnS: ensemble.buildings[n].burnS, alight: alight)
+        }
+
+        /// Building `n`'s chance of having caught from a neighbour by `t`, or with `alight` of
+        /// burning then from a neighbour's fire: over the draws in which it was not a starting fire
+        /// (`MapChance.neighbour`), none if it was one in every draw.
+        public func neighbourChance(_ n: Int, at t: Double, alight: Bool = false) -> Double {
+            Self.share(
+                fromNeighbour[n], of: neighbourDraws(n), at: t, burnS: ensemble.buildings[n].burnS,
+                alight: alight)
+        }
+
+        /// The draws in which building `n` was not a starting fire: the neighbour chance's draws.
+        public func neighbourDraws(_ n: Int) -> Int { members - ensemble.buildings[n].seedDraws }
+
+        /// Building `n`'s chance by `measure`.
+        public func chance(_ n: Int, at t: Double, alight: Bool = false, measure: MapChance) -> Double {
+            switch measure {
+            case .neighbour: neighbourChance(n, at: t, alight: alight)
+            case .caught: chance(n, at: t, alight: alight)
+            }
+        }
+
+        /// The share of `draws` whose time in `sorted` is at most `t`, or with `alight`, at most `t`
+        /// and later than `t - burnS`.
+        static func share(_ sorted: [Double], of draws: Int, at t: Double, burnS: Double, alight: Bool)
+            -> Double
+        {
+            guard !sorted.isEmpty, draws > 0 else { return 0 }
+            let caught = count(sorted, atMost: t)
+            guard alight else { return Double(caught) / Double(draws) }
+            return Double(caught - count(sorted, atMost: t - burnS)) / Double(draws)
         }
 
         /// Building `n`'s colour code at `t` (`EnvelopeChanceColour`), the same on every side: the
-        /// chance's eighth on the ramp, or the neutral grey where no draw has it caught (or, with
-        /// `alight`, burning) by then. The chances are counts of draws, so none is below one draw
-        /// only when it is none.
-        public func colourCode(_ n: Int, at t: Double, alight: Bool = false) -> Int {
-            Self.colourCode(chance: chance(n, at: t, alight: alight))
+        /// chance's eighth by `measure` on the ramp, or the neutral grey where no draw counted has
+        /// it caught (or, with `alight`, burning) by then. The chances are counts of draws, so none
+        /// is below one draw only when it is none. By a neighbour, a building that is a starting
+        /// fire in every draw has no draw to count, and is grey under its outline.
+        public func colourCode(_ n: Int, at t: Double, alight: Bool = false, measure: MapChance = .neighbour)
+            -> Int
+        {
+            Self.colourCode(chance: chance(n, at: t, alight: alight, measure: measure))
         }
 
         /// The code for a building's chance: neutral at none, else its eighth on every side.
@@ -103,19 +154,23 @@ extension FireSpread {
                 : EnvelopeChanceColour.code([(0, -1, c), (0, 1, c), (1, -1, c), (1, 1, c)])
         }
 
-        /// Every building's colour code at `t`, by its id.
-        public func colourCodes(at t: Double, alight: Bool = false) -> [UUID: Int] {
+        /// Every building's colour code at `t` by `measure`, by its id.
+        public func colourCodes(at t: Double, alight: Bool = false, measure: MapChance = .neighbour)
+            -> [UUID: Int]
+        {
             var out: [UUID: Int] = [:]
             out.reserveCapacity(ids.count)
-            for n in ids.indices { out[ids[n]] = colourCode(n, at: t, alight: alight) }
+            for n in ids.indices { out[ids[n]] = colourCode(n, at: t, alight: alight, measure: measure) }
             return out
         }
 
-        /// Every building's chance at `t`, by its id.
-        public func chances(at t: Double, alight: Bool = false) -> [UUID: Double] {
+        /// Every building's chance at `t` by `measure` (the map's by default), by its id.
+        public func chances(at t: Double, alight: Bool = false, measure: MapChance = .neighbour)
+            -> [UUID: Double]
+        {
             var out: [UUID: Double] = [:]
             out.reserveCapacity(ids.count)
-            for n in ids.indices { out[ids[n]] = chance(n, at: t, alight: alight) }
+            for n in ids.indices { out[ids[n]] = chance(n, at: t, alight: alight, measure: measure) }
             return out
         }
 
@@ -206,12 +261,13 @@ extension FireSpread {
                 district, seeds: ignitions, random: random, horizonS: horizonS, members: members, seed: seed,
                 chunk: chunk, stop: stop, progress: progress)
         else { return nil }
-        let (ensemble, times) = summary(
+        let (ensemble, times, fromNeighbour) = summary(
             district, draws: runs, seeds: ignitions, random: random, horizonS: horizonS, seed: seed,
             stepS: stepS)
         let elapsed = clock.duration(to: .now)
         return Layer(
-            ids: buildings.map(\.id), ensemble: ensemble, ignitions: times, fixedSeeds: seeds.count,
+            ids: buildings.map(\.id), ensemble: ensemble, ignitions: times, fromNeighbour: fromNeighbour,
+            fixedSeeds: seeds.count,
             randomCandidates: random?.candidates.count ?? 0, thermalFlagged: flagged,
             combustible: buildings.filter { $0.cladding == .combustible }.count, preview: preview,
             seconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)

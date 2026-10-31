@@ -3,8 +3,9 @@ import SwiftUI
 
 /// Fire after the blast (emmettl/bombcad-work#38, stage 3; docs/fire-spread.md): the fire spread over
 /// the envelope buildings for hours, from the quick estimate's broken glass and walls or a run's
-/// damage, with the seeds and the wind chosen here. Each building is coloured by its chance of fire
-/// by the hour on the slider, over the draws. Illustrative, and said so first.
+/// damage, with the seeds and the wind chosen here. Each building is coloured by its chance of
+/// catching from a neighbour by the hour on the slider, over the draws in which it was not a starting
+/// fire, or by its chance of catching at all (the earlier map). Illustrative, and said so first.
 struct FireSection: View {
     @Bindable var model: SimulationModel
     @State private var showsAssumptions: Bool
@@ -238,6 +239,13 @@ struct FireSection: View {
         }
         .pickerStyle(.segmented)
         .help("Colour each building by its chance of having caught by the hour, or of burning at it.")
+        Picker("Caught", selection: $model.fireMapChance) {
+            ForEach(FireSpread.MapChance.allCases, id: \.self) { Text($0.label).tag($0) }
+        }
+        .help(
+            "From a neighbour: over the draws in which a building was not itself a starting fire, the share in "
+                + "which it caught, so that random fires do not colour where they land. At all: over every "
+                + "draw, its own starting fires with them, as the map was before 31 October 2026.")
         if let step = layer.step(at: hour * 3600) {
             Text(
                 String(
@@ -271,28 +279,54 @@ struct FireSection: View {
         }
         if model.envelopeColouring == .fire {
             EnvelopeDamageSection.ChanceLegend()
-            NoChanceLegend(alight: model.fireShowsAlight)
-            Text(
-                model.fireShowsAlight
-                    ? "Each building by its chance of burning at the hour on the slider, grey where no draw has it "
-                        + "burning then; the seeds outlined."
-                    : "Each building by its chance of having caught by the hour on the slider, grey where no draw "
-                        + "has it caught; the seeds outlined."
-            )
-            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            NoChanceLegend(alight: model.fireShowsAlight, measure: model.fireMapChance)
+            Text(Self.caption(alight: model.fireShowsAlight, measure: model.fireMapChance))
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         } else {
             Button("Colour Buildings by Fire") {
                 model.showsEnvelopeDamage = true
                 model.envelopeColouring = .fire
             }
-            .help("Colour each building by its chance of fire by the hour on the slider.")
+            .help(
+                "Colour each building by its chance of catching from a neighbour by the hour on the slider, or "
+                    + "under Caught, of catching at all.")
         }
     }
 
-    /// The neutral grey of buildings that no draw sets alight, beside the chance legend: the grey the
-    /// close calls' settled buildings take, the same in light and dark.
+    /// What the view's colours measure, under the legend.
+    static func caption(alight: Bool, measure: FireSpread.MapChance) -> String {
+        switch (measure, alight) {
+        case (.neighbour, false):
+            "Each building by its chance of catching from a neighbour by the hour on the slider: of the draws in "
+                + "which it was not itself a starting fire, the share in which it caught. Grey where none has it "
+                + "caught so; the seeds outlined."
+        case (.neighbour, true):
+            "Each building by its chance of burning at the hour on the slider from a neighbour's fire: of the "
+                + "draws in which it was not itself a starting fire, the share in which it is alight then. Grey "
+                + "where none has it so; the seeds outlined."
+        case (.caught, false):
+            "Each building by its chance of having caught by the hour on the slider, over every draw, its own "
+                + "starting fires with them; grey where no draw has it caught; the seeds outlined."
+        case (.caught, true):
+            "Each building by its chance of burning at the hour on the slider, over every draw, its own starting "
+                + "fires with them; grey where no draw has it burning then; the seeds outlined."
+        }
+    }
+
+    /// The neutral grey of buildings that no draw counted sets alight, beside the chance legend: the
+    /// grey the close calls' settled buildings take, the same in light and dark.
     struct NoChanceLegend: View {
         let alight: Bool
+        var measure = FireSpread.MapChance.neighbour
+
+        var text: String {
+            switch (measure, alight) {
+            case (.neighbour, false): "Grey: caught from a neighbour in no draw"
+            case (.neighbour, true): "Grey: burning from a neighbour in no draw"
+            case (.caught, false): "Grey: caught in no draw"
+            case (.caught, true): "Grey: burning in no draw"
+            }
+        }
 
         var body: some View {
             let c = EnvelopeChanceColour.neutralColour
@@ -301,7 +335,7 @@ struct FireSection: View {
                     .fill(Color(.sRGB, red: Double(c.x), green: Double(c.y), blue: Double(c.z)))
                     .overlay(RoundedRectangle(cornerRadius: 2).stroke(.secondary.opacity(0.5)))
                     .frame(width: 14, height: 12)
-                Text(alight ? "Grey: burning in no draw" : "Grey: caught in no draw").font(.caption)
+                Text(text).font(.caption)
             }
             .accessibilityElement(children: .combine)
         }
@@ -313,7 +347,8 @@ struct FireSection: View {
         return v.x == v.z ? n(v.y) + unit : "\(n(v.y))\(unit) (\(n(v.x))–\(n(v.z)))"
     }
 
-    /// A selected building's switch to start a fire in it, and its chance by the hour shown.
+    /// A selected building's switch to start a fire in it, and its chance by the hour shown, by the
+    /// map's measure, with the draws it was a starting fire in.
     struct SeedToggle: View {
         @Bindable var model: SimulationModel
         let id: UUID
@@ -326,10 +361,33 @@ struct FireSection: View {
             .help("Set this building alight at the blast, for the fire after it (illustrative).")
             if let layer = model.fireLayer, let n = layer.ids.firstIndex(of: id) {
                 let hour = min(model.fireHour, layer.horizonS / 3600)
-                LabeledContent(String(format: "Chance of fire by %.2g h", hour)) {
-                    Text(String(format: "%.0f%%", layer.chance(n, at: hour * 3600) * 100))
+                let seeded = layer.ensemble.buildings[n].seedDraws
+                switch model.fireMapChance {
+                case .neighbour:
+                    LabeledContent(String(format: "Caught from a neighbour by %.2g h", hour)) {
+                        Text(
+                            layer.neighbourDraws(n) > 0
+                                ? String(format: "%.0f%%", layer.neighbourChance(n, at: hour * 3600) * 100)
+                                : "—")
+                    }
+                    .font(.caption)
+                case .caught:
+                    LabeledContent(String(format: "Caught at all by %.2g h", hour)) {
+                        Text(String(format: "%.0f%%", layer.chance(n, at: hour * 3600) * 100))
+                    }
+                    .font(.caption)
                 }
-                .font(.caption)
+                if seeded > 0 {
+                    Text(
+                        seeded == layer.members
+                            ? "A starting fire in every draw."
+                            : model.fireMapChance == .neighbour
+                                ? "A starting fire in \(seeded) of \(layer.members) draws; the chance is over the other "
+                                    + "\(layer.neighbourDraws(n))."
+                                : "A starting fire in \(seeded) of \(layer.members) draws, counted in the chance."
+                    )
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }

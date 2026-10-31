@@ -436,16 +436,120 @@ struct FireSpreadTests {
         let layer = try #require(
             F.layer(
                 scene: scene, source: .estimate(glass: [], structure: []), settings: settings, members: 60))
-        let atBlast = layer.colourCodes(at: 0)
+        // Caught at all (the earlier map): at the blast only the seed coloured, certain.
+        let atBlast = layer.colourCodes(at: 0, measure: .caught)
         #expect(atBlast[ids[0]] == certain)
         #expect(ids.dropFirst().allSatisfy { atBlast[$0] == EnvelopeChanceColour.neutral })
-        let end = layer.colourCodes(at: layer.horizonS)
+        let end = layer.colourCodes(at: layer.horizonS, measure: .caught)
         #expect(layer.chance(1, at: layer.horizonS) > 0 && end[ids[1]] != EnvelopeChanceColour.neutral)
         #expect(layer.chance(3, at: layer.horizonS) == 0 && end[ids[3]] == EnvelopeChanceColour.neutral)
         // The seed burnt out: grey among those alight, as no draw has it burning then.
         let out = layer.ensemble.buildings[0].burnS + 1
-        #expect(layer.colourCode(0, at: out, alight: true) == EnvelopeChanceColour.neutral)
-        #expect(layer.colourCode(0, at: out) == certain)
+        #expect(layer.colourCode(0, at: out, alight: true, measure: .caught) == EnvelopeChanceColour.neutral)
+        #expect(layer.colourCode(0, at: out, measure: .caught) == certain)
+        // From a neighbour (the map's): the picked seed has no draw to count, so it is grey under
+        // its outline, and every other building is coloured exactly as before.
+        #expect(layer.neighbourDraws(0) == 0 && layer.neighbourChance(0, at: layer.horizonS) == 0)
+        #expect(layer.colourCodes(at: 0) == atBlast.merging([ids[0]: EnvelopeChanceColour.neutral]) { $1 })
+        #expect(
+            layer.colourCodes(at: layer.horizonS)
+                == end.merging([ids[0]: EnvelopeChanceColour.neutral]) { $1 })
+    }
+
+    @Test(
+        "The chance of catching from a neighbour leaves out the draws in which a building was a starting fire"
+    )
+    func neighbourChance() throws {
+        // A row of eight timber houses 9 m apart and two 300 m off on their own, two fires at random a
+        // draw among them all.
+        var buildings = row(8, gap: 9)
+        buildings.append(building(x: 400))
+        buildings.append(building(x: 500))
+        let district = F.District(buildings: buildings)
+        let random = F.RandomIgnitions(count: 2, candidates: Array(buildings.indices))
+        let members = 120
+        let runs = try #require(
+            F.draws(district, seeds: [], random: random, horizonS: 6 * 3600, members: members, seed: 3))
+        let (ensemble, ignitions, fromNeighbour) = F.summary(
+            district, draws: runs, seeds: [], random: random, horizonS: 6 * 3600, seed: 3)
+        for n in buildings.indices {
+            // Each draw's starting fires again, as the draws picked them.
+            let seeded = (0..<members).filter { random.draw(member: UInt64($0), seed: 3).contains(n) }
+            let e = ensemble.buildings[n]
+            #expect(e.seedDraws == seeded.count)
+            #expect(seeded.allSatisfy { runs[$0].mode[n] == .seed })
+            let others = (0..<members).filter { !seeded.contains($0) }
+            let caught = others.filter { runs[$0].ignitedS[n] != nil }
+            #expect(fromNeighbour[n].count == caught.count)
+            #expect(abs(e.neighbourChance - Double(caught.count) / Double(others.count)) < 1e-12)
+            #expect(fromNeighbour[n].count + e.seedDraws == ignitions[n].count)
+            #expect(e.chance >= e.neighbourChance || e.seedDraws == 0)
+        }
+        // The two on their own catch only as starting fires: some chance at all, none from a neighbour.
+        for n in [8, 9] {
+            #expect(ensemble.buildings[n].seedDraws > 0 && ensemble.buildings[n].chance > 0)
+            #expect(ensemble.buildings[n].neighbourChance == 0)
+        }
+        // The row carries fire from house to house.
+        #expect((0..<8).contains { ensemble.buildings[$0].neighbourChance > 0 })
+
+        // A fixed seed is one in every draw: no draw to count from a neighbour.
+        let fixed = F.summary(
+            district, draws: runs, seeds: [F.Ignition(building: 0)], random: random, horizonS: 6 * 3600,
+            seed: 3)
+        #expect(
+            fixed.ensemble.buildings[0].seedDraws == members
+                && fixed.ensemble.buildings[0].neighbourChance == 0)
+        #expect(fixed.fromNeighbour[0].isEmpty)
+
+        // The layer's chances by the hour from the same counts, at the horizon as the ensemble's;
+        // the colour codes by it, the earlier map's by name.
+        var scene = Scenario(
+            name: "Row", domainSize: SIMD3(700, 40, 20), boxes: [],
+            charge: Charge(mass: 10, position: SIMD3(2, 20, 0)))
+        var ids: [UUID] = []
+        for x: Float in [5, 24, 43, 62, 81, 400, 500] {
+            let id = try scene.addEnvelopeObject(
+                BuildingEnvelope(solids: [Box(min: SIMD3(x, 15, 0), max: SIMD3(x + 10, 25, 4.5))]))
+            var timber = EnvelopeConstruction.assumed(objectID: id)
+            timber.walls = .crossLaminatedTimber
+            timber.roof = .crossLaminatedTimber
+            scene.setEnvelopeConstruction(timber)
+            ids.append(id)
+        }
+        var settings = F.LayerSettings()
+        settings.randomCount = 2
+        settings.randomToM = 1000
+        settings.hours = 6
+        let layer = try #require(
+            F.layer(
+                scene: scene, source: .estimate(glass: [], structure: []), settings: settings, members: 100))
+        for n in ids.indices {
+            let e = layer.ensemble.buildings[n]
+            #expect(layer.neighbourDraws(n) == 100 - e.seedDraws)
+            #expect(abs(layer.neighbourChance(n, at: layer.horizonS) - e.neighbourChance) < 1e-12)
+            #expect(abs(layer.chance(n, at: layer.horizonS, measure: .caught) - e.chance) < 1e-12)
+            // At the blast only starting fires have caught: none from a neighbour.
+            #expect(layer.neighbourChance(n, at: 0) == 0)
+            #expect(layer.colourCode(n, at: 0) == EnvelopeChanceColour.neutral)
+            #expect(
+                layer.colourCode(n, at: layer.horizonS, measure: .caught)
+                    == F.Layer.colourCode(chance: e.chance))
+            #expect(layer.colourCode(n, at: layer.horizonS) == F.Layer.colourCode(chance: e.neighbourChance))
+            // Burning from a neighbour's fire never more likely than having caught from one.
+            for t in stride(from: 0.0, through: layer.horizonS, by: 1800) {
+                #expect(
+                    layer.neighbourChance(n, at: t, alight: true) <= layer.neighbourChance(n, at: t) + 1e-12)
+            }
+        }
+        // The two on their own: coloured by the earlier map from their own starting fires, grey by a
+        // neighbour.
+        for n in [5, 6] {
+            #expect(layer.chance(n, at: 0) > 0)
+            #expect(layer.colourCode(n, at: layer.horizonS) == EnvelopeChanceColour.neutral)
+        }
+        #expect(
+            F.MapChance(rawValue: "caught") == .caught && F.MapChance(rawValue: "neighbour") == .neighbour)
     }
 
     @Test("A run's judgement as the fire's glass and walls: each side's panes broken, heavy walls failed")

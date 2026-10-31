@@ -70,23 +70,37 @@ struct FireAfterBlastTests {
         model.showsEnvelopeDamage = true
         model.envelopeColouring = .fire
         #expect(model.previewParts == .glass)
+        #expect(model.fireMapChance == .neighbour)
         let codes = model.fireCodes()
         #expect(codes.count == ids.count)
-        // On the ramp where some draw has it caught, grey where none does.
+        // By the chance of catching from a neighbour: on the ramp where some draw it was not a seed in
+        // has it caught, grey where none does; the seed, a seed in every draw, grey under its outline.
         let t = model.fireHour * 3600
         #expect(
             ids.indices.allSatisfy { n in
-                full.chance(n, at: t) > 0
+                full.neighbourChance(n, at: t) > 0
                     ? codes[ids[n]]! >= EnvelopeChanceColour.first
                     : codes[ids[n]] == EnvelopeChanceColour.neutral
             })
-        #expect(codes[ids[0]]! >= EnvelopeChanceColour.first)
+        #expect(codes[ids[0]] == EnvelopeChanceColour.neutral)
         #expect(model.fireSeedOutlines().count == 8)
+        // With a seed picked by hand, the others are coloured as the earlier map colours them.
+        model.fireMapChance = .caught
+        let caught = model.fireCodes()
+        #expect(
+            ids.indices.allSatisfy { n in
+                full.chance(n, at: t) > 0
+                    ? caught[ids[n]]! >= EnvelopeChanceColour.first
+                    : caught[ids[n]] == EnvelopeChanceColour.neutral
+            })
+        #expect(caught[ids[0]]! >= EnvelopeChanceColour.first)
+        #expect(ids.dropFirst().allSatisfy { caught[$0] == codes[$0] })
         // Alight then, past the seed's own fire: it is out.
         model.fireShowsAlight = true
         model.fireHour = (full.ensemble.buildings[0].burnS + 900) / 3600
         #expect(model.fireCodes()[ids[0]] == EnvelopeChanceColour.neutral)
         model.fireShowsAlight = false
+        model.fireMapChance = .neighbour
 
         // A slider held: a preview's few draws; let go, the full ensemble again.
         model.fireAdjusting = true
@@ -127,6 +141,15 @@ struct FireAfterBlastTests {
         try await settle(model)
         #expect(model.fireLayer?.randomCandidates == ids.count)
         #expect(model.fireStatus.contains("2 at random a draw"))
+        // At random: each building's chance from a neighbour leaves out the draws it was a seed in,
+        // so it is never more than its chance of catching at all.
+        let random = try #require(model.fireLayer)
+        let end = random.horizonS
+        #expect(random.ids.indices.contains { random.ensemble.buildings[$0].seedDraws > 0 })
+        #expect(
+            random.ids.indices.allSatisfy {
+                random.neighbourChance($0, at: end) <= random.chance($0, at: end) + 1e-12
+            })
         // No run, so no surface heating to seed from.
         #expect(model.fireThermal == nil)
 

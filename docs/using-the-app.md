@@ -110,6 +110,15 @@ follows a drag on the glass's chances. It is illustrative. The counts are behind
 with the warning that on Beirut 2020 they read 4 to 12 times the injuries and deaths recorded
 ([people in the scene](people-in-the-scene.md)).
 
+**Fire after the blast**, below it, spreads fire over the buildings for hours from starting fires
+you choose: buildings clicked in the view, those near the charge, a number at random in each draw,
+or a run's surface-heating flags. **Colour Buildings by Fire** colours each building by its chance
+of catching from a neighbour by the hour on the slider: of the 200 draws, those in which it was not
+itself a starting fire, and the share of them in which it caught. Grey means none did; the starting
+fires are outlined. **Caught ▸ At all, seeds with it (earlier map)** colours by the chance of
+catching at all, the building's own starting fires counted, as before 31 October 2026. It is
+illustrative ([fire spread](fire-spread.md#the-app-stage-3-31-october-2026)).
+
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey

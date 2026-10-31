@@ -655,8 +655,16 @@ extension FireSpread {
         public struct Building: Codable, Sendable {
             public var index: Int
             public var id: UUID
-            /// The share of draws in which it caught by the horizon.
+            /// The share of draws in which it caught by the horizon, the draws in which it was a
+            /// starting fire with them.
             public var chance: Double
+            /// The draws in which it was a starting fire: picked, near the charge, flagged, or drawn
+            /// at random in that draw.
+            public var seedDraws: Int
+            /// The share of the other draws, those in which it was not a starting fire, in which it
+            /// caught by the horizon: its chance of catching from a neighbour; 0 if it was a starting
+            /// fire in every draw.
+            public var neighbourChance: Double
             /// The median of its ignition time over the draws in which it caught, s.
             public var medianIgnitionS: Double?
             /// How it caught, most often.
@@ -735,12 +743,26 @@ extension FireSpread {
         return runs.map { $0! }
     }
 
-    /// The ensemble of `draws`, and each building's ignition times over them, earliest first.
+    /// The ensemble of `draws`, each building's ignition times over them, earliest first, and its
+    /// ignition times over only the draws in which it was not a starting fire (`fromNeighbour`).
+    /// `draws[k]` is member `k`, so `random` and `seed` give its random starting fires again.
     public static func summary(
         _ district: District, draws: [Member], seeds: [Ignition], random: RandomIgnitions? = nil,
         horizonS: Double, seed: UInt64 = 0, stepS: Double = 600
-    ) -> (ensemble: Ensemble, ignitions: [[Double]]) {
+    ) -> (ensemble: Ensemble, ignitions: [[Double]], fromNeighbour: [[Double]]) {
         let count = max(draws.count, 1)
+        // The starting fires of each draw: the fixed seeds in all of them, and for each building the
+        // draws whose random fires picked it.
+        let fixed = Set(seeds.map(\.building))
+        var randomIn = [[Int]](repeating: [], count: district.buildings.count)
+        if let random {
+            for k in draws.indices {
+                for b in random.draw(member: UInt64(k), seed: seed)
+                where randomIn.indices.contains(b) && !fixed.contains(b) {
+                    randomIn[b].append(k)
+                }
+            }
+        }
         let floor = district.buildings.map {
             $0.footprintArea * max(1, ($0.height / district.parameters.storeyM).rounded())
         }
@@ -754,19 +776,36 @@ extension FireSpread {
         }
         var buildings: [Ensemble.Building] = []
         var ignitions: [[Double]] = []
+        var fromNeighbour: [[Double]] = []
         buildings.reserveCapacity(district.buildings.count)
         ignitions.reserveCapacity(district.buildings.count)
+        fromNeighbour.reserveCapacity(district.buildings.count)
         for n in district.buildings.indices {
             let times = draws.compactMap { $0.ignitedS[n] }.sorted()
+            let seedDraws = fixed.contains(n) ? draws.count : randomIn[n].count
+            let other: [Double]
+            if fixed.contains(n) {
+                other = []
+            } else if randomIn[n].isEmpty {
+                other = times
+            } else {
+                let seeded = Set(randomIn[n])
+                other = draws.indices.compactMap { seeded.contains($0) ? nil : draws[$0].ignitedS[n] }
+                    .sorted()
+            }
+            let others = draws.count - seedDraws
             var tally: [Mode: Int] = [:]
             for d in draws { if let m = d.mode[n] { tally[m, default: 0] += 1 } }
             let mode = tally.max { ($0.value, $1.key.rawValue) < ($1.value, $0.key.rawValue) }?.key
             buildings.append(
                 Ensemble.Building(
                     index: n, id: district.buildings[n].id, chance: Double(times.count) / Double(count),
+                    seedDraws: seedDraws,
+                    neighbourChance: others > 0 ? Double(other.count) / Double(others) : 0,
                     medianIgnitionS: times.isEmpty ? nil : times[times.count / 2], mode: mode,
                     burnS: district.stages[n].totalS))
             ignitions.append(times)
+            fromNeighbour.append(other)
         }
         // Each draw's buildings that caught, in their order, so that each step looks only at them.
         let lit = draws.map { d in d.ignitedS.enumerated().compactMap { n, t in t.map { (n, $0) } } }
@@ -803,7 +842,7 @@ extension FireSpread {
             parameters: district.parameters,
             seeds: seeds, random: random, buildings: buildings, timeline: timeline, modes: modes,
             caught: percentiles(draws.map { Double($0.ignitedS.compactMap { $0 }.count) }))
-        return (ensemble, ignitions)
+        return (ensemble, ignitions, fromNeighbour)
     }
 
     /// What the layer is for, shown before anything else (docs/fire-spread.md).

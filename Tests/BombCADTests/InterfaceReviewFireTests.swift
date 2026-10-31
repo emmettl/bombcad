@@ -9,7 +9,9 @@ import Testing
 /// Fire after the blast on Beirut's district (emmettl/bombcad-work#38, stage 3; docs/fire-spread.md),
 /// captured offscreen for a look by eye: File ▸ New District's buildings within 2.5 km at 0.5 kt
 /// (9,708 on the advisor's 6 m cells), the quick estimate's glass, 20 fires at random within 1.5 km in the airport's wind, the
-/// section in light and dark and the view by the hour, with the timber-clad contrast. Only with
+/// section in light and dark and the view by the hour, by the chance of catching from a neighbour (the
+/// map's since 31 October 2026) and of catching at all (the earlier map's), with the timber-clad
+/// contrast. Only with
 /// `BOMBCAD_INTERFACE_REVIEW` (the folder to write) and `BOMBCAD_HYBRID_INPUTS` (the folder holding
 /// Beirut's OSM/, DEM/ and GHSL/ files, as docs/beirut-2020.md fetches them). The times it prints are
 /// this build's: in an optimised one (`swift test -c release -Xswiftc -enable-testing`), as the quick
@@ -143,15 +145,46 @@ struct InterfaceReviewFireTests {
         let centre = SIMD3(model.settings.chargePosition.x, model.settings.chargePosition.y, 0)
         let city = OrbitCamera(target: centre, distance: 4_200, azimuth: -1.9, elevation: 1.05)
         let near = OrbitCamera(target: centre, distance: 2_000, azimuth: -1.9, elevation: 1.15)
-        for hour in [1.0, 3.0, 12.0] {
-            model.fireHour = hour
-            try fireView(model, camera: near, to: String(format: "beirut-caught-%02.0fh", hour))
-            // Grey where no draw has a building caught: most of the city, the ramp for the rest.
-            let codes = model.fireCodes()
-            let grey = codes.values.filter { $0 == EnvelopeChanceColour.neutral }.count
-            print(String(format: "Caught by %.0f h: %d of %d buildings grey", hour, grey, codes.count))
-            #expect(grey > codes.count / 2 && grey < codes.count)
+        // The buildings whose centres lie within the random fires' 1.5 km, as the draws choose them.
+        let band = Set(
+            FireSpread.candidates(
+                in: FireSpread.buildings(scene: model.settings.scenario),
+                from: SIMD2(Double(centre.x), Double(centre.y)), fromM: 0, toM: 1500))
+        /// The band's buildings by the map's bands at the hour shown: grey, up to 1%, 1–2.5%,
+        /// 2.5%–1/8 and above.
+        func bands(_ measure: FireSpread.MapChance) -> [Int] {
+            let t = model.fireHour * 3600
+            let c = band.map { full.chance($0, at: t, measure: measure) }
+            return [
+                c.filter { $0 <= 0 }.count, c.filter { $0 > 0 && $0 <= 0.01 }.count,
+                c.filter { $0 > 0.01 && $0 <= 0.025 }.count, c.filter { $0 > 0.025 && $0 <= 0.125 }.count,
+                c.filter { $0 > 0.125 }.count,
+            ]
         }
+        for measure in [FireSpread.MapChance.neighbour, .caught] {
+            model.fireMapChance = measure
+            for hour in [1.0, 3.0, 12.0] {
+                model.fireHour = hour
+                try fireView(
+                    model, camera: near,
+                    to: String(
+                        format: measure == .neighbour ? "beirut-neighbour-%02.0fh" : "beirut-caught-%02.0fh",
+                        hour))
+                // Grey where no draw counted has a building caught: most of the city, the ramp for the rest.
+                let codes = model.fireCodes()
+                let grey = codes.values.filter { $0 == EnvelopeChanceColour.neutral }.count
+                let b = bands(measure)
+                print(
+                    String(
+                        format:
+                            "%@ by %.0f h: %d of %d buildings grey; within 1.5 km (%d): %d grey, %d up to 1%%, "
+                            + "%d 1–2.5%%, %d 2.5%%–1/8, %d above 1/8",
+                        measure == .neighbour ? "From a neighbour" : "Caught at all", hour, grey, codes.count,
+                        band.count, b[0], b[1], b[2], b[3], b[4]))
+                #expect(grey > codes.count / 2 && grey < codes.count)
+            }
+        }
+        model.fireMapChance = .neighbour
         model.fireHour = 2
         try fireSections("fire-beirut") { FireSection(model: model, showsAssumptions: true) }
         model.fireShowsAlight = true
@@ -163,6 +196,10 @@ struct InterfaceReviewFireTests {
         let picked = try #require(
             full.ids.indices.max { full.ensemble.buildings[$0].chance < full.ensemble.buildings[$1].chance })
         model.inspectedEnvelope = full.ids[picked]
+        // Before it is picked: its chance from a neighbour, and the draws it was a random fire in.
+        try fireSections("fire-inspected") {
+            InspectedEnvelopeSection(model: model)
+        }
         model.toggleFireSeed(full.ids[picked])
         try await settle()
         try fireSections("fire-selected") {
@@ -181,7 +218,7 @@ struct InterfaceReviewFireTests {
                     format: "%.2f s; caught %.0f (%.0f–%.0f)", timber.seconds, timber.ensemble.caught.y,
                     timber.ensemble.caught.x, timber.ensemble.caught.z))
         model.fireHour = 12
-        try fireView(model, camera: city, to: "beirut-timber-caught-12h")
+        try fireView(model, camera: city, to: "beirut-timber-neighbour-12h")
         try fireSections("fire-timber") { FireSection(model: model, showsAssumptions: true) }
         #expect(timber.ensemble.caught.y > full.ensemble.caught.y)
     }

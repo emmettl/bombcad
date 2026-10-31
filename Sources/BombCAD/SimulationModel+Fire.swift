@@ -142,10 +142,11 @@ extension SimulationModel {
         }
     }
 
-    /// Each building's colour code by its chance at the hour shown, the same on every side; a
-    /// neutral grey where no draw gives it any (`FireSpread.Layer.colourCode`).
+    /// Each building's colour code by its chance at the hour shown, by the map's chance (from a
+    /// neighbour, or at all), the same on every side; a neutral grey where no draw counted gives it
+    /// any (`FireSpread.Layer.colourCode`).
     func fireCodes() -> [UUID: Int] {
-        fireLayer?.colourCodes(at: fireHour * 3600, alight: fireShowsAlight) ?? [:]
+        fireLayer?.colourCodes(at: fireHour * 3600, alight: fireShowsAlight, measure: fireMapChance) ?? [:]
     }
 
     /// The buildings set alight in every draw, outlined over the view while the fire is shown or

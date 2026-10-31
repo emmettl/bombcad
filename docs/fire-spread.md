@@ -90,10 +90,16 @@ swift run -c release scenebench fire <the district-scene's inputs> --radius 2500
   - Printed: the buildings alight and burnt out each hour (5th, 50th and 95th percentiles over the
     draws), the buildings that caught, by mode and distance band, and the standing.
   - `--json`: all of it, with every building's chance of burning, its median time of ignition
-    and how it most often caught.
+    and how it most often caught. Since 31 October 2026 also the draws in which it was a starting
+    fire (`seedDraws`) and its chance of catching from a neighbour over the others
+    (`neighbourChance`).
   - `--csv`: the timeline every `--step-minutes` (10).
   - `--buildings-csv`: one row a building, with its map id and its place east and north of the
-    charge.
+    charge, and the same two at its end (`seed_draws`, `neighbour_chance`).
+  - Printed last, the app's map at the horizon counted in bands of distance: grey, up to 1%,
+    1–2.5%, 2.5% to an eighth and above. `--map-chance neighbour` (the default) counts the chance
+    of catching from a neighbour, `--map-chance caught` the chance of catching at all, the map's
+    before 31 October 2026.
 
 The app shows it as a layer on the quick estimate and on a run's damage ([The app](#the-app-stage-3-31-october-2026)).
 
@@ -295,7 +301,10 @@ model and the same defaults as `scenebench fire`.
 - **What it shows.** Colour Buildings by Fire colours each building by its chance of having caught
   by the hour on a slider, or of burning then, on the chance legend, with the seeds outlined in
   orange. A building that no draw has caught (or burning) by then is grey
-  ([below](#grey-for-no-chance-and-wood-tags-31-october-2026)). Beside it: the buildings alight, burnt out and the floor reached at that hour (median and
+  ([below](#grey-for-no-chance-and-wood-tags-31-october-2026)). Since 31 October 2026 the chance
+  is of catching from a neighbour, over the draws in which the building was not itself a starting
+  fire; Caught ▸ At all keeps the earlier map
+  ([below](#the-chance-of-catching-from-a-neighbour-31-october-2026)). Beside it: the buildings alight, burnt out and the floor reached at that hour (median and
   5–95%), the buildings caught by the end, those more likely than not to burn, and how they caught.
 - **Its standing leads,** as the people estimate's does: the note that it is illustrative and not a
   prediction first, the standing's badge, and `FireSpread.standing` beneath.
@@ -428,6 +437,119 @@ seed burnt out grey among those alight) and `EnvelopeConstructionTests` (each wo
 timber walls and roof, unread they say nothing; a laid-out district of three houses gives two
 timber, combustible and with roofs not fire-rated, and the untagged one concrete, and all three
 concrete with the tags unread).
+
+## The chance of catching from a neighbour (31 October 2026)
+
+The user's decision of 31 October (emmettl/bombcad-work#38): the map colours each building by its
+chance of catching from a neighbour, leaving out the draws in which it was itself one of the
+starting fires.
+
+**Why.** With fires at random, re-drawn in each draw, nearly every building in the band they are
+drawn from is a starting fire in a few of the 200 draws. Coloured by its chance of catching at all,
+each of those has a chance of 1 in 200 or more from its own starting fires alone, so the band shows
+where the random fires happened to land rather than where fire spreads.
+
+**What is counted.** For each building, over the draws:
+- `seedDraws`: the draws in which it was a starting fire. Buildings picked, near the charge or
+  flagged by the surface heating are starting fires in every draw. A random one is a starting
+  fire in the draws whose random fires picked it, found again from the draw's own numbers
+  (`FireSpread.summary`).
+- `neighbourChance`: of the other draws, the share in which it caught by the horizon. The layer
+  keeps its ignition times over those draws (`Layer.fromNeighbour`), so the hour slider and Alight
+  then work on it as on the chance at all.
+- **The denominator is the draws in which it was not a starting fire,** not all 200. Over all 200,
+  a building that was a random fire in many draws would look safer for it; over the others, the
+  figure is the chance a fire reaches it given that it did not start there. A building that is a
+  starting fire in every draw has none to count: its chance is none, and it is drawn grey under
+  its orange outline.
+- **The chance at all is kept** (`chance`), and is never below the chance from a neighbour.
+
+**In the app.** Under the hour slider, **Caught** picks the measure:
+- **From a neighbour**, the default: the legend's grey line reads "Grey: caught from a neighbour in
+  no draw" ("burning from a neighbour in no draw" with Alight then), and the caption says the
+  chance is over the draws in which the building was not itself a starting fire.
+- **At all, seeds with it (earlier map)**: the map as it was, with its own legend line and caption.
+- **The selected building's panel** says which it shows, "Caught from a neighbour by 2 h" or
+  "Caught at all by 2 h", and, where the building was a starting fire, in how many of the draws
+  and over how many the chance is taken.
+
+**Headless.** `scenebench fire` and `blastmodel fire` write both chances per building (`--json`,
+`--buildings-csv`) and print the map's bands, by `--map-chance neighbour` (the default) or
+`caught` ([Running it](#running-it)).
+
+**Beirut, headless** (`blastmodel fire`, 4 m cells, 14,169 buildings, 20 fires at random within 1.5
+km in the airport's wind, 200 draws, the map at 12 hours; `$BOMBCAD_DATA/fire-spread/neighbour/`).
+The 2,880 buildings within 1.5 km:
+
+| Map's band | At all (before) | From a neighbour |
+|---|---|---|
+| Grey | 75 | 320 |
+| Up to 1% | 420 | 344 |
+| 1–2.5% | 834 | 821 |
+| 2.5% to an eighth | 1,476 | 1,324 |
+| Above an eighth | 75 | 71 |
+
+Over the whole district 11,401 buildings are grey, against 11,156; 71 are above an eighth,
+against 75. Beyond 1.5 km nothing changes, as no random fire starts there.
+
+**What it does not do: clear the band.** A building within 1.5 km is a random fire in about 1.4 of
+the 200 draws on average (2,193 of the 2,880 in at least one), so leaving those draws out moves
+only the buildings whose whole chance
+was their own starting fires: 245 turn grey. The rest have real chances of catching from a
+neighbour, a few percent: each draw's 20 fires are scattered through the band, and their windows
+carry fire to about 94 others (114 expected to burn within 1.5 km, the 20 seeds among them). Of
+the 2,880, 2,489 still share the ramp's first eighth. Clearing it further
+is a question of the ramp, not of the measure: the options of the last section stand (a grey
+threshold above none, or a ramp finer at the low end).
+
+**Fires picked by hand: the map does not move but for the seeds.** With the 21 buildings within 40
+m of the district's most exposed building (723 m east, 584 m south of the charge) alight, and no
+random fires: the 14,148 other buildings have the same chance either way, to the draw. Only the 21
+seeds change: from certain, above an eighth, to grey under their outlines. The district's greys
+are 13,821 from a neighbour, 13,800 at all; above an eighth, 89 and 110.
+
+**In the app on Beirut** (InterfaceReviewFireTests, optimised build, the same 20 fires at random
+within 1.5 km in the airport's wind):
+
+The district's 9,708 buildings grey, by the hour:
+
+| Caught by | At all (before) | From a neighbour |
+|---|---|---|
+| 1 h | 6,916 | 7,408 |
+| 3 h | 6,758 | 7,040 |
+| 12 h | 6,744 | 7,018 |
+
+The 2,862 buildings within 1.5 km at 12 hours, as headless:
+
+| Map's band | At all (before) | From a neighbour |
+|---|---|---|
+| Grey | 88 | 362 |
+| Up to 1% | 470 | 397 |
+| 1–2.5% | 911 | 877 |
+| 2.5% to an eighth | 1,374 | 1,210 |
+| Above an eighth | 19 | 16 |
+
+The fire itself is as before: 92 (55–154) caught by 12 hours. In the view the port's warehouses
+and the isolated buildings round the basin, which only their own random fires had coloured, turn
+grey; the dense blocks east and south stay yellow.
+
+The captures, light and dark, and the view by the hour both ways (`beirut-neighbour-*` and
+`beirut-caught-*`), are in `$BOMBCAD_DATA/fire-spread/app-review/fire-v3/`.
+
+**No default but the map's changed.** The fire, its draws and its figures (alight, burnt out,
+caught, more likely than not) are the same; only which chance colours the map, and the panel's
+line, follow the decision.
+
+**Checks.**
+- `FireSpreadTests`, Linux-safe: over random draws, each building's starting-fire draws are those
+  the draws' own numbers pick, its chance from a neighbour is its catches in the other draws over
+  their number, and the two together give its chance at all. Two houses far from the rest are
+  coloured by their own starting fires at all and grey from a neighbour. A seed picked by hand has
+  no draw to count and is grey, and every other building's colour is the earlier map's.
+- `FireAfterBlastTests`, in the app: the default measure, the seed grey under its outline, the
+  other buildings coloured as at all with a seed picked by hand, and at random never above the
+  chance at all.
+- `InterfaceReviewFireTests` prints both maps' greys and bands within 1.5 km.
 
 ## The literature, and why this model
 

@@ -714,6 +714,12 @@ final class SimulationModel {
     var fireShowsAlight = false {
         didSet { if fireShowsAlight != oldValue, envelopeColouring == .fire { applyEnvelopeDamageColours() } }
     }
+    /// Which chance colours the view: of catching from a neighbour, over the draws in which a
+    /// building was not a starting fire (since 31 October 2026), or of catching at all, the
+    /// earlier map's.
+    var fireMapChance = FireSpread.MapChance.neighbour {
+        didSet { if fireMapChance != oldValue, envelopeColouring == .fire { applyEnvelopeDamageColours() } }
+    }
     /// While on, a click on a building in the view starts a fire there, or takes it away.
     var firePicksSeeds = false
     /// While a control of the fire is held (a slider dragged): its draws are a preview's few, and
