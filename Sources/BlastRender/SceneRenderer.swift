@@ -630,7 +630,8 @@ public final class SceneRenderer {
 
     /// Lines to draw over the scene, of a width on screen whatever their length: each two vectors,
     /// one end and a kind (0 to 4, as `CloudOverlay.Kind`; 5 to 9, as `HazardOverlay.Kind`; 10, a
-    /// building the solver refined, `refinedOutlines`), and the other end and 0. The caller leaves out the kinds its settings hide.
+    /// building the solver refined, `refinedOutlines`; 11, a building where the fire after the blast starts,
+    /// `fireSeedOutlines`), and the other end and 0. The caller leaves out the kinds its settings hide.
     public func setLines(_ lines: [SIMD4<Float>]) {
         lineCount = lines.count / 2
         guard lineCount > 0 else { return }

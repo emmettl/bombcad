@@ -21,7 +21,7 @@ extension SimulationModel {
         case .wallsModerate: [.wallsModerate]
         case .wallsHeavy: [.wallsHeavy]
         case .roofModerate: [.roofModerate]
-        case .peopleHurt: [.blownOut]
+        case .peopleHurt, .fire: [.blownOut]
         case .damage, .couldFlip: ThresholdRefinement.Quantity.damage
         }
     }

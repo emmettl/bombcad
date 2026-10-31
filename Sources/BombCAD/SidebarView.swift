@@ -131,6 +131,7 @@ struct SidebarView: View {
             InspectedEnvelopeSection(model: model)
             EnvelopeDamageSection(model: model)
             PeopleSection(model: model)
+            FireSection(model: model)
             FarFieldSection(model: model)
 
             if let summary = model.structureSummary {

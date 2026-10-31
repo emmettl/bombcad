@@ -92,7 +92,7 @@ swift run -c release scenebench fire <the district-scene's inputs> --radius 2500
   - `--buildings-csv`: one row a building, with its map id and its place east and north of the
     charge.
 
-The app does not show it yet ([Future work](#future-work)).
+The app shows it as a layer on the quick estimate and on a run's damage ([The app](#the-app-stage-3-31-october-2026)).
 
 ## The model
 
@@ -271,6 +271,90 @@ What the model does:
   did smoulder for weeks in 2022, but that is another fire, and this one is the openings'
   assumption.
 
+## The app (stage 3, 31 October 2026)
+
+The sidebar's **Fire after the blast** section, below People in the scene, draws the fire over a
+scene's envelope buildings once the quick estimate's glass is in (File ▸ New District's, or any
+scene's), or a run's damage once the run has stopped. It is `FireSpread.layer`, with the same
+model and the same defaults as `scenebench fire`.
+
+- **Where fires start**, any of them together:
+  - **buildings picked in the view.** With Pick buildings in the view on, a click on a building
+    starts a fire there and a second click takes it away. A selected building's panel has a Start
+    a fire here switch, for the keyboard and VoiceOver;
+  - **near the charge:** every building within 25–500 m of it;
+  - **at random:** 5–100 buildings a draw, from a band of distance from the charge;
+  - **the run's surface heating:** the buildings its flags mark, past the ignition fluence or
+    either threshold, once a run with the thermal radiation's surface heating has stopped.
+- **The wind,** its speed and the bearing it comes from, as two sliders.
+- **Over** 3, 6, 12 or 24 hours. Under Assumptions: every building timber-clad as a contrast, and
+  the use of untagged buildings.
+- **What it shows.** Colour Buildings by Fire colours each building by its chance of having caught
+  by the hour on a slider, or of burning then, on the chance legend, with the seeds outlined in
+  orange. Beside it: the buildings alight, burnt out and the floor reached at that hour (median and
+  5–95%), the buildings caught by the end, those more likely than not to burn, and how they caught.
+- **Its standing leads,** as the people estimate's does: the note that it is illustrative and not a
+  prediction first, the standing's badge, and `FireSpread.standing` beneath.
+
+**How it is drawn.** The district and the draws run away from the main thread. A change of seeds,
+wind, hours or construction cancels the draws under way, between chunks of 20, and starts again.
+- While the charge is dragged or a slider held, 40 draws make a preview. When it is let go, the
+  full 200 follow.
+- The progress shows as draws done of the total.
+- Each building's ignition times over the draws are kept, so the hour slider recolours the view
+  without drawing again.
+
+**Timings,** on the M4 Max, optimised build, Beirut at 0.5 kt within 2.5 km through File ▸ New
+District (the advisor's 6 m cells place 9,708 buildings; `scenebench fire` at 4 m places 14,169):
+
+| Step | Time |
+|---|---|
+| Laying out the district | 1.7 s |
+| The quick estimate's full look (already there before this stage) | 26.3 s |
+| The fire, 200 draws over 12 h, 20 at random within 1.5 km | 0.05 s |
+| A preview, 40 draws | 0.03 s |
+| Every building timber-clad, 200 draws (a conflagration) | 0.23 s |
+
+The draws' summary now looks at each draw's burning buildings only, not at every building. So
+`scenebench fire` on the stage's own Beirut run takes 0.05 s for its 200 draws, not 0.22 s, with
+the same output to the byte.
+
+**On Beirut in the app,** with 20 fires at random within 1.5 km in the airport's wind (240° at 5.7
+m/s):
+- 73 (49–112) buildings are alight 2 hours after the blast;
+- 92 (55–154) have caught by 12 hours, the seeds with them, and none is more likely than not to
+  burn;
+- every building timber-clad, 3,995 (3,622–4,296) catch.
+
+These are the headless figures' pattern on the app's coarser district.
+
+**Checks.**
+- `FireSpreadTests`, Linux-safe:
+  - the layer's chances match the ensemble's at the horizon, rise with the hours, and are none for
+    a seed that has burnt out when asked for those alight;
+  - draws in chunks are the same as all at once, and stop between chunks when asked;
+  - seeds near the charge and at random in a band are as expected;
+  - a run's judgement gives each side's broken glass and failed walls, and its surface heating
+    seeds the fire.
+- `FireAfterBlastTests`, in the app:
+  - a quick estimate with no seeds asks for them;
+  - a picked building sets 200 draws going, and the view is coloured;
+  - a held slider gives 40 draws, and letting go gives the full 200;
+  - a newer request replaces one under way;
+  - the timber contrast, seeds near the charge and at random, and clicking a building on and off
+    while picking;
+  - loading the scene again lets the fire go.
+- `InterfaceReviewFireTests` captures the section in light and dark and the view by the hour on
+  Beirut (`BOMBCAD_INTERFACE_REVIEW` and `BOMBCAD_HYBRID_INPUTS`, in an optimised build:
+  `swift test -c release -Xswiftc -enable-testing --filter InterfaceReviewFireTests`). The captures
+  of 31 October are in `$BOMBCAD_DATA/fire-spread/app-review/fire/`.
+
+**Not done here:**
+- The layer's settings are not kept in the project, as the people estimate's are not.
+- A map building's wood tag is not carried into the app's district, so there the timber contrast,
+  or a building's construction set to timber, stands in for it.
+- The far buildings of a hybrid district are not in the fire.
+
 ## The literature, and why this model
 
 Models of fire spreading through a city, as surveyed for this step (31 October 2026):
@@ -351,10 +435,9 @@ Historical fires after a blast, looked for a case to judge against:
 
 ## Future work
 
-- **The app (stage 3).** A "Fire after the blast" layer on New District's quick estimate. It would
-  colour each building by its chance of burning, with a slider over the hours, the seeds chosen
-  by clicking, and the wind set beside them. Its standing would lead, as the people estimate's
-  does.
+- **The app's next steps** ([The app](#the-app-stage-3-31-october-2026)): the layer's settings kept
+  in the project, a map building's wood tag carried into the app, and the fire beyond a hybrid
+  district's hand-over.
 - **Ignitions that are not illustrative (stage 4).** Heat through broken windows onto contents,
   from the thermal receivers behind each façade's glass. A damage-driven rate of ignitions, if a
   blast record or analogue can be found, as HAZUS regresses earthquake ignitions on shaking.

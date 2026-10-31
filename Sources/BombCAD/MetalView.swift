@@ -129,7 +129,7 @@
                         ? model.shownCloud.map { CloudOverlay.lines($0, eye: model.camera.eye) } ?? [] : [])
                     + (settings.showHazard ? model.hazardLines() : [])
                     + (settings.showBlastHazards ? model.blastHazardLines() : [])
-                    + model.refinedOutlines()
+                    + model.refinedOutlines() + model.fireSeedOutlines()
                 return Frame(
                     settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
                     freestanding: replay.map { $0.1?.freestanding ?? [] }

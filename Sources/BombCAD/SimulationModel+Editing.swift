@@ -832,6 +832,13 @@ extension SimulationModel {
             } else if case .building = selection {
                 selection = nil
             }
+            // Picking where fires start: a building in the scene alight, or not.
+            if firePicksSeeds, fireSource != nil,
+                let id = ScenePicking.envelope(
+                    in: settings.scenario, origin: ray.origin, direction: ray.direction)
+            {
+                toggleFireSeed(id)
+            }
             // A building judged, near or far: its damage in the sidebar.
             inspectedEnvelope =
                 envelopeDamage.isEmpty && farFieldDamage.isEmpty

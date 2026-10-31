@@ -52,6 +52,19 @@ public enum FireSpread {
         case roof
         /// Flying brands downwind in a near gale (Report 27 §4.3.6).
         case brand
+
+        /// In words, for a list of how buildings caught.
+        public var label: String {
+            switch self {
+            case .seed: "set alight"
+            case .contact: "by contact"
+            case .spontaneous: "by radiation alone"
+            case .piloted: "by sparks"
+            case .openings: "through windows"
+            case .roof: "from a roof"
+            case .brand: "by brands"
+            }
+        }
     }
 
     /// A rectangle of a footprint, metres, x east and y north.
@@ -684,18 +697,50 @@ extension FireSpread {
         _ district: District, seeds: [Ignition], random: RandomIgnitions? = nil, horizonS: Double,
         members: Int = 100, seed: UInt64 = 0, stepS: Double = 600
     ) -> Ensemble {
+        let runs = draws(
+            district, seeds: seeds, random: random, horizonS: horizonS, members: members, seed: seed)!
+        return summary(
+            district, draws: runs, seeds: seeds, random: random, horizonS: horizonS, seed: seed, stepS: stepS
+        ).ensemble
+    }
+
+    /// The draws of `ensemble`, `chunk` at a time (all at once by default): nil if `stop` says so
+    /// between chunks, and `progress` told the draws done after each. Each draw is its own, so the
+    /// chunks change nothing in them.
+    public static func draws(
+        _ district: District, seeds: [Ignition], random: RandomIgnitions? = nil, horizonS: Double,
+        members: Int = 100, seed: UInt64 = 0, chunk: Int = .max, stop: () -> Bool = { false },
+        progress: (Int) -> Void = { _ in }
+    ) -> [Member]? {
         let count = max(members, 1)
         var runs = [Member?](repeating: nil, count: count)
-        runs.withUnsafeMutableBufferPointer { out in
-            concurrently(iterations: count) { k in
-                let drawn = random?.draw(member: UInt64(k), seed: seed) ?? []
-                out[k] = district.run(
-                    seeds: seeds + drawn.map { Ignition(building: $0) }, horizonS: horizonS,
-                    member: UInt64(k),
-                    seed: seed)
+        var done = 0
+        while done < count {
+            if stop() { return nil }
+            let first = done
+            let last = min(count, first + max(chunk, 1))
+            runs.withUnsafeMutableBufferPointer { out in
+                concurrently(iterations: last - first) { j in
+                    let k = first + j
+                    let drawn = random?.draw(member: UInt64(k), seed: seed) ?? []
+                    out[k] = district.run(
+                        seeds: seeds + drawn.map { Ignition(building: $0) }, horizonS: horizonS,
+                        member: UInt64(k),
+                        seed: seed)
+                }
             }
+            done = last
+            progress(done)
         }
-        let draws = runs.map { $0! }
+        return runs.map { $0! }
+    }
+
+    /// The ensemble of `draws`, and each building's ignition times over them, earliest first.
+    public static func summary(
+        _ district: District, draws: [Member], seeds: [Ignition], random: RandomIgnitions? = nil,
+        horizonS: Double, seed: UInt64 = 0, stepS: Double = 600
+    ) -> (ensemble: Ensemble, ignitions: [[Double]]) {
+        let count = max(draws.count, 1)
         let floor = district.buildings.map {
             $0.footprintArea * max(1, ($0.height / district.parameters.storeyM).rounded())
         }
@@ -708,6 +753,9 @@ extension FireSpread {
             return SIMD3(at(0.05), at(0.5), at(0.95))
         }
         var buildings: [Ensemble.Building] = []
+        var ignitions: [[Double]] = []
+        buildings.reserveCapacity(district.buildings.count)
+        ignitions.reserveCapacity(district.buildings.count)
         for n in district.buildings.indices {
             let times = draws.compactMap { $0.ignitedS[n] }.sorted()
             var tally: [Mode: Int] = [:]
@@ -718,21 +766,26 @@ extension FireSpread {
                     index: n, id: district.buildings[n].id, chance: Double(times.count) / Double(count),
                     medianIgnitionS: times.isEmpty ? nil : times[times.count / 2], mode: mode,
                     burnS: district.stages[n].totalS))
+            ignitions.append(times)
         }
+        // Each draw's buildings that caught, in their order, so that each step looks only at them.
+        let lit = draws.map { d in d.ignitedS.enumerated().compactMap { n, t in t.map { (n, $0) } } }
         var timeline: [Ensemble.Step] = []
         var t = 0.0
         while t <= horizonS + 1e-9 {
             var burning: [Double] = []
             var burnt: [Double] = []
             var area: [Double] = []
-            for d in draws {
-                let c = d.counts(at: t)
-                burning.append(Double(c.burning))
-                burnt.append(Double(c.burnt))
+            for caught in lit {
+                var alight = 0
+                var out = 0
                 var a = 0.0
-                for (n, start) in d.ignitedS.enumerated() where start.map({ $0 <= t }) ?? false {
+                for (n, start) in caught where start <= t {
+                    if t < start + district.stages[n].totalS { alight += 1 } else { out += 1 }
                     a += floor[n]
                 }
+                burning.append(Double(alight))
+                burnt.append(Double(out))
                 area.append(a)
             }
             timeline.append(
@@ -745,12 +798,18 @@ extension FireSpread {
         for d in draws {
             for m in d.mode.compactMap({ $0 }) { modes[m.rawValue, default: 0] += 1 / Double(count) }
         }
-        return Ensemble(
+        let ensemble = Ensemble(
             members: count, seed: seed, horizonS: horizonS, wind: district.wind,
             parameters: district.parameters,
             seeds: seeds, random: random, buildings: buildings, timeline: timeline, modes: modes,
             caught: percentiles(draws.map { Double($0.ignitedS.compactMap { $0 }.count) }))
+        return (ensemble, ignitions)
     }
+
+    /// What the layer is for, shown before anything else (docs/fire-spread.md).
+    public static let note =
+        "Illustrative, not a prediction of which buildings burn: where a district's construction and spacing "
+        + "would carry a fire from the seeds chosen, and how much the broken glass and the wind change that."
 
     /// Its standing, worded from docs/fire-spread.md.
     public static let standing: [String] = [

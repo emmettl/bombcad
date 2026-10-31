@@ -63,8 +63,8 @@ extension SimulationModel {
 
     /// What a preview works out: only what the view is coloured by.
     var previewParts: FacadeLoadSurrogate.Prepared.Parts {
-        // The people hurt follow a drag on the glass's chances alone, their largest part.
-        envelopeColouring.isChance || envelopeColouring == .peopleHurt
+        // The people hurt and the fire follow a drag on the glass's chances alone, their largest part.
+        envelopeColouring.isChance || envelopeColouring == .peopleHurt || envelopeColouring == .fire
             ? .glass : envelopeColouring.isStructure ? .structure : .damage
     }
 
@@ -235,6 +235,8 @@ extension SimulationModel {
         if parts.contains(.glass) {
             peopleUsesStructure = parts.contains(.structure)
             refreshPeople()
+            // The fire too, drawn away from the main thread: a preview's few draws while dragging.
+            requestFire()
         }
         applyEnvelopeDamageColours()
     }

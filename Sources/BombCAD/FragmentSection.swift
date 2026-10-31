@@ -206,6 +206,6 @@ struct FragmentDisplaySettings: View {
 
 /// A picker's choices, with the value held among them if it is not one: a project can hold any
 /// number, and a picker whose value matches no choice shows nothing.
-func pickerChoices(_ choices: [Int], holding value: Int) -> [Int] {
+func pickerChoices<Value: Comparable>(_ choices: [Value], holding value: Value) -> [Value] {
     choices.contains(value) ? choices : (choices + [value]).sorted()
 }

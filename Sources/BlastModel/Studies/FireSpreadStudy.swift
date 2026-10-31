@@ -210,14 +210,9 @@ package enum FireSpreadStudy {
                 value("ignite-band").map { $0.split(separator: ",").compactMap { Double($0) } } ?? [
                     0, .infinity,
                 ]
-            let candidates = buildings.indices.filter { k in
-                let b = buildings[k]
-                let c =
-                    b.footprint.reduce(SIMD2<Double>.zero) { $0 + $1.centre * $1.area }
-                    / max(b.footprintArea, 1e-9)
-                let d = ((c - charge) * (c - charge)).sum().squareRoot()
-                return d >= (band.first ?? 0) && d < (band.count > 1 ? band[1] : .infinity)
-            }
+            let candidates = FireSpread.candidates(
+                in: buildings, from: charge, fromM: band.first ?? 0, toM: band.count > 1 ? band[1] : .infinity
+            )
             random = FireSpread.RandomIgnitions(count: n, candidates: candidates)
             print("Random ignitions: \(n) a draw among \(candidates.count) buildings")
         }

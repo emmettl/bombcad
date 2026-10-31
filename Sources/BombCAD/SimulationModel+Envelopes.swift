@@ -102,6 +102,11 @@ extension SimulationModel {
             renderer?.setEnvelopeDamage(peopleCodes())
             return
         }
+        if envelopeColouring == .fire, fireLayer != nil {
+            // Each building by its chance of fire at the hour shown: illustrative.
+            renderer?.setEnvelopeDamage(fireCodes())
+            return
+        }
         if envelopeColouring.isStructure, !envelopeStructureChances.isEmpty {
             // Each building by its walls' or roof's chance, the same on every side.
             renderer?.setEnvelopeDamage(
@@ -226,6 +231,8 @@ extension SimulationModel {
         case roofModerate = "Chance roof damaged (moderate or worse)"
         /// Each building by the share of its people expected hurt (`OccupantInjury`): illustrative.
         case peopleHurt = "Share of people hurt (illustrative)"
+        /// Each building's chance of fire by the hour shown (`FireSpread.Layer`): illustrative.
+        case fire = "Chance of fire after the blast (illustrative)"
         var id: Self { self }
         /// Its name in the sidebar's picker, short enough for the sidebar's width; what the
         /// longer names add is `note`, shown beneath.
@@ -237,6 +244,7 @@ extension SimulationModel {
             case .wallsHeavy: "Chance walls heavy"
             case .roofModerate: "Chance roof damaged"
             case .peopleHurt: "Share of people hurt"
+            case .fire: "Chance of fire"
             default: rawValue
             }
         }
@@ -252,7 +260,9 @@ extension SimulationModel {
             }
         }
         /// Each building side's glass chance, from the quick estimate or the far field.
-        var isChance: Bool { self != .damage && self != .couldFlip && self != .peopleHurt && !isStructure }
+        var isChance: Bool {
+            self != .damage && self != .couldFlip && self != .peopleHurt && self != .fire && !isStructure
+        }
         /// Each building's walls' or roof's chance, from the quick estimate.
         var isStructure: Bool { self == .wallsModerate || self == .wallsHeavy || self == .roofModerate }
     }
@@ -301,6 +311,8 @@ extension SimulationModel {
         envelopeGlassChances = []
         envelopeStructureChances = []
         peopleEstimate = nil
+        // The fire follows a run's damage once it has stopped.
+        if isRunning { dropFire() } else { requestFire() }
         envelopeLoads = loads
         applyEnvelopeDamageColours()
     }

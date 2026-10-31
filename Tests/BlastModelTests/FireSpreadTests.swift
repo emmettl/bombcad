@@ -323,4 +323,130 @@ struct FireSpreadTests {
         #expect(F.ignited(by: result, buildings: buildings) == [1])
         #expect(F.ignited(by: result, buildings: buildings, seeding: .either) == [0, 1])
     }
+
+    @Test("The app's layer: draws in chunks as at once, stopped between them, its chances by the hour")
+    func layer() throws {
+        // Eight timber houses 9 m apart, west to east: sparks cross each gap one time in ten.
+        var scene = Scenario(
+            name: "Row", domainSize: SIMD3(200, 40, 20), boxes: [],
+            charge: Charge(mass: 10, position: SIMD3(2, 20, 0)))
+        var ids: [UUID] = []
+        for n in 0..<8 {
+            let x = Float(5 + n * 19)
+            let id = try scene.addEnvelopeObject(
+                BuildingEnvelope(solids: [Box(min: SIMD3(x, 15, 0), max: SIMD3(x + 10, 25, 4.5))]))
+            var timber = EnvelopeConstruction.assumed(objectID: id)
+            timber.walls = .crossLaminatedTimber
+            timber.roof = .crossLaminatedTimber
+            scene.setEnvelopeConstruction(timber)
+            ids.append(id)
+        }
+        var settings = F.LayerSettings()
+        #expect(!settings.hasSeeds)
+        settings.picked = [ids[0]]
+        settings.hours = 3
+        let full = try #require(
+            F.layer(
+                scene: scene, source: .estimate(glass: [], structure: []), settings: settings, members: 60))
+        #expect(full.ids == ids && full.fixedSeeds == 1 && full.combustible == 8 && full.members == 60)
+        // As the ensemble gives it, at the horizon; the seed certain from the blast.
+        for n in ids.indices {
+            #expect(abs(full.chance(n, at: full.horizonS) - full.ensemble.buildings[n].chance) < 1e-12)
+        }
+        #expect(full.chance(0, at: 0) == 1)
+        // The seed burns out within the hours: then caught but no longer alight.
+        let out = full.ensemble.buildings[0].burnS + 1
+        #expect(full.chance(0, at: out) == 1 && full.chance(0, at: out, alight: true) == 0)
+        // A neighbour's chance grows with the hours, and is never more than its neighbour's nearer the seed.
+        let hours = stride(from: 0.0, through: full.horizonS, by: 600).map { full.chance(1, at: $0) }
+        #expect(zip(hours, hours.dropFirst()).allSatisfy { $0 <= $1 })
+        #expect(full.chance(2, at: full.horizonS) <= full.chance(1, at: full.horizonS))
+        #expect(full.step(at: 3599)?.atS == 2700)
+        #expect(full.likely(at: 0) == 1)
+
+        // In chunks of 7 the same draws, the progress told after each.
+        var told: [Int] = []
+        let chunked = try #require(
+            F.layer(
+                scene: scene, source: .estimate(glass: [], structure: []), settings: settings, members: 60,
+                chunk: 7, progress: { told.append($0) }))
+        #expect(chunked.ignitions == full.ignitions)
+        #expect(told == [7, 14, 21, 28, 35, 42, 49, 56, 60])
+        // Stopped after the second chunk: nothing.
+        var asked = 0
+        let stopped = F.layer(
+            scene: scene, source: .estimate(glass: [], structure: []), settings: settings, members: 60,
+            chunk: 7,
+            stop: {
+                asked += 1
+                return asked > 3
+            })
+        #expect(stopped == nil)
+
+        // Near the charge, and at random in a band: the seeds they give.
+        var near = F.LayerSettings()
+        near.nearChargeM = 5
+        let nearLayer = try #require(
+            F.layer(scene: scene, source: .estimate(glass: [], structure: []), settings: near, members: 4))
+        #expect(nearLayer.fixedSeeds == 1 && nearLayer.chance(0, at: 0) == 1)
+        var random = F.LayerSettings()
+        random.randomCount = 2
+        random.randomFromM = 50
+        random.randomToM = 120
+        let randomLayer = try #require(
+            F.layer(scene: scene, source: .estimate(glass: [], structure: []), settings: random, members: 40))
+        // Centres at 8 + 19 n m from the charge: 65, 84 and 103 m.
+        #expect(randomLayer.randomCandidates == 3 && randomLayer.fixedSeeds == 0)
+        #expect(abs((3...5).map { randomLayer.chance($0, at: 0) }.reduce(0, +) - 2) < 1e-12)
+        #expect(randomLayer.chance(0, at: 0) == 0)
+    }
+
+    @Test("A run's judgement as the fire's glass and walls: each side's panes broken, heavy walls failed")
+    func fromRun() throws {
+        var scene = Scenario(
+            name: "Run", domainSize: SIMD3(100, 100, 20), boxes: [],
+            charge: Charge(mass: 10, position: SIMD3(10, 50, 0)))
+        let a = try scene.addEnvelopeObject(
+            BuildingEnvelope(solids: [Box(min: SIMD3(40, 40, 0), max: SIMD3(50, 60, 9))]), name: "A")
+        let b = try scene.addEnvelopeObject(
+            BuildingEnvelope(solids: [Box(min: SIMD3(60, 40, 0), max: SIMD3(70, 60, 9))]), name: "B")
+        func damage(_ id: UUID, worst: EnvelopeDamageLevel, sides: [FacadeGlass]) -> EnvelopeBuildingDamage {
+            EnvelopeBuildingDamage(
+                id: id, construction: .assumed(objectID: id), components: [], structuralLevels: .none...worst,
+                beyondOneWay: false, panes: 0, panesBroken: 0, firstPaneBrokenAtS: nil, facadeGlass: sides,
+                insidePeakPa: 0, insideImpulsePaS: 0, vented: nil)
+        }
+        func side(_ axis: Int, _ outward: Int, panes: Double, broken: Double) -> FacadeGlass {
+            var glass = GlazingBreakage()
+            glass.panes = panes
+            glass.broken = broken
+            return FacadeGlass(axis: axis, outward: outward, glass: glass)
+        }
+        let buildings = F.buildings(
+            scene: scene,
+            damage: [
+                damage(
+                    a, worst: .heavy,
+                    sides: [side(0, -1, panes: 10, broken: 9), side(1, 1, panes: 4, broken: 1)]),
+                damage(b, worst: .moderate, sides: [side(0, -1, panes: 0, broken: 0)]),
+            ])
+        #expect(buildings.map(\.id) == [a, b])
+        #expect(buildings[0].brokenGlass == [0.9, 0, 0, 0.25])
+        #expect(buildings[0].wallsFailed == 1)
+        #expect(buildings[1].brokenGlass == [0, 0, 0, 0] && buildings[1].wallsFailed == 0)
+
+        // Seeded from a run's surface heating: B's west face flagged.
+        let thermal = F.ThermalFlags(
+            receivers: [
+                ThermalReceiver(position: SIMD3(60, 50, 4), normal: SIMD3(-1, 0, 0), surface: "block 1")
+            ],
+            heating: SurfaceHeatingResult(
+                ambient: 293, materials: [], material: [0], peakTemperature: [700], ignition: [2]))
+        var settings = F.LayerSettings()
+        settings.thermal = .fluence
+        let layer = try #require(
+            F.layer(
+                scene: scene, source: .run([]), thermal: thermal, settings: settings, members: 2))
+        #expect(layer.thermalFlagged == 1 && layer.chance(1, at: 0) == 1 && layer.chance(0, at: 0) == 0)
+    }
 }

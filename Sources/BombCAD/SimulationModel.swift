@@ -697,6 +697,36 @@ final class SimulationModel {
     /// The people's estimate pinned to compare others with, and what it was for: the charge, the
     /// assumptions and the buildings' constructions (`SimulationModel+People.swift`).
     var peopleBaseline: PeopleBaseline?
+    /// The fire after the blast over the envelope buildings (emmettl/bombcad-work#38,
+    /// `FireSpread.layer`; `SimulationModel+Fire.swift`): illustrative; nil until a seed is set and
+    /// the quick estimate's glass or a run's damage is in.
+    var fireLayer: FireSpread.Layer?
+    /// Where the fire starts, the wind, the hours and the construction it is drawn for.
+    var fireSettings = FireSpread.LayerSettings() {
+        didSet { if fireSettings != oldValue { requestFire() } }
+    }
+    /// The hour after the blast the view and the figures show.
+    var fireHour = 2.0 {
+        didSet { if fireHour != oldValue, envelopeColouring == .fire { applyEnvelopeDamageColours() } }
+    }
+    /// Whether the view shows each building's chance of burning at that hour, rather than of having
+    /// caught by then.
+    var fireShowsAlight = false {
+        didSet { if fireShowsAlight != oldValue, envelopeColouring == .fire { applyEnvelopeDamageColours() } }
+    }
+    /// While on, a click on a building in the view starts a fire there, or takes it away.
+    var firePicksSeeds = false
+    /// While a control of the fire is held (a slider dragged): its draws are a preview's few, and
+    /// the full ensemble follows when it is let go.
+    var fireAdjusting = false {
+        didSet { if oldValue, !fireAdjusting { requestFire() } }
+    }
+    /// The fire being drawn: the draws done and how many it takes; nil when none is.
+    var fireProgress: FireProgress?
+    /// What the last fire drawn took, or why there is none.
+    var fireStatus = ""
+    @ObservationIgnored var fireTask: Task<Void, Never>?
+    @ObservationIgnored var fireGeneration = 0
     /// How far the quick estimate's charge may be off: its yield within this factor either way,
     /// nine times in ten; 1 for exactly the scene's.
     var quickEstimateYieldWithin = 1.5

@@ -33,6 +33,7 @@ extension SimulationModel {
         envelopeGlassChances = []
         envelopeStructureChances = []
         peopleEstimate = nil
+        dropFire()
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -85,6 +86,7 @@ extension SimulationModel {
         envelopeGlassChances = []
         envelopeStructureChances = []
         peopleEstimate = nil
+        dropFire()
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -408,6 +410,8 @@ extension SimulationModel {
         publishTraces()
         refreshEnvelopeDebris()
         judgeFarField()
+        // The fire after the blast, on the run's damage now that it has stopped.
+        requestFire()
         if fragments != nil || thermal != nil || groundShock != nil {
             let (gpu, elapsed) = (blastGPUSeconds, time)
             Task { [weak self] in await self?.recordCosts(blastGPUSeconds: gpu, elapsed: elapsed) }
@@ -445,7 +449,11 @@ extension SimulationModel {
                     try? await Task.sleep(for: .milliseconds(20))
                     if self?.thermal === thermal { self?.updateThermalStatus() }
                 }
-                if self?.thermal === thermal { self?.updateThermalStatus() }
+                if self?.thermal === thermal {
+                    self?.updateThermalStatus()
+                    // The surface heating's flags, if the fire starts from them, are all in now.
+                    if self?.fireSettings.thermal != nil { self?.requestFire() }
+                }
             }
         }
         if let groundShock {

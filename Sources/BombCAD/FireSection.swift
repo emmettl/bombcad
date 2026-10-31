@@ -1,0 +1,315 @@
+import BlastCore
+import SwiftUI
+
+/// Fire after the blast (emmettl/bombcad-work#38, stage 3; docs/fire-spread.md): the fire spread over
+/// the envelope buildings for hours, from the quick estimate's broken glass and walls or a run's
+/// damage, with the seeds and the wind chosen here. Each building is coloured by its chance of fire
+/// by the hour on the slider, over the draws. Illustrative, and said so first.
+struct FireSection: View {
+    @Bindable var model: SimulationModel
+    @State private var showsAssumptions: Bool
+
+    init(model: SimulationModel, showsAssumptions: Bool = false) {
+        self.model = model
+        _showsAssumptions = State(initialValue: showsAssumptions)
+    }
+
+    static let nearRadii: [Double] = [25, 50, 100, 150, 250, 500]
+    static let randomCounts = [0, 5, 10, 20, 50, 100]
+    static let bandFrom: [Double] = [0, 250, 500, 1000, 1500, 2000]
+    static let bandTo: [Double] = [250, 500, 1000, 1500, 2000, 2500, 5000]
+
+    var body: some View {
+        if model.fireSource != nil {
+            Section("Fire after the blast") {
+                // Before anything else: what this is.
+                Label(FireSpread.note, systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                LabeledContent("Standing") { StandingLabel(level: .illustrative) }
+                    .accessibilityElement(children: .combine)
+                Text(
+                    model.envelopeDamageIsEstimate
+                        ? "Through the quick estimate's broken glass and failed walls."
+                        : "Through the run's broken glass and walls heavily damaged."
+                )
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                seeds
+                wind
+                Picker("Over", selection: $model.fireSettings.hours) {
+                    ForEach(SimulationModel.fireHorizons, id: \.self) {
+                        Text(String(format: "%.0f h", $0)).tag($0)
+                    }
+                }
+                .help("How long after the blast the fire is followed. No firefighting is modelled.")
+                DisclosureGroup("Assumptions", isExpanded: $showsAssumptions) {
+                    Picker("Construction", selection: $model.fireSettings.cladding) {
+                        Text("As each building's").tag(FireSpread.Cladding?.none)
+                        Text("Every building timber-clad").tag(FireSpread.Cladding?.some(.combustible))
+                    }
+                    .help(
+                        "Timber-clad buildings burn from outside; concrete, masonry and steel only through their windows. "
+                            + "Every building timber-clad is a contrast, as Halifax's wooden North End was.")
+                    Picker("Untagged buildings", selection: $model.fireSettings.untaggedUse) {
+                        ForEach(BuildingUse.allCases) { Text($0.label).tag($0) }
+                    }
+                    .help(
+                        "The use, and so the fire load, of buildings whose map tags say none (EN 1991-1-2 Annex E)."
+                    )
+                }
+                progress
+                if let layer = model.fireLayer {
+                    results(layer)
+                }
+                ForEach(FireSpread.standing, id: \.self) {
+                    Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(
+                        horizontal: false, vertical: true)
+                }
+            }
+            .monospacedDigit()
+        }
+    }
+
+    // MARK: - Where fires start
+
+    @ViewBuilder private var seeds: some View {
+        Text("Where fires start").font(.subheadline.weight(.medium))
+        Toggle("Pick buildings in the view", isOn: $model.firePicksSeeds)
+            .help(
+                "Click a building in the view to start a fire there, and again to take it away. A selected "
+                    + "building's panel has the same switch.")
+        let picked = model.fireSettings.picked.count
+        if picked > 0 {
+            HStack {
+                Text(picked == 1 ? "1 building picked" : "\(picked) buildings picked").font(.caption)
+                Spacer()
+                Button("Clear") { model.fireSettings.picked = [] }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Clear the buildings picked to start fires")
+            }
+        } else if model.firePicksSeeds {
+            Text("Click a building in the view.").font(.caption).foregroundStyle(.secondary)
+        }
+        Toggle(
+            "Near the charge",
+            isOn: Binding(
+                get: { model.fireSettings.nearChargeM != nil },
+                set: { model.fireSettings.nearChargeM = $0 ? 50 : nil })
+        )
+        .help("Every building within a distance of the charge alight at the blast.")
+        if let radius = model.fireSettings.nearChargeM {
+            Picker(
+                "Within",
+                selection: Binding(get: { radius }, set: { model.fireSettings.nearChargeM = $0 })
+            ) {
+                ForEach(pickerChoices(Self.nearRadii, holding: radius), id: \.self) {
+                    Text(String(format: "%.0f m", $0)).tag($0)
+                }
+            }
+            .accessibilityLabel("Buildings alight within this distance of the charge")
+        }
+        Picker("At random", selection: $model.fireSettings.randomCount) {
+            ForEach(pickerChoices(Self.randomCounts, holding: model.fireSettings.randomCount), id: \.self) {
+                Text($0 == 0 ? "None" : "\($0) a draw").tag($0)
+            }
+        }
+        .help(
+            "So many buildings set alight at the blast, chosen afresh in each draw, as the Wellington model was run "
+                + "from its history's ignitions.")
+        if model.fireSettings.randomCount > 0 {
+            Picker("From", selection: $model.fireSettings.randomFromM) {
+                ForEach(pickerChoices(Self.bandFrom, holding: model.fireSettings.randomFromM), id: \.self) {
+                    Text(String(format: "%.0f m", $0)).tag($0)
+                }
+            }
+            .accessibilityLabel("Random fires from this distance of the charge")
+            Picker("To", selection: $model.fireSettings.randomToM) {
+                ForEach(pickerChoices(Self.bandTo, holding: model.fireSettings.randomToM), id: \.self) {
+                    Text(String(format: "%.0f m", $0)).tag($0)
+                }
+            }
+            .accessibilityLabel("Random fires to this distance of the charge")
+            if let layer = model.fireLayer, layer.randomCandidates < model.fireSettings.randomCount {
+                Text("Only \(layer.randomCandidates) buildings lie that far from the charge.")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }
+        let thermal = model.fireThermal
+        Toggle(
+            "The run's surface heating",
+            isOn: Binding(
+                get: { model.fireSettings.thermal != nil },
+                set: { model.fireSettings.thermal = $0 ? .fluence : nil })
+        )
+        .disabled(thermal == nil && model.fireSettings.thermal == nil)
+        .help(
+            "The buildings whose faces or roofs the surface heating flags as ignited: test thresholds, illustrative."
+        )
+        if model.fireSettings.thermal != nil {
+            Picker(
+                "Flagged past",
+                selection: Binding(
+                    get: { model.fireSettings.thermal ?? .fluence }, set: { model.fireSettings.thermal = $0 })
+            ) {
+                Text("The ignition fluence").tag(FireSpread.ThermalSeeding.fluence)
+                Text("Either threshold").tag(FireSpread.ThermalSeeding.either)
+            }
+        }
+        if thermal == nil {
+            Text("A run with the thermal radiation's surface heating flags buildings; there is none here.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - The wind
+
+    @ViewBuilder private var wind: some View {
+        let w = model.fireSettings.wind
+        LabeledContent("Wind") {
+            Text(
+                w.speedMS == 0
+                    ? "Calm"
+                    : String(
+                        format: "%.1f m/s from %.0f° (%@)", w.speedMS, w.fromDegrees,
+                        Self.compass(w.fromDegrees)))
+        }
+        Slider(value: $model.fireSettings.wind.speedMS, in: 0...25, step: 0.5) {
+            Text("Speed")
+        } onEditingChanged: {
+            model.fireAdjusting = $0
+        }
+        .accessibilityLabel("Wind speed")
+        .accessibilityValue(String(format: "%.1f metres a second", w.speedMS))
+        Slider(value: $model.fireSettings.wind.fromDegrees, in: 0...355, step: 5) {
+            Text("From")
+        } onEditingChanged: {
+            model.fireAdjusting = $0
+        }
+        .accessibilityLabel("Wind from")
+        .accessibilityValue(String(format: "%.0f degrees, %@", w.fromDegrees, Self.compass(w.fromDegrees)))
+        .disabled(w.speedMS == 0)
+        Text("The wind carries sparks and brands, which ignite only buildings that burn from outside.")
+            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// A bearing's point of the compass, of sixteen.
+    static func compass(_ degrees: Double) -> String {
+        let names = [
+            "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW",
+            "NNW",
+        ]
+        let k = Int((degrees.truncatingRemainder(dividingBy: 360) + 360 + 11.25) / 22.5) % 16
+        return names[k]
+    }
+
+    // MARK: - The fire
+
+    @ViewBuilder private var progress: some View {
+        if let progress = model.fireProgress {
+            ProgressView(value: Double(progress.done), total: Double(max(progress.of, 1))) {
+                Text("Drawing the fire: \(progress.done) of \(progress.of) draws").font(.caption)
+            }
+            .accessibilityLabel("Drawing the fire")
+            .accessibilityValue("\(progress.done) of \(progress.of) draws")
+        }
+        if !model.fireStatus.isEmpty {
+            Text(model.fireStatus).font(.caption)
+                .foregroundStyle(
+                    model.fireLayer?.preview == true || model.fireLayer == nil ? .orange : .secondary
+                )
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder private func results(_ layer: FireSpread.Layer) -> some View {
+        let hours = layer.horizonS / 3600
+        let hour = min(model.fireHour, hours)
+        Slider(value: $model.fireHour, in: 0...max(hours, 0.25), step: 0.25) {
+            Text("Hour")
+        } minimumValueLabel: {
+            Text("0").font(.caption)
+        } maximumValueLabel: {
+            Text(String(format: "%.0f h", hours)).font(.caption)
+        }
+        .accessibilityLabel("Hour after the blast")
+        .accessibilityValue(String(format: "%.2g hours", hour))
+        Picker("Show", selection: $model.fireShowsAlight) {
+            Text("Caught by then").tag(false)
+            Text("Alight then").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .help("Colour each building by its chance of having caught by the hour, or of burning at it.")
+        if let step = layer.step(at: hour * 3600) {
+            Text(
+                String(
+                    format: "At %.2g h after the blast, over %d draws (median, 5–95%%):", hour, layer.members)
+            )
+            .font(.caption)
+            LabeledContent("Alight") { Text(Self.band(step.burning)).foregroundStyle(.secondary) }
+                .font(.caption)
+            LabeledContent("Burnt out") { Text(Self.band(step.burnt)).foregroundStyle(.secondary) }
+                .font(.caption)
+            LabeledContent("Floor reached") {
+                Text(Self.band(step.affectedFloorM2, unit: " m²")).foregroundStyle(.secondary)
+            }
+            .font(.caption)
+        }
+        let caught = layer.ensemble.caught
+        Text(
+            String(
+                format: "By %.0f h, %@ of %@ buildings caught, the seeds with them; %@ more likely than not.",
+                hours, Self.band(caught), layer.ids.count.formatted(),
+                layer.likely(at: layer.horizonS).formatted())
+        )
+        .font(.caption).fixedSize(horizontal: false, vertical: true)
+        let modes = FireSpread.Mode.allCases.filter { $0 != .seed }.compactMap { mode -> String? in
+            guard let mean = layer.ensemble.modes[mode.rawValue], mean >= 0.05 else { return nil }
+            return String(format: "%@ %.1f", mode.label, mean)
+        }
+        if !modes.isEmpty {
+            Text("Caught, a draw on average: " + modes.joined(separator: ", ") + ".")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        if model.envelopeColouring == .fire {
+            EnvelopeDamageSection.ChanceLegend()
+            Text(
+                model.fireShowsAlight
+                    ? "Each building by its chance of burning at the hour on the slider; the seeds outlined."
+                    : "Each building by its chance of having caught by the hour on the slider; the seeds outlined."
+            )
+            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        } else {
+            Button("Colour Buildings by Fire") {
+                model.showsEnvelopeDamage = true
+                model.envelopeColouring = .fire
+            }
+            .help("Colour each building by its chance of fire by the hour on the slider.")
+        }
+    }
+
+    /// A percentile band as "112 (63–181)".
+    static func band(_ v: SIMD3<Double>, unit: String = "") -> String {
+        func n(_ x: Double) -> String { x.formatted(.number.precision(.fractionLength(0))) }
+        return v.x == v.z ? n(v.y) + unit : "\(n(v.y))\(unit) (\(n(v.x))–\(n(v.z)))"
+    }
+
+    /// A selected building's switch to start a fire in it, and its chance by the hour shown.
+    struct SeedToggle: View {
+        @Bindable var model: SimulationModel
+        let id: UUID
+
+        var body: some View {
+            Toggle(
+                "Start a fire here",
+                isOn: Binding(get: { model.firePicked(id) }, set: { _ in model.toggleFireSeed(id) })
+            )
+            .help("Set this building alight at the blast, for the fire after it (illustrative).")
+            if let layer = model.fireLayer, let n = layer.ids.firstIndex(of: id) {
+                let hour = min(model.fireHour, layer.horizonS / 3600)
+                LabeledContent(String(format: "Chance of fire by %.2g h", hour)) {
+                    Text(String(format: "%.0f%%", layer.chance(n, at: hour * 3600) * 100))
+                }
+                .font(.caption)
+            }
+        }
+    }
+}

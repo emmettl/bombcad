@@ -45,8 +45,6 @@ extension FireSpread {
         structure: [FacadeLoadSurrogate.StructureChance] = [], untaggedUse: BuildingUse = .residential,
         cladding override: Cladding? = nil
     ) -> [Building] {
-        var constructions: [UUID: EnvelopeConstruction] = [:]
-        for c in scene.envelopeConstructions ?? [] { constructions[c.objectID] = c }
         var broken: [UUID: [Double]] = [:]
         var counted: [UUID: [Double]] = [:]
         for side in glass where (0...1).contains(side.axis) {
@@ -56,6 +54,41 @@ extension FireSpread {
         }
         var walls: [UUID: Double] = [:]
         for c in structure { walls[c.owner] = c.wallsHeavy }
+        return buildings(
+            scene: scene, broken: broken, counted: counted, walls: walls, untaggedUse: untaggedUse,
+            cladding: override)
+    }
+
+    /// `scene`'s envelope buildings as `buildings(scene:glass:…)` gives them, with the blast's glass
+    /// and walls from a run's judgement in place of the quick estimate's chances: each side's
+    /// share of its panes broken, and walls heavily damaged or worse failed outright.
+    public static func buildings(
+        scene: Scenario, damage: [EnvelopeBuildingDamage], untaggedUse: BuildingUse = .residential,
+        cladding override: Cladding? = nil
+    ) -> [Building] {
+        var broken: [UUID: [Double]] = [:]
+        var counted: [UUID: [Double]] = [:]
+        var walls: [UUID: Double] = [:]
+        for building in damage {
+            for side in building.facadeGlass ?? [] where (0...1).contains(side.axis) {
+                let k = 2 * side.axis + (side.outward > 0 ? 1 : 0)
+                broken[building.id, default: [0, 0, 0, 0]][k] += side.glass.broken
+                counted[building.id, default: [0, 0, 0, 0]][k] += side.glass.panes
+            }
+            if building.structuralLevels.upperBound >= .heavy { walls[building.id] = 1 }
+        }
+        return buildings(
+            scene: scene, broken: broken, counted: counted, walls: walls, untaggedUse: untaggedUse,
+            cladding: override)
+    }
+
+    /// The buildings, from each side's broken glass summed over what it is counted by.
+    private static func buildings(
+        scene: Scenario, broken: [UUID: [Double]], counted: [UUID: [Double]], walls: [UUID: Double],
+        untaggedUse: BuildingUse, cladding override: Cladding?
+    ) -> [Building] {
+        var constructions: [UUID: EnvelopeConstruction] = [:]
+        for c in scene.envelopeConstructions ?? [] { constructions[c.objectID] = c }
         return scene.envelopeObjects.compactMap { object -> Building? in
             guard let solids = object.envelope?.solids, !solids.isEmpty else { return nil }
             let construction = constructions[object.id] ?? .assumed(objectID: object.id)
@@ -99,10 +132,18 @@ extension FireSpread {
         by result: ThermalResult, buildings: [Building], seeding: ThermalSeeding = .fluence
     ) -> [Int] {
         guard let heating = result.heating else { return [] }
+        return ignited(receivers: result.receivers, heating: heating, buildings: buildings, seeding: seeding)
+    }
+
+    /// The same, from a run's receivers and their surface heating as it stands.
+    public static func ignited(
+        receivers: [ThermalReceiver], heating: SurfaceHeatingResult, buildings: [Building],
+        seeding: ThermalSeeding = .fluence
+    ) -> [Int] {
         let wanted: UInt8 = seeding == .fluence ? 2 : 3
         var hit = Set<Int>()
         let tolerance = 0.05
-        for (n, receiver) in result.receivers.enumerated()
+        for (n, receiver) in receivers.enumerated()
         where heating.ignition.indices.contains(n) && heating.ignition[n] & wanted != 0 {
             let p = SIMD3(
                 Double(receiver.position.x), Double(receiver.position.y), Double(receiver.position.z))

@@ -27,8 +27,10 @@ struct EnvelopeDamageSection: View {
                 let colouring = model.envelopeColouring
                 // The walls' and roofs' chances colour the view once the full estimate has them.
                 let structure = colouring.isStructure && !model.envelopeStructureChances.isEmpty
+                // The fire's legend is with it, below.
+                let fire = colouring == .fire && model.fireLayer != nil
                 if colouring == .damage || (colouring.isStructure && !structure)
-                    || (colouring == .couldFlip ? model.envelopeDoubt == nil : !chances)
+                    || (!fire && (colouring == .couldFlip ? model.envelopeDoubt == nil : !chances))
                 {
                     Legend()
                 }
@@ -39,7 +41,11 @@ struct EnvelopeDamageSection: View {
                         Picker("Colour by", selection: $model.envelopeColouring) {
                             ForEach(
                                 SimulationModel.EnvelopeColouring.allCases.filter {
-                                    $0 == .damage || ($0 == .couldFlip ? doubt : chances)
+                                    $0 == .damage
+                                        || ($0 == .couldFlip
+                                            ? doubt
+                                            : $0 == .fire
+                                                ? model.fireLayer != nil || colouring == .fire : chances)
                                 }
                             ) { Text($0.title).tag($0) }
                         }
@@ -682,6 +688,9 @@ struct InspectedEnvelopeSection: View {
                     Button("Clear") { model.inspectedEnvelope = nil }
                         .buttonStyle(.borderless)
                         .accessibilityLabel("Clear the selected building")
+                }
+                if !building.far, model.fireSource != nil {
+                    FireSection.SeedToggle(model: model, id: id)
                 }
                 let damage = (building.far ? model.farFieldDamage : model.envelopeDamage).first {
                     $0.id == id
