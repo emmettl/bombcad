@@ -875,13 +875,21 @@ extension StandingScene {
                 StandingEvidence(
                     "Large-panel flats coming down: today's element against assumed strain (a range)",
                     "Not a test: the spread from one cause, the hinges' energy taken by hourglass control or "
-                        + "by the concrete, on the whole-event runs' ground with Coulomb friction 0.6. Twelve "
-                        + "storeys: 237–309 m² of floor down, 11–12 storeys past 15%, 22,600–52,400 elements "
-                        + "failed, 34–78 t of rubble; three storeys: none to 74% of the floor down. The debris "
-                        + "comes to rest, 99% of it within 1.5–7.4 m of the plan. Assumed strain is the more "
-                        + "damaging end but for the twelve storeys' debris reach (5.8 against 7.4 m), and errs "
-                        + "that way on the member tests; neither end is a bound",
-                    "whole-event.md#adopted-ground-friction-06-30-october-2026"),
+                        + "by the concrete, on the whole-event runs' defaults, the air awake and the ground with "
+                        + "Coulomb friction 0.6. Twelve storeys: 237–309 m² of floor down, 11–12 storeys past "
+                        + "15%, 22,600–52,400 elements failed, 34–78 t of rubble; three storeys: none to 19% of "
+                        + "the floor down, 864–8,081 elements failed. The debris comes to rest, 99% of it within "
+                        + "1.3–7.4 m of the plan. Assumed strain is the more damaging end but for the twelve "
+                        + "storeys' debris reach (5.8 against 7.4 m), and errs that way on the member tests; "
+                        + "neither end is a bound",
+                    "whole-event.md#adopted-awake-air-31-october-2026"),
+                StandingEvidence(
+                    "Large-panel flats coming down in sleeping air (the three-storey runs before 31 October)",
+                    "Not a test: asleep, the air is frozen as it was, and its pressures on the falling faces "
+                        + "do a third of gravity's work as the struck bay starts down. With assumed strain three "
+                        + "storeys then lost 74–81% of their floor (255–280 m², three draws), against 19% in "
+                        + "the live air",
+                    "whole-event.md#energy-budget-30-october-2026"),
                 StandingEvidence(
                     "Large-panel flats coming down on a frictionless ground (the runs before 30 October)",
                     "Not a test: on the solver's frictionless ground broken pieces slide on for seconds, "

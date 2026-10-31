@@ -1270,8 +1270,9 @@ On the large-panel block's whole event it brings the debris to rest within 1–2
 and keeps the three-storey block standing with today's element, its broken ground-floor wall held
 at the foot ([ground friction](whole-event.md#ground-friction-30-october-2026)). Whole-event runs
 (`blastbench wholeevent`) take it at 0.6 by default since 30 October 2026, with
-`--ground-friction 0` for the frictionless ground. On that ground 99% of their debris comes to rest
-within 1.5–7.4 m of the plan ([adopted](whole-event.md#adopted-ground-friction-06-30-october-2026)).
+`--ground-friction 0` for the frictionless ground. On that ground, with the air kept awake (their
+default since 31 October, `--sleeping-air` for the earlier runs), 99% of their debris comes to rest
+within 1.3–7.4 m of the plan ([adopted](whole-event.md#adopted-awake-air-31-october-2026)).
 The solver's own default stays zero.
 
 `StructureSolver.groundStiffness` (an option, zero by default) makes the ground soft: with a

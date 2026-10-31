@@ -14,7 +14,7 @@ import simd
 //
 //   blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--every 0.05]
 //                         [--budget 80 (minutes)] [--checkpoint-every 1] [--frames 1,2,4,6,8,10]
-//                         [--awake] [--no-rubble] [--dir /Volumes/StudioData/bombcad/whole-event/<name>]
+//                         [--sleeping-air] [--no-rubble] [--dir /Volumes/StudioData/bombcad/whole-event/<name>]
 //                         [--continue] [--ground-friction 0.6 (0 for the frictionless ground)]
 //
 // Runs in pieces: after `--budget` minutes of wall time it saves a checkpoint at the next 64-step
@@ -29,8 +29,12 @@ import simd
 //   the elements' work by mechanism (the work trace, `StructureSolver.tracesWork`), and what is
 //   left: the net work of the air, the joints, contact and the ground; and the joints' slip work
 //   and the joints' and contact's power at that instant.
-// `--awake` keeps the air awake (no sleep), as a dust cloud would need; by default the air sleeps
-// as the recommended settings have it. Diagnostics: `--inspect <checkpoint>` lists the fastest
+// The air is kept awake (no sleep) by default since 31 October 2026, as a dust cloud would need:
+// asleep, the air is frozen as it was, and its pressures on the faces of a collapsing block push it
+// down (docs/whole-event.md, energy budget; adopted: awake air). `--sleeping-air` lets it sleep as
+// the recommended settings have it, to reproduce the runs before that date; `--awake` is accepted
+// and changes nothing. `--continue` and the readers of a saved state take the air as the run was
+// started with it, whatever is given. Diagnostics: `--inspect <checkpoint>` lists the fastest
 // nodes of a saved state with the elements round them; `--watch 20` does so at each sample with a
 // node faster than 20 m/s (and a run that goes unstable does as it stops);
 // `--erode-crushed-bare` and `--release-bare-hourglass` turn on those two options. `--split-work`
@@ -56,6 +60,9 @@ private struct WholeEventState: Codable {
     /// The ground's Coulomb friction the run was started with; nil in a run saved before it was
     /// recorded (30 October 2026), whose ground was frictionless unless `--ground-friction` was given.
     var groundFriction: Float?
+    /// Whether the air sleeps in the run (`--sleeping-air`); nil in a run saved before it was
+    /// recorded (31 October 2026). What decides it on carrying on is the checkpoint's configuration.
+    var airSleeps: Bool?
 }
 
 /// Whole-event runs' ground friction by default: Coulomb 0.6, concrete on concrete or hard ground,
@@ -63,6 +70,19 @@ private struct WholeEventState: Codable {
 /// (emmettl/bombcad-work#36; docs/whole-event.md, adopted: ground friction 0.6). For whole-event
 /// runs only: the solver's own default stays frictionless.
 let wholeEventGroundFriction: Float = 0.6
+
+/// The air of a whole-event run: kept awake (no sleep) by default, adopted on the user's word of
+/// 31 October 2026 (emmettl/bombcad-work#36; docs/whole-event.md, adopted: awake air), or sleeping
+/// as the recommended settings have it (`--sleeping-air`, the runs before that date). For whole-event
+/// runs only: the solver's own sleeping air is unchanged.
+func wholeEventConfiguration(airSleeps: Bool) -> SolverConfiguration {
+    var configuration = SolverConfiguration.recommended
+    if !airSleeps {
+        configuration.airSleepThreshold = 0
+        configuration.airSleepCrossings = 0
+    }
+    return configuration
+}
 
 private func processFootprint() -> Double {
     var info = task_vm_info_data_t()
@@ -98,24 +118,58 @@ func runWholeEvent(device: MTLDevice) throws {
     let budget = (option("budget").flatMap { Double($0) } ?? 80) * 60
     let checkpointEvery = option("checkpoint-every").flatMap { Double($0) } ?? 1
     let frames = (option("frames") ?? "1,2,4,6,8,10").split(separator: ",").compactMap { Double($0) }.sorted()
-    let awake = flag("awake")
+    let givenSleeping = flag("sleeping-air")
+    if givenSleeping, flag("awake") {
+        print("--sleeping-air and --awake: give one (the air is awake unless --sleeping-air)")
+        exit(2)
+    }
     let givenFriction = option("ground-friction").map { Float($0) ?? -1 }
     if let givenFriction, givenFriction < 0 {
         print("--ground-friction takes a coefficient, 0 or more (0 for the frictionless ground)")
         exit(2)
     }
     let name =
-        "street-\(storeys)s-\(Int(scenario.charge.mass))kg-\(rubble ? "rubble" : "norubble")\(awake ? "-awake" : "")"
+        "street-\(storeys)s-\(Int(scenario.charge.mass))kg-\(rubble ? "rubble" : "norubble")\(givenSleeping ? "-asleep" : "")"
     let dir = URL(filePath: option("dir") ?? "/Volumes/StudioData/bombcad/whole-event/\(name)")
-    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let fm = FileManager.default
+    try fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
-    var configuration = SolverConfiguration.recommended
-    if awake {
-        configuration.airSleepThreshold = 0
-        configuration.airSleepCrossings = 0
+    // The saved states to read: `--inspect`'s or `--breakdown`'s, every one in `--outcome`'s folder
+    // (or the one it names), or with `--continue` the latest in `--dir`.
+    func checkpoints(in url: URL) throws -> [URL] {
+        fm.fileExists(atPath: url.appending(path: "checkpoint.json").path)
+            ? [url]
+            : try fm.contentsOfDirectory(atPath: url.path).filter { $0.hasPrefix("step-") }.sorted().map {
+                url.appending(path: $0)
+            }
+    }
+    let outcomeFolders = try option("outcome").map { try checkpoints(in: URL(filePath: $0)) }
+    let latest =
+        flag("continue")
+        ? try fm.contentsOfDirectory(atPath: dir.path).filter({ $0.hasPrefix("step-") }).sorted()
+            .last(where: { fm.fileExists(atPath: dir.appending(path: "\($0)/whole-event.json").path) })
+            .map { dir.appending(path: $0) }
+        : nil
+    let reading =
+        (option("inspect") ?? option("breakdown")).map { URL(filePath: $0) } ?? outcomeFolders?.first
+        ?? latest
+
+    // The air as the saved state was run, read from its configuration's fingerprint (so a run from
+    // before 31 October 2026, which does not record it, carries on asleep if it slept), else as given.
+    var airSleeps = givenSleeping
+    if let reading, let saved = try? SolverCheckpoint.header(in: reading).configuration {
+        for sleeps in [true, false]
+        where saved == SolverCheckpoint.fingerprint(configuration: wholeEventConfiguration(airSleeps: sleeps))
+        {
+            if sleeps != givenSleeping, flag("sleeping-air") || flag("awake") {
+                print("The saved state's air \(sleeps ? "sleeps" : "is awake"): taken as it was saved")
+            }
+            airSleeps = sleeps
+        }
     }
     let solver = try BlastSolver(
-        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+        device: device, scenario: scenario, cellSize: cellSize,
+        configuration: wholeEventConfiguration(airSleeps: airSleeps))
     guard let body = solver.bodies.first, let solids = body.solids else {
         print("No solid structure")
         exit(2)
@@ -139,16 +193,8 @@ func runWholeEvent(device: MTLDevice) throws {
         breakdownWork(solids, time: header.time)
         return
     }
-    if let path = option("outcome") {
+    if let folders = outcomeFolders {
         // One checkpoint, or every checkpoint in a run's folder, in order.
-        let url = URL(filePath: path)
-        let fm = FileManager.default
-        let folders =
-            fm.fileExists(atPath: url.appending(path: "checkpoint.json").path)
-            ? [url]
-            : try fm.contentsOfDirectory(atPath: url.path).filter { $0.hasPrefix("step-") }.sorted().map {
-                url.appending(path: $0)
-            }
         print(WholeEventOutcome.header)
         for folder in folders {
             solids.tracesWork = true
@@ -160,15 +206,9 @@ func runWholeEvent(device: MTLDevice) throws {
     }
 
     // Where to start: the latest checkpoint in the folder with `--continue`, else afresh.
-    let fm = FileManager.default
     var state: WholeEventState
     let csv = dir.appending(path: "phases.csv")
-    if flag("continue"),
-        let latest = try fm.contentsOfDirectory(atPath: dir.path).filter({ $0.hasPrefix("step-") }).sorted()
-            .last(
-                where: { fm.fileExists(atPath: dir.appending(path: "\($0)/whole-event.json").path) })
-    {
-        let folder = dir.appending(path: latest)
+    if let folder = latest {
         solids.tracesWork = true
         let header = try solver.restoreCheckpoint(from: folder, scene: scenario)
         state = try JSONDecoder().decode(
@@ -177,6 +217,7 @@ func runWholeEvent(device: MTLDevice) throws {
             solids.groundFrictionCoefficient = state.groundFriction ?? 0
         }
         state.groundFriction = solids.groundFrictionCoefficient
+        state.airSleeps = airSleeps
         print(String(format: "Resumed from %@: step %d, %.4f s", folder.path, header.stepCount, header.time))
         // Rows written after this checkpoint by a piece that did not reach its next are dropped.
         if let text = try? String(contentsOf: csv, encoding: .utf8) {
@@ -195,7 +236,7 @@ func runWholeEvent(device: MTLDevice) throws {
         state = WholeEventState(
             stepCount: 0, time: 0, wallSeconds: 0, gpuSeconds: 0, baselineRise: solids.census().massTimesRise,
             nextSample: 0, nextCheckpoint: checkpointEvery, framesDone: [],
-            groundFriction: solids.groundFrictionCoefficient)
+            groundFriction: solids.groundFrictionCoefficient, airSleeps: airSleeps)
         try? fm.removeItem(at: csv)
     }
     print(
@@ -204,7 +245,7 @@ func runWholeEvent(device: MTLDevice) throws {
                 "%@: %d elements, %d nodes, %.2f m air cells (%d), rubble %@, air %@, ground friction %.2f; structure step %.2f µs; to %.1f s in pieces of %.0f min",
             scenario.name, solids.elementCount, solids.nodeCount, cellSize,
             solver.grid.nx * solver.grid.ny * solver.grid.nz,
-            rubble ? "on" : "off", awake ? "kept awake" : "sleeping as recommended",
+            rubble ? "on" : "off", airSleeps ? "sleeping as recommended (--sleeping-air)" : "kept awake",
             solids.groundFrictionCoefficient,
             Double(solids.criticalTimeStep) * 1e6, end, budget / 60))
     fflush(stdout)

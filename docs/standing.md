@@ -98,16 +98,21 @@ Since 19 October 2026 a structure's collapse is a result of its own (`ResultKind
   - **Large-panel flats:** against the Ronan Point inquiry's estimates only, not measurement.
   - **Large-panel flats coming down, as a range**: today's element against the one that bends in
     its cracked concrete (assumed strain), the spread from how the hinges' energy is taken
-    ([a range](whole-event.md#a-range-28-october-2026)). It is quoted on the whole-event runs' ground,
-    which has Coulomb friction 0.6 by default since 30 October 2026
-    ([adopted](whole-event.md#adopted-ground-friction-06-30-october-2026)). Twelve storeys lose
-    237–309 m² of floor, 11–12 storeys past 15%, with 22,600–52,400 elements failed and 34–78 t of
-    rubble. Three storeys lose none to 74% of their floor. The debris comes to rest, 99% of it
-    within 1.5–7.4 m of the plan. Assumed strain is the more damaging end, except for the twelve
-    storeys' debris reach (5.8 against 7.4 m). Neither end is a bound.
+    ([a range](whole-event.md#a-range-28-october-2026)). It is quoted on the whole-event runs'
+    defaults: Coulomb friction 0.6 on the ground since 30 October 2026
+    ([adopted](whole-event.md#adopted-ground-friction-06-30-october-2026)), and the air kept awake
+    since 31 October ([adopted](whole-event.md#adopted-awake-air-31-october-2026)). Twelve storeys
+    lose 237–309 m² of floor, 11–12 storeys past 15%, with 22,600–52,400 elements failed and 34–78 t
+    of rubble. Three storeys lose none to 19% of their floor, with 864–8,081 elements failed. The
+    debris comes to rest, 99% of it within 1.3–7.4 m of the plan. Assumed strain is the more
+    damaging end, except for the twelve storeys' debris reach (5.8 against 7.4 m). Neither end is a
+    bound.
   - **On the frictionless ground** of the runs before then, the debris was still creeping when they
     ended, its 99% reach out to 16.9 m and growing, and three storeys lost 15% of their floor with
     today's element ([ground friction](whole-event.md#ground-friction-30-october-2026)).
+  - **In sleeping air**, as the three-storey runs were before 31 October, the frozen field pushed
+    the falling bay, a third of gravity's work as it started down, and assumed strain took 74–81%
+    of three storeys' floor down ([energy budget](whole-event.md#energy-budget-30-october-2026)).
 
   The office tower on fin plates and the large-panel flats coming down are the model's alone.
 

@@ -48,6 +48,12 @@ up to a third of gravity's work, as falling faces meet the frozen field. With th
 assumed-strain block loses 19% of its floor, not 74–81%. Keeping whole-event runs awake is
 proposed, for the user's decision.
 
+**31 October ([adopted: awake air](#adopted-awake-air-31-october-2026)):** whole-event runs keep the
+air awake by default (the user's decision; `--sleeping-air` for the earlier runs), and the range is
+quoted on both defaults. Twelve storeys are unchanged: 237–309 m² of floor down. Three storeys:
+none to 19% of the floor down (65 m²), 864–8,081 elements failed, at rest by 0.7–1.7 s. In every
+run 99% of the debris outside the plan lies within 1.3–7.4 m of it.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -65,7 +71,7 @@ through it.
 ```bash
 blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--every 0.05]
                       [--budget 80] [--checkpoint-every 0.5] [--frames 1,2,4,6,8,10]
-                      [--awake] [--no-rubble] [--dir …] [--continue] [--watch 20] [--inspect <checkpoint>]
+                      [--sleeping-air] [--no-rubble] [--dir …] [--continue] [--watch 20] [--inspect <checkpoint>]
                       [--erode-crushed-bare] [--release-bare-hourglass] [--assumed-strain]
                       [--breakdown <checkpoint>] [--outcome <checkpoint or run folder>]
                       [--ground-friction 0.6]
@@ -75,8 +81,14 @@ The street preset (500 kg of TNT 8 m from the east flank wall, 670,560 solid ele
 air on 1.19 million cells of 0.25 m), with:
 - **rubble particles** on (`StructureModel.rubbleParticles`, an option): failed concrete becomes
   a particle keeping its mass, pushed by the air and in contact with everything;
-- **the air kept awake** (`--awake`: no sleep), as a dust cloud would need; by default the air
-  sleeps as the recommended settings have it;
+- **the air kept awake** (no sleep) by default since 31 October 2026
+  ([adopted](#adopted-awake-air-31-october-2026)), as a dust cloud would need and as the
+  sleeping air's push on a falling block wants ([energy budget](#energy-budget-30-october-2026));
+  `--sleeping-air` lets it sleep as the recommended settings have it, as in the runs before then
+  (`--awake`, which those runs gave to keep it awake, is still taken and changes nothing). A run
+  carried on with `--continue`, and a saved state read by `--outcome`, `--inspect` or
+  `--breakdown`, take the air as the run was started with it, read from the configuration saved
+  in the checkpoint, so an older sleeping run carries on asleep whatever is given;
 - **Coulomb friction 0.6 on the ground** by default since 30 October 2026
   ([adopted](#adopted-ground-friction-06-30-october-2026)); `--ground-friction 0` gives the
   frictionless ground of the earlier runs. A run carried on with `--continue` keeps the friction
@@ -1112,7 +1124,7 @@ floor down, is a collapse the sleeping air drove. Two ways to take it out:
    sleeping air and moving structures, whose digests and comparisons would decide it.
 
 The first is proposed, with the range quoted again on it. Until the user decides, the range stands
-as quoted, with this caveat.
+as quoted, with this caveat. (Adopted on 31 October: [awake air](#adopted-awake-air-31-october-2026).)
 
 **What is left.** On today's element, nothing the 10 s run needs: the residual is 0.7% of
 gravity's work by 3.5 s on twelve storeys. The assumed-strain end's residual is −3 to −5%, its
@@ -1133,6 +1145,117 @@ Runs and tables: `/Volumes/StudioData/bombcad/whole-event/energy/` (`s3-default`
 `s3-default-awake`,
 `s12-default` with `s12-gap`; `lane*.sh` how they were run, `tools/split.py` the reader of the
 split, `bin*/` the builds, `bin-faces/` the diagnostic one; `outcome-*.csv` the outcome reader's).
+
+## Adopted: awake air, 31 October 2026
+
+The user's decision on the energy budget's proposal (emmettl/bombcad-work#36): whole-event runs
+keep the air awake by default. `blastbench wholeevent` now builds its solver with the air's sleep
+off (`airSleepThreshold` and `airSleepCrossings` 0) unless `--sleeping-air` is given, which
+reproduces the sleeping-air runs before this date. The twelve-storey runs were already made this
+way (`--awake`, still taken, now changes nothing). A run carried on with `--continue`, or a saved
+state read by `--outcome`, `--inspect` or `--breakdown`, takes the air as the run was started:
+the bench compares the configuration's fingerprint saved in the checkpoint with the sleeping and
+the awake one, so a run saved before this date, which does not record it, carries on asleep if it
+slept (checked on the energy budget's `s3-default`: carried on with no option, it stays asleep).
+The checkpoints now also record it (`airSleeps` in `whole-event.json`). This is for whole-event
+runs only. The solver's sleeping air is unchanged, and sleeping air still loads faces with its
+frozen field (the second way out, not taken), so no other scene, test or digest moves.
+
+**The three-storey numbers on both defaults.** The awake runs of the energy budget, on the ground
+with friction 0.6, carried on from their last checkpoints to 7 s on the binaries they were made
+with, so the same to the bit as unbroken runs: today's element from 2 s (`energy/bin`) and
+assumed strain from 4.5 s (`energy/bin-faces`, the diagnostic build, whose air's work on faces is
+summed apart; it changes the count only). Read with `--outcome` at every checkpoint.
+
+| Three storeys, 7 s, the air awake, μ 0.6 | Today's element | Assumed strain | Ratio |
+|---|---|---|---|
+| Comes down | nothing | the struck bay, 15–22% of each floor | |
+| Floor area down (of 345 m²), by floor from the first | **none** | **65 m² (19%)**: 15 / 19 / 22% | |
+| Sagged 0.3 m or more | none | 97 m² | |
+| Storeys losing more than 15% of their floor | 0 | 3 (2 in the second draw, its first floor at 15%) | |
+| Elements failed: floors / walls / face walls | 864: 0 / 817 / 47 | 8,081: 763 / 6,161 / 1,157 | 9.4 |
+| Rubble (of the block's 235 t) | 1.4 t (0.6%) | 12.2 t (5.2%) | 8.7 |
+| Gravity's work | 0.11 MJ | 1.52 MJ | 14 |
+| Nine tenths of the floor area down by | (none down) | 1.0–1.5 s | |
+| Gravity's work at half / nine tenths | (no collapse) | 1.05 / 1.50 s | |
+| At rest (kinetic energy under 5% of its peak) | 0.7 s, after the blast | 1.7 s | |
+| Debris outside the plan; beyond 2 / 5 / 10 m | under 0.05 t | 5.7 t; 0.5 / 0.0 / 0.0 t | |
+| Reach of 90% / 99% of it; the furthest | 1.0 / 1.3 m; 19 m | **1.9 / 3.0 m**; 24 m | |
+| Of it still moving faster than 0.5 m/s; mean speed | none | none; 0.06 m/s | |
+
+- **Both are at rest long before 7 s, and nothing moves after.** Assumed strain's bay is down by
+  1.5 s (63 of its 65 m²) and at rest from 1.7 s. From 4.5 to 7 s its floor area down is the same
+  to 0.1 m², gravity's work grows by 0.01 MJ, 32 more elements fail, and the debris outside the
+  plan grows from 5.0 to 5.7 t, none of it faster than 0.5 m/s. Its 99% reach has been 3.0–3.1 m
+  since 2 s. Today's block is at rest after the blast:
+  6 more elements fail from 2 to 7 s and its 99% reach is 1.3 m from 2 s. Each run's furthest
+  piece (19 and 24 m) is too light to show in the tenths of a tonne. It goes out from 2 s, slowing,
+  and stops at 4–4.5 s.
+- **A second draw agrees.** Assumed strain's second awake run (`energy/s3-assumed-awake2`, on the
+  other build, to 3 s) reads 64.6 m² down, 8,074 failed and 1.50 MJ of gravity's work at 3 s, at
+  rest from 1.8 s, against this run's 65.2 m², 8,022 and 1.50 MJ at 3 s.
+- **Today's element stands either way, and sags less here than in the friction run.** The friction
+  run (asleep, on `friction/bin`) sagged 54 m² by 7 s, growing slowly, with 1,079 elements failed
+  and 0.23 MJ of gravity's work. This run sags none, with 864 failed and 0.11 MJ. That is not the
+  air: asleep on this run's own build (`energy/s3-default`), the block reads the same at 2 s as
+  awake, 858 elements failed and none sagged, where the friction run had 981 and 28 m² by then. It
+  is another draw of a bay near the margin of sagging, as the assumed-strain draws are of coming
+  down.
+- **It cost** 4,513 s of GPU (today's, 2 to 7 s) and 4,152 s (assumed strain, 4.5 to 7 s), on a
+  GPU shared two ways and with another session's renders, and a few minutes reading checkpoints:
+  about 2.4 GPU hours.
+
+**The range on the new defaults** (the air awake, friction 0.6). Twelve storeys are unchanged:
+they were already run awake ([adopted: ground friction 0.6](#adopted-ground-friction-06-30-october-2026)).
+
+| | Twelve storeys, today's | Twelve, assumed strain | Three storeys, today's | Three, assumed strain |
+|---|---|---|---|---|
+| Floor area down | 237 m² (17%) | 309 m² (22%) | none | 65 m² (19%) |
+| Storeys losing more than 15% of their floor | 11 | 12 | 0 | 3 |
+| Elements failed | 22,560 | 52,361 | 864 | 8,081 |
+| Rubble | 34 t | 78 t | 1.4 t | 12.2 t |
+| Gravity's work | 19.1 MJ | 20.3 MJ | 0.11 MJ | 1.52 MJ |
+| Gravity's work at half / nine tenths | 1.90 / 2.90 s | 1.41 / 2.35 s | (no collapse) | 1.05 / 1.50 s |
+| At rest | 3.6 s | 2.9 s | 0.7 s | 1.7 s |
+| Debris outside the plan; beyond 5 / 10 m | 64 t; 6.4 / 0.1 t | 62 t; 1.6 / 0.0 t | under 0.05 t | 5.7 t; 0.0 / 0.0 t |
+| Reach of 90% / 99%; the furthest | 5.0 / 7.4 m; 39 m | 3.8 / 5.8 m; 55 m | 1.0 / 1.3 m; 19 m | 1.9 / 3.0 m; 24 m |
+| Read at | 5 s | 5 s | 7 s | 7 s |
+
+Quoted, then: **twelve storeys lose 237–309 m² of their floor**, 11–12 storeys past 15%,
+22,600–52,400 elements failed, 34–78 t of rubble, 19.1–20.3 MJ of gravity's work, nine tenths of
+it by 2.35–2.90 s. **Three storeys lose none to 19% of their floor** (65 m², two draws 64.6–65.3),
+864–8,081 elements failed, 1.4–12.2 t of rubble, 0.11–1.52 MJ of gravity's work. **The debris comes
+to rest, 99% of it within 1.3–7.4 m of the plan**, under 0.1 t beyond 10 m in any run.
+
+**What reads differently.**
+- **Three storeys' upper end is a bay, not the block.** With the air asleep, assumed strain took
+  the second floor and the roof down whole (74–81% of the floor, three draws); awake, the struck
+  bay comes down through all three floors and stops (19%), as the energy budget found at 4.5 s.
+  The three-storey range was none to 74% and is none to 19%: narrower, and both ends now in the
+  live air.
+- **Assumed strain is still the more damaging end of every three-storey output**, the debris's
+  reach included (3.0 against 1.3 m at 99%). On twelve storeys it is, except the debris's reach
+  (5.8 against 7.4 m), as before.
+- As before, **neither end is a bound** ([a range](#a-range-28-october-2026)): the range is the
+  spread from the hinges' mechanism, now in the live air on a ground with friction. The three-storey
+  block is still near the margin: one storey's share moves with the draw (the first floor at 15%).
+
+**The asleep numbers, kept as history.** Before this date the three-storey runs slept (the air
+asleep from about 0.55 s), and the range quoted on the ground with friction read: three storeys
+none to 74% of the floor down (0 and 255 m²), 1,079–21,560 elements failed, 1.7–30.1 t of rubble,
+0.23–6.43 MJ of gravity's work, at rest 0.7–4.0 s, 99% of the debris within 1.5–5.2 m
+([adopted: ground friction 0.6](#adopted-ground-friction-06-30-october-2026)); and at 4.5 s three
+asleep draws of assumed strain read 255–280 m² down and 21,200–23,100 elements failed
+([energy budget](#energy-budget-30-october-2026)). `--sleeping-air` gives those runs again.
+
+**Where a user sees it.** The collapse's standing quotes this range in place of the asleep one,
+and its level stays illustrative, with no band. The whole-event run is still not offered in the
+app.
+
+Runs and tables: `/Volumes/StudioData/bombcad/whole-event/awake/` (`a3-default` and `a3-assumed`,
+the energy budget's awake runs carried on from 2 and 4.5 s to 7 s; `outcome-*.csv` the outcome
+reader's, `outcome-s3-*-awake-all.csv` the energy budget's checkpoints of the same runs before;
+`lane.sh` how they were run, `tools/phases.py` the reader of `phases.csv` for the times).
 
 ## Dust: what it would take
 
@@ -1176,10 +1299,11 @@ Nothing is built for dust. What it would need, from what the model has:
 1. **Close the energy budget**: done ([energy budget](#energy-budget-30-october-2026)). The
    blow-up opposite the charge, contact's and the joints' positive lean and the bars-only nodes
    were sections 3–6. On today's element the census leaves 0.7% of gravity's work on twelve
-   storeys by 3.5 s. The assumed-strain trace's missing third is fixed. Left: the sleeping air's
-   push on a collapsing block, for the user's decision.
+   storeys by 3.5 s. The assumed-strain trace's missing third is fixed. The sleeping air's push on
+   a collapsing block is taken out by keeping the air awake, the default since 31 October
+   ([adopted](#adopted-awake-air-31-october-2026)).
 2. **Then the 10 s run**, in pieces, with the residual held to a few per cent of gravity's work:
-   ready on today's element, the air awake, as the twelve-storey runs are.
+   ready on today's element, the air awake (the default).
 3. **Collapse earned** only after limitation 1's next attack, cracked concrete's stiffness and
    shear, not taken up; since 25 October the case for running it on the assumed-strain element,
    where the stabilisation no longer hides it (section 7).

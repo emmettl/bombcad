@@ -109,7 +109,8 @@ import Metal
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--ensemble 8]   (blind test 2; see MendoncaBench.swift)
 //   blastbench reynolds [--slabs HSCV1,HSCV4] [--layers 8] [--load tail] [--ensemble 8]   (blind test 3; see ReynoldsBench.swift)
 //   blastbench panelblock --case gravity|gas|street [--dx 0.25] [--frames 0.1,1,4]   (large-panel flats; see PanelBlockBench.swift)
-//   blastbench wholeevent [--storeys 12] [--time 10] [--budget 80] [--continue] [--ground-friction 0.6]   (the street charge past collapse; WholeEventBench.swift)
+//   blastbench wholeevent [--storeys 12] [--time 10] [--budget 80] [--continue] [--ground-friction 0.6] [--sleeping-air]
+//                      (the street charge past collapse, the air awake unless --sleeping-air; WholeEventBench.swift)
 //   blastbench merge [--rigs A,C,E,C*] [--gas methane,propane] [--dx 0.25] [--factor 1] [--out f.json]
 //                    (MERGE's congested rigs through the congestion model; see MergeBench.swift)
 //   blastbench langdon [--tests c622] [--h 0.0572]   (corrugated panels under pulse pressure; see LangdonBench.swift)
