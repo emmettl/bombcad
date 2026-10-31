@@ -408,12 +408,31 @@ struct FireSpreadTests {
         #expect(L.colourCode(chance: 0) == EnvelopeChanceColour.neutral)
         #expect(EnvelopeChanceColour.neutral < EnvelopeChanceColour.first)
         #expect(EnvelopeChanceColour.neutralColour == EnvelopeDoubtColour.palette[0])
-        // One draw in 200 is a chance: the ramp's first eighth on every side; certain, its last.
+        // One draw in 200 is a chance: the ramp's first colour on every side; certain, its last.
         #expect(L.colourCode(chance: 1.0 / 200) == EnvelopeChanceColour.first)
         let certain = L.colourCode(chance: 1)
         for (axis, outward) in [(0, -1), (0, 1), (1, -1), (1, 1)] {
             #expect(EnvelopeChanceColour.eighth(code: certain, axis: axis, outward: outward) == 7)
         }
+        // The log ramp's bands: up to 1%, 2%, 5%, 10%, 20%, 50%, 90%, and above; on every side.
+        let log = F.MapScale.log
+        #expect(F.MapScale.logEdges == [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.9])
+        #expect(
+            [0.005, 0.01, 0.015, 0.03, 0.08, 0.15, 0.3, 0.6, 0.95, 1].map(log.band)
+                == [0, 0, 1, 2, 3, 4, 5, 6, 7, 7])
+        #expect(log.bandNames == ["≤1%", "1–2%", "2–5%", "5–10%", "10–20%", "20–50%", "50–90%", ">90%"])
+        let code = L.colourCode(chance: 0.03)
+        for (axis, outward) in [(0, -1), (0, 1), (1, -1), (1, 1)] {
+            #expect(EnvelopeChanceColour.eighth(code: code, axis: axis, outward: outward) == 2)
+        }
+        // The linear ramp, the earlier map's, by name: the chance legend's eighths, as before.
+        for c in [0.005, 0.03, 0.1, 0.13, 0.4, 0.9, 1] {
+            #expect(
+                L.colourCode(chance: c, scale: .linear)
+                    == EnvelopeChanceColour.code([(0, -1, c), (0, 1, c), (1, -1, c), (1, 1, c)]))
+        }
+        #expect(L.colourCode(chance: 0, scale: .linear) == EnvelopeChanceColour.neutral)
+        #expect(L.colourCode(chance: 0.03) != L.colourCode(chance: 0.03, scale: .linear))
 
         // Three timber houses 9 m apart and one 60 m off, the first alight: at the blast only it is
         // coloured; by the horizon its neighbour has some chance and the far one still none.
@@ -447,13 +466,16 @@ struct FireSpreadTests {
         let out = layer.ensemble.buildings[0].burnS + 1
         #expect(layer.colourCode(0, at: out, alight: true, measure: .caught) == EnvelopeChanceColour.neutral)
         #expect(layer.colourCode(0, at: out, measure: .caught) == certain)
-        // From a neighbour (the map's): the picked seed has no draw to count, so it is grey under
-        // its outline, and every other building is coloured exactly as before.
+        // From a neighbour (the map's): the picked seed has no draw to count, so it is drawn by its
+        // own fire, certain in the top colour, and the map is the same as at all, building by building.
         #expect(layer.neighbourDraws(0) == 0 && layer.neighbourChance(0, at: layer.horizonS) == 0)
-        #expect(layer.colourCodes(at: 0) == atBlast.merging([ids[0]: EnvelopeChanceColour.neutral]) { $1 })
+        #expect(layer.mapChance(0, at: 0, measure: .neighbour) == 1)
+        #expect(layer.colourCodes(at: 0) == atBlast)
+        #expect(layer.colourCodes(at: layer.horizonS) == end)
+        #expect(layer.colourCode(0, at: out, alight: true) == EnvelopeChanceColour.neutral)
         #expect(
-            layer.colourCodes(at: layer.horizonS)
-                == end.merging([ids[0]: EnvelopeChanceColour.neutral]) { $1 })
+            layer.colourCodes(at: layer.horizonS, scale: .linear)
+                == layer.colourCodes(at: layer.horizonS, measure: .caught, scale: .linear))
     }
 
     @Test(

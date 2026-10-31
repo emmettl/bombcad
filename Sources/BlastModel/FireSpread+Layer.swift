@@ -74,6 +74,49 @@ extension FireSpread {
         }
     }
 
+    /// The ramp the map's chances are drawn on. Each earlier one stays selectable by name.
+    public enum MapScale: String, Codable, Sendable, CaseIterable {
+        /// Logarithmic, so that small chances separate: up to 1%, 2%, 5%, 10%, 20%, 50%, 90% and
+        /// above (`logEdges`). The map's since 31 October 2026.
+        case log
+        /// Linear, in eighths of chance, as every chance legend: the map's before.
+        case linear
+
+        /// Its name in the app.
+        public var label: String {
+            switch self {
+            case .log: "Log, 1% to 90%"
+            case .linear: "Linear, in eighths (earlier map)"
+            }
+        }
+
+        /// The log ramp's band edges, as chances: a chance up to the first is the first colour,
+        /// above the last the last.
+        public static let logEdges = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.9]
+
+        /// The ramp's colour, 0–7, for a chance above none.
+        public func band(_ chance: Double) -> Int {
+            switch self {
+            case .log: Self.logEdges.filter { chance > $0 }.count
+            case .linear: EnvelopeChanceColour.eighth(chance)
+            }
+        }
+
+        /// Each colour's range, for a legend and the headless table: "≤1%", "1–2%" … ">90%", or
+        /// "0–⅛" … in eighths.
+        public var bandNames: [String] {
+            switch self {
+            case .log:
+                let e = Self.logEdges.map { String(format: "%g", $0 * 100) }
+                return ["≤\(e[0])%"] + (1..<e.count).map { "\(e[$0 - 1])–\(e[$0])%" } + [
+                    ">\(e[e.count - 1])%"
+                ]
+            case .linear:
+                return (0..<8).map { "\($0)/8–\($0 + 1)/8" }
+            }
+        }
+    }
+
     /// The fire over a scene's buildings: the ensemble, and each building's ignition times.
     public struct Layer: Sendable {
         /// The buildings' envelope ids, in the ensemble's order.
@@ -136,31 +179,42 @@ extension FireSpread {
             return Double(caught - count(sorted, atMost: t - burnS)) / Double(draws)
         }
 
-        /// Building `n`'s colour code at `t` (`EnvelopeChanceColour`), the same on every side: the
-        /// chance's eighth by `measure` on the ramp, or the neutral grey where no draw counted has
-        /// it caught (or, with `alight`, burning) by then. The chances are counts of draws, so none
-        /// is below one draw only when it is none. By a neighbour, a building that is a starting
-        /// fire in every draw has no draw to count, and is grey under its outline.
-        public func colourCode(_ n: Int, at t: Double, alight: Bool = false, measure: MapChance = .neighbour)
-            -> Int
-        {
-            Self.colourCode(chance: chance(n, at: t, alight: alight, measure: measure))
+        /// The chance the map draws building `n` by: its chance by `measure`, except that by a
+        /// neighbour a building that is a starting fire in every draw, with no draw to count, is
+        /// drawn by its chance at all: certain from the blast (and with `alight`, while it burns),
+        /// as before the neighbour chance.
+        public func mapChance(_ n: Int, at t: Double, alight: Bool = false, measure: MapChance) -> Double {
+            measure == .neighbour && neighbourDraws(n) == 0
+                ? chance(n, at: t, alight: alight) : chance(n, at: t, alight: alight, measure: measure)
         }
 
-        /// The code for a building's chance: neutral at none, else its eighth on every side.
-        public static func colourCode(chance c: Double) -> Int {
-            c <= 0
-                ? EnvelopeChanceColour.neutral
-                : EnvelopeChanceColour.code([(0, -1, c), (0, 1, c), (1, -1, c), (1, 1, c)])
+        /// Building `n`'s colour code at `t` (`EnvelopeChanceColour`), the same on every side: its
+        /// map chance's band on `scale`'s ramp, or the neutral grey where no draw counted has it
+        /// caught (or, with `alight`, burning) by then. The chances are counts of draws, so none is
+        /// below one draw only when it is none.
+        public func colourCode(
+            _ n: Int, at t: Double, alight: Bool = false, measure: MapChance = .neighbour,
+            scale: MapScale = .log
+        ) -> Int {
+            Self.colourCode(chance: mapChance(n, at: t, alight: alight, measure: measure), scale: scale)
         }
 
-        /// Every building's colour code at `t` by `measure`, by its id.
-        public func colourCodes(at t: Double, alight: Bool = false, measure: MapChance = .neighbour)
-            -> [UUID: Int]
-        {
+        /// The code for a building's chance: neutral at none, else its band on `scale` on every side.
+        public static func colourCode(chance c: Double, scale: MapScale = .log) -> Int {
+            guard c > 0 else { return EnvelopeChanceColour.neutral }
+            // The same band in each side's three bits, −x, +x, −y and +y.
+            return EnvelopeChanceColour.first + scale.band(c) * (1 + 8 + 64 + 512)
+        }
+
+        /// Every building's colour code at `t` by `measure` on `scale`, by its id.
+        public func colourCodes(
+            at t: Double, alight: Bool = false, measure: MapChance = .neighbour, scale: MapScale = .log
+        ) -> [UUID: Int] {
             var out: [UUID: Int] = [:]
             out.reserveCapacity(ids.count)
-            for n in ids.indices { out[ids[n]] = colourCode(n, at: t, alight: alight, measure: measure) }
+            for n in ids.indices {
+                out[ids[n]] = colourCode(n, at: t, alight: alight, measure: measure, scale: scale)
+            }
             return out
         }
 

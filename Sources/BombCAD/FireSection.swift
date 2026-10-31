@@ -246,6 +246,12 @@ struct FireSection: View {
             "From a neighbour: over the draws in which a building was not itself a starting fire, the share in "
                 + "which it caught, so that random fires do not colour where they land. At all: over every "
                 + "draw, its own starting fires with them, as the map was before 31 October 2026.")
+        Picker("Scale", selection: $model.fireMapScale) {
+            ForEach(FireSpread.MapScale.allCases, id: \.self) { Text($0.label).tag($0) }
+        }
+        .help(
+            "Log: the colours step at 1%, 2%, 5%, 10%, 20%, 50% and 90%, so that small chances separate. Linear: "
+                + "in eighths, as the other chance maps and this one before 31 October 2026.")
         if let step = layer.step(at: hour * 3600) {
             Text(
                 String(
@@ -278,7 +284,11 @@ struct FireSection: View {
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         if model.envelopeColouring == .fire {
-            EnvelopeDamageSection.ChanceLegend()
+            if model.fireMapScale == .log {
+                LogRampLegend()
+            } else {
+                EnvelopeDamageSection.ChanceLegend()
+            }
             NoChanceLegend(alight: model.fireShowsAlight, measure: model.fireMapChance)
             Text(Self.caption(alight: model.fireShowsAlight, measure: model.fireMapChance))
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -293,17 +303,47 @@ struct FireSection: View {
         }
     }
 
+    /// The log ramp's colours, each labelled with its range of chance, in two rows of four.
+    struct LogRampLegend: View {
+        var body: some View {
+            let names = FireSpread.MapScale.log.bandNames
+            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                ForEach(0..<2, id: \.self) { row in
+                    GridRow {
+                        ForEach(0..<4, id: \.self) { column in
+                            let n = row * 4 + column
+                            let c = EnvelopeChanceColour.ramp[n]
+                            HStack(spacing: 4) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(
+                                        Color(.sRGB, red: Double(c.x), green: Double(c.y), blue: Double(c.z))
+                                    )
+                                    .frame(width: 14, height: 12)
+                                Text(names[n]).font(.caption).lineLimit(1).fixedSize()
+                            }
+                        }
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                "Chance on a log scale, from up to 1 percent, light yellow, through 2, 5, 10, 20, 50 and 90 "
+                    + "percent, to above 90 percent, dark purple")
+        }
+    }
+
     /// What the view's colours measure, under the legend.
     static func caption(alight: Bool, measure: FireSpread.MapChance) -> String {
         switch (measure, alight) {
         case (.neighbour, false):
             "Each building by its chance of catching from a neighbour by the hour on the slider: of the draws in "
                 + "which it was not itself a starting fire, the share in which it caught. Grey where none has it "
-                + "caught so; the seeds outlined."
+                + "caught so. The seeds outlined; one that starts a fire in every draw is in the top colour, certain."
         case (.neighbour, true):
             "Each building by its chance of burning at the hour on the slider from a neighbour's fire: of the "
                 + "draws in which it was not itself a starting fire, the share in which it is alight then. Grey "
-                + "where none has it so; the seeds outlined."
+                + "where none has it so. The seeds outlined; one that starts a fire in every draw is in the top "
+                + "colour while it burns."
         case (.caught, false):
             "Each building by its chance of having caught by the hour on the slider, over every draw, its own "
                 + "starting fires with them; grey where no draw has it caught; the seeds outlined."
@@ -380,7 +420,7 @@ struct FireSection: View {
                 if seeded > 0 {
                     Text(
                         seeded == layer.members
-                            ? "A starting fire in every draw."
+                            ? "A starting fire in every draw: drawn in the top colour, certain."
                             : model.fireMapChance == .neighbour
                                 ? "A starting fire in \(seeded) of \(layer.members) draws; the chance is over the other "
                                     + "\(layer.neighbourDraws(n))."

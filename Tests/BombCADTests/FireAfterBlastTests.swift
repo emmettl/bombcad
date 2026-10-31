@@ -70,19 +70,19 @@ struct FireAfterBlastTests {
         model.showsEnvelopeDamage = true
         model.envelopeColouring = .fire
         #expect(model.previewParts == .glass)
-        #expect(model.fireMapChance == .neighbour)
+        #expect(model.fireMapChance == .neighbour && model.fireMapScale == .log)
         let codes = model.fireCodes()
         #expect(codes.count == ids.count)
-        // By the chance of catching from a neighbour: on the ramp where some draw it was not a seed in
-        // has it caught, grey where none does; the seed, a seed in every draw, grey under its outline.
+        // By the chance of catching from a neighbour, on the log ramp: its band where some draw it was
+        // not a seed in has it caught, grey where none does; the seed, a seed in every draw, drawn
+        // by its own fire in the top colour.
         let t = model.fireHour * 3600
         #expect(
-            ids.indices.allSatisfy { n in
-                full.neighbourChance(n, at: t) > 0
-                    ? codes[ids[n]]! >= EnvelopeChanceColour.first
-                    : codes[ids[n]] == EnvelopeChanceColour.neutral
+            ids.indices.dropFirst().allSatisfy { n in
+                codes[ids[n]]
+                    == FireSpread.Layer.colourCode(chance: full.neighbourChance(n, at: t), scale: .log)
             })
-        #expect(codes[ids[0]] == EnvelopeChanceColour.neutral)
+        #expect(codes[ids[0]] == FireSpread.Layer.colourCode(chance: 1))
         #expect(model.fireSeedOutlines().count == 8)
         // With a seed picked by hand, the others are coloured as the earlier map colours them.
         model.fireMapChance = .caught
@@ -94,7 +94,18 @@ struct FireAfterBlastTests {
                     : caught[ids[n]] == EnvelopeChanceColour.neutral
             })
         #expect(caught[ids[0]]! >= EnvelopeChanceColour.first)
-        #expect(ids.dropFirst().allSatisfy { caught[$0] == codes[$0] })
+        #expect(ids.allSatisfy { caught[$0] == codes[$0] })
+        // The linear ramp by name: the chance legend's eighths, as before.
+        model.fireMapScale = .linear
+        #expect(
+            ids.indices.allSatisfy { n in
+                let c = full.chance(n, at: t)
+                return model.fireCodes()[ids[n]]
+                    == (c > 0
+                        ? EnvelopeChanceColour.code([(0, -1, c), (0, 1, c), (1, -1, c), (1, 1, c)])
+                        : EnvelopeChanceColour.neutral)
+            })
+        model.fireMapScale = .log
         // Alight then, past the seed's own fire: it is out.
         model.fireShowsAlight = true
         model.fireHour = (full.ensemble.buildings[0].burnS + 900) / 3600

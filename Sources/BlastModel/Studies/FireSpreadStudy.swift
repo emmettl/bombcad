@@ -11,7 +11,7 @@ import Foundation
 ///      [--ignite-random n [--ignite-band from,to]]
 ///      [--wind m/s@from°] [--hours 12] [--step-minutes 10] [--members 100] [--seed 0]
 ///      [--cladding combustible|noncombustible] [--untagged residential]
-///      [--piloted 0.1] [--brands 0] [--roof 0.3] [--map-chance neighbour|caught]
+///      [--piloted 0.1] [--brands 0] [--roof 0.3] [--map-chance neighbour|caught] [--map-scale log|linear]
 ///      [--json fire.json] [--csv timeline.csv] [--buildings-csv buildings.csv]
 /// ```
 ///
@@ -25,7 +25,8 @@ import Foundation
 /// Each building's chance is given two ways: of catching at all, over every draw, and of catching
 /// from a neighbour, over the draws in which it was not a starting fire. The app's map is coloured
 /// by the second since 31 October 2026; `--map-chance` picks which the table of the map's bands
-/// counts (`neighbour`, the default, or `caught`, the map's before).
+/// counts (`neighbour`, the default, or `caught`, the map's before), and `--map-scale` its ramp (`log`,
+/// the default since 31 October 2026, or `linear`, in eighths, the map's before).
 package enum FireSpreadStudy {
     /// The look kept between runs, as `scenebench people` keeps it: the buildings by their order.
     struct Kept: Codable {
@@ -314,16 +315,24 @@ package enum FireSpreadStudy {
                     min(bands[k + 1], 9999),
                     mine.count, mine.reduce(0) { $0 + $1.chance }))
         }
-        // The app's map at the horizon, counted in its bands, by the chance asked for.
+        // The app's map at the horizon, counted in its colours, by the chance and ramp asked for. By
+        // a neighbour, a starting fire in every draw is drawn by its chance at all, as the map does.
         let measure = value("map-chance").flatMap(FireSpread.MapChance.init(rawValue:)) ?? .neighbour
-        func mapChance(_ p: Place) -> Double { measure == .neighbour ? p.neighbourChance : p.chance }
+        let scale = value("map-scale").flatMap(FireSpread.MapScale.init(rawValue:)) ?? .log
+        func mapChance(_ p: Place) -> Double {
+            measure == .neighbour && p.seedDraws < ensemble.members ? p.neighbourChance : p.chance
+        }
         print(
             String(format: "The map at %.0f h, ", hours)
                 + (measure == .neighbour
                     ? "by the chance of catching from a neighbour, over the draws a building was not a starting fire in"
                     : "by the chance of catching at all, starting fires with it (the map before 31 October 2026)")
-                + " (--map-chance \(measure.rawValue)):")
-        print("  band, m      | buildings |  grey | ≤1%   | 1–2.5% | 2.5%–1/8 | >1/8")
+                + (scale == .log ? ", on the log ramp" : ", on the linear ramp in eighths (the map's before)")
+                + " (--map-chance \(measure.rawValue) --map-scale \(scale.rawValue)):")
+        let names = scale.bandNames
+        print(
+            "  band, m      | buildings |  grey | "
+                + names.map { $0.padding(toLength: 8, withPad: " ", startingAt: 0) }.joined(separator: " | "))
         var rows: [(String, [Place])] = (0..<(bands.count - 1)).map { k in
             (
                 String(format: "%4.0f–%4.0f", bands[k], min(bands[k + 1], 9999)),
@@ -343,12 +352,11 @@ package enum FireSpreadStudy {
         rows.append(("all        ", places))
         for (label, mine) in rows where !mine.isEmpty {
             let c = mine.map(mapChance)
+            var counts = [Int](repeating: 0, count: names.count)
+            for x in c where x > 0 { counts[scale.band(x)] += 1 }
             print(
-                String(
-                    format: "  %@ | %9d | %5d | %5d | %6d | %8d | %4d", label, mine.count,
-                    c.filter { $0 <= 0 }.count, c.filter { $0 > 0 && $0 <= 0.01 }.count,
-                    c.filter { $0 > 0.01 && $0 <= 0.025 }.count, c.filter { $0 > 0.025 && $0 <= 0.125 }.count,
-                    c.filter { $0 > 0.125 }.count))
+                String(format: "  %@ | %9d | %5d | ", label, mine.count, c.filter { $0 <= 0 }.count)
+                    + counts.map { String(format: "%8d", $0) }.joined(separator: " | "))
         }
         if rows.last(where: { $0.0.hasSuffix("*") }) != nil {
             print("  * the band the random starting fires are drawn from")

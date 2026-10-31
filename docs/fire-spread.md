@@ -96,10 +96,12 @@ swift run -c release scenebench fire <the district-scene's inputs> --radius 2500
   - `--csv`: the timeline every `--step-minutes` (10).
   - `--buildings-csv`: one row a building, with its map id and its place east and north of the
     charge, and the same two at its end (`seed_draws`, `neighbour_chance`).
-  - Printed last, the app's map at the horizon counted in bands of distance: grey, up to 1%,
-    1–2.5%, 2.5% to an eighth and above. `--map-chance neighbour` (the default) counts the chance
-    of catching from a neighbour, `--map-chance caught` the chance of catching at all, the map's
-    before 31 October 2026.
+  - Printed last, the app's map at the horizon counted by colour in bands of distance: grey and
+    each of the ramp's eight colours. `--map-chance neighbour` (the default) counts the chance of
+    catching from a neighbour, `--map-chance caught` the chance of catching at all, the map's
+    before 31 October 2026. `--map-scale log` (the default) counts on the log ramp, `--map-scale
+    linear` in eighths, the map's before
+    ([below](#a-log-ramp-and-seeds-in-the-top-colour-31-october-2026)).
 
 The app shows it as a layer on the quick estimate and on a run's damage ([The app](#the-app-stage-3-31-october-2026)).
 
@@ -304,7 +306,9 @@ model and the same defaults as `scenebench fire`.
   ([below](#grey-for-no-chance-and-wood-tags-31-october-2026)). Since 31 October 2026 the chance
   is of catching from a neighbour, over the draws in which the building was not itself a starting
   fire; Caught ▸ At all keeps the earlier map
-  ([below](#the-chance-of-catching-from-a-neighbour-31-october-2026)). Beside it: the buildings alight, burnt out and the floor reached at that hour (median and
+  ([below](#the-chance-of-catching-from-a-neighbour-31-october-2026)). Its ramp is logarithmic,
+  and a building that starts a fire in every draw is in the top colour
+  ([below](#a-log-ramp-and-seeds-in-the-top-colour-31-october-2026)). Beside it: the buildings alight, burnt out and the floor reached at that hour (median and
   5–95%), the buildings caught by the end, those more likely than not to burn, and how they caught.
 - **Its standing leads,** as the people estimate's does: the note that it is illustrative and not a
   prediction first, the standing's badge, and `FireSpread.standing` beneath.
@@ -460,8 +464,9 @@ where the random fires happened to land rather than where fire spreads.
 - **The denominator is the draws in which it was not a starting fire,** not all 200. Over all 200,
   a building that was a random fire in many draws would look safer for it; over the others, the
   figure is the chance a fire reaches it given that it did not start there. A building that is a
-  starting fire in every draw has none to count: its chance is none, and it is drawn grey under
-  its orange outline.
+  starting fire in every draw has none to count: its chance is none. It was first drawn grey under
+  its orange outline; it is now drawn in the top colour
+  ([below](#a-log-ramp-and-seeds-in-the-top-colour-31-october-2026)).
 - **The chance at all is kept** (`chance`), and is never below the chance from a neighbour.
 
 **In the app.** Under the hour slider, **Caught** picks the measure:
@@ -500,13 +505,15 @@ neighbour, a few percent: each draw's 20 fires are scattered through the band, a
 carry fire to about 94 others (114 expected to burn within 1.5 km, the 20 seeds among them). Of
 the 2,880, 2,489 still share the ramp's first eighth. Clearing it further
 is a question of the ramp, not of the measure: the options of the last section stand (a grey
-threshold above none, or a ramp finer at the low end).
+threshold above none, or a ramp finer at the low end). The user chose the log ramp
+([below](#a-log-ramp-and-seeds-in-the-top-colour-31-october-2026)).
 
 **Fires picked by hand: the map does not move but for the seeds.** With the 21 buildings within 40
 m of the district's most exposed building (723 m east, 584 m south of the charge) alight, and no
 random fires: the 14,148 other buildings have the same chance either way, to the draw. Only the 21
 seeds change: from certain, above an eighth, to grey under their outlines. The district's greys
-are 13,821 from a neighbour, 13,800 at all; above an eighth, 89 and 110.
+are 13,821 from a neighbour, 13,800 at all; above an eighth, 89 and 110. Since the seeds are drawn
+in the top colour (below), the two maps are the same.
 
 **In the app on Beirut** (InterfaceReviewFireTests, optimised build, the same 20 fires at random
 within 1.5 km in the airport's wind):
@@ -550,6 +557,77 @@ line, follow the decision.
   other buildings coloured as at all with a seed picked by hand, and at random never above the
   chance at all.
 - `InterfaceReviewFireTests` prints both maps' greys and bands within 1.5 km.
+
+### A log ramp, and seeds in the top colour (31 October 2026)
+
+The user's decisions on the two questions above, the same day:
+
+**A log ramp.** The ramp's eight colours step at 1%, 2%, 5%, 10%, 20%, 50% and 90%: up to 1% the
+first, more than 90% the last (`FireSpread.MapScale.log`, `logEdges`).
+- **Why these edges.** With 200 draws the least chance above none is one draw, 0.5%, so the first
+  colour covers one or two draws. The 1–2–5 steps keep the ratio between edges at 2 to 2.5, near
+  the suggested 1%, 3%, 10%, 30%, and use all eight colours. Above 50% a log step loses its sense,
+  so the last colour is kept for near-certain fires, above 90%, and so for starting fires.
+- **Grey stays for exactly none.**
+- **Both measures** take it, from a neighbour and at all: small chances need to separate in
+  either.
+- **The legend** shows the eight colours in two rows, each with its range ("≤1%", "1–2%" …
+  ">90%").
+- **The earlier ramp stays by name:** Scale ▸ "Linear, in eighths (earlier map)" in the app, with
+  the chance legend; `--map-scale linear` headless (`log` by default). The headless table counts
+  each colour of the ramp asked for.
+
+**Seeds in the top colour.** A building that is a starting fire in every draw (picked, near the
+charge or flagged by the surface heating) has no draw to count from a neighbour, so the map draws
+it by its chance at all (`Layer.mapChance`). That is certain from the blast, the top colour under
+its orange outline. With Alight then, it is coloured while it burns and grey once it has burnt
+out, as before. The caption says so, and the selected building's panel reads "A starting fire in
+every draw: drawn in the top colour, certain". A building that is a random fire in only some
+draws keeps its chance from a neighbour over the others. **So a map of fires picked by hand is the
+map at all, building by building:** on Beirut, with the 21 buildings round the most exposed one
+alight, both measures give the same counts in every colour.
+
+**Beirut, headless** (as above, 12 hours, log ramp; `$BOMBCAD_DATA/fire-spread/neighbour/v4-*`).
+The 2,880 buildings within 1.5 km:
+
+| Colour | From a neighbour | At all |
+|---|---|---|
+| Grey | 320 | 75 |
+| Up to 1% | 344 | 420 |
+| 1–2% | 590 | 568 |
+| 2–5% | 996 | 1,113 |
+| 5–10% | 483 | 544 |
+| 10–20% | 130 | 141 |
+| 20–50% | 17 | 19 |
+| 50–90%, above 90% | 0 | 0 |
+
+Where the linear ramp put 2,487 of them in its first eighth (2,489 counted earlier by chances up
+to an eighth; two have exactly an eighth, which the ramp puts in its second), the log ramp spreads
+them over five colours. The dense blocks east and south of the port, at 2–10%, now stand apart
+from the scattered buildings at 1% or less.
+
+**In the app on Beirut** (9,708 buildings; the 2,862 within 1.5 km at 12 hours):
+
+| Colour | From a neighbour | At all |
+|---|---|---|
+| Grey | 362 | 88 |
+| Up to 1% | 397 | 470 |
+| 1–2% | 619 | 632 |
+| 2–5% | 1,049 | 1,139 |
+| 5–10% | 376 | 470 |
+| 10–20% | 59 | 63 |
+| Above 20% | 0 | 0 |
+
+The greys are unchanged (7,018 from a neighbour at 12 hours), as no random fire starts in every
+draw. The captures are in `$BOMBCAD_DATA/fire-spread/app-review/fire-v4/`. The view by the hour
+both ways is `beirut-neighbour-*` and `beirut-caught-*`, and `beirut-neighbour-linear-12h` shows
+the earlier ramp beside it. Every building timber-clad (`beirut-timber-neighbour-12h`) now runs
+from yellow at the edges, through blue in the west, to near-certain purple in the dense centre.
+
+**Checks.** `FireSpreadTests` covers the log ramp's bands and names, the linear ramp by name as the
+chance legend's eighths, and a picked seed in the top colour with the map then the same as at all.
+`FireAfterBlastTests` covers the default log ramp, the seed's top colour, and the linear ramp by
+name. `InterfaceReviewFireTests` prints the counts by colour for both measures.
 
 ## The literature, and why this model
 

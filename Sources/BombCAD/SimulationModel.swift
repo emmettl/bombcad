@@ -720,6 +720,11 @@ final class SimulationModel {
     var fireMapChance = FireSpread.MapChance.neighbour {
         didSet { if fireMapChance != oldValue, envelopeColouring == .fire { applyEnvelopeDamageColours() } }
     }
+    /// The ramp the view's chances are drawn on: logarithmic (since 31 October 2026), or linear in
+    /// eighths, the earlier map's.
+    var fireMapScale = FireSpread.MapScale.log {
+        didSet { if fireMapScale != oldValue, envelopeColouring == .fire { applyEnvelopeDamageColours() } }
+    }
     /// While on, a click on a building in the view starts a fire there, or takes it away.
     var firePicksSeeds = false
     /// While a control of the fire is held (a slider dragged): its draws are a preview's few, and

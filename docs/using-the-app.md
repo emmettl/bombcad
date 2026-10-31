@@ -114,10 +114,12 @@ with the warning that on Beirut 2020 they read 4 to 12 times the injuries and de
 you choose: buildings clicked in the view, those near the charge, a number at random in each draw,
 or a run's surface-heating flags. **Colour Buildings by Fire** colours each building by its chance
 of catching from a neighbour by the hour on the slider: of the 200 draws, those in which it was not
-itself a starting fire, and the share of them in which it caught. Grey means none did; the starting
-fires are outlined. **Caught ▸ At all, seeds with it (earlier map)** colours by the chance of
-catching at all, the building's own starting fires counted, as before 31 October 2026. It is
-illustrative ([fire spread](fire-spread.md#the-app-stage-3-31-october-2026)).
+itself a starting fire, and the share of them in which it caught. The colours step on a log scale,
+at 1%, 2%, 5%, 10%, 20%, 50% and 90%. Grey means none did. The starting fires are outlined, and
+one that starts a fire in every draw is in the top colour. **Caught ▸ At all, seeds with it
+(earlier map)** colours by the chance of catching at all, the building's own starting fires
+counted, and **Scale ▸ Linear, in eighths (earlier map)** by the linear ramp, as before 31 October
+2026. It is illustrative ([fire spread](fire-spread.md#the-app-stage-3-31-october-2026)).
 
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);

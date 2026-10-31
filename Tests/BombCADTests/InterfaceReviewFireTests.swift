@@ -150,16 +150,16 @@ struct InterfaceReviewFireTests {
             FireSpread.candidates(
                 in: FireSpread.buildings(scene: model.settings.scenario),
                 from: SIMD2(Double(centre.x), Double(centre.y)), fromM: 0, toM: 1500))
-        /// The band's buildings by the map's bands at the hour shown: grey, up to 1%, 1–2.5%,
-        /// 2.5%–1/8 and above.
+        /// The band's buildings by the map's colours at the hour shown: grey, then each of the log
+        /// ramp's bands.
         func bands(_ measure: FireSpread.MapChance) -> [Int] {
             let t = model.fireHour * 3600
-            let c = band.map { full.chance($0, at: t, measure: measure) }
-            return [
-                c.filter { $0 <= 0 }.count, c.filter { $0 > 0 && $0 <= 0.01 }.count,
-                c.filter { $0 > 0.01 && $0 <= 0.025 }.count, c.filter { $0 > 0.025 && $0 <= 0.125 }.count,
-                c.filter { $0 > 0.125 }.count,
-            ]
+            var counts = [Int](repeating: 0, count: 9)
+            for n in band {
+                let c = full.mapChance(n, at: t, measure: measure)
+                counts[c > 0 ? 1 + FireSpread.MapScale.log.band(c) : 0] += 1
+            }
+            return counts
         }
         for measure in [FireSpread.MapChance.neighbour, .caught] {
             model.fireMapChance = measure
@@ -177,14 +177,20 @@ struct InterfaceReviewFireTests {
                 print(
                     String(
                         format:
-                            "%@ by %.0f h: %d of %d buildings grey; within 1.5 km (%d): %d grey, %d up to 1%%, "
-                            + "%d 1–2.5%%, %d 2.5%%–1/8, %d above 1/8",
+                            "%@ by %.0f h: %d of %d buildings grey; within 1.5 km (%d), grey and on the log ramp: ",
                         measure == .neighbour ? "From a neighbour" : "Caught at all", hour, grey, codes.count,
-                        band.count, b[0], b[1], b[2], b[3], b[4]))
+                        band.count)
+                        + zip(["grey"] + FireSpread.MapScale.log.bandNames, b).map { "\($0) \($1)" }.joined(
+                            separator: ", "))
                 #expect(grey > codes.count / 2 && grey < codes.count)
             }
         }
         model.fireMapChance = .neighbour
+        // The earlier linear ramp, by name, for a look beside the log one.
+        model.fireHour = 12
+        model.fireMapScale = .linear
+        try fireView(model, camera: near, to: "beirut-neighbour-linear-12h")
+        model.fireMapScale = .log
         model.fireHour = 2
         try fireSections("fire-beirut") { FireSection(model: model, showsAssumptions: true) }
         model.fireShowsAlight = true
