@@ -294,10 +294,26 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
             detail: "assumed: 0.2 m reinforced concrete, 0.3% each way, 6 mm annealed glass")
     }
 
-    /// From a map building's `building:material` value, when it names something the model knows.
-    public static func fromMap(objectID: UUID, material: String?) -> Self? {
+    /// The `building:material` values read as timber (`fromMap`): OpenStreetMap's `wood` and
+    /// `timber_framing`, and the close variants found in its data.
+    public static let mapTimber: Set<String> = ["wood", "timber", "timber_framing", "wood_frame", "log"]
+
+    /// From a map building's `building:material` value, when it names something the model knows:
+    /// concrete, masonry, or (with `readsWood`, the default since 31 October 2026,
+    /// emmettl/bombcad-work#38) timber, as walls and a roof of cross-laminated timber, the one
+    /// timber construction the damage model has, 0.105 m thick (three lamellae) assumed. Without
+    /// `readsWood`, a wood tag says nothing, as before, and the building takes the default.
+    public static func fromMap(objectID: UUID, material: String?, readsWood: Bool = true) -> Self? {
         guard let material else { return nil }
         let value = material.lowercased()
+        if readsWood, mapTimber.contains(value) {
+            let thickness = defaultThickness(.crossLaminatedTimber)
+            return Self(
+                objectID: objectID, walls: .crossLaminatedTimber, roof: .crossLaminatedTimber,
+                roofThicknessM: thickness, source: .map,
+                detail: "building:material=\(material); 0.105 m cross-laminated timber walls and roof assumed"
+            )
+        }
         let masonry = [
             "brick", "stone", "masonry", "sandstone", "limestone", "granite", "cement_block", "block",
         ]

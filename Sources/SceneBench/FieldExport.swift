@@ -159,6 +159,7 @@ enum FieldExport {
         layout.heights = inputs.heights
         layout.seaBase = inputs.seaBase
         layout.attributions = inputs.attributions
+        layout.readsWoodTags = inputs.readsWoodTags
         // The top by the open-face rule (`DistrictLayout.top`) unless `--height` is given.
         let (built, report) = try layout.scene(
             halfSide: radius, cellSize: dx, height: value("height").flatMap(Float.init),

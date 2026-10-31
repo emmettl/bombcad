@@ -97,6 +97,10 @@ final class NewDistrictModel {
     /// Clear the building whose footprint holds the charge, leaving open ground
     /// (`DistrictLayout.clearsChargeBuilding`): on, a charge put inside a building goes off.
     var clearsChargeBuilding = true
+    /// Leave the map's wood and timber tags unread (`DistrictLayout.readsWoodTags` off), so that such
+    /// buildings take the default construction as they did before 31 October 2026: to reproduce an
+    /// earlier estimate. Off, they are timber (emmettl/bombcad-work#38).
+    var ignoresWoodTags = false
     /// The air's kind: the advisor's (`DistrictAir` refined where that is both cheaper and finer
     /// at the façades than the uniform cells that fit), or one the user chose.
     enum AirChoice: String, CaseIterable, Identifiable {
@@ -238,6 +242,7 @@ final class NewDistrictModel {
         // The outlines kept, for the quick estimate's facing from them, the default since 28 October 2026
         // (emmettl/bombcad-work#109).
         layout.keepsOutlines = true
+        layout.readsWoodTags = !ignoresWoodTags
         if let heights { layout.attributions.append("Building heights: \(heights.name)") }
         if let terrain {
             layout.ground =
@@ -611,6 +616,19 @@ extension SimulationModel {
                     help:
                         "Optional: a GeoTIFF or ESRI ASCII grid of elevations (Copernicus GLO-30 or any the terrain importer reads).",
                     choose: .terrain)
+                if let map = model.map {
+                    let wood = map.buildings.filter {
+                        $0.material.map { EnvelopeConstruction.mapTimber.contains($0.lowercased()) } ?? false
+                    }.count
+                    Toggle("Wood tags not read (earlier estimates)", isOn: $model.ignoresWoodTags)
+                        .help(
+                            "A map building tagged building:material=wood, timber or timber_framing is timber: walls and "
+                                + "roof of cross-laminated timber, the model's one timber construction, for its damage and "
+                                + "the fire after the blast. On, those tags are not read and the buildings take the default "
+                                + "concrete, as before 31 October 2026, to reproduce an earlier estimate. This map has "
+                                + "\(wood) such building\(wood == 1 ? "" : "s")."
+                        )
+                }
                 if model.terrain != nil {
                     Toggle(
                         "Surface model: take roofs and trees down to the ground",

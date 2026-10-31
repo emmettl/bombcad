@@ -434,6 +434,23 @@ MultiPolygons with a `building` property are buildings, or every feature where n
 - **Heights.** `height` (metres, or feet as `40 ft` or `40'6"`), else `building:levels` plus
   `roof:levels` at 3 m a level, else an assumed two levels (6 m); `min_height` or
   `building:min_level` lifts the bottom. The report counts each source.
+- **Construction,** from `building:material` (`EnvelopeConstruction.fromMap`), for the one-way
+  damage below and the [fire after the blast](fire-spread.md):
+  - `concrete` or `reinforced_concrete`: 0.2 m reinforced concrete, 0.3% each way;
+  - `brick`, `stone`, `masonry`, `sandstone`, `limestone`, `granite`, `cement_block` or `block`:
+    0.215 m unreinforced masonry;
+  - since 31 October 2026, `wood`, `timber_framing`, `timber`, `wood_frame` or `log`: walls and
+    roof of [cross-laminated timber](#cross-laminated-timber) 0.105 m thick (three lamellae). It
+    is the one timber the damage model has, and a map's wooden building is more often a light
+    frame than CLT, so its thickness and its kind are assumed, and said so in its detail;
+  - anything else, or no tag: the default, assumed.
+
+  Before 31 October 2026 a wood tag said nothing and the building took the default concrete. That
+  rule stays by name, to reproduce earlier estimates: New District ▸ "Wood tags not read (earlier
+  estimates)", `--wood-tags ignore` in the headless district benches
+  (`MapBuildingPlacement.readsWoodTags`, `DistrictLayout.readsWoodTags`). No map the project has
+  used carries a wood tag: Beirut's 14,502 buildings carry no `building:material` at all, so its
+  estimates are the same either way, to the byte (emmettl/bombcad-work#38).
 - **What is left out**, and said: footprints with fewer than three distinct corners or no area,
   those outside the scene or smaller than a cell, and a later building's cells where an earlier
   one already stands (overlaps go to the first). A roof above the domain is lowered to it.
@@ -614,7 +631,7 @@ one way as the run goes, at most once a second and again when it stops:
   blockwork walls, their bars in one central mat or in both faces (with the cover), the concrete's
   or the masonry's strength, the bars' yield, and the mass of a cap or canopy carried on a
   freestanding wall's top. These are read from an IFC import's material layers or a map building's
-  `building:material` tag; otherwise the default is assumed (0.2 m concrete, 0.3% each way in a
+  `building:material` tag ([concrete, masonry or timber](#buildings-from-map-data)); otherwise the default is assumed (0.2 m concrete, 0.3% each way in a
   central mat, 30 MPa, 500 MPa bars, 6 mm glass) and the standing says how many were assumed. The
   editor's Exposure-only buildings section changes them (its Construction group), and projects
   save them.

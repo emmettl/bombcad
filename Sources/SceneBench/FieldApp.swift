@@ -102,6 +102,7 @@ enum FieldApp {
         layout.heights = inputs.heights
         layout.seaBase = inputs.seaBase
         layout.attributions = inputs.attributions
+        layout.readsWoodTags = inputs.readsWoodTags
         let (scene, report) = try layout.scene(
             halfSide: radius, cellSize: dx, height: value("height").flatMap(Float.init), name: value("id"))
         print(report.summary)

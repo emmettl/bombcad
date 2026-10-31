@@ -77,6 +77,14 @@ struct InterfaceReviewFireTests {
         print(
             "Laid out in \(clock.duration(to: .now)): \(preview.report.placed.count) buildings, \(preview.air.title)"
         )
+        // The map's wood and timber tags, read as timber since 31 October 2026.
+        let timberPlaced = (preview.document.scenario.envelopeConstructions ?? []).filter {
+            $0.walls == .crossLaminatedTimber
+        }.count
+        let woodTagged = district.map!.buildings.filter {
+            $0.material.map { EnvelopeConstruction.mapTimber.contains($0.lowercased()) } ?? false
+        }.count
+        print("Wood-tagged on the map: \(woodTagged); placed as timber: \(timberPlaced)")
 
         let temporary = try TemporaryDefaults()
         defer { temporary.remove() }
@@ -138,6 +146,11 @@ struct InterfaceReviewFireTests {
         for hour in [1.0, 3.0, 12.0] {
             model.fireHour = hour
             try fireView(model, camera: near, to: String(format: "beirut-caught-%02.0fh", hour))
+            // Grey where no draw has a building caught: most of the city, the ramp for the rest.
+            let codes = model.fireCodes()
+            let grey = codes.values.filter { $0 == EnvelopeChanceColour.neutral }.count
+            print(String(format: "Caught by %.0f h: %d of %d buildings grey", hour, grey, codes.count))
+            #expect(grey > codes.count / 2 && grey < codes.count)
         }
         model.fireHour = 2
         try fireSections("fire-beirut") { FireSection(model: model, showsAssumptions: true) }

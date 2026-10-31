@@ -62,7 +62,10 @@ swift run -c release scenebench fire <the district-scene's inputs> --radius 2500
   - Each envelope building is one fire: its cells' rectangles, its height, its construction and
     use, and its glazing (`GlazingMix`).
   - A map building tagged `building:material=wood` or `timber` is clad with something that
-    burns, as is cross-laminated timber.
+    burns, as is cross-laminated timber. Since 31 October 2026 such a building's construction is
+    timber itself, walls and roof, so its roof is not fire-rated either and its blast damage is
+    timber's ([below](#grey-for-no-chance-and-wood-tags-31-october-2026)); `--wood-tags ignore`
+    keeps the earlier construction, the cladding alone burning.
   - `--cladding combustible` makes every building timber-clad, for the contrast below.
 - **The blast's damage.**
   - From the quick estimate's full look, as [People in the scene](people-in-the-scene.md) makes
@@ -291,7 +294,8 @@ model and the same defaults as `scenebench fire`.
   the use of untagged buildings.
 - **What it shows.** Colour Buildings by Fire colours each building by its chance of having caught
   by the hour on a slider, or of burning then, on the chance legend, with the seeds outlined in
-  orange. Beside it: the buildings alight, burnt out and the floor reached at that hour (median and
+  orange. A building that no draw has caught (or burning) by then is grey
+  ([below](#grey-for-no-chance-and-wood-tags-31-october-2026)). Beside it: the buildings alight, burnt out and the floor reached at that hour (median and
   5–95%), the buildings caught by the end, those more likely than not to burn, and how they caught.
 - **Its standing leads,** as the people estimate's does: the note that it is illustrative and not a
   prediction first, the standing's badge, and `FireSpread.standing` beneath.
@@ -351,9 +355,79 @@ These are the headless figures' pattern on the app's coarser district.
 
 **Not done here:**
 - The layer's settings are not kept in the project, as the people estimate's are not.
-- A map building's wood tag is not carried into the app's district, so there the timber contrast,
-  or a building's construction set to timber, stands in for it.
+- A map building's wood tag was not carried into the app's district, so there the timber contrast,
+  or a building's construction set to timber, stood in for it. It is now
+  ([below](#grey-for-no-chance-and-wood-tags-31-october-2026)).
 - The far buildings of a hybrid district are not in the fire.
+
+## Grey for no chance, and wood tags (31 October 2026)
+
+The user's decisions of 31 October on stage 3's questions (emmettl/bombcad-work#38):
+- **The section still starts with no seeds,** and asks for them. Nothing changed.
+- **Buildings with no chance of burning are grey.** On the chance legend a chance of none was the
+  ramp's first eighth, a strong yellow, the same as one up to an eighth. In stage 3's capture of
+  Beirut at 12 hours nearly every building was that yellow, and the few at real risk were hard to
+  see.
+  - **The threshold:** no draw has the building caught by the hour shown, or with Alight then, no
+    draw has it burning then. The chances are counts of draws, so below one draw and none are the
+    same thing. One draw in 200 is yellow, as before.
+  - **The grey** is the one the close calls give settled buildings (`EnvelopeDoubtColour`, sRGB
+    0.78, 0.80, 0.82), the app's neutral for a building a judgement leaves alone, and the code the
+    view already draws (`EnvelopeChanceColour.neutral`), so the shader is unchanged. The view is
+    drawn the same in light and dark, and the legend's swatch is the same, outlined.
+  - **The legend** gains a line under the ramp: "Grey: caught in no draw", or "burning in no draw"
+    with Alight then, and the caption says so.
+  - **The seeds** stay outlined in orange.
+  - `FireSpread.Layer.colourCode` gives the code, Linux-safe, and the app takes it.
+- **A map's wood tags make a building timber,** in New District, the Run tab's Map buildings and
+  the headless district benches (`EnvelopeConstruction.fromMap`):
+  - `building:material` of `wood`, `timber_framing`, `timber`, `wood_frame` or `log` (case aside)
+    gives walls and roof of cross-laminated timber 0.105 m thick (three lamellae), the one timber
+    construction the envelope damage model has. Its detail says the thickness is assumed.
+  - So such a building burns from outside, its roof is not fire-rated, and its walls, roof and
+    glass are judged as CLT's ([building envelopes](building-envelopes.md#buildings-from-map-data)).
+  - **Before,** a wood tag said nothing: the building took the default concrete, and only
+    `scenebench fire` made its cladding combustible. That stays by name, to reproduce earlier
+    estimates: New District ▸ "Wood tags not read (earlier estimates)", or `--wood-tags ignore`
+    headless.
+  - **What it moves on Beirut: nothing.** Its map's 14,502 buildings carry no `building:material`
+    tag of any kind (the file's tag keys counted), so no construction changes. `scenebench fire` on
+    Beirut at 0.5 kt within 2.5 km on 4 m cells (14,169 buildings, 0 combustible), with the tags read
+    and with `--wood-tags ignore`, gives the same quick estimate's look (53,530 sides' glass and
+    14,169 buildings' walls and roof, the same values) and the same fire: caught 63–112–181 by 12
+    hours, as stage 1 found, the same timeline and the same chances by building
+    (`$BOMBCAD_DATA/fire-spread/wood-tags/`).
+  - **Other districts:** none that the project has used carries a wood tag either. The made-up
+    district's fixture tags seven buildings brick, none wood; the synthetic neighbourhood and the
+    protective-design and surrogate cases' maps carry none. It is for districts whose wooden
+    buildings are tagged so.
+
+**In the app on Beirut** (InterfaceReviewFireTests, optimised build, the same 20 fires at random
+within 1.5 km in the airport's wind; the fire's own figures unchanged, 92 (55–154) caught by 12 h):
+
+| Caught by | Grey, of 9,708 | On the ramp |
+|---|---|---|
+| 1 h | 6,916 | 2,792 |
+| 3 h | 6,758 | 2,950 |
+| 12 h | 6,744 | 2,964 |
+
+So the grey clears the city beyond the band the random fires are drawn from, but not the band
+itself. With 20 fires a draw among the 2,880 buildings within 1.5 km (`scenebench fire`'s 4 m
+district), 200 draws seed nearly every one of them at least once, and the fire through broken
+windows reaches more. Within 1.5 km 75 buildings have no chance by 12 hours, 420 have up to 1%, and
+1,817 more than 2%. Over the whole district, 3,013 of 14,169 have some chance, but only 75 more than
+an eighth: the other 2,938 share the ramp's first eighth, the same yellow. They are real chances,
+of a few percent, and the decision was to keep the scale for every chance above none, so they stay
+yellow. Seeding by picking buildings or near the charge leaves the grey wherever the fire does not
+reach. The captures, light and dark, are in `$BOMBCAD_DATA/fire-spread/app-review/fire-v2/`
+beside stage 3's.
+
+**Checks.** `FireSpreadTests` (the layer's colours: none is grey and one draw in 200 the ramp's
+first eighth, at the blast only the seed coloured, a house beyond reach grey to the horizon, a
+seed burnt out grey among those alight) and `EnvelopeConstructionTests` (each wood value gives
+timber walls and roof, unread they say nothing; a laid-out district of three houses gives two
+timber, combustible and with roofs not fire-rated, and the untagged one concrete, and all three
+concrete with the tags unread).
 
 ## The literature, and why this model
 

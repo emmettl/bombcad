@@ -9,7 +9,10 @@ envelope buildings for 3 to 24 hours, through the glass the blast broke and the 
 - **The wind,** its speed and where it comes from, and every building timber-clad as a contrast.
 - **What it shows:** each building coloured by its chance of having caught by the hour on a
   slider, or of burning then, with the buildings alight, burnt out and the floor reached, median
-  and 5–95%, and the seeds outlined.
+  and 5–95%, and the seeds outlined. A building that no draw sets alight is drawn in the neutral
+  grey the close calls give settled buildings, and the legend says so, so that the ramp's yellow
+  marks only those with some chance: on Beirut at 12 hours, with 20 fires at random within 1.5 km,
+  6,744 of the 9,708 buildings are grey.
 
 The fire is drawn away from the main thread: a 40-draw preview while the charge or a slider moves,
 then the full 200 draws, with their progress shown; a change cancels the draws under way.

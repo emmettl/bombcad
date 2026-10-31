@@ -346,7 +346,11 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
 
 - **Map**: an OpenStreetMap export (.osm, from openstreetmap.org's Export, or an extract) or GeoJSON
   of building footprints. Each building becomes an envelope with a construction (from its
-  `building:material` tag, or assumed) and a glazing mix by its height and type.
+  `building:material` tag, or assumed: concrete, masonry, or since 31 October 2026 wood and timber
+  as cross-laminated timber, [from a map](building-envelopes.md#buildings-from-map-data)) and a
+  glazing mix by its height and type. **Wood tags not read (earlier estimates)** leaves the wood
+  tags unread, as before, so that such buildings take the default concrete; its help says how
+  many of the map's buildings carry one.
 - **Building heights** (optional): a raster such as GHSL's GHS-BUILT-H, for buildings whose tags
   give no height or levels. Without it they are taken as two storeys.
 - **Terrain** (optional): a GeoTIFF or ESRI ASCII grid of elevations, as the Terrain section reads.

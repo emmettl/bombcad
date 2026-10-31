@@ -142,17 +142,10 @@ extension SimulationModel {
         }
     }
 
-    /// Each building's colour code by its chance at the hour shown, the same on every side.
+    /// Each building's colour code by its chance at the hour shown, the same on every side; a
+    /// neutral grey where no draw gives it any (`FireSpread.Layer.colourCode`).
     func fireCodes() -> [UUID: Int] {
-        guard let layer = fireLayer else { return [:] }
-        let t = fireHour * 3600
-        var codes: [UUID: Int] = [:]
-        codes.reserveCapacity(layer.ids.count)
-        for n in layer.ids.indices {
-            let c = layer.chance(n, at: t, alight: fireShowsAlight)
-            codes[layer.ids[n]] = EnvelopeChanceColour.code([(0, -1, c), (0, 1, c), (1, -1, c), (1, 1, c)])
-        }
-        return codes
+        fireLayer?.colourCodes(at: fireHour * 3600, alight: fireShowsAlight) ?? [:]
     }
 
     /// The buildings set alight in every draw, outlined over the view while the fire is shown or

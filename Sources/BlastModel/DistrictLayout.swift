@@ -25,6 +25,9 @@ public struct DistrictLayout: Sendable {
     /// the façade surrogate's incidence from outlines (emmettl/bombcad-work#109). Off, the scene is
     /// as before, to the byte.
     public var keepsOutlines = false
+    /// Read the map's wood and timber tags as timber constructions
+    /// (`MapBuildingPlacement.readsWoodTags`), the default since 31 October 2026. Off, as before.
+    public var readsWoodTags = true
 
     public init(buildings: [MapBuilding], charge: SIMD2<Double>, mass: Float) {
         self.buildings = buildings
@@ -162,6 +165,7 @@ public struct DistrictLayout: Sendable {
         placement.heightGrid = heights
         placement.clearsChargeBuilding = clearsChargeBuilding
         placement.keepsOutlines = keepsOutlines
+        placement.readsWoodTags = readsWoodTags
         let report = try scene.addMapBuildings(placed, placement: placement)
         scene.attributions = (scene.attributions ?? []) + attributions
         if height == nil {

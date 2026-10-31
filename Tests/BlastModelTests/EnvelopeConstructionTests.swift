@@ -6,7 +6,7 @@ import Testing
 /// What envelope buildings are built of: from map tags, IFC layers, the editor, or assumed.
 @Suite("Envelope constructions")
 struct EnvelopeConstructionTests {
-    @Test("A map building's material tag gives concrete or masonry; anything else says nothing")
+    @Test("A map building's material tag gives concrete, masonry or timber; anything else says nothing")
     func map() {
         let id = UUID()
         #expect(
@@ -14,8 +14,58 @@ struct EnvelopeConstructionTests {
         let brick = EnvelopeConstruction.fromMap(objectID: id, material: "brick")
         #expect(
             brick?.walls == .unreinforcedMasonry && brick?.wallThicknessM == 0.215 && brick?.source == .map)
-        #expect(EnvelopeConstruction.fromMap(objectID: id, material: "wood") == nil)
+        // Wood and its variants: walls and roof of the one timber the model has (since 31 October 2026).
+        for value in ["wood", "Wood", "timber", "timber_framing", "wood_frame", "log"] {
+            let timber = EnvelopeConstruction.fromMap(objectID: id, material: value)
+            #expect(timber?.walls == .crossLaminatedTimber && timber?.roof == .crossLaminatedTimber)
+            #expect(
+                timber?.wallThicknessM == 0.105 && timber?.roofThicknessM == 0.105 && timber?.source == .map)
+            #expect(timber?.detail.contains("building:material=\(value)") == true)
+            // The earlier rule, by name: a wood tag said nothing.
+            #expect(EnvelopeConstruction.fromMap(objectID: id, material: value, readsWood: false) == nil)
+        }
+        #expect(
+            EnvelopeConstruction.fromMap(objectID: id, material: "brick", readsWood: false)?.walls
+                == .unreinforcedMasonry)
+        #expect(EnvelopeConstruction.fromMap(objectID: id, material: "glass") == nil)
         #expect(EnvelopeConstruction.fromMap(objectID: id, material: nil) == nil)
+    }
+
+    @Test(
+        "A map's wood-tagged building is timber in a laid-out district, and burns from outside; not when unread"
+    )
+    func mapWoodInDistrict() throws {
+        // Three houses on a street, OpenStreetMap XML: wood, timber framing, and untagged.
+        func way(_ id: Int, _ x: Double, _ material: String?) -> String {
+            let nodes = (0..<4).map { "<nd ref=\"\(id * 10 + $0)\"/>" }.joined() + "<nd ref=\"\(id * 10)\"/>"
+            let tag = material.map { "<tag k=\"building:material\" v=\"\($0)\"/>" } ?? ""
+            let corners = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)].enumerated().map { n, c in
+                String(
+                    format: "<node id=\"%d\" lon=\"%.7f\" lat=\"%.7f\"/>", id * 10 + n, x + c.0 * 1e-4,
+                    c.1 * 1e-4)
+            }.joined()
+            return corners + "<way id=\"\(id)\">\(nodes)<tag k=\"building\" v=\"house\"/>\(tag)</way>"
+        }
+        let xml =
+            "<osm version=\"0.6\">" + way(1, 0.0002, "wood") + way(2, 0.0005, "timber_framing")
+            + way(3, 0.0008, nil) + "</osm>"
+        let buildings = try MapBuilding.readOSM(Data(xml.utf8))
+        #expect(buildings.map(\.material) == ["wood", "timber_framing", nil])
+        func laid(readsWood: Bool) throws -> [EnvelopeConstruction] {
+            var layout = DistrictLayout(buildings: buildings, charge: SIMD2(0.0006, -0.0003), mass: 10)
+            layout.readsWoodTags = readsWood
+            let (scene, report) = try layout.scene(halfSide: 80, cellSize: 1, height: 40)
+            #expect(report.placed.count == 3)
+            return scene.envelopeObjects.map { scene.envelopeConstruction(for: $0.id) }
+        }
+        let read = try laid(readsWood: true)
+        #expect(read.map(\.walls) == [.crossLaminatedTimber, .crossLaminatedTimber, .reinforcedConcrete])
+        #expect(read.map(\.source) == [.map, .map, .assumed])
+        #expect(read.map { FireSpread.cladding($0.walls) } == [.combustible, .combustible, .nonCombustible])
+        #expect(read.map { FireSpread.fireRated($0.roof) } == [false, false, true])
+        // As before 31 October 2026: the tags unread, every house the default concrete.
+        let unread = try laid(readsWood: false)
+        #expect(unread.allSatisfy { $0.walls == .reinforcedConcrete && $0.source == .assumed })
     }
 
     @Test("IFC layers give the larger class of element, at its median structural thickness")

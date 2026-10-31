@@ -401,6 +401,53 @@ struct FireSpreadTests {
         #expect(randomLayer.chance(0, at: 0) == 0)
     }
 
+    @Test("The layer's colours: grey where no draw has a building caught, the ramp from one draw up")
+    func layerColours() throws {
+        typealias L = F.Layer
+        // None in any draw: the neutral grey, not the ramp's first eighth.
+        #expect(L.colourCode(chance: 0) == EnvelopeChanceColour.neutral)
+        #expect(EnvelopeChanceColour.neutral < EnvelopeChanceColour.first)
+        #expect(EnvelopeChanceColour.neutralColour == EnvelopeDoubtColour.palette[0])
+        // One draw in 200 is a chance: the ramp's first eighth on every side; certain, its last.
+        #expect(L.colourCode(chance: 1.0 / 200) == EnvelopeChanceColour.first)
+        let certain = L.colourCode(chance: 1)
+        for (axis, outward) in [(0, -1), (0, 1), (1, -1), (1, 1)] {
+            #expect(EnvelopeChanceColour.eighth(code: certain, axis: axis, outward: outward) == 7)
+        }
+
+        // Three timber houses 9 m apart and one 60 m off, the first alight: at the blast only it is
+        // coloured; by the horizon its neighbour has some chance and the far one still none.
+        var scene = Scenario(
+            name: "Row", domainSize: SIMD3(200, 40, 20), boxes: [],
+            charge: Charge(mass: 10, position: SIMD3(2, 20, 0)))
+        var ids: [UUID] = []
+        for x: Float in [5, 24, 43, 120] {
+            let id = try scene.addEnvelopeObject(
+                BuildingEnvelope(solids: [Box(min: SIMD3(x, 15, 0), max: SIMD3(x + 10, 25, 4.5))]))
+            var timber = EnvelopeConstruction.assumed(objectID: id)
+            timber.walls = .crossLaminatedTimber
+            timber.roof = .crossLaminatedTimber
+            scene.setEnvelopeConstruction(timber)
+            ids.append(id)
+        }
+        var settings = F.LayerSettings()
+        settings.picked = [ids[0]]
+        settings.hours = 6
+        let layer = try #require(
+            F.layer(
+                scene: scene, source: .estimate(glass: [], structure: []), settings: settings, members: 60))
+        let atBlast = layer.colourCodes(at: 0)
+        #expect(atBlast[ids[0]] == certain)
+        #expect(ids.dropFirst().allSatisfy { atBlast[$0] == EnvelopeChanceColour.neutral })
+        let end = layer.colourCodes(at: layer.horizonS)
+        #expect(layer.chance(1, at: layer.horizonS) > 0 && end[ids[1]] != EnvelopeChanceColour.neutral)
+        #expect(layer.chance(3, at: layer.horizonS) == 0 && end[ids[3]] == EnvelopeChanceColour.neutral)
+        // The seed burnt out: grey among those alight, as no draw has it burning then.
+        let out = layer.ensemble.buildings[0].burnS + 1
+        #expect(layer.colourCode(0, at: out, alight: true) == EnvelopeChanceColour.neutral)
+        #expect(layer.colourCode(0, at: out) == certain)
+    }
+
     @Test("A run's judgement as the fire's glass and walls: each side's panes broken, heavy walls failed")
     func fromRun() throws {
         var scene = Scenario(

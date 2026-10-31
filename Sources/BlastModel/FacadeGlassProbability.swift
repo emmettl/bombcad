@@ -655,6 +655,14 @@ public enum EnvelopeChanceColour {
     /// The first code that is a chance, not `EnvelopeDamageColour`'s.
     public static let first = 16
 
+    /// The code of a building that no draw gives any chance, for a layer whose chances are mostly
+    /// none (the fire after the blast): the neutral grey that buildings the close calls leave alone
+    /// take (`EnvelopeDoubtColour`, settled), so that the ramp's first eighth marks only those with
+    /// some chance (emmettl/bombcad-work#38).
+    public static let neutral = EnvelopeDoubtColour.first
+    /// Its sRGB colour, for a legend.
+    public static var neutralColour: SIMD3<Float> { EnvelopeDoubtColour.palette[0] }
+
     /// A chance's eighth, 0–7.
     public static func eighth(_ chance: Double) -> Int { min(7, max(0, Int(chance * 8))) }
 

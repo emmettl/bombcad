@@ -395,6 +395,10 @@ public struct MapBuildingPlacement: Sendable {
     /// (`BuildingEnvelope.outline`), for the façade surrogate's incidence from outlines
     /// (emmettl/bombcad-work#109). Off, the envelopes are as before, to the byte.
     public var keepsOutlines = false
+    /// Read a `building:material` tag of wood or timber as a timber construction
+    /// (`EnvelopeConstruction.fromMap`), the default since 31 October 2026 (emmettl/bombcad-work#38).
+    /// Off, such a building takes the default construction, as before, to reproduce earlier estimates.
+    public var readsWoodTags = true
 
     public init(origin: SIMD2<Double>, resolution: Float) {
         self.origin = origin
@@ -561,7 +565,8 @@ extension Scenario {
             taken.formUnion(cells)
             // Its construction from its material tag, if any, and its windows from its kind and height.
             var construction =
-                EnvelopeConstruction.fromMap(objectID: id, material: building.material)
+                EnvelopeConstruction.fromMap(
+                    objectID: id, material: building.material, readsWood: placement.readsWoodTags)
                 ?? .assumed(objectID: id)
             construction.glazing = GlazingMix.forMapBuilding(kind: building.kind, height: top - bottom)
             // Who is in it, where its tags say (emmettl/bombcad-work#41); nil for an untagged `yes`.

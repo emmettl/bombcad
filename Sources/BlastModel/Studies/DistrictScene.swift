@@ -28,6 +28,10 @@ package struct DistrictInputs {
     /// bench's façades face as their outlines (`SurrogateBench.incidence`, `--incidence outline`
     /// or terms fitted so; emmettl/bombcad-work#109). Off, the scene is as before, to the byte.
     package var keepsOutlines = false
+    /// Read the map's wood and timber tags as timber constructions (`DistrictLayout.readsWoodTags`),
+    /// the default since 31 October 2026; `--wood-tags ignore` leaves them unread, as before, to
+    /// reproduce earlier estimates.
+    package var readsWoodTags = true
 
     package static func read(_ args: [String]) throws -> DistrictInputs {
         func value(_ name: String) -> String? {
@@ -68,6 +72,11 @@ package struct DistrictInputs {
             mass: Float(value("mass").flatMap(Double.init) ?? 500_000), attributions: attributions,
             footprintCells: value("place-dx").flatMap(Float.init))
         inputs.keepsOutlines = SurrogateBench.incidence(args) == .outline
+        switch value("wood-tags") {
+        case nil, "timber": break
+        case "ignore": inputs.readsWoodTags = false
+        case let other?: throw BlastError.allocationFailed("--wood-tags timber|ignore, not \(other)")
+        }
         let offset = numbers("box-offset", [0, 0])
         if offset.count == 2 { inputs.boxOffset = SIMD2(Float(offset[0]), Float(offset[1])) }
         if let degrees = value("turn").flatMap(Double.init), degrees != 0 {
@@ -137,6 +146,7 @@ package struct DistrictInputs {
         layout.seaBase = seaBase
         layout.attributions = attributions
         layout.keepsOutlines = keepsOutlines
+        layout.readsWoodTags = readsWoodTags
         return try layout.scene(
             halfSide: radius, cellSize: cellSize, height: domainHeight, footprintCells: footprintCells,
             offset: boxOffset)

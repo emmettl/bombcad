@@ -72,14 +72,20 @@ struct FireAfterBlastTests {
         #expect(model.previewParts == .glass)
         let codes = model.fireCodes()
         #expect(codes.count == ids.count)
-        #expect(codes.values.allSatisfy { $0 >= EnvelopeChanceColour.first })
+        // On the ramp where some draw has it caught, grey where none does.
+        let t = model.fireHour * 3600
+        #expect(
+            ids.indices.allSatisfy { n in
+                full.chance(n, at: t) > 0
+                    ? codes[ids[n]]! >= EnvelopeChanceColour.first
+                    : codes[ids[n]] == EnvelopeChanceColour.neutral
+            })
+        #expect(codes[ids[0]]! >= EnvelopeChanceColour.first)
         #expect(model.fireSeedOutlines().count == 8)
         // Alight then, past the seed's own fire: it is out.
         model.fireShowsAlight = true
         model.fireHour = (full.ensemble.buildings[0].burnS + 900) / 3600
-        #expect(
-            model.fireCodes()[ids[0]]
-                == EnvelopeChanceColour.code([(0, -1, 0), (0, 1, 0), (1, -1, 0), (1, 1, 0)]))
+        #expect(model.fireCodes()[ids[0]] == EnvelopeChanceColour.neutral)
         model.fireShowsAlight = false
 
         // A slider held: a preview's few draws; let go, the full ensemble again.

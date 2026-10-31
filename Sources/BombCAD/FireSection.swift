@@ -271,10 +271,13 @@ struct FireSection: View {
         }
         if model.envelopeColouring == .fire {
             EnvelopeDamageSection.ChanceLegend()
+            NoChanceLegend(alight: model.fireShowsAlight)
             Text(
                 model.fireShowsAlight
-                    ? "Each building by its chance of burning at the hour on the slider; the seeds outlined."
-                    : "Each building by its chance of having caught by the hour on the slider; the seeds outlined."
+                    ? "Each building by its chance of burning at the hour on the slider, grey where no draw has it "
+                        + "burning then; the seeds outlined."
+                    : "Each building by its chance of having caught by the hour on the slider, grey where no draw "
+                        + "has it caught; the seeds outlined."
             )
             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         } else {
@@ -283,6 +286,24 @@ struct FireSection: View {
                 model.envelopeColouring = .fire
             }
             .help("Colour each building by its chance of fire by the hour on the slider.")
+        }
+    }
+
+    /// The neutral grey of buildings that no draw sets alight, beside the chance legend: the grey the
+    /// close calls' settled buildings take, the same in light and dark.
+    struct NoChanceLegend: View {
+        let alight: Bool
+
+        var body: some View {
+            let c = EnvelopeChanceColour.neutralColour
+            HStack(spacing: 4) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(.sRGB, red: Double(c.x), green: Double(c.y), blue: Double(c.z)))
+                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(.secondary.opacity(0.5)))
+                    .frame(width: 14, height: 12)
+                Text(alight ? "Grey: burning in no draw" : "Grey: caught in no draw").font(.caption)
+            }
+            .accessibilityElement(children: .combine)
         }
     }
 

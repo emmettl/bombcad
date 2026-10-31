@@ -88,6 +88,29 @@ extension FireSpread {
             return Double(caught - out) / Double(members)
         }
 
+        /// Building `n`'s colour code at `t` (`EnvelopeChanceColour`), the same on every side: the
+        /// chance's eighth on the ramp, or the neutral grey where no draw has it caught (or, with
+        /// `alight`, burning) by then. The chances are counts of draws, so none is below one draw
+        /// only when it is none.
+        public func colourCode(_ n: Int, at t: Double, alight: Bool = false) -> Int {
+            Self.colourCode(chance: chance(n, at: t, alight: alight))
+        }
+
+        /// The code for a building's chance: neutral at none, else its eighth on every side.
+        public static func colourCode(chance c: Double) -> Int {
+            c <= 0
+                ? EnvelopeChanceColour.neutral
+                : EnvelopeChanceColour.code([(0, -1, c), (0, 1, c), (1, -1, c), (1, 1, c)])
+        }
+
+        /// Every building's colour code at `t`, by its id.
+        public func colourCodes(at t: Double, alight: Bool = false) -> [UUID: Int] {
+            var out: [UUID: Int] = [:]
+            out.reserveCapacity(ids.count)
+            for n in ids.indices { out[ids[n]] = colourCode(n, at: t, alight: alight) }
+            return out
+        }
+
         /// Every building's chance at `t`, by its id.
         public func chances(at t: Double, alight: Bool = false) -> [UUID: Double] {
             var out: [UUID: Double] = [:]
