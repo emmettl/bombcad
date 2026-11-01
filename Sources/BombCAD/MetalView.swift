@@ -37,6 +37,10 @@
             private var paint: SurfacePaint?
             /// The live blast wave's field last handed to it, by `liveWaveVersion`.
             private var liveWaveVersion = -1
+            /// While a replay plays, the display's link that moves it on each refresh; and the last
+            /// frame drawn, which the replay's next upload must not overwrite until it is done.
+            private var replayLink: CADisplayLink?
+            private var lastDrawn: MTLCommandBuffer?
 
             /// The share of the GPU the view may take while a run goes as fast as it can. A frame of
             /// the blast wave is ray-marched through the whole domain at every pixel, so at 60 frames
@@ -88,6 +92,32 @@
                 if view.isPaused { view.needsDisplay = true }
             }
 
+            /// A replay plays on the display's refreshes, by its frames' time, and the view draws
+            /// each frame it moves to (observed, as any change), not on a timer of its own.
+            private func updateReplayLink(_ view: MTKView) {
+                let playing = model.playback?.isPlaying == true
+                if playing, replayLink == nil {
+                    let link = view.displayLink(target: self, selector: #selector(replayRefresh))
+                    link.add(to: .main, forMode: .common)
+                    replayLink = link
+                } else if !playing, let link = replayLink {
+                    link.invalidate()
+                    replayLink = nil
+                }
+            }
+
+            @objc private func replayRefresh(_ link: CADisplayLink) {
+                guard let playback = model.playback, playback.isPlaying else {
+                    link.invalidate()
+                    replayLink = nil
+                    return
+                }
+                // The upload goes between frames: if the last drawn is done, without waiting.
+                let done = lastDrawn.map { $0.status == .completed || $0.status == .error } ?? true
+                playback.refresh(
+                    at: link.timestamp, period: link.targetTimestamp - link.timestamp, drawsDone: done)
+            }
+
             /// Everything a frame depends on in the model. The scene and the solver's textures are
             /// read by the renderer outside Observation, so `sceneVersion` stands in for the scene,
             /// and `time` for the air and the structure, which change only as a run steps. The dots
@@ -101,6 +131,7 @@
                 _ = model.thermalReckoned
                 _ = model.fragmentHazard
                 _ = model.injuryField
+                _ = model.playback?.isPlaying
                 // A replay draws its frame's state in place of the run's.
                 let replay = model.playback.map { ($0.index, $0.frame) }
                 var settings = model.renderSettings
@@ -161,6 +192,7 @@
                     }
                 }
                 updateDrawing(view)
+                updateReplayLink(view)
                 guard let renderer = model.renderer, let commandQueue = model.commandQueue,
                     let drawable = view.currentDrawable, let descriptor = view.currentRenderPassDescriptor,
                     let commandBuffer = commandQueue.makeCommandBuffer()
@@ -187,6 +219,7 @@
                 }
                 commandBuffer.present(drawable)
                 commandBuffer.commit()
+                lastDrawn = commandBuffer
                 let rate = framesPerSecond
                 if view.preferredFramesPerSecond != rate { view.preferredFramesPerSecond = rate }
             }

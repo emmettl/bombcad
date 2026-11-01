@@ -501,15 +501,7 @@ final class RunTimelinePlayer {
     }
 
     /// The last frame at or before `time`.
-    func index(at time: Double) -> Int {
-        var low = 0
-        var high = entries.count - 1
-        while low < high {
-            let middle = (low + high + 1) / 2
-            if entries[middle].time <= time + 1e-12 { low = middle } else { high = middle - 1 }
-        }
-        return low
-    }
+    func index(at time: Double) -> Int { ReplayPace.index(at: time, in: times) }
 
     /// Whether its frames carry the layers that change (encoding version 2 on); a recording of
     /// 0.6.0 does not, and its layers are drawn as the run left them.
@@ -573,8 +565,9 @@ final class TimelinePlayback {
     let player: RunTimelinePlayer
     let title: String
     let scenario: Scenario
-    /// Frames shown a second while playing.
-    static let framesPerSecond = 24.0
+    /// The steps of the crater's tail a second; the recorded frames play in about as long as at
+    /// this many a second, paced by their time (`pace`).
+    static let framesPerSecond = ReplayPace.framesPerSecond
     private(set) var index = 0
     private(set) var isPlaying = false
     /// For a kept run, its cloud (nil if it followed none), drawn from the frame it was handed
@@ -586,7 +579,10 @@ final class TimelinePlayback {
     /// Called once each frame shown is uploaded, to draw its layers.
     @ObservationIgnored var onShow: (() -> Void)?
     @ObservationIgnored private let commandQueue: MTLCommandQueue
-    @ObservationIgnored private var task: Task<Void, Never>?
+    /// While playing: the simulated time the replay has reached, and the last refresh's time.
+    @ObservationIgnored private var clock = 0.0
+    @ObservationIgnored private var lastRefresh: Double?
+    @ObservationIgnored private var playing: ReplayPace?
 
     init(
         player: RunTimelinePlayer, title: String, scenario: Scenario, kept: CloudResult?? = nil,
@@ -633,13 +629,13 @@ final class TimelinePlayback {
     var layers: TimelineLayers { player.frame?.layers ?? TimelineLayers() }
 
     /// Shows position `n`: frame `n`, once the GPU has finished every frame drawn from the last
-    /// (the queue runs in order, so an empty buffer's completion says they are done); in the
-    /// tail, the last frame, held.
-    func show(_ n: Int) throws {
+    /// (the queue runs in order, so an empty buffer's completion says they are done; `waiting`
+    /// false when the caller knows they are); in the tail, the last frame, held.
+    func show(_ n: Int, waiting: Bool = true) throws {
         let n = min(max(n, 0), positions - 1)
         let shown = min(n, count - 1)
         if shown != player.index || player.frame == nil {
-            if let fence = commandQueue.makeCommandBuffer() {
+            if waiting, let fence = commandQueue.makeCommandBuffer() {
                 fence.commit()
                 fence.waitUntilCompleted()
             }
@@ -653,13 +649,16 @@ final class TimelinePlayback {
         }
     }
 
+    /// The position for `time`: the last frame at or before it, or in the tail the step at or
+    /// just after it.
+    func position(at time: Double) -> Int {
+        guard time > runEndTime, tailSteps > 0 else { return player.index(at: time) }
+        return count - 1 + Int(((time - runEndTime) * Self.framesPerSecond).rounded(.up))
+    }
+
     /// Shows the frame at `time`, or in the tail the step at or just after it.
     func seek(to time: Double) {
-        guard time > runEndTime, tailSteps > 0 else {
-            try? show(player.index(at: time))
-            return
-        }
-        try? show(count - 1 + Int(((time - runEndTime) * Self.framesPerSecond).rounded(.up)))
+        try? show(position(at: time))
     }
 
     /// How far through the replay it is, 0 to 1, as it plays: the recorded frames take their
@@ -685,23 +684,36 @@ final class TimelinePlayback {
         try? show(position + frames)
     }
 
+    /// The replay's pace: the recorded frames by their time, in about as long as a frame each
+    /// 1/24 s took, then the tail in real time.
+    var pace: ReplayPace { ReplayPace(times: player.times, end: endTime) }
+
+    /// Plays on from where it is, from the start if at the end. The view moves it on each
+    /// refresh (`refresh`).
     func play() {
         guard !isPlaying else { return }
         if position >= positions - 1 { try? show(0) }
+        clock = time
+        lastRefresh = nil
+        playing = pace
         isPlaying = true
-        task = Task { [weak self] in
-            while let self, self.isPlaying, self.position < self.positions - 1 {
-                try? await Task.sleep(for: .seconds(1 / Self.framesPerSecond))
-                guard self.isPlaying else { return }
-                try? self.show(self.position + 1)
-            }
-            self?.isPlaying = false
-        }
+    }
+
+    /// A refresh of the display while playing, at `now` seconds with `period` seconds between
+    /// refreshes: the clock moves on by the refreshes since the last, and the position for its
+    /// time is shown. `drawsDone`: the GPU has finished every frame drawn, so the upload need not
+    /// wait for them.
+    func refresh(at now: Double, period: Double, drawsDone: Bool) {
+        guard isPlaying, let pace = playing else { return }
+        let wall = lastRefresh.map { ReplayPace.refreshSeconds(elapsed: now - $0, period: period) } ?? 0
+        lastRefresh = now
+        clock = pace.time(after: clock, wall: wall)
+        let target = position(at: clock)
+        if target != position { try? show(target, waiting: !drawsDone) }
+        if position >= positions - 1 { isPlaying = false }
     }
 
     func pause() {
         isPlaying = false
-        task?.cancel()
-        task = nil
     }
 }

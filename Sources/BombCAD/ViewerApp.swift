@@ -47,7 +47,8 @@
 
         /// `BOMBCAD_VIEWER_AUTO=1`: connects to the first paired Mac, opens its first shared run
         /// (or the first whose project is named `BOMBCAD_VIEWER_PROJECT`), and once it is all in,
-        /// scrubs through every frame and writes what it measured to `Documents/viewer-report.txt`;
+        /// scrubs through every frame, plays it through once, and writes what it measured to
+        /// `Documents/viewer-report.txt`;
         /// for measuring, in the Simulator (`SIMCTL_CHILD_`) or on an iPad (`devicectl device
         /// process launch -e`).
         let auto = ProcessInfo.processInfo.environment["BOMBCAD_VIEWER_AUTO"] == "1"
@@ -233,7 +234,19 @@
         @ObservationIgnored private let client: SweepWorkerClient
         @ObservationIgnored private let fetch: TimelineFetch
         @ObservationIgnored private var task: Task<Void, Never>?
-        @ObservationIgnored private var playing: Task<Void, Never>?
+        /// The replay's pace by its frames' time (`ReplayPace`), and while playing the simulated
+        /// time it has reached, the last refresh's time and how many refreshes in a row a frame
+        /// due has waited for the GPU.
+        @ObservationIgnored private(set) var pace: ReplayPace?
+        @ObservationIgnored private var clock = 0.0
+        @ObservationIgnored private var lastRefresh: Double?
+        @ObservationIgnored private var heldForGPU = 0
+        /// The last frame drawn, which an upload must not overwrite until the GPU is done with it.
+        @ObservationIgnored var lastDrawn: MTLCommandBuffer?
+        /// For measuring a play through: each frame as it came on screen, and the refreshes'
+        /// intervals.
+        @ObservationIgnored private var playedFrames: [ReplayEvenness.Shown]?
+        @ObservationIgnored private var refreshIntervals: [Double] = []
         /// The frame scrubbed to, shown once it arrives if it has not yet, and since when.
         @ObservationIgnored private var wanted: Int?
         @ObservationIgnored private var wantedSince = ContinuousClock.now
@@ -309,6 +322,7 @@
             do {
                 let player = try RunTimelinePlayer(folder: download.folder, device: device)
                 self.player = player
+                pace = ReplayPace(times: player.times)
                 renderer.setScene(run.scenario, view: player.upload.view)
                 camera = .framing(run.scenario)
                 if let thermal = run.thermal {
@@ -356,11 +370,12 @@
             if let near = download.nearestArrived(to: n) { show(near) }
         }
 
-        /// Uploads frame `n` once the GPU has finished the frames drawn from the last, and its layers.
-        func show(_ n: Int) {
+        /// Uploads frame `n` once the GPU has finished the frames drawn from the last (`waiting`
+        /// false when the caller knows it has), and its layers.
+        func show(_ n: Int, waiting: Bool = true) {
             guard let player, download.arrived.contains(n) else { return }
             let start = ContinuousClock.now
-            if let fence = commandQueue.makeCommandBuffer() {
+            if waiting, let fence = commandQueue.makeCommandBuffer() {
                 fence.commit()
                 fence.waitUntilCompleted()
             }
@@ -453,26 +468,48 @@
             return OrbitCamera.defaultZoomLimits.lowerBound...max(3 * max(size.x, size.y, size.z), 600)
         }
 
+        /// Plays on from the frame shown, from the start if at the end. The view moves it on each
+        /// refresh it draws (`refresh`), drawing 60 a second while it plays.
         func play() {
-            guard !isPlaying, count > 0 else { return }
+            guard !isPlaying, count > 0, pace != nil else { return }
             if index >= count - 1 { scrub(to: 0) }
+            clock = time
+            lastRefresh = nil
+            heldForGPU = 0
             isPlaying = true
-            playing = Task { [weak self] in
-                while let self, self.isPlaying, self.index < self.count - 1 {
-                    try? await Task.sleep(for: .seconds(1 / TimelinePlayback.framesPerSecond))
-                    guard self.isPlaying else { return }
-                    // The next frame in, skipping those still to come.
-                    guard let next = self.download.arrived.filter({ $0 > self.index }).min() else { break }
-                    self.show(next)
+        }
+
+        /// A refresh drawn while playing, at `now` seconds with `period` seconds between refreshes:
+        /// the clock moves on by the refreshes since the last, no further than the frames in
+        /// unbroken from the one shown (while the rest are still coming, playing waits for them
+        /// there), and the last frame at or before its time is shown. The upload waits for no
+        /// fence if the last frame drawn is done, and a frame due waits a refresh for it before it
+        /// does.
+        func refresh(at now: Double, period: Double) {
+            guard isPlaying, let player, let pace else { return }
+            if let last = lastRefresh, playedFrames != nil { refreshIntervals.append(now - last) }
+            let wall = lastRefresh.map { ReplayPace.refreshSeconds(elapsed: now - $0, period: period) } ?? 0
+            lastRefresh = now
+            if playedFrames?.isEmpty == true { playedFrames = [ReplayEvenness.Shown(wall: now, time: time)] }
+            var edge = max(index, 0)
+            while edge + 1 < player.entries.count, download.arrived.contains(edge + 1) { edge += 1 }
+            clock = pace.time(after: clock, wall: wall, limit: player.entries[edge].time)
+            let target = min(pace.index(at: clock), edge)
+            if target != index {
+                let done = lastDrawn.map { $0.status == .completed || $0.status == .error } ?? true
+                if done || heldForGPU > 0 {
+                    show(target, waiting: !done)
+                    heldForGPU = 0
+                    playedFrames?.append(ReplayEvenness.Shown(wall: now, time: time))
+                } else {
+                    heldForGPU += 1
                 }
-                self?.isPlaying = false
             }
+            if index >= count - 1 { isPlaying = false }
         }
 
         func pause() {
             isPlaying = false
-            playing?.cancel()
-            playing = nil
         }
 
         /// What fetching and scrubbing came to, as text.
@@ -494,7 +531,17 @@
                         format: "; the Mac sent it in %.2f s, %d frames ahead of their turn", $0.seconds,
                         $0.preferred)
                 } ?? "")
-                + waitReport + drawReport
+                + waitReport + drawReport + playReport
+        }
+
+        /// How evenly a play through showed the run's time, and the refreshes it missed.
+        private var playReport: String {
+            guard let played = playedFrames, played.count > 1, let pace else { return "" }
+            let missed = refreshIntervals.filter { $0 > 1.5 / 60 }.count
+            return String(
+                format: "; played through in %.2f s (its pace %.2f s): %@; %d of %d refreshes missed",
+                (played.last?.wall ?? 0) - (played.first?.wall ?? 0), pace.wallSeconds,
+                ReplayEvenness(played).summary, missed, refreshIntervals.count + 1)
         }
 
         func drew(seconds: Double) {
@@ -556,6 +603,14 @@
                 show(n)
                 try? await Task.sleep(for: .milliseconds(5))
             }
+            // Then played through once from the start, as the view draws it.
+            let shown = showSeconds
+            scrub(to: 0)
+            playedFrames = []
+            refreshIntervals = []
+            play()
+            while isPlaying { try? await Task.sleep(for: .milliseconds(50)) }
+            showSeconds = shown
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             try? (report + "\n").write(
                 to: documents.appending(path: "viewer-report.txt"), atomically: true, encoding: .utf8)
@@ -798,7 +853,7 @@
             let view = MTKView(frame: .zero, device: viewer.device)
             view.colorPixelFormat = SceneRenderer.pixelFormat
             view.framebufferOnly = true
-            view.preferredFramesPerSecond = 30
+            view.preferredFramesPerSecond = Coordinator.framesPerSecond(playing: false)
             view.delegate = context.coordinator
             let orbit = UIPanGestureRecognizer(
                 target: context.coordinator, action: #selector(Coordinator.orbit))
@@ -820,6 +875,10 @@
             private var drawnPaint: SurfacePaint?
 
             init(viewer: TimelineViewer) { self.viewer = viewer }
+
+            /// The refreshes drawn a second: 60 while a replay plays (the display's ProMotion goes
+            /// to 120), so its frames come on screen near their time; 30 otherwise.
+            static func framesPerSecond(playing: Bool) -> Int { playing ? 60 : 30 }
 
             @objc func orbit(_ gesture: UIPanGestureRecognizer) {
                 let delta = gesture.translation(in: gesture.view)
@@ -859,6 +918,9 @@
                     let descriptor = view.currentRenderPassDescriptor,
                     let commandBuffer = viewer.commandQueue.makeCommandBuffer()
                 else { return }
+                let rate = Self.framesPerSecond(playing: viewer.isPlaying)
+                if view.preferredFramesPerSecond != rate { view.preferredFramesPerSecond = rate }
+                viewer.refresh(at: CACurrentMediaTime(), period: 1 / Double(rate))
                 let renderer = viewer.renderer
                 var settings = viewer.settings
                 settings.showCharge = viewer.time == 0
@@ -881,6 +943,7 @@
                 }
                 commandBuffer.present(drawable)
                 commandBuffer.commit()
+                viewer.lastDrawn = commandBuffer
             }
         }
     }

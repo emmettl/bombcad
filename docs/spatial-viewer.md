@@ -61,7 +61,9 @@ The viewer writes the files into a folder laid out as the run's own, so the Mac'
 field and the structures from each frame, the vent panels opened, the envelopes' damage colours,
 the thermal paint (the receivers laid out again from the run's scene and spec) and the cloud's
 outlines from the frame it was handed over in. The slider scrubs among the frames in, asking for
-one that is not; Play steps through those in; one finger orbits, two pan, a pinch zooms.
+one that is not; Play runs through those in by their simulated time, on the display's refreshes
+([since 2 November](#on-the-ipad-pro-measured-2-november-2026)); one finger orbits, two pan, a
+pinch zooms.
 
 **Tried in the iPad Simulator** (iPad Pro 11-inch, iOS 27), the Studio serving with
 `BombCAD serve --share`, at load averages of 250 to 350 from other sessions' runs:
@@ -110,29 +112,26 @@ not an iPad's. The first frame's 0.4 s is mostly fixed: the session, the worker 
 reading the project; the bytes before it (the run's record, the manifest, the setup and a frame)
 are 0.6 to 3 MB.
 
-**Over Wi-Fi**, from the sealed socket's 22 October rates (40 to 45 MB/s from the Studio, the
-frames' way; 8 to 46 on the TLS connection; 4 to 7 for frames when Network.framework carried
-them), by the bytes above:
+**Over Wi-Fi**, estimated from the sealed socket's 22 October rates (40 to 45 MB/s from the
+Studio), and then measured on the iPad Pro on 2 November
+([below](#on-the-ipad-pro-measured-2-november-2026)): a little slower than the estimate.
 
-| | Sealed socket, 40 to 45 MB/s | TLS fallback, 8 to 46 MB/s | Network.framework's worst, 4 to 7 MB/s |
-|---|---|---|---|
-| District, whole (251.8 MB) | 5.6 to 6.3 s | 5.5 to 31 s | 36 to 63 s |
-| Street, whole (61.1 MB) | 1.4 to 1.5 s | 1.3 to 7.6 s | 9 to 15 s |
-| The first frame (about 3 MB after the session) | under 0.1 s | under 0.4 s | under 0.8 s |
-| Any recording at the default space (256 MB) | 5.7 to 6.4 s | 5.6 to 32 s | 37 to 64 s |
+| | Estimated, 40 to 45 MB/s | Measured on the iPad Pro (M2) |
+|---|---|---|
+| District, whole (251.8 MB) | 5.6 to 6.3 s | 9.0 s (27.8 MB/s) |
+| Street, whole (61.1 MB) | 1.4 to 1.5 s | 1.65 s (37.0 MB/s) |
+| The first frame shown | under 0.1 s after the session | 0.42 s (district), 0.19 s (street), the session included |
 
 **The kill condition does not hold for kept recordings.** A district's is about 1 MB a frame
-and at most its recording's space, so on the socket it is all on the iPad in about six seconds,
-scrubbable from its first frame in under a second, with no new compression. Played as it comes
+and at most its recording's space, so on the socket it is all on the iPad in nine seconds,
+scrubbable from its first frame in under half a second, with no new compression. Played as it comes
 rather than fetched, 24 frames a second of it would need 26 MB/s, which the socket carries and
 Network.framework's slow case does not. What would bring the condition back is the next step's
 scale, below.
 
-**Not measured:** a real iPad (its Wi-Fi, its GPU drawing the field, its memory with 250 MB of
-frames on disk and one in memory at a time); the app's own sharing (the open documents, a code
-path tested only through `serve`); the time a frame scrubbed to waits on Wi-Fi, which depends on
-how much is in flight ahead of it (a frame or two, 25 to 90 ms at the socket's rate, by
-estimate). The envelope damage colours, the vent panels and the cloud are drawn by the same
+**Not measured:** the iPad mini (the iPad Pro is
+[below](#on-the-ipad-pro-measured-2-november-2026)); the app's own sharing (the open documents, a code
+path tested only through `serve`). The envelope damage colours, the vent panels and the cloud are drawn by the same
 calls as the Mac's Replay; the district showed its buildings' colours, the street its thermal
 paint; no scene had vent panels.
 
@@ -197,10 +196,78 @@ ID-signed `BombCAD serve --share` of the two study projects:
   day, from a build not signed that way, browsing handed the app nothing. Pairing by address
   stays for when it does not.
 
-**Still to measure, on each iPad:** fetching the district and the street over Wi-Fi, the first
-frame, a frame shown, the GPU's time a view and scrubbing. The iPad mini's limits matter most:
-its memory with the 250 MB district on disk, and whether its GPU draws a view within a frame.
-Those replace the Wi-Fi estimates above. The steps are on emmettl/bombcad-work#43.
+## On the iPad Pro, measured, 2 November 2026
+
+The user's iPad Pro 11-inch (4th generation, M2) ran the device build (release, signed for
+development by the team) and paired with a `BombCAD serve` of the two study projects from the
+notarized 0.7.5 app (protocol 19), over the Studio's Wi-Fi. The viewer's own measure
+(`/Volumes/StudioData/bombcad/ios43/measure-ipad.sh`, `BOMBCAD_VIEWER_AUTO=1`) gave:
+
+| | District (233 frames, 252 MB) | Street (131 frames, 61 MB) |
+|---|---|---|
+| Fetched whole over Wi-Fi | 9.0 s, 27.8 MB/s | 1.65 s, 37 MB/s |
+| First frame shown | 0.42 s | 0.19 s |
+| A frame shown (read, decoded, uploaded): median, 95%, largest | 5.8, 16.8, 18.9 ms | 5.9, 15.1, 17.8 ms |
+| The GPU's time a view, at 1748 by 1068 pixels | 11.6 ms | 10.9 ms |
+| A frame scrubbed to before it came: median, largest | 277, 393 ms (25 frames) | 132, 173 ms (7) |
+| Memory in use, of the 5369 MB the app may use | at most 480 MB | at most 179 MB |
+
+So the M2 draws a view in 11 to 12 ms, inside a 60 Hz refresh, and holds a 250 MB recording
+with under a tenth of its memory: the frames are on disk, one in memory at a time. The iPad mini
+was not measured: it is the one whose GPU and memory matter most, and it waits for the user.
+
+**Replay, paced by time.** The user found playback on the iPad erratic, and the street run
+stuttering where the district played fairly smoothly. Two causes:
+
+- **Frames by index.** Play stepped one frame each 1/24 s, whatever the time between frames.
+  A run records its frames unevenly in time: the street's gaps swing from 0.02 to 0.89 ms of
+  simulated time, often within a few frames (0.74, 0.02, 0.48, 0.78, 0.09); the district's are
+  mostly 5 to 6 ms, but 3.5 to 10 ms early on. So the wave's apparent speed changed by up to 40
+  times between neighbouring frames.
+- **Not tied to the display.** The loop slept 1/24 s, then uploaded the next frame behind a GPU
+  fence it waited on, on the main thread, while the view drew at 30 a second on its own timer. A
+  frame was held one draw or two (33 or 67 ms), and the 6 ms upload made the pace slower than
+  24 a second.
+
+Now each refresh moves a clock of simulated time on by the wall time since the last
+(`ReplayPace` in BlastModel), and the frame shown is the last at or before it. The rate plays a
+run's frames in as long as a frame each 1/24 s did: 9.7 s for the district, 5.4 s for the street.
+On the iPad the view draws 60 a second while playing (30 otherwise) and moves the clock in its
+draw; on the Mac a display link moves it, and the view draws when the frame changes, as before. A
+refresh stands for a whole number of refreshes, so the callback's jitter does not count and a
+missed refresh does; a stall of more than four is not leapt over. The upload no longer waits on a
+fence when the last frame drawn is done, which it nearly always is; if it is not, the frame waits
+a refresh, then the fence. While frames are still coming, playing stops at the last of those in
+unbroken from the one shown, and goes on as the rest arrive. The Mac's crater tail after the run's
+last frame plays in real time as before, and for any time the Mac shows the same frame as before
+(`RunTimelinePlayer.index(at:)`, now `ReplayPace.index(at:in:)`).
+
+How evenly each shows the run, by the frames' times. The figures below are worked out from the
+two recordings (the iPad's before is the old loop with its 5.9 ms upload and 30 Hz draws). Two
+measures:
+
+- on screen per simulated ms: each frame's time on screen over the simulated time to the next
+  shown, as the 10th to 90th percentiles;
+- in windows: the simulated time shown a wall second, from each frame shown to the first shown a
+  quarter of a second later, as the 90th percentile over the 10th (1 is even).
+
+| | Street: per frame | Street: windows | District: per frame | District: windows |
+|---|---|---|---|---|
+| Mac, by index | 56 to 368 ms (6.6×) | 1.57× | 6 to 10 ms (1.6×) | 1.02× |
+| iPad, by index | 56 to 478 ms (8.6×) | 1.52× | 6 to 13 ms (2.1×) | 1.20× |
+| By time, 60 Hz, both | 86 to 154 ms (1.8×) | 1.07× | 6 to 9 ms (1.5×) | 1.05× |
+
+The viewer's auto measure now also plays each run through once from the start, as the view draws
+it, and reports both measures from the refreshes it drew, with the refreshes it missed. On the
+iPad itself that waits for the device to be unlocked: it was locked when the new build was
+installed.
+
+What is left: a frame closer to the next than a refresh's worth of simulated time is passed over,
+and the rest are held a whole number of refreshes. So a frame by itself still varies by 1.8 times
+on the street, where blending neighbouring frames would make it even. The upload (read, decode,
+upload: 15 to 17 ms at the 95th percentile) still runs on the main thread in the draw, so it can
+cost a refresh. And the iPad's view draws 30 times a second even when nothing changes (11 ms of
+GPU each). The steps are on emmettl/bombcad-work#94.
 
 ## What blocks the Vision Pro step
 

@@ -25,6 +25,11 @@ untracked files) and runs one of five tiers:
   /Volumes/StudioData/bombcad/digest-cache/<commit>/, so the next check on that base reuses them.
 - full: the package's dependencies (Package.swift, Package.resolved), or `--full`: `make check`.
 
+A change to the app or the renderer (Sources/BombCAD, Sources/BlastRender, the viewer's Info.plist
+or its build script) also builds the iPad viewer for the iOS Simulator (IPAD_BUILD), after the
+other steps and here: main had not built for iPadOS for nine days by 2 November 2026, unseen.
+Its cost is stated in docs/continuous-integration.md.
+
 A changed file falls back to the name rules when the map doesn't know it or more than
 --max-map-age commits have touched it since the map was built.
 
@@ -98,6 +103,22 @@ SHADER = re.compile(r"^Sources/[^/]+/Shaders/[^/]+\.metal$")
 # Documents and the Python scripts, which ci-test covers on its own.
 DOCUMENT = re.compile(r"(^docs/|\.md$|\.png$|\.jpg$|\.svg$|^LICENSE$|^Scripts/(analytic/|protective/|reference/)?[^/]+\.py$|"
                       r"^Scripts/reference/tables/[^/]+\.json$)")
+# Changes that can break the iPad viewer's build, which compiles the app's sources for iPadOS with
+# their `#if os(macOS)` halves left out: its build for the Simulator, debug, in its own derived data
+# in the build folder (kept, so a later check builds only what changed).
+IPAD = re.compile(r"^(Sources/(BombCAD|BlastRender)/|Support/Viewer-Info\.plist$|Scripts/build-ipad-viewer\.sh$)")
+IPAD_BUILD = ["xcodebuild", "build", "-scheme", "BombCAD", "-configuration", "Debug",
+              "-destination", "generic/platform=iOS Simulator", "-derivedDataPath", ".build/ipad-check",
+              "ARCHS=arm64", "-quiet"]
+# The memory it declares to gpu-slot, GB: Xcode's compilers at once peaked at 6.2 GB on a cold build.
+IPAD_MEM = "7"
+
+
+def needs_ipad_build(files):
+    """Whether `files` include one the iPad viewer's build could trip on."""
+    return any(IPAD.search(path) for path in files)
+
+
 # Suites that changes elsewhere often trip: the standing parses the docs and options, the
 # layout test guards the renderer's copies of the solver's structs.
 ALWAYS = ["StandingFingerprintTests", "EvidentialStandingTests", "StandingRunTests",
@@ -898,6 +919,18 @@ def run_steps(suites):
     return 0
 
 
+def ipad_build(slotted):
+    """The iPad viewer built for the iOS Simulator (IPAD_BUILD), here: its exit status."""
+    if not shutil.which("xcodebuild"):
+        print("check-affected: no xcodebuild here, so the iPad viewer's build is left out", flush=True)
+        return 0
+    started = time.time()
+    status = run(slotted(IPAD_BUILD, IPAD_MEM))
+    print(f"check-affected: the iPad viewer built for the iOS Simulator in {time.time() - started:.0f} s, "
+          f"waiting for gpu-slot included: {'passed' if status == 0 else 'FAILED'}", flush=True)
+    return status
+
+
 def run_where(where, host, settings, local, remote_command, mem, wait):
     """Runs `local` here, or `remote_command` on `host`, back here if that was taken meanwhile:
     (exit status, where it ran)."""
@@ -920,6 +953,9 @@ def plan(arguments):
     files = changed_files(base)
     level = "full" if arguments.full else tier(files)
     lines = [f"check-affected: {len(files)} changed file(s)"]
+    if level != "documents" and needs_ipad_build(files):
+        lines.append("  the iPad viewer built for the iOS Simulator: "
+                     + ", ".join(path for path in files if IPAD.search(path))[:200])
     if arguments.full or level in ("documents", "full"):
         if level == "full" and not arguments.full:
             lines += [f"  full check: {path}: the package's dependencies" for path in files if ALWAYS_FULL.search(path)]
@@ -1021,6 +1057,7 @@ def main():
             else:
                 lane = candidates
                 print(f"  BlastModel's {len(lane)} suite(s) on the Linux lane, {linux_host}, beside the rest", flush=True)
+    ipad = level != "documents" and needs_ipad_build(changed_files(base))
     if arguments.dry_run:
         return 0
     # This checkout's build folder linked before anything builds here (Scripts/build-dir.py: on the
@@ -1029,14 +1066,18 @@ def main():
         build_dir.ensure(ROOT)
     wait = 7200 if forced == "remote" else 0
 
-    def slotted(command):  # under gpu-slot here, unless already in a slot or without one
-        return command if in_slot or not GPU_SLOT.exists() else [str(GPU_SLOT), *command]
+    def slotted(command, mem=None):  # under gpu-slot here, unless already in a slot or without one
+        if in_slot or not GPU_SLOT.exists():
+            return command
+        return [str(GPU_SLOT), *(["--mem", mem] if mem else []), *command]
 
     if level == "full":
         if where == "anywhere":
-            return run(["make", "check-anywhere"])
-        return run_where(where, host, settings, lambda: run(slotted(["make", "check"])), ["make", "check"], None,
-                         wait)[0]
+            status = run(["make", "check-anywhere"])
+        else:
+            status = run_where(where, host, settings, lambda: run(slotted(["make", "check"])), ["make", "check"],
+                               None, wait)[0]
+        return status or (ipad_build(slotted) if ipad else 0)
     # Lint and the scripts' tests are quick, and stay here.
     for step in (["make", "lint"], ["make", "ci-test"]):
         status = run(step)
@@ -1095,9 +1136,15 @@ def main():
                 status = beside["status"]
         if status:
             return status
+    if ipad:
+        status = ipad_build(slotted)
+        if status:
+            print("check-affected: FAILED at the iPad viewer's build (fix the iPadOS side, often a macOS-only "
+                  "API outside `#if os(macOS)`)", flush=True)
+            return status
     print(f"check-affected: passed ({level}{', build and tests on ' + host if ran == 'there' else ''}"
           f"{', BlastModel on ' + linux_host if linux and linux['status'] == 0 else ''}"
-          f"{', digests bit-identical' if digests else ''})")
+          f"{', digests bit-identical' if digests else ''}{', the iPad viewer built' if ipad else ''})")
     return 0
 
 

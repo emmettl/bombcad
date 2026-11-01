@@ -41,6 +41,15 @@ a change to the solvers' core runs its suites and the [digests](#the-digests), n
 | The solvers' core (tier `core`): the solvers' shaders (`Sources/BlastCore/Shaders`), RadialBlast, and BlastSolver and its extensions, SolverTypes, StructureSolver, StructureTypes, ShellSolver, Scenario, MappedStart, Refinement, StructuralBody (with their `+GPU`/`+CPU` halves) | the suites as for `covered` (or `affected` without a map); for a core file the map can't speak for, its names and every suite that ran any of it; for a shader the kernel lookup can't follow, the suites that ran the Swift mirrors of the shader types it touches. Then the six digest sets, bit for bit against the merge base |
 | `Package.swift`/`.resolved`, or `ARGS=--full` | the full `make check`, here or on the mini (below) |
 
+**The iPad viewer's build** (since 2 November 2026): a change to `Sources/BombCAD`,
+`Sources/BlastRender`, `Support/Viewer-Info.plist` or `Scripts/build-ipad-viewer.sh` also builds
+the viewer for the iOS Simulator, debug, after the other steps and on the Studio, under gpu-slot
+with 7 GB declared. Main had not built for iPadOS for nine days before that, a macOS-only API left
+outside `#if os(macOS)`, with nothing to say so. It costs 34 s from cold in a new worktree (its own
+derived data, `.build/ipad-check`, peaking at 6.2 GB across Xcode's compilers), 8 s when one app
+file changed and 4 s when none did, measured on the Studio on 2 November. A change elsewhere
+(BlastCore, BlastModel) can still break it unseen until the next change to the app.
+
 BlastModel's suites among them run on the PC, bombcad-pc, beside the rest when it answers and is
 free: the [Linux lane](linux.md#the-linux-lane-of-the-pre-push-check) (`--no-linux` keeps them
 here).

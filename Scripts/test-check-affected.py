@@ -46,6 +46,18 @@ class TierTests(unittest.TestCase):
         self.assertEqual(check.tier(["Scripts/analytic/sedov.py"]), "documents")
         self.assertEqual(check.tier(["Scripts/protective/model.py"]), "documents")
 
+    def test_the_app_and_the_renderer_build_the_ipad_viewer_too(self):
+        for path in ("Sources/BombCAD/ViewerApp.swift", "Sources/BombCAD/MetalView.swift",
+                     "Sources/BlastRender/SceneRenderer.swift", "Support/Viewer-Info.plist",
+                     "Scripts/build-ipad-viewer.sh"):
+            with self.subTest(path=path):
+                self.assertTrue(check.needs_ipad_build(["docs/a.md", path]))
+        for files in (["Sources/BlastModel/ReplayPace.swift"], ["Sources/BlastCore/Footing.swift", "docs/a.md"],
+                      ["Tests/BombCADTests/RunTimelineTests.swift"], []):
+            with self.subTest(files=files):
+                self.assertFalse(check.needs_ipad_build(files))
+        self.assertIn("generic/platform=iOS Simulator", check.IPAD_BUILD)
+
 
 class SuiteTests(unittest.TestCase):
     def setUp(self):

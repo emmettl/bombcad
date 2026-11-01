@@ -326,9 +326,24 @@ struct RunTimelineTests {
         #expect(playback.index == 0 && playback.frame?.time == 0)
         playback.step(1)
         #expect(playback.index == 1)
+        // Played on the display's refreshes, 60 a second, by the frames' time: through to the last
+        // in about as long as a frame each 1/24 s, each refresh showing the last frame at or
+        // before the clock, which only moves on.
         playback.play()
-        while playback.isPlaying { try await Task.sleep(for: .milliseconds(10)) }
+        var refreshes = 0
+        var shown = [playback.index]
+        while playback.isPlaying, refreshes < 100_000 {
+            playback.refresh(
+                at: Double(refreshes) / 60, period: 1.0 / 60, drawsDone: refreshes.isMultiple(of: 2))
+            refreshes += 1
+            shown.append(playback.index)
+        }
         #expect(playback.index == playback.count - 1)
+        #expect(shown == shown.sorted())
+        #expect(
+            playback.tailSteps > 0 || abs(playback.pace.wallSeconds - Double(playback.count - 1) / 24) < 1e-9)
+        let expected = playback.pace.wallSeconds * 60
+        #expect(abs(Double(refreshes) - expected) <= 2, "\(refreshes) refreshes, \(expected) expected")
         model.stopReplay()
         #expect(model.playback == nil && model.time == endTime)
 
