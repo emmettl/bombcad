@@ -109,6 +109,9 @@ extension SimulationModel {
         }
     }
 
+    /// The view zooms out as far as `farthestZoom`, so that a domain kilometres across is seen whole.
+    var zoomLimits: ClosedRange<Float> { OrbitCamera.defaultZoomLimits.lowerBound...farthestZoom }
+
     /// The camera a step nearer its target or farther from it, within the view's limits.
     func zoomCamera(in nearer: Bool) {
         camera.zoom(by: nearer ? 0.8 : 1.25, within: zoomLimits)

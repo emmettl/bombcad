@@ -126,39 +126,43 @@ extension SimulationModel {
     /// app's own executable, in a process of its own so that its peak memory is its own and a GPU
     /// that cannot hold it costs the app nothing, and shows what it printed.
     func checkLearnedFieldOnThisMac() {
-        guard !learnedCheckInFlight, let executable = Bundle.main.executableURL else { return }
-        learnedCheckInFlight = true
-        learnedCheckReport = ["Checking the learned field model on this Mac…"]
-        let ground = learnedWeightsURL
-        let levels = learnedLevelsURL
-        Task { [weak self] in
-            let lines = await Task.detached(priority: .userInitiated) { () -> [String] in
-                let process = Process()
-                process.executableURL = executable
-                process.arguments =
-                    ["field-model", "check", "--ground", ground.path]
-                    + (levels.map { ["--levels", $0.path] } ?? [])
-                let pipe = Pipe()
-                process.standardOutput = pipe
-                process.standardError = pipe
-                do {
-                    try process.run()
-                } catch {
-                    return ["The check could not be started: \(error.localizedDescription)"]
-                }
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                var lines = String(decoding: data, as: UTF8.self).split(separator: "\n").map(String.init)
-                if process.terminationReason == .uncaughtSignal {
-                    lines.append(
-                        "The check's process stopped on signal \(process.terminationStatus): the model does not run here."
-                    )
-                }
-                return lines
-            }.value
-            guard let self else { return }
-            self.learnedCheckInFlight = false
-            self.learnedCheckReport = lines
-        }
+        #if os(macOS)
+            guard !learnedCheckInFlight, let executable = Bundle.main.executableURL else { return }
+            learnedCheckInFlight = true
+            learnedCheckReport = ["Checking the learned field model on this Mac…"]
+            let ground = learnedWeightsURL
+            let levels = learnedLevelsURL
+            Task { [weak self] in
+                let lines = await Task.detached(priority: .userInitiated) { () -> [String] in
+                    let process = Process()
+                    process.executableURL = executable
+                    process.arguments =
+                        ["field-model", "check", "--ground", ground.path]
+                        + (levels.map { ["--levels", $0.path] } ?? [])
+                    let pipe = Pipe()
+                    process.standardOutput = pipe
+                    process.standardError = pipe
+                    do {
+                        try process.run()
+                    } catch {
+                        return ["The check could not be started: \(error.localizedDescription)"]
+                    }
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
+                    var lines = String(decoding: data, as: UTF8.self).split(separator: "\n").map(String.init)
+                    if process.terminationReason == .uncaughtSignal {
+                        lines.append(
+                            "The check's process stopped on signal \(process.terminationStatus): the model does not run here."
+                        )
+                    }
+                    return lines
+                }.value
+                guard let self else { return }
+                self.learnedCheckInFlight = false
+                self.learnedCheckReport = lines
+            }
+        #else
+            learnedCheckReport = ["The check runs the networks in a process of its own, which needs a Mac."]
+        #endif
     }
 }
