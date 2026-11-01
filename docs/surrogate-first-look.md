@@ -512,7 +512,8 @@ every colouring now meets the second's bar, loaded or not.
 
 **Live (1 November 2026).** The preview can also be judged by a learned response on the GPU, in
 20–25 ms a frame on Beirut rather than 0.6–0.8 s, as close to the full estimate on every measure
-(the glass blown out within 0.1 on 96.8–96.9% of sides against 85.8%), an option off by default:
+(the glass blown out within 0.1 on 96.8–96.9% of sides against 85.8%), the default since the user's
+decision that day, the CPU's preview kept by name:
 see [the live drag's learned response](learned-models.md#the-live-drags-learned-response-1-november-2026)
 (emmettl/bombcad-work#112).
 

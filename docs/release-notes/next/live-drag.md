@@ -7,7 +7,7 @@ own SDOF and chance code run over Beirut's district, stand in for each component
 chances' draws, and the sight lines and loads are worked out on the GPU. Against the full estimate
 it is as close as the CPU's preview on every measure, the glass closer: blown out within 0.1 on
 96.8–96.9% of sides (85.8% before), the walls' and roofs' chances on 98.8–100.0% of buildings, the
-damage colour the same for 99.5%. Off by default, the CPU's preview kept as **SDOF and draws
-(CPU)**; letting go still makes the full estimate. A district built otherwise than Beirut's map
+damage colour the same for 99.5%. It is the default, by the user's decision of 1 November 2026, the
+CPU's preview kept as **SDOF and draws (CPU)**; letting go still makes the full estimate. A district built otherwise than Beirut's map
 buildings, or the learned field model, keeps the CPU's preview
 ([the live drag's learned response](../../learned-models.md#the-live-drags-learned-response-1-november-2026)).

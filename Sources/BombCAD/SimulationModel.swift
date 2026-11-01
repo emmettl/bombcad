@@ -860,10 +860,12 @@ final class SimulationModel {
     @ObservationIgnored var learnedNetwork:
         (url: URL, network: LearnedFieldNetwork, levelsURL: URL?, levels: LearnedFieldNetwork?)?
     @ObservationIgnored var learnedEstimator: (scene: Scenario, estimator: LearnedField.Estimator)?
-    /// How a preview made while the charge is dragged is judged (emmettl/bombcad-work#112): each
-    /// component's SDOF and the chances' draws on the CPU, as the quick estimate itself (the
-    /// default), or the learned response on the GPU, live (`LiveResponse`). Remembered. Letting go
-    /// makes the full estimate either way.
+    /// How a preview made while the charge is dragged is judged (emmettl/bombcad-work#112): by the
+    /// learned response on the GPU, live (`LiveResponse`; the default since the user's decision of
+    /// 1 November 2026), or by each component's SDOF and the chances' draws on the CPU, as the
+    /// quick estimate itself. Remembered. Where the learned response cannot judge the scene (a
+    /// construction or glazing it does not know, the learned field model on) the preview is the
+    /// SDOF's, and says why. Letting go makes the full estimate either way.
     enum DragPreviewPath: String, CaseIterable, Identifiable, Sendable {
         case sdof
         case learned
@@ -878,7 +880,7 @@ final class SimulationModel {
     }
     var dragPreviewPath =
         DragPreviewPath(rawValue: UserDefaults.standard.string(forKey: SimulationModel.dragPreviewKey) ?? "")
-        ?? .sdof
+        ?? .learned
     {
         didSet { learnedDefaults.set(dragPreviewPath.rawValue, forKey: Self.dragPreviewKey) }
     }

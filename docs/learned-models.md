@@ -2630,9 +2630,10 @@ emmettl/bombcad-work#112, track item 1. The user, 1 November 2026: the app is to
 the solver and the full estimate are the referee and the source of training data. Here the drag
 preview ([dragging the charge](surrogate-first-look.md#dragging-the-charge-20-october-2026)) gets
 there: small networks stand in for each component's SDOF and the chances' draws, and the sight
-lines and loads move to the GPU. A Beirut frame goes from 0.6–0.8 s to 20–25 ms. It is an option,
-**Drag preview: Learned response (GPU)**, off by default; **SDOF and draws (CPU)** stays, by name,
-and letting go still makes the full estimate.
+lines and loads move to the GPU. A Beirut frame goes from 0.6–0.8 s to 20–25 ms. **Drag preview:
+Learned response (GPU)** is the default since the user's decision of 1 November 2026
+([adopted](#adopted-1-november-2026)); **SDOF and draws (CPU)** stays, by name, and letting go still
+makes the full estimate.
 
 ### Where a frame went
 
@@ -2811,6 +2812,15 @@ still follows when the charge is let go. Against it, or to settle first:
 - **Its weights add 0.5 MB to the app** (0.7 MB of source).
 
 The recommendation: make it the default, the CPU's preview kept by name.
+
+### Adopted (1 November 2026)
+
+The user decided, on 1 November 2026, to make **Learned response (GPU)** the drag preview's default,
+on the figures above, and to keep its weights built into the app as they are. **SDOF and draws
+(CPU)** stays in the same picker, by that name, and a preview the learned response cannot judge (a
+construction or glazing it was not trained on, or the learned field model on) is still the SDOF's,
+the sidebar saying why. A choice made before is remembered. Nothing else changes: the full estimate
+follows when the charge is let go, as before.
 
 ## Not done yet
 
