@@ -28,8 +28,10 @@ import simd
 ///
 /// Assumed here: the charge is a sphere, on the web's centreline, in the open above rigid ground
 /// (the bunker's walls are left out); both ends are held from moving but free to turn; the beams
-/// are reduced to what they hold at the joint (`restraint(at:settings:)`); each shot is on an
-/// undamaged column, though the tests' were cumulative. The building's column keeps the earlier
+/// are reduced to what they hold at the joint (`restraint(at:settings:)`), or built as members
+/// (`Settings.beams`, the frame as built); each shot is on an undamaged column, though the tests'
+/// were cumulative. With `Settings.axialLoad`, the paper's own parametric study (§5): a weight on
+/// the column's top before the shot. The building's column keeps the earlier
 /// stand-in: 2.5 m, clamped at both ends, no beams.
 public enum DinuColumnTest {
     /// HEB260 (EN 10365) with the test's flanges, fillets left out.
@@ -76,12 +78,46 @@ public enum DinuColumnTest {
         Shot(
             name: "E6", charge: 2.52, standoff: 0.2, breached: true,
             outcome: "web holed (building, cumulative after E5)", flangeWidth: 0.260),
+        // The bunker's first three shots (§3), elastic on specimen 2, its gauges read (Fig. 4a–c).
+        Shot(
+            name: "m1", charge: 0.121, standoff: 0.5, breached: false, outcome: "no visible effect; elastic"),
+        Shot(
+            name: "m2", charge: 0.484, standoff: 0.5, breached: false, outcome: "no visible effect; elastic"),
+        Shot(
+            name: "m3", charge: 0.968, standoff: 0.5, breached: false,
+            outcome: "no visible deformation; elastic"),
+        // The paper's parametric study (§5, Figs. 9–10), its own model's: the frame under an
+        // axial load, each charge at 0.2 m; the web removed in every one (Fig. 10).
+        Shot(
+            name: "A1.8", charge: 1.80, standoff: 0.2, breached: true,
+            outcome: "the paper's model: holds at Ω 0.25, collapses at 0.3 and above"),
+        Shot(
+            name: "A1.0", charge: 1.0, standoff: 0.2, breached: true,
+            outcome: "the paper's model: holds at Ω 0.3 and 0.4, collapses above 0.4"),
+        Shot(
+            name: "A0.5", charge: 0.5, standoff: 0.2, breached: true,
+            outcome: "the paper's model: holds at Ω 0.5 and 0.6, collapses above 0.6"),
     ]
+
+    /// The paper's model's axial-load thresholds (§5, Fig. 9): the largest Ω at which the column
+    /// held after the shot, and the smallest at which it collapsed.
+    public static let axialThresholds: [String: (holds: Float, collapses: Float)] = [
+        "A1.8": (0.25, 0.3), "A1.0": (0.4, 0.5), "A0.5": (0.6, 0.7),
+    ]
+
+    /// Whether the column fell after the shot under its axial load: its top dropped more than
+    /// 50 mm (the paper's model's columns that fell passed 10 mm by 0.1 s and 500 mm by about
+    /// 0.4 s; those that held stayed within 3 mm). Nil while it is between 10 and 50 mm.
+    public static func collapsed(_ topDrop: [SIMD2<Float>]) -> Bool? {
+        let largest = topDrop.map(\.y).max() ?? 0
+        if largest > 0.05 || !largest.isFinite { return true }
+        return largest < 0.01 ? false : nil
+    }
 
     /// The breach's length along the column in the bunker, specimen 2's and specimen 1's ("almost"
     /// 500 and 600 mm, §3). The building's was not measured.
     public static func reportedBreachLength(_ shot: Shot) -> ClosedRange<Float>? {
-        shot.breached && !shot.inBuilding ? 0.5...0.6 : nil
+        shot.name == "m5" ? 0.5...0.6 : nil
     }
 
     /// The web's permanent dish in m4, specimen 2's and specimen 1's (§3).
@@ -115,7 +151,34 @@ public enum DinuColumnTest {
         public var failureStrain: Float?
         /// Strain-rate law: Jones's mild steel (S275's grade), or none.
         public var rateLaw = true
+        /// The frame as built (Figs. 1–2; emmettl/bombcad-work#77, item 2) instead of the joint
+        /// reduced to what it holds: the two longitudinal IPE220s as members (`beamBoxes`), bolted
+        /// to the flanges by `connection`, held sideways at their far ends by the tubular
+        /// restraints. The transverse beam stays a hold on the web's middle at its cleat
+        /// (`restraint(at:settings:)`).
+        public var beams = false
+        /// The longitudinal beams' end plates; nil joins them rigidly to the flanges.
+        public var connection: SteelConnection? = .extendedEndPlate
+        /// Axial load on the column (N), as in the paper's parametric study (§5): a weight on the
+        /// column's top, which is then held sideways only. Zero as tested.
+        public var axialLoad: Float = 0
         public init() {}
+    }
+
+    /// The tearing strain that falls with the shell's size, read off the 30 October runs (23% at
+    /// 10 mm, 8.7 points less per doubling): ε_f = 23% − 12.5% ln(h / 10 mm). A named option for
+    /// comparison only: proposed in docs/validation.md, not adopted (the user's decision).
+    public static func sizeScaledTearingStrain(elementSize h: Float) -> Float {
+        0.23 - 0.125 * log(h / 0.010)
+    }
+
+    /// The column's plastic squash load with the measured yields, A f_y (N): 3.27 MN. The
+    /// paper's Ω (§5, Eq. 3) is the axial force over the column's capacity; the shortening its
+    /// model shows before the blast in Fig. 9 (about 1.2 mm at Ω = 0.25, 2.8 mm at 0.7, so 3.3–4.0
+    /// MN for N_Rd) fits this, not the nominal 2.16 MN.
+    public static func squashLoad(_ section: Section = Section()) -> Float {
+        2 * section.flangeWidth * section.flange * 420e6 + (section.depth - 2 * section.flange) * section.web
+            * 407e6
     }
 
     /// Steel as measured, hardening linearly from f_y to f_u at the elongation at the maximum
@@ -138,14 +201,19 @@ public enum DinuColumnTest {
 
     /// The air around the column: room for the charge beyond its web, and for the blast to wrap
     /// round it.
-    public static func domain(_ settings: Settings) -> SIMD3<Float> { SIMD3(0.8, 1.3, settings.length + 0.3) }
+    public static func domain(_ settings: Settings) -> SIMD3<Float> {
+        SIMD3(settings.beams ? 3.0 : 0.8, 1.3, settings.length + 0.3)
+    }
 
-    /// Plan position of the column's axis; the web faces +y.
+    /// Plan position of the column's axis; the web faces +y. The frame's beams reach 1.4 m to
+    /// either side, so its air is wider and the axis further in.
     public static let axis = SIMD2<Float>(0.4, 0.4)
+    public static func axis(_ settings: Settings) -> SIMD2<Float> { settings.beams ? SIMD2(1.5, 0.4) : axis }
 
     /// The flanges (normal to x) and the web (normal to y), the column standing on the ground.
     public static func solids(_ settings: Settings) -> (flanges: [Box], web: Box) {
         let s = settings.section
+        let axis = axis(settings)
         let (cx, cy, length) = (axis.x, axis.y, settings.length)
         let flanges = [Float(-1), 1].map { side -> Box in
             let outer = cx + side * s.depth / 2
@@ -173,12 +241,24 @@ public enum DinuColumnTest {
         model.solidMaterial = [nil, nil, webSteel]
         // The column is straight as drawn: a bow along it is not what decides the web.
         model.memberImperfections = false
+        if settings.beams {
+            // The beams' steel as measured in their flanges (Table 1), which carry their bending.
+            let beamSteel = beamSection.equivalent(
+                of: steel(
+                    name: "S275 IPE220 (measured flange)", yield: 345e6, ultimate: 464e6, elongation: 0.28,
+                    settings: settings), width: beamWidth)
+            let boxes = beamBoxes(settings)
+            model.solids += boxes
+            model.solidMaterial += boxes.map { _ in beamSteel }
+            model.steelConnection = settings.connection
+        }
         return model
     }
 
     /// The charge's centre: `standoff` from the web's face, on its centreline, `chargeHeight` up.
     public static func chargePosition(_ shot: Shot, settings: Settings) -> SIMD3<Float> {
-        SIMD3(axis.x, axis.y + settings.section.web / 2 + shot.standoff, settings.chargeHeight)
+        let axis = axis(settings)
+        return SIMD3(axis.x, axis.y + settings.section.web / 2 + shot.standoff, settings.chargeHeight)
     }
 
     /// The beams' bottom flanges, 0.30 m above the charge (§3).
@@ -188,26 +268,37 @@ public enum DinuColumnTest {
     /// of the web's centreline (Fig. 2), on the web's midsurface.
     public static func gaugeS6(_ settings: Settings) -> [SIMD3<Float>] {
         let z = beamBottom(settings) - 0.5
+        let axis = axis(settings)
         return [Float(-1), 1].map { SIMD3(axis.x + $0 * 0.08, axis.y, z) }
     }
 
     /// What holds a node of the column still, by axis (x, y, z), its rotation left free:
-    /// - **the ends**, when pinned, in every direction;
+    /// - **the ends**, when pinned, in every direction; with an axial load the top is held
+    ///   sideways only, free to shorten under its weight;
     /// - **the joint** (Fig. 2, section A-A), when kept. The end plates, 370 mm tall from 75 mm
     ///   below the beams' bottom flanges, bolt the IPE220s to the flanges: the flanges there are
     ///   held in x and y. The transverse beam's cleat holds the web's middle 100 mm in y over the
     ///   beam's 220 mm depth, the beam's far end being on the bunker's wall. The beams are long and
     ///   heavy beside the few milliseconds of the web's response, so held is taken as still.
+    /// - **the frame** (`Settings.beams`): the longitudinal beams are members, so the flanges are
+    ///   held only through them; their far ends, 1.4 m from the column's axis (Fig. 2), are held
+    ///   sideways (y) by the tubular lateral restraints (§2, Fig. 1a). The transverse beam, a strut
+    ///   to the bunker's wall on a simple cleat, is still the hold on the web's middle: its bending
+    ///   is released by the cleat, and its length along y holds the web as a strut would.
     public static func restraint(at p: SIMD3<Float>, settings: Settings) -> (x: Bool, y: Bool, z: Bool) {
         let s = settings.section
+        let axis = axis(settings)
         let tolerance: Float = 1e-4
-        if settings.pinnedEnds && (p.z < tolerance || p.z > settings.length - tolerance) {
-            return (true, true, true)
+        if settings.pinnedEnds && p.z < tolerance { return (true, true, true) }
+        if settings.pinnedEnds && p.z > settings.length - tolerance {
+            return (true, true, settings.axialLoad <= 0)
         }
         guard settings.joint else { return (false, false, false) }
         let bottom = beamBottom(settings)
+        if settings.beams && abs(abs(p.x - axis.x) - beamReach) < 1e-3 { return (false, true, false) }
         let onFlange = abs(abs(p.x - axis.x) - (s.depth - s.flange) / 2) < 1e-3
-        if onFlange && p.z > bottom - 0.075 - tolerance && p.z < bottom + 0.295 + tolerance {
+        if !settings.beams && onFlange && p.z > bottom - 0.075 - tolerance && p.z < bottom + 0.295 + tolerance
+        {
             return (true, true, false)
         }
         let onWeb = abs(p.y - axis.y) < 1e-3 && !onFlange
@@ -219,8 +310,100 @@ public enum DinuColumnTest {
         return (false, false, false)
     }
 
+    /// The longitudinal beams reach 1.40 m from the column's axis (Fig. 2).
+    public static let beamReach: Float = 1.40
+    /// IPE220 (EN 10365: A 33.4 cm², I_y 2,772 cm⁴, W_pl,y 285 cm³) as the rectangle a beam element
+    /// can stand for it with (`SteelSection.equivalent`): 275 mm deep and 140 mm wide.
+    /// - **Its width** sets the patch of flange it holds where it ends on one: 140 mm of the
+    ///   flange's 160, over the beam's depth, covering the end plate's two lines of bolts 70 mm
+    ///   apart. Its faces fall on the 10 mm mesh's lines, 10 mm in from the flange's edges: a face
+    ///   within half an element of an edge would take the edge's place on the mesh, and a member
+    ///   as wide as a panel it meets would end that panel on its centreline.
+    /// - **Its depth** must be under twice its width for it to be meshed as a beam. The deeper it
+    ///   is, the nearer its wave speed comes to the section's (√(12 I / A d²) = 1.15 here), so the
+    ///   less it shortens the step; its axial stiffness is 1.32 times the IPE220's, and its weak-axis
+    ///   stiffness 4 times. Its major-axis bending stiffness and strength, and its mass, are the
+    ///   section's.
+    public static let beamSection = SteelSection(
+        name: "IPE220", depth: 0.275, width: 0.110, area: 33.4e-4, secondMoment: 2772e-8,
+        plasticModulus: 285.4e-6)
+    public static let beamWidth: Float = 0.140
+
+    /// The longitudinal beams, each from a flange's outer face to 1.4 m from the column's axis,
+    /// on the web's plane, their centre 110 mm above their bottom flange (the IPE220's half depth).
+    public static func beamBoxes(_ settings: Settings) -> [Box] {
+        let axis = axis(settings)
+        let s = settings.section
+        let centre = beamBottom(settings) + 0.110
+        return [Float(-1), 1].map { side in
+            let face = axis.x + side * s.depth / 2
+            let end = axis.x + side * beamReach
+            return Box(
+                min: SIMD3(min(face, end), axis.y - beamWidth / 2, centre - beamSection.depth / 2),
+                max: SIMD3(max(face, end), axis.y + beamWidth / 2, centre + beamSection.depth / 2))
+        }
+    }
+
+    /// A strain gauge on the web (Fig. 2): S1–S8 in pairs at four stations, 0.1, 0.3, 0.5 and
+    /// 0.7 m below the beams' bottom flanges. Each pair is drawn as a T, so taken here as a
+    /// rosette, one gauge along the column and one across the web; which is which, which face,
+    /// and whether the pair is on the centreline or 80 mm off it (the drawing's one dimension)
+    /// are not stated, so each is read every way.
+    public struct StrainGauge: Sendable, Hashable {
+        /// The pair's station (1 for S1/S2 … 4 for S7/S8).
+        public var station: Int
+        /// On the web's midsurface.
+        public var position: SIMD3<Float>
+        /// 0 across the web (x), 2 along the column (z).
+        public var along: Int
+        /// +1 on the loaded face, −1 on the back.
+        public var face: Float
+        /// From the web's centreline (m).
+        public var offset: Float
+
+        public var label: String {
+            String(
+                format: "S%d/S%d %@ %@ %@", 2 * station - 1, 2 * station, offset > 0 ? "80 mm off" : "centre",
+                along == 2 ? "along" : "across", face > 0 ? "loaded face" : "back face")
+        }
+    }
+
+    public static func strainGauges(_ settings: Settings) -> [StrainGauge] {
+        let axis = axis(settings)
+        var gauges: [StrainGauge] = []
+        for station in 1...4 {
+            let z = beamBottom(settings) - 0.1 - 0.2 * Float(station - 1)
+            for offset: Float in [0, 0.08] {
+                for along in [0, 2] {
+                    for face: Float in [-1, 1] {
+                        gauges.append(
+                            StrainGauge(
+                                station: station, position: SIMD3(axis.x + offset, axis.y, z), along: along,
+                                face: face, offset: offset))
+                    }
+                }
+            }
+        }
+        return gauges
+    }
+
+    /// The engineering strain on a shell's face between two of its nodes: the distance between
+    /// the points `offset` from each node's midsurface (half the thickness along the face's
+    /// normal, turned by the node's rotation) over the same distance unloaded.
+    public static func faceStrain(
+        reference a: SIMD3<Float>, _ b: SIMD3<Float>, displacement ua: SIMD3<Float>, _ ub: SIMD3<Float>,
+        rotation qa: simd_quatf, _ qb: simd_quatf, offset: SIMD3<Float>
+    ) -> Float {
+        let unloaded = simd_length(b - a)
+        guard unloaded > 0 else { return 0 }
+        let pa = a + ua + qa.act(offset)
+        let pb = b + ub + qb.act(offset)
+        return simd_length(pb - pa) / unloaded - 1
+    }
+
     public static func scenario(_ shot: Shot, settings: Settings = Settings()) -> Scenario {
         let c = chargePosition(shot, settings: settings)
+        let axis = axis(settings)
         let face = axis.y + settings.section.web / 2
         // On the web's back, as a gauge glued there would be, and in front of it at the charge's height.
         let gauges = [
@@ -235,6 +418,18 @@ public enum DinuColumnTest {
     /// What the run left of the column.
     public struct Result: Sendable {
         public var shot: Shot
+        /// The strain gauges' readings (`strainGauges`), sampled at `gaugeTimes` (s); empty when
+        /// not read.
+        public var gauges: [StrainGauge] = []
+        public var gaugeTimes: [Float] = []
+        public var gaugeHistories: [[Float]] = []
+        /// The frame's end-plate hinges: how many let go, and the largest turn (rad).
+        public var hingesReleased = 0
+        public var largestHingeTurn: Float = 0
+        /// With an axial load: the top's drop from where it settled under the load (m), sampled
+        /// after the blast (time s, drop m), and its shortening under the load before it.
+        public var topDrop: [SIMD2<Float>] = []
+        public var settledShortening: Float = 0
         /// Web shells removed, and the breach's extent along the column and across the web (m):
         /// the span of the removed elements' centres plus an element; and how far it reaches above
         /// and below the charge's height (m, to the outer elements' edges, negative if it does not
@@ -311,5 +506,76 @@ public enum DinuColumnTest {
     ) {
         guard let low = centres.min(), let high = centres.max() else { return (-1, -1) }
         return (high + elementSize / 2 - height, height - (low - elementSize / 2))
+    }
+
+    /// A gauge's reading: its largest and smallest strain, the mean over the last `tail` seconds
+    /// (what it keeps), and its fastest rate of strain (s⁻¹).
+    public struct Reading: Sendable, Hashable {
+        public var maximum: Float
+        public var minimum: Float
+        public var kept: Float
+        public var fastestRate: Float
+    }
+
+    public static func reading(times: [Float], strains: [Float], tail: Float = 0.001) -> Reading {
+        guard let last = times.last, !strains.isEmpty else {
+            return Reading(maximum: 0, minimum: 0, kept: 0, fastestRate: 0)
+        }
+        let kept = zip(times, strains).filter { $0.0 >= last - tail }.map(\.1)
+        var rate: Float = 0
+        for i in 1..<max(times.count, 1) where times[i] > times[i - 1] {
+            rate = max(rate, abs(strains[i] - strains[i - 1]) / (times[i] - times[i - 1]))
+        }
+        return Reading(
+            maximum: strains.max() ?? 0, minimum: strains.min() ?? 0,
+            kept: kept.reduce(0, +) / Float(max(kept.count, 1)), fastestRate: rate)
+    }
+
+    /// The period of a ringing history (s): the mean spacing of its local maxima above half its
+    /// largest swing about the mean, after `start`; nil with fewer than two.
+    public static func period(times: [Float], values: [Float], after start: Float = 0) -> Float? {
+        let pairs = zip(times, values).filter { $0.0 >= start }
+        guard pairs.count > 2 else { return nil }
+        let mean = pairs.map(\.1).reduce(0, +) / Float(pairs.count)
+        let swing = pairs.map { abs($0.1 - mean) }.max() ?? 0
+        guard swing > 0 else { return nil }
+        var peaks: [Float] = []
+        for i in 1..<(pairs.count - 1)
+        where pairs[i].1 > pairs[i - 1].1 && pairs[i].1 >= pairs[i + 1].1 && pairs[i].1 - mean > 0.5 * swing {
+            peaks.append(pairs[i].0)
+        }
+        guard peaks.count >= 2, let first = peaks.first, let last = peaks.last else { return nil }
+        return (last - first) / Float(peaks.count - 1)
+    }
+
+    /// What the paper gives of the frame's gauges and its parametric study
+    /// (`Fixtures/Dinu2017/frame.json`): the gauges' peaks read off Fig. 4 (specimen 2), the
+    /// ringing's period, and for m4 what gauge S6 kept and its fastest rate (§3, Fig. 5).
+    public struct FrameReference: Codable, Sendable {
+        public struct Peak: Codable, Sendable, Hashable {
+            /// The gauge's number, 1–8 (`station` is its pair's).
+            public var gauge: Int
+            public var microstrain: Float
+            public var timeMS: Float?
+            public var station: Int { (gauge + 1) / 2 }
+        }
+        public struct Shot: Codable, Sendable {
+            public var name: String
+            public var peaks: [Peak]
+            public var periodMS: Float?
+            public var keptMicrostrain: Float?
+            public var fastestRate: Float?
+        }
+        public struct Axial: Codable, Sendable {
+            public var shot: String
+            public var holds: [Float]
+            public var collapses: [Float]
+        }
+        public var shots: [Shot]
+        public var axial: [Axial]
+    }
+
+    public static func frameReference(from url: URL) throws -> FrameReference {
+        try JSONDecoder().decode(FrameReference.self, from: Data(contentsOf: url))
     }
 }

@@ -68,7 +68,7 @@ swift run -c release blastbench perimeter --study wall
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements 113–125 mm (104–115%) on 4 to 32 elements through, rising with refinement and not converged, the same on 32 with half the step (on the earlier 50-step average of the strain rate it, and a strip of it, ran away there; 92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. Its series' three slabs with half the steel (Reynolds's RSCR4–6), run openly after blind test 3 on shots of the same rig: peaks 0.91–1.06 of measured, all standing as tested; on such a shot's shape in place of the scaled record the lower shot reaches 87–97% ([below](#reynoldss-8-in-slabs-and-the-lower-shots-shape)). One beam bent to failure: peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24, holding to 60 mm, but breaking at 11 and 7 mm on 36 and 48, before the test's yield (12 October defaults; see [convergence](#convergence-on-todays-defaults)). One beam without stirrups failing in shear: 104–111% on 24 to 48 elements, 132% on 12, not converged, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–23% under light drops and −5% to −1% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements (16% before the strain-rate window, the beams that broke moving by up to two thirds either way) and 53% on 24 on the earlier defaults, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 4–11% too strong on 24 to 48 elements, 32% on 12, not converged, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–15% high under the contest's load, rising towards 19% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it, and the agreement leans on the elements' hourglass control, since an element without it sends the struck beams 20% further ([hourglass control](#hourglass-control); low). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
-| Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed. A HEB260 column's web under 1.8 kg at 0.2 and 0.5 m ([web breached](#a-column-web-breached-close-in)): breached and held as tested on 10 and 5 mm shells, the breach 0.9 and 2.2 times the reported length, not breached on 20 mm shells; a full-flanged column holed by 2.2 kg where the building's only dished | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good. The steel web: right in outcome on fine shells, its breach not converged (weak, two outcomes) |
+| Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed. A HEB260 column's web under 1.8 kg at 0.2 and 0.5 m ([web breached](#a-column-web-breached-close-in)): breached and held as tested on 10 and 5 mm shells, the breach 0.65–1.38 of the measured 500–600 mm by the mesh (0.45–0.54 in [the frame as built](#the-frame-as-built-1-november-2026), its elastic gauges 0.66–1.17 of the measured peaks), not breached on 20 mm shells; a full-flanged column holed by 2.2 kg where the building's only dished | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good. The steel web: right in outcome on fine shells, its breach not converged (weak, two outcomes) |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 81–86% with afterburning and hot air (76–84% with the open faces at the clearance rule); the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
 | Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's edge is left 25 mm up against 95 mm measured, a quarter, and peaks at 47–48 mm against 87 mm in the paper's own model, with the confined regime's pressed interlock (15 and 38 mm without), the same with the open faces at the clearance rule; on 25 mm elements the peak rises to 65 mm and the wall tops tear, so it has not converged | Unsafe side, too stiff: the roof's edge left a quarter as far up as measured (low); the joints' inclined cracking decides it, and the crack models disagree |
@@ -2921,8 +2921,9 @@ the shots near elastic and of the curtain shot are within 14%.
   - **Rate.** Against Culache's bolted end plates loaded in 40 ms, a hinge taken from the slow
     tests reads 13–41% too strong and 1.5–1.7 times too ductile with carbon-steel bolts. The end
     plates therefore take the fast tests' values.
-  - **Not compared:** no connection inside a frame under a blast. Dinu et al.'s tests are in
-    [data wanted](data-wanted.md).
+  - **Inside a frame under a blast** since 1 November 2026: the bunker specimen's extended end
+    plates ([the frame as built](#the-frame-as-built-1-november-2026)). They turned a hundredth of
+    what lets them go, as the tests' held, so the comparison does not test them.
   - **Dinu et al., ASCCS 2018** (obtained 21 October 2026, CC BY-NC-ND), is mostly a model study:
     - **Frame and charges.** A 2 × 2 bay, two-storey moment frame (HEB260 columns, IPE270 beams,
       S275) in the applied element method, under 1.8–28 kg at 0.2–0.5 m from a column, all at
@@ -2931,9 +2932,10 @@ the shots near elastic and of the curtain shot are within 14%.
       deformations". At 0.2 m it removed the web over almost twice the flange width.
     - **No histories or deflections measured.** The column breach is compared below
       ([a column web breached close in](#a-column-web-breached-close-in)), with the tests' own
-      setup from their paper (Procedia Engineering 210, 2017, obtained 30 October 2026); the
-      frame as a code comparison is not built.
-- **A frame as a whole.**
+      setup from their paper (Procedia Engineering 210, 2017, obtained 30 October 2026), and the
+      bunker specimen as a frame ([the frame as built](#the-frame-as-built-1-november-2026)). This
+      paper's 2 × 2 bay frame, a model against a model, is not built.
+- **A frame as a whole,** beyond the bunker's beam–column specimen.
 
 ## A column web breached close in
 
@@ -3168,7 +3170,212 @@ strain that falls with the shell's size:
   is 0.65–1.38 of the measured, by the mesh. On 20 mm shells it holds.
 - **Recorded and stopped.** Defaults unchanged.
 - **Still wanted:** the SDSS 2016 paper (data wanted), for the charge units and the bunker's size.
-  The frame as a code comparison (the issue's item 2) is not built.
+  The frame as a code comparison (the issue's item 2) is not built: built since, below.
+
+### The frame as built, 1 November 2026
+
+*emmettl/bombcad-work#77, item 2.* The bunker specimen as the frame it was, its beams and their
+end plates as members, judged on everything the paper measured: the gauges' strains in the
+elastic shots m1–m3, gauge S6, the dish and the breach in m4 and m5. Also against the paper's own
+model (§5): the frame under an axial load after the shot. The first frame under a blast that
+BombCAD has compared.
+
+**What the paper gives of the frame** (§2, Figs. 1–2, 4–5, 9; numbers in
+`Fixtures/Dinu2017/frame.json`):
+- **The members.** The two longitudinal IPE220s reach 1.40 m from the column's axis (Fig. 2). Each
+  is bolted to a flange by an extended end plate, 370 × 160 × 16 mm, with M16 10.9 bolts in five
+  rows of two, 70 mm apart (section B-B). At their far ends tubular lateral restraints tie them to
+  the bunker's wall (§2, Fig. 1a). The transverse IPE220 sits on an L100×50×10 cleat on the web's
+  back face, its far end on the wall (section A-A; Fig. 1c puts the charge on the web's other
+  side). Its length is not given.
+- **The gauges.** S1–S8 are in pairs, 0.1, 0.3, 0.5 and 0.7 m below the beams' bottom flange
+  (Fig. 2). Each pair is drawn as a T, read here as a rosette: one gauge along the column, one
+  across the web. Beside them is one dimension, 80 mm from the web's centreline. The face is not
+  stated.
+  - With the charge 0.30 m below the beams, the second pair (S3/S4) is at the charge's height and
+    the first and third 0.2 m above and below it. The readings fit that: in m2, S4 reads highest,
+    2,070 µm/m, and S2 and S6, either side, 1,250 and 1,150.
+- **The elastic shots** (Fig. 4a–c, read off to about ±10%):
+
+| Shot | Peaks, µm/m | Ringing |
+|---|---|---|
+| m1, 0.121 kg at 0.5 m | S2 240, S1 90, S3 25 | |
+| m2, 0.484 kg | S4 2,070, S2 1,250, S6 1,150 then 1,450, S1 380 | S6's maxima 0.62 ms apart |
+| m3, 0.968 kg | S6 2,480 then 2,620, S2 1,700, S1 720 | 0.62 ms; S6's fastest 21.7 s⁻¹ (§3) |
+| m4, 1.815 kg | S6 17,800 (1.78%, §3), 6,100 kept (0.61%) | S6's fastest 100 s⁻¹ (Fig. 5) |
+
+- **The parametric study** is the paper's model's, not a test: the frame with a weight on the
+  column's top of Ω times its capacity, applied before the shot, each charge at 0.2 m (§5, Fig. 9).
+  - **1.80 kg:** holds at Ω = 0.25, collapses at 0.3, 0.5 and 0.7.
+  - **1.0 kg:** holds at 0.3 and 0.4, collapses at 0.5 and 0.7.
+  - **0.5 kg:** holds at 0.5 and 0.6, collapses at 0.7.
+  - The columns that fell dropped past 10 mm by 0.04–0.1 s and 500 mm by about 0.4 s. Those that
+    held stayed at 1–3 mm.
+  - **Ω's capacity is not given.** The shortening the model shows before the blast, about 1.2 mm
+    at 0.25 and 2.8 mm at 0.7 (Fig. 9, lower row), gives 3.3–4.0 MN. That fits the squash load at
+    the measured yields, 3.27 MN, not the nominal 2.16 MN. BombCAD's runs take 3.27 MN.
+- **Fig. 1b** also draws two charge-like marks on the beams' line, 0.45 and 0.60 m from the
+  column's axis, hung from the roof. The text does not mention them.
+
+**The model** (`DinuColumnTest` with `Settings.beams`; `blastbench dinu --frame`):
+- **The column** is the 30 October column: 10 mm shells, the measured steel, both ends pinned.
+- **The longitudinal beams** are lines of beam elements, from the flanges' midsurfaces to 1.4 m
+  out. Each is a rectangle of steel standing for the IPE220 (`SteelSection.equivalent`), with the
+  measured flange steel (345/464 MPa at 28%). Its bending stiffness and strength about its major
+  axis and its mass are the section's.
+  - **The rectangle is 275 × 140 mm.** Its width sets the patch of flange tied to the beam's end,
+    140 × 275 mm, covering the end plate's two lines of bolts.
+  - **Its other properties are off.** Its axial stiffness is 1.32 times the section's, and its
+    weak-axis bending stiffness 4 times.
+  - **Why that rectangle.** A narrower one would be meshed as a plate. One as wide as the flange
+    would end the flange on its centreline. A face within half an element of the flange's edge
+    would take the edge's place on the mesh.
+- **The end plates** are the steel connections' extended end plate at blast rates
+  (`SteelConnection.extendedEndPlate`: 0.74 of the beam's plastic moment, letting go at
+  0.0122 rad, from Culache's 40 ms tests on M12 8.8 bolts). `--rigid` joins the beams rigidly
+  instead.
+- **The beams' far ends** are held sideways (y) by the lateral restraints, and free along and up.
+- **The transverse beam** stays the 30 October hold on the web's middle at its cleat. It is a strut
+  to the wall: the cleat frees its bending, and its length holds the web as a strut would.
+- **The air** is as before (the mapped start, 5 mm near the shock), 3.0 m wide to take the beams.
+- **The shots as tested** start from rest, unsettled (`BOMBCAD_SETTLE=off`). The specimens carried
+  no load, and the frame's own weight is small beside the blast.
+- **Under an axial load** the column's top is held sideways only, its weight shared over the top's
+  nodes as their own masses are. The frame settles under it, and after 3 ms with the air the
+  column runs alone for 0.3 s. It has collapsed if its top drops more than 50 mm. It has held if
+  the drop stays under 10 mm.
+- **The gauges** are read from the shells' nodes. The strain is the change in length between
+  points on a face, half the web's thickness off the midsurface along each node's turned normal,
+  over two elements (20 mm). Each pair is read both ways (along, across), on both faces, on the
+  centreline and 80 mm off.
+
+**The runs** (10 mm shells, 27% tearing unless named; 5 mm air; 11–48 minutes each on a shared
+Studio, 3–4 GB; 6.1 hours of GPU slot in all).
+
+The elastic shots: the gauges' largest strains, µm/m, smoothed over 0.1 ms (five samples), back
+face:
+
+| Shot, gauge | Measured | Model, 80 mm off | Ratio | Model, centreline | Ratio |
+|---|---|---|---|---|---|
+| m1, S2 (across, first pair) | 240 | 391 (unsmoothed) | 1.6 | 811 (unsmoothed) | 3.4 |
+| m1, S1 (along) | 90 | 115 (unsmoothed) | 1.3 | 407 (unsmoothed) | 4.5 |
+| m2, S4 (across, second pair) | 2,070 | 1,553 | 0.75 | 2,589 | 1.25 |
+| m2, S2 | 1,250 | 938 | 0.75 | 1,981 | 1.58 |
+| m2, S6 (across, third pair) | 1,450 | 1,699 | 1.17 | 2,235 | 1.54 |
+| m2, S1 | 380 | 293 | 0.77 | 1,008 | 2.65 |
+| m3, S6 | 2,620 | 2,389 | 0.91 | 4,159 | 1.59 |
+| m3, S2 | 1,700 | 1,116 | 0.66 | 3,974 | 2.34 |
+| m3, S1 | 720 | 511 | 0.71 | 1,940 | 2.69 |
+
+- **Ringing.** The model's web rings with a period of about 0.82 ms (its maxima at 0.41, 1.23 and
+  2.21 ms at the second pair's centreline, in m2 and m3), against the measured 0.62 ms. A faster
+  mode, 0.16 ms, rides on it.
+- **Rates at S6.** m3: 31 s⁻¹ (80 mm off) to 49 s⁻¹ (centreline), against 21.7. m4: 43–84 s⁻¹,
+  against 100.
+
+m4 and m5 (the 30 October column, its joint held still, beside):
+
+| Run | m4: web at the charge | m4: S6 | m5: breach along the column (above, below the charge) | Hinges |
+|---|---|---|---|---|
+| Measured | Dished 22 and 3 mm | 1.78% at its peak, 0.61% kept | **500–600 mm**, its top at the beams | |
+| 30 October, joint held still | 9.2 mm at its peak, swinging 1.7–5.4 mm | 0.16% plastic | 390 mm (180, 210): 0.65–0.78 | |
+| The frame, 27% | 9.1 mm at its peak; to 10 ms still swinging −1.2–7.1 mm, about 3 mm on average over the last 5 ms | Across, back face: 0.37% at its peak, 0.01% kept (80 mm off); 0.95% and 0.41% (centreline) | **269 mm (123, 145): 0.45–0.54** | None let go; largest turn 0.0001 rad |
+| The frame, rigid joints, 27% | | | 269 mm (123, 145): the same | |
+| The frame, 23% (the size-scaled option at 10 mm) | | | **498 mm (233, 265): 0.83–1.00** | None let go |
+| 30 October, joint held, 23% | | | 560 mm (260, 300) | |
+
+The load at the web's centre is the same in every m5 run, 57 MPa and 4,940 Pa s. In m4 it is
+15 MPa and 1,660 Pa s, as on 30 October.
+
+The frame under an axial load, the paper's model's verdicts beside (27% tearing):
+
+| Charge at 0.2 m | Ω | Shortened under the load | Breach | Top's drop after 0.3 s | BombCAD | The paper's model |
+|---|---|---|---|---|---|---|
+| 1.80 kg | 0.25 | 1.27 mm | 616 mm (361, 255) | at most 1.3 mm; 0.5 mm at the end | **Holds** | Holds |
+| 1.80 kg | 0.3 | 1.12 mm | 606 mm (351, 255) | at most 1.9 mm; 1.8 mm at the end | **Holds** | Collapses |
+| 1.80 kg | 0.5 | 1.78 mm | 547 mm (341, 205) | at most 3.7 mm; 3.5 mm at the end | **Holds** | Collapses |
+| 1.80 kg | 0.7 | 2.24 mm | 527 mm (322, 205) | 7.1 mm, steady from 0.1 s | **Holds** | Collapses |
+| 1.0 kg | 0.5 | 1.78 mm | Not at the charge: 4 shells torn out at the joint, 0.31 m above it; the web dished 29 mm at its peak, 23 mm left | at most 1.2 mm | **Holds** | Collapses |
+| 0.5 kg | 0.6 | 2.12 mm | None: the web dished 14 mm at its peak, 6 mm left | at most 0.4 mm | **Holds** | Holds |
+| 0.5 kg | 0.7 | 2.24 mm | None: dished 14 mm, 7 mm left | at most 1.0 mm | **Holds** | Collapses |
+
+**What it shows.**
+- **The elastic strains agree if the gauges sit 80 mm off the centreline**, as Fig. 2's one
+  dimension says. There, across the web and along, m2 and m3 read 0.66–1.17 of the measured
+  peaks, seven gauges in two shots. On the centreline they read 1.25–2.7.
+  - Both the pattern and the size fit. The pair at the charge's height reads highest, and the gauge
+    along the column a third to a half of the one across, as the paper's odd gauges are of its
+    even ones (S1/S2: 380/1,250 in m2, 720/1,700 in m3; the model's 293/938 and 511/1,116).
+  - m1's strains are small beside the model's ringing between elements. Its gauges read 1.3–1.6
+    times high, unsmoothed.
+- **The web rings a third slower than the test's**, 0.82 ms against 0.62.
+  - The fillets are left out, and the web spans between the flanges' midsurfaces, 242.5 mm, where
+    the rolled section's web is held from the toes of its 24 mm fillets, 177 mm apart. A plate's
+    period goes with its span squared. The test's period fits a span of about 211 mm, between the
+    flanges' inner faces (225 mm) and the fillets' toes.
+  - So the model's web is too long between its supports. That would also put its 80 mm gauges
+    further from the support's bending than the test's, which sit 8.5 mm from a fillet's toe.
+- **m4: the dish is near the smaller specimen's, but S6 reads well short.** The frame's web swings
+  about some 3 mm, near specimen 2's 3 mm, as the 30 October column's did. S6 there read 1.78%
+  at its peak and kept 0.61%. The model reads 0.37% and keeps none 80 mm off, and 0.95% and 0.41%
+  on the centreline. Once the web yields, the test's strain gathers near the fillets. The model's
+  web, its support at the flange's midsurface, spreads it.
+- **m5: the frame breaches as tested, but shorter than the column with its joint held.** At the
+  measured 27% the breach is 269 mm, 0.45–0.54 of the measured, where the held joint gave 390 mm.
+  At the size-scaled option's 23% it is 498 mm, 0.83–1.00, where the held joint gave 560 mm.
+  - The load on the web is the same, so the difference is the frame's give. Its flanges are held
+    through the beams, not held still: the column sways 3–5 mm, and less of the web's stretch
+    gathers at its edges.
+  - So the size-scaled rule, fitted on the held joint, would want 1–2 points less on the frame.
+    The fit was to one joint's stand-in, and the target is the specimens' spread.
+- **The end plates are not tested by it.** No hinge turned more than 0.0001 rad in any shot, a
+  hundredth of what lets them go. The paper reports no damage to the beams or joints either.
+  Welded rigid instead, the beams give the same breach, 269 mm, and the same sway, 4.5 mm.
+- **Under an axial load the frame holds where the paper's model collapses**: in all five cases run
+  that the paper's model failed in, up to Ω = 0.7. It agrees on the two that model held. The
+  worst, 1.8 kg under 0.7, settles 7 mm down within 0.1 s and stays. The reasons differ by charge:
+  - **1.0 and 0.5 kg do not breach the web** at the measured 27%. 1.0 kg tears out four shells at
+    the joint and dishes the web 29 mm; 0.5 kg dishes it 14 mm. The paper's model removed the web
+    in every case (Fig. 10). The column, its section whole, carries 0.7 of its squash load as an
+    intact one would.
+  - **1.8 kg breaches it over 530–620 mm**, as tested, but the freed flanges stay straight. Their
+    tips move out 0–2 mm at the charge's height, where the tests' bowed out (Fig. 3b–c) and the
+    paper's model's buckled outward (Fig. 10a). Straight 160 × 17.5 mm flanges over 0.6 m, held
+    at both ends by the whole section, carry by hand about half the squash load (fixed ends,
+    Eurocode 3's curve c); the model's carry 0.7 with 7 mm of shortening. The column here is drawn
+    without a bow (`memberImperfections` off), and the blast leaves the flanges straight.
+  - **The axial load lengthens the tear.** Without it the breach is 269 mm; under 0.25–0.7 of the
+    squash load it is 527–616 mm. The tear goes on after the blast: 52–56 shells are out at
+    3 ms, 86–115 by the end. The compression in the web adds to the blast's stretch.
+  - **The load is applied as the paper's model's was.** The column shortens 1.1–1.3 mm under
+    Ω = 0.25–0.3 and 2.1–2.2 mm under 0.6–0.7, beside that model's 1.2–1.3 and 2.4–2.8 mm (Fig. 9).
+    That supports taking Ω on the measured squash load.
+
+**Standing.**
+- **The elastic gauges:** within 0.66–1.17 of the measured peaks at 80 mm off, seven gauges in two
+  shots; the ringing 1.3 times too slow, the fillets left out.
+- **m4:** holds as tested, the dish near the smaller specimen's; S6's peak a fifth to a half of the
+  measured.
+- **m5:** breached as tested, 0.45–0.54 of the measured length at the measured 27%, 0.83–1.00 at
+  the size-scaled option's 23%.
+- **The axial study,** against a model, not a test: agrees on the two cases that model held, and
+  holds in all five it collapsed in. Two causes are named (the web not breached by 1.0 and
+  0.5 kg; the freed flanges left straight). Neither is measured: the tests carried no load.
+- **Recorded and stopped.** Defaults unchanged. The size-scaled tearing strain stays a named option
+  for comparison (`--size-scaled-tearing`), not adopted.
+
+**What could follow**, for the user's decision:
+- **The fillets.** A rolled section's web held at its fillets' toes, as a thicker strip of shell
+  along each junction or a support line, would give the web its span and the gauges their
+  distance from it. It would also move the breach's tearing line onto the fillets, where the
+  tests tore. It needs a new kind of junction in the shell mesh: a moderate change, judged first
+  on these gauges and the period.
+- **The size-scaled tearing strain** is still the user's decision (30 October). On the frame it
+  would want 1–2 points less than on the held joint, so its fit depends on the joint's stand-in.
+- **Still wanted:** the SDSS 2016 paper, for the charge units, the bunker, the gauges' place and
+  face, and the length of the transverse beam. Marginean's 2017 thesis (UPT's archive copy is cut
+  off at 1 MB) would give the specimens' design and perhaps more readings. The ASCCS paper's 2 × 2
+  bay, two-storey frame, a model against a model, is not built.
 
 ## Profiled steel sheeting
 

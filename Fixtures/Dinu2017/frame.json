@@ -1,0 +1,59 @@
+{
+  "source": "F. Dinu, I. Marginean, D. Dubina, A. Kovacs and E. Ghicioi, Experimental testing and numerical modeling of steel frames under close-in detonations, Procedia Engineering 210 (2017) 377-385, doi:10.1016/j.proeng.2017.11.091: section 2 and Figs. 1-2 (the frame), section 3 and Figs. 4-5 (the gauges), section 5 and Fig. 9 (the parametric study). Obtained 30 October 2026; read for the frame on 1 November 2026.",
+  "licence": "Numbers transcribed or read off figures (facts), to about +-10% where read off; the paper (CC BY-NC-ND 4.0) is not redistributed.",
+  "frame": {
+    "column": "HEB260 with flanges cut to 160 mm, 1990 mm between its end plates, on pin assemblies to the bunker's roof and floor (Fig. 1a-b, Fig. 2)",
+    "longitudinalBeams": "two IPE220, each reaching 1400 mm from the column's axis (Fig. 2), on extended end plates 370 x 160 x 16 mm with M16 10.9 bolts in five rows of two to the column's flanges (Fig. 2, section B-B: rows spaced 35 + 90 + 60 + 60 + 90 + 35 mm down the plate, 70 mm apart across it)",
+    "beamEnds": "tubular lateral restraints at the longitudinal beams' far ends, bolted to the bunker's wall (section 2; Fig. 1a)",
+    "transverseBeam": "one IPE220 on an L100x50x10 cleat to the web's back face, its far end on the bunker's wall (Fig. 2, section A-A; Fig. 1c places the charge on the web's other side); its length is not given",
+    "beamHeight": "Fig. 1b: the beams' centreline 1.2 m below the bunker's roof; Fig. 2 dimensions the beams' bottom flange 1265 mm above the column's bottom (565 + 3 x 200 + 100), where the text puts the charge 1.25 m up and 0.30 m below that flange; the gauges' readings (below) fit the text",
+    "unexplained": "Fig. 1b draws two more charge-like marks on the beams' centreline, 0.45 m and 0.60 m from the column's axis, hung from the roof; the text does not mention them",
+    "material": "Table 1, as in columns.json; the beams' flanges 345/464 MPa at 28%"
+  },
+  "gaugeLayout": "S1-S8 in pairs, each pair drawn as a T (read here as a two-gauge rosette, one along the column and one across the web), at 0.1, 0.3, 0.5 and 0.7 m below the beams' bottom flange (Fig. 2); an 80 mm dimension beside them from the web's centreline; the face is not stated. With the charge 0.30 m below the beams, pair 2 (S3/S4) is at the charge's height and pairs 1 and 3 0.2 m above and below it.",
+  "shots": [
+    {
+      "name": "m1",
+      "peaks": [
+        {"gauge": 2, "microstrain": 240, "timeMS": 0.50},
+        {"gauge": 1, "microstrain": 90, "timeMS": 0.45},
+        {"gauge": 3, "microstrain": 25}
+      ]
+    },
+    {
+      "name": "m2",
+      "peaks": [
+        {"gauge": 4, "microstrain": 2070, "timeMS": 0.45},
+        {"gauge": 2, "microstrain": 1250, "timeMS": 0.45},
+        {"gauge": 6, "microstrain": 1450, "timeMS": 1.08},
+        {"gauge": 1, "microstrain": 380, "timeMS": 0.35}
+      ],
+      "periodMS": 0.62
+    },
+    {
+      "name": "m3",
+      "peaks": [
+        {"gauge": 6, "microstrain": 2620, "timeMS": 1.10},
+        {"gauge": 2, "microstrain": 1700, "timeMS": 0.42},
+        {"gauge": 1, "microstrain": 720, "timeMS": 0.35}
+      ],
+      "periodMS": 0.62,
+      "fastestRate": 21.7
+    },
+    {
+      "name": "m4",
+      "peaks": [
+        {"gauge": 6, "microstrain": 17800}
+      ],
+      "keptMicrostrain": 6100,
+      "fastestRate": 100.01
+    }
+  ],
+  "shotsNote": "Fig. 4a-d, specimen 2 only; peaks read off the figure except m4's 1.78% and 0.61% and the rates (21.7 and 100.01 1/s, Fig. 5), which the text gives. The time origin is not stated; strain first rises about 0.25-0.3 ms in. The period is the mean spacing of S6's maxima (m2: 0.45, 1.08, 1.72, 2.32 ms; m3: 0.45, 1.10, 1.65, 2.30 ms).",
+  "axial": [
+    {"shot": "A1.8", "holds": [0.25], "collapses": [0.3, 0.5, 0.7]},
+    {"shot": "A1.0", "holds": [0.3, 0.4], "collapses": [0.5, 0.7]},
+    {"shot": "A0.5", "holds": [0.5, 0.6], "collapses": [0.7]}
+  ],
+  "axialNote": "The paper's own model (Extreme Loading for Structures, applied elements, UFC 3-340-02 loads without reflections), not a test: section 5 and Fig. 9. Charges 1.80, 1.0 and 0.5 kg at 0.2 m; the axial load a weight on the column's top, applied before the blast; Omega = N_Ed / N_Rd. The columns that fell passed 10 mm of drop by 0.04-0.1 s and 500 mm by about 0.35-0.45 s; those that held stayed at 1-3 mm. N_Rd is not given; the shortening before the blast (about 1.2 mm at 0.25, 2.0 at 0.5, 2.8 at 0.7, Fig. 9 lower row) gives 3.3-4.0 MN, near the squash load at the measured yields, 3.27 MN."
+}

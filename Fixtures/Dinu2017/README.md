@@ -5,6 +5,11 @@ specimens (INSEMEX Petroșani), and what FRAMEBLAST's report gives of the full-s
 building's shots (2018), for `blastbench dinu` (`DinuColumnTest`; emmettl/bombcad-work#77;
 [validation](../../docs/validation.md#a-column-web-breached-close-in)).
 
+`frame.json` holds what the same paper gives of the specimen as a frame (Figs. 1–2), its gauges'
+peaks read off Fig. 4, their ringing, S6's rates (§3, Fig. 5), and its own model's axial-load
+study (§5, Fig. 9), for `blastbench dinu --frame --gauges` and `--axial`
+([the frame as built](../../docs/validation.md#the-frame-as-built-1-november-2026)).
+
 The sources (none is in the repository; copies are under `$BOMBCAD_DATA/sources/`):
 
 | Source | What it gives | Terms |
