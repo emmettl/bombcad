@@ -1466,6 +1466,9 @@ package struct StructureUniforms {
     package var stabilitySpeed: Float = 0
     package var traceNode: UInt32 = 0
     package var traceElement: UInt32 = 0
+    /// The body's stored nodes, after which their rounding errors lie with
+    /// `StructureSolver.preciseDisplacements`.
+    package var nodeCount: UInt32 = 0
 
     /// The memberwise initialiser, written out so that BlastCore can use it.
     package init(
@@ -2177,6 +2180,11 @@ package enum ShaderLibrary {
     /// cracked concrete into the element kernel (`crackedHexConstant` in Structure.metal,
     /// `StructureModel.assumedStrainCracking`).
     package static let crackedHexConstant = 26
+
+    /// Index of the optional function constant that compiles node displacements kept to more than
+    /// a float's precision into the node and element kernels (`preciseDisplacementsConstant` in
+    /// Structure.metal, `StructureSolver.preciseDisplacements`).
+    package static let preciseDisplacementsConstant = 29
 
     /// Index of the optional function constant that, set false, compiles the faces' loads out of the
     /// element kernel for substeps without air or a prescribed pressure (`faceLoadsConstant` in

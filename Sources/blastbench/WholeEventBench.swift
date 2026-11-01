@@ -16,6 +16,7 @@ import simd
 //                         [--budget 80 (minutes)] [--checkpoint-every 1] [--frames 1,2,4,6,8,10]
 //                         [--sleeping-air] [--no-rubble] [--dir /Volumes/StudioData/bombcad/whole-event/<name>]
 //                         [--continue] [--ground-friction 0.6 (0 for the frictionless ground)]
+//                         [--float-displacements]
 //
 // Runs in pieces: after `--budget` minutes of wall time it saves a checkpoint at the next 64-step
 // boundary and stops; `--continue` (with the same options) carries on from the latest checkpoint
@@ -34,7 +35,13 @@ import simd
 // down (docs/whole-event.md, energy budget; adopted: awake air). `--sleeping-air` lets it sleep as
 // the recommended settings have it, to reproduce the runs before that date; `--awake` is accepted
 // and changes nothing. `--continue` and the readers of a saved state take the air as the run was
-// started with it, whatever is given. Diagnostics: `--inspect <checkpoint>` lists the fastest
+// started with it, whatever is given. The nodes keep their displacements to more than a float's
+// precision by default since 1 November 2026 (`StructureSolver.preciseDisplacements`; docs/whole-event.md,
+// displacements kept precisely): kept as floats, the debris that has fallen 16-32 m moves in steps of
+// 1.9 µm, and its walls go on failing at rest. `--float-displacements` keeps them as floats, as the
+// runs before that date did; `--continue` carries on as the run was saved (as floats, for a run saved
+// before that date) unless `--float-displacements` or `--precise-displacements` is given, and the
+// readers of a saved state take it as it was saved. Diagnostics: `--inspect <checkpoint>` lists the fastest
 // nodes of a saved state with the elements round them; `--watch 20` does so at each sample with a
 // node faster than 20 m/s (and a run that goes unstable does as it stops);
 // `--erode-crushed-bare` and `--release-bare-hourglass` turn on those two options. `--split-work`
@@ -64,6 +71,9 @@ private struct WholeEventState: Codable {
     /// Whether the air sleeps in the run (`--sleeping-air`); nil in a run saved before it was
     /// recorded (31 October 2026). What decides it on carrying on is the checkpoint's configuration.
     var airSleeps: Bool?
+    /// Whether the nodes keep their displacements precisely (`StructureSolver.preciseDisplacements`);
+    /// nil in a run saved before it was recorded (1 November 2026), whose displacements were floats.
+    var preciseDisplacements: Bool?
 }
 
 /// Whole-event runs' ground friction by default: Coulomb 0.6, concrete on concrete or hard ground,
@@ -168,9 +178,35 @@ func runWholeEvent(device: MTLDevice) throws {
             airSleeps = sleeps
         }
     }
-    let solver = try BlastSolver(
-        device: device, scenario: scenario, cellSize: cellSize,
-        configuration: wholeEventConfiguration(airSleeps: airSleeps))
+    // The nodes' displacements: kept precisely unless `--float-displacements` (a new run); as the
+    // run was saved with `--continue`, unless either is given; and for the readers, precisely if
+    // any state they read was saved so (a state saved with floats reads the same either way).
+    if flag("float-displacements"), flag("precise-displacements") {
+        print(
+            "--float-displacements and --precise-displacements: give one (precise unless --float-displacements)"
+        )
+        exit(2)
+    }
+    let givenPrecise: Bool? =
+        flag("float-displacements") ? false : flag("precise-displacements") ? true : nil
+    func savedPrecise(_ folder: URL) -> Bool {
+        let state = try? JSONDecoder().decode(
+            WholeEventState.self, from: Data(contentsOf: folder.appending(path: "whole-event.json")))
+        return state?.preciseDisplacements ?? false
+    }
+    let precise: Bool
+    if let latest {
+        precise = givenPrecise ?? savedPrecise(latest)
+    } else if let reading {
+        precise = (outcomeFolders ?? [reading]).contains(where: savedPrecise)
+    } else {
+        precise = givenPrecise ?? true
+    }
+    let solver = try StructureSolver.$keepsDisplacementsPrecisely.withValue(precise) {
+        try BlastSolver(
+            device: device, scenario: scenario, cellSize: cellSize,
+            configuration: wholeEventConfiguration(airSleeps: airSleeps))
+    }
     guard let body = solver.bodies.first, let solids = body.solids else {
         print("No solid structure")
         exit(2)
@@ -227,6 +263,7 @@ func runWholeEvent(device: MTLDevice) throws {
         }
         state.groundFriction = solids.groundFrictionCoefficient
         state.airSleeps = airSleeps
+        state.preciseDisplacements = precise
         print(String(format: "Resumed from %@: step %d, %.4f s", folder.path, header.stepCount, header.time))
         // Rows written after this checkpoint by a piece that did not reach its next are dropped.
         if let text = try? String(contentsOf: csv, encoding: .utf8) {
@@ -245,17 +282,19 @@ func runWholeEvent(device: MTLDevice) throws {
         state = WholeEventState(
             stepCount: 0, time: 0, wallSeconds: 0, gpuSeconds: 0, baselineRise: solids.census().massTimesRise,
             nextSample: 0, nextCheckpoint: checkpointEvery, framesDone: [],
-            groundFriction: solids.groundFrictionCoefficient, airSleeps: airSleeps)
+            groundFriction: solids.groundFrictionCoefficient, airSleeps: airSleeps,
+            preciseDisplacements: precise)
         try? fm.removeItem(at: csv)
     }
     print(
         String(
             format:
-                "%@: %d elements, %d nodes, %.2f m air cells (%d), rubble %@, air %@, ground friction %.2f; structure step %.2f µs; to %.1f s in pieces of %.0f min",
+                "%@: %d elements, %d nodes, %.2f m air cells (%d), rubble %@, air %@, ground friction %.2f, displacements %@; structure step %.2f µs; to %.1f s in pieces of %.0f min",
             scenario.name, solids.elementCount, solids.nodeCount, cellSize,
             solver.grid.nx * solver.grid.ny * solver.grid.nz,
             rubble ? "on" : "off", airSleeps ? "sleeping as recommended (--sleeping-air)" : "kept awake",
             solids.groundFrictionCoefficient,
+            solids.preciseDisplacements ? "kept precisely" : "as floats (--float-displacements)",
             Double(solids.criticalTimeStep) * 1e6, end, budget / 60))
     fflush(stdout)
 

@@ -124,6 +124,8 @@ struct StructureUniforms {
     // With `tracesNode`, the stored node whose forces each substep records (`StructureSolver.traceNode`).
     uint traceNode;
     uint traceElement;  // with `tracesNode`, the element (compact index) whose forces each substep records
+    // The body's stored nodes; with `preciseDisplacements`, their rounding errors follow them.
+    uint nodeCount;
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -352,6 +354,36 @@ constant uint elementTraceStride = 32;
 // and the particles' share of contact's work and the substeps its contact was capped.
 constant bool externalWorkConstant [[function_constant(28)]];
 constant bool tracesExternalWork = is_function_constant_defined(externalWorkConstant) && externalWorkConstant;
+// Node displacements kept to more than a float's precision (`StructureSolver.preciseDisplacements`,
+// whole-event runs; emmettl/bombcad-work#36): a displacement is kept from where the node started,
+// so debris that has fallen 16-32 m moves in steps of 1.9 µm, and those steps, across an element,
+// are strains the hourglass control works against at rest (docs/whole-event.md, the walls that
+// fail at rest). With this on, each node keeps beside its float displacement the rounding error
+// it leaves (a float4 a node, after the last node in the nodes' buffer: `nodes + u.nodeCount`),
+// and the elements take their displacement gradients from their corners' displacements relative
+// to their first corner's. Compiled in only when asked, so that without it both kernels are
+// unchanged.
+constant bool preciseDisplacementsConstant [[function_constant(29)]];
+constant bool preciseDisplacements =
+    is_function_constant_defined(preciseDisplacementsConstant) && preciseDisplacementsConstant;
+// a + b as the float `sum` and its rounding error, returned (Knuth's two-sum, exact under
+// round-to-nearest, so not reassociated or fused).
+static inline float3 preciseSum(float3 a, float3 b, thread float3 &sum) {
+    #pragma METAL fp math_mode(safe)
+    #pragma METAL fp contract(off)
+    float3 s = a + b;
+    float3 bv = s - a;
+    float3 av = s - bv;
+    sum = s;
+    return (a - av) + (b - bv);
+}
+// A displacement and its rounding error, less a nearby node's: d - base is exact for two floats
+// within a factor of two of each other (Sterbenz), so what two corners share is not rounded.
+static inline float3 preciseOffset(float3 d, float3 r, float3 base, float3 baseResidual) {
+    #pragma METAL fp math_mode(safe)
+    #pragma METAL fp contract(off)
+    return (d - base) + (r - baseResidual);
+}
 constant bool releasesCrushedBareHourglass =
     is_function_constant_defined(crushedBareHourglassConstant) && crushedBareHourglassConstant;
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
@@ -2163,6 +2195,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float3 slipChangeRate = float3(0.0f);
     // With `crackedHex`, the hourglass modes' sums of the displacements (`crackedAmplitudes`).
     float3 crackedSums[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
+    // With `preciseDisplacements`, the first corner's displacement and its rounding error, which
+    // the others' are taken relative to.
+    const device float4 *residuals = (const device float4 *)(nodes + u.nodeCount);
+    float3 preciseBase = float3(0.0f);
+    float3 preciseBaseResidual = float3(0.0f);
     for (uint a = 0; a < 8; ++a) {
         uint3 corner = tid + uint3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
         uint cornerNode = nodeMap[corner.x + nodesX * (corner.y + nodesY * corner.z)];
@@ -2178,14 +2215,25 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         x[a] = origin + float3(corner) * u.h + displacement;
         v[a] = node.velocity;
         float3 s = cornerSign(a);
-        g0 += displacement * s.x;
-        g1 += displacement * s.y;
-        g2 += displacement * s.z;
+        // The signs of each sum add to nothing, so a displacement the corners share drops out of
+        // it; with `preciseDisplacements` it is taken out before the sum, not rounded in it.
+        float3 relative = displacement;
+        if (preciseDisplacements) {
+            float3 residual = residuals[cornerNode].xyz;
+            if (a == 0) {
+                preciseBase = displacement;
+                preciseBaseResidual = residual;
+            }
+            relative = preciseOffset(displacement, residual, preciseBase, preciseBaseResidual);
+        }
+        g0 += relative * s.x;
+        g1 += relative * s.y;
+        g2 += relative * s.z;
         if (crackedHex) {
-            crackedSums[0] += s.y * s.z * displacement;
-            crackedSums[1] += s.x * s.z * displacement;
-            crackedSums[2] += s.x * s.y * displacement;
-            crackedSums[3] += s.x * s.y * s.z * displacement;
+            crackedSums[0] += s.y * s.z * relative;
+            crackedSums[1] += s.x * s.z * relative;
+            crackedSums[2] += s.x * s.y * relative;
+            crackedSums[3] += s.x * s.y * s.z * relative;
         }
     }
 
@@ -4301,13 +4349,27 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if ((node.flags & 4u) != 0) {
         velocity.z = 0.0f;
     }
-    float3 displacement = float3(node.displacement) + dt * velocity;
+    // With `preciseDisplacements`, the move is added to the displacement and the rounding error
+    // the node carries, and what that sum's float leaves is its new error; set where the node is
+    // set (on its support or the ground), the error goes.
+    float3 displacement;
+    float3 residualBefore = float3(0.0f);
+    float3 residual = float3(0.0f);
+    device float4 *residuals = (device float4 *)(nodes + u.nodeCount);
+    if (preciseDisplacements) {
+        residualBefore = residuals[threadIndex].xyz;
+        residual = preciseSum(float3(node.displacement), residualBefore + dt * velocity, displacement);
+    } else {
+        displacement = float3(node.displacement) + dt * velocity;
+    }
     if ((node.flags & 16u) != 0 && displacement.z < 0.0f) {
         displacement.z = 0.0f;
+        residual.z = 0.0f;
         velocity.z = max(velocity.z, 0.0f);
     }
     if ((node.flags & 128u) != 0 && displacement.z > 0.0f) {
         displacement.z = 0.0f;  // held down from above: free to fall, not to rise
+        residual.z = 0.0f;
         velocity.z = min(velocity.z, 0.0f);
     }
     float referenceHeight = u.originZ + float(tid.z) * u.h;
@@ -4334,6 +4396,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         // however much the node chatters on and off it; otherwise the speed decays at a set rate.
         float stopped = max(-velocity.z, 0.0f);
         displacement.z = -referenceHeight;
+        residual.z = 0.0f;
         velocity.z = max(velocity.z, 0.0f);
         groundStop = true;
         if (u.groundCoulomb > 0.0f) {
@@ -4351,6 +4414,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         // Each force's work over the way the node actually moved; gravity's from its pull. What
         // the change in kinetic energy leaves is the ground's, damping's and the held axes'.
         float3 moved = displacement - float3(node.displacement);
+        if (preciseDisplacements) {
+            moved += residual - residualBefore;
+        }
         float3 before = float3(node.velocity);
         float3 pull = turnedGravity ? gravityPull(u) : float3(0.0f, 0.0f, u.gravity);
         float3 contactForce = contactEnabled(u, failureGate) ? float3(contact[threadIndex]) : float3(0.0f);
@@ -4392,6 +4458,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     node.displacement = displacement;
     node.velocity = velocity;
     nodes[threadIndex] = node;
+    if (preciseDisplacements) {
+        residuals[threadIndex] = float4(residual, 0.0f);
+    }
 }
 
 // Two-way coupling: the air's solid mask follows the structure. Each air step, intact elements

@@ -53,6 +53,8 @@ public final class StructureSolver {
     /// The most memory the pool of switched elements' points takes (`assumedStrainCracking`): an
     /// element's eight points take 768 bytes, so this holds about 1.4 million.
     static let crackedPoolLimit = 1 << 30
+    /// Bytes per node of the rounding errors that follow the nodes with `preciseDisplacements`.
+    static let residualStride = 16
 
     public let device: MTLDevice
     public let commandQueue: MTLCommandQueue
@@ -180,6 +182,19 @@ public final class StructureSolver {
     /// Lattice indices of the nodes that belong to at least one element, in ascending order.
     let nodeListBuffer: MTLBuffer
     public let nodeCount: Int
+    /// Whether a body built in this task keeps its nodes' displacements to more than a float's
+    /// precision (`preciseDisplacements`); false, as every body but a whole-event run's is built
+    /// (emmettl/bombcad-work#36), unless set with `$keepsDisplacementsPrecisely.withValue(true)`.
+    @TaskLocal public static var keepsDisplacementsPrecisely = false
+    /// Whether the nodes keep their displacements to more than a float's precision: each node's
+    /// displacement from where it started is a float, which debris 16-32 m from there moves in steps
+    /// of 1.9 µm, strains across an element that the hourglass control works against at rest
+    /// (docs/whole-event.md, the walls that fail at rest). With this, each node also keeps the
+    /// rounding error its float leaves, a `SIMD4<Float>` a node after the last node in `nodeBuffer`
+    /// (and so in its checkpoints), and the elements take their displacement gradients relative to
+    /// their first corner. The node and element kernels are specialised for it
+    /// (`preciseDisplacementsConstant` in Structure.metal), so that without it they are as before.
+    public let preciseDisplacements: Bool
     private let placeholderBuffer: MTLBuffer
     private var elementPipeline: MTLComputePipelineState
     /// Builds the element kernel with the work trace compiled in (`tracesWork`).
@@ -302,6 +317,10 @@ public final class StructureSolver {
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library)
         }
+        // Without precise displacements the constant stays undefined, so the kernels are as before.
+        var precise = Self.keepsDisplacementsPrecisely
+        preciseDisplacements = precise
+        let preciseIndex = ShaderLibrary.preciseDisplacementsConstant
         // The element kernel is specialised for structures of a single material without joints.
         let constants = MTLFunctionConstantValues()
         func showsJoints(_ material: StructureMaterial) -> Bool {
@@ -337,6 +356,7 @@ public final class StructureSolver {
         if cracked {
             constants.setConstantValue(&cracked, type: .bool, index: ShaderLibrary.crackedHexConstant)
         }
+        if precise { constants.setConstantValue(&precise, type: .bool, index: preciseIndex) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         elementConstants = constants
         elementPipelineConstants = constants
@@ -367,6 +387,8 @@ public final class StructureSolver {
             if cracked {
                 tracing.setConstantValue(&cracked, type: .bool, index: ShaderLibrary.crackedHexConstant)
             }
+            var precise = precise
+            if precise { tracing.setConstantValue(&precise, type: .bool, index: preciseIndex) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -375,16 +397,19 @@ public final class StructureSolver {
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
         if discrete { nodeConstants.setConstantValue(&discrete, type: .bool, index: 10) }
         if rubble { nodeConstants.setConstantValue(&rubble, type: .bool, index: 12) }
+        if precise { nodeConstants.setConstantValue(&precise, type: .bool, index: preciseIndex) }
         nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         nodeTracePipeline = { [library] index in
             let tracing = MTLFunctionConstantValues()
             var connected = connected
             var discrete = discrete
             var rubble = rubble
+            var precise = precise
             var traced = true
             tracing.setConstantValue(&connected, type: .bool, index: 1)
             if discrete { tracing.setConstantValue(&discrete, type: .bool, index: 10) }
             if rubble { tracing.setConstantValue(&rubble, type: .bool, index: 12) }
+            if precise { tracing.setConstantValue(&precise, type: .bool, index: preciseIndex) }
             tracing.setConstantValue(&traced, type: .bool, index: index)
             return try? ShaderLibrary.pipeline("structureNodes", in: library, constants: tracing)
         }
@@ -665,7 +690,15 @@ public final class StructureSolver {
         let nodeList = used.indices.filter { used[$0] }.map { UInt32($0) }
         nodeCount = nodeList.count
         nodeListBuffer = try indexBuffer(nodeList, "structure node list")
-        nodeBuffer = try buffer(max(nodeCount, 1) * MemoryLayout<StructureNode>.stride, "structure nodes")
+        // With precise displacements, each node's rounding error follows the last node.
+        nodeBuffer = try buffer(
+            max(nodeCount, 1) * (MemoryLayout<StructureNode>.stride + (precise ? Self.residualStride : 0)),
+            "structure nodes")
+        if precise {
+            memset(
+                nodeBuffer.contents() + nodeCount * MemoryLayout<StructureNode>.stride, 0,
+                nodeBuffer.length - nodeCount * MemoryLayout<StructureNode>.stride)
+        }
         nodeMapBuffer = try buffer(nodes * 4, "structure lattice to node")
         let nodeMap = nodeMapBuffer.contents().bindMemory(to: UInt32.self, capacity: nodes)
         nodeMap.update(repeating: .max, count: nodes)
@@ -2588,6 +2621,7 @@ public final class StructureSolver {
         uniforms.removesFragments = model.removesFragments ? 1 : 0
         uniforms.traceNode = UInt32(tracedNode ?? 0)
         uniforms.traceElement = UInt32(tracedElement ?? 0)
+        if preciseDisplacements { uniforms.nodeCount = UInt32(nodeCount) }
         // Only stepping in time: a step set past the body's own stable one is a static solve
         // (the tests' `stepOverride` of a second), whose "velocities" are increments.
         uniforms.stabilitySpeed = criticalTimeStep <= stableTimeStep * 1.0001 ? stabilitySpeed : 0
@@ -2903,9 +2937,18 @@ extension StructureSolver {
         workSums = scalars.readArray(Double.self)
         try scalars.finish("\(prefix)scalars")
         for (name, buffer) in SolverCheckpoint.sharedBuffers(of: self, within: Self.checkpointSubsystems) {
+            let part = parts["\(prefix)\(name)"]
+            // A run saved with its displacements as floats, carried on precisely: its nodes, and
+            // no rounding errors yet.
+            let nodesOnly = nodeCount * MemoryLayout<StructureNode>.stride
+            if buffer === nodeBuffer, preciseDisplacements, let part, part.count == nodesOnly {
+                try SolverCheckpoint.restore(
+                    part, into: buffer, offset: 0, length: nodesOnly, name: "\(prefix)\(name)")
+                memset(buffer.contents() + nodesOnly, 0, buffer.length - nodesOnly)
+                continue
+            }
             try SolverCheckpoint.restore(
-                parts["\(prefix)\(name)"], into: buffer, offset: 0, length: buffer.length,
-                name: "\(prefix)\(name)")
+                part, into: buffer, offset: 0, length: buffer.length, name: "\(prefix)\(name)")
         }
     }
 }

@@ -76,6 +76,15 @@ where as run it failed 7,939, nothing outside the plan moves again, and the cens
 gravity's work. From 2 s the collapse comes down the same (243 m², 11 storeys), with a fifth fewer
 failures and rubble at 5 s. Adopting it is for the user's decision.
 
+**1 November ([adopted: displacements kept precisely](#adopted-displacements-kept-precisely-1-november-2026)):**
+whole-event runs keep their nodes' displacements precisely by default (the user's decision;
+`--float-displacements` for the earlier runs), and the twelve-storey ends are rerun. What comes down
+does not move: 237–309 m² of floor down, 11–12 storeys past 15%. Today's element fails a fifth fewer
+elements (17,953 against 22,560) with a fifth less rubble (26.6 against 34.0 t), and its debris
+reaches further (99% within 9.1 m, not 7.4 m). Assumed strain hardly moves (51,108 against 52,361
+failed). The range quoted is 18,000–51,100 elements failed and 27–76 t of rubble. At rest the pile
+fails 23–33 elements a second, not 1,700, and is quiet enough for the dust.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -1596,6 +1605,8 @@ element kernel, each at Metal's limit of 31). Three ways on:
 3. **Leave it.** Results stay read at rest, at 5 s, a fifth of whose failure count and rubble on
    twelve storeys is the rounding's, and the dust (item 4) cannot be run on a pile that hums.
 
+(Decided on 1 November: the first. See [adopted: displacements kept precisely](#adopted-displacements-kept-precisely-1-november-2026).)
+
 Left over with the prototype: contact still gives back 30 kW at rest (+16 kJ over 5.0–5.5 s, as
 run 20 kJ). The likeliest source is the rubble particles: their positions are floats in the
 domain's frame (steps of 1.9 µm from 16 m out), and they press on each other by their overlaps. Not
@@ -1616,6 +1627,144 @@ failing elements are, `channels.py` the trace by element, `nodesplit.py` the spl
 `precise-displacements-prototype.patch` the prototype, on emmettl/bombcad@4e03a04d; `outcome-*.csv`
 the outcome reader's rows; checkpoints kept at 5.5 s in `base`, at 7 and 10 s in `proto10`, at 3.5
 and 5 s in `proto20`).
+
+## Adopted: displacements kept precisely, 1 November 2026
+
+The user's decision on the proposal above (emmettl/bombcad-work#36): the first way, displacements
+kept precisely in whole-event runs only. `blastbench wholeevent` now builds its structure with each
+node keeping, beside its float displacement, the rounding error that float leaves, and the elements
+take their displacement gradients relative to their first corner, as the prototype did.
+`--float-displacements` keeps them as floats, as every run before this date did. This is for
+whole-event runs only: no other scene, test or digest moves.
+
+**How it is built.**
+- **A function constant** (`preciseDisplacementsConstant`, index 29 in Structure.metal), defined
+  only for a body built with `StructureSolver.$keepsDisplacementsPrecisely.withValue(true)`, which
+  only the whole-event bench does. Undefined, the node and element kernels are as they were.
+- **No buffer slot.** The node and element kernels both use all 31 of Metal's slots, and the
+  prototype borrowed two that this block leaves empty. Here the rounding errors (a float4 a node)
+  follow the last node in the nodes' own buffer, which both kernels already have, and the kernels
+  find them by a new last field of `StructureUniforms`, the node count (its Swift mirror updated
+  too; it is 0 and unread unless the constant is on). The node record stays 32 bytes, so the
+  nodes' layout, every other kernel that reads them, and every checkpoint of a run with floats are
+  unchanged. Growing the record to 48 bytes would have changed all of those. Merging two of
+  either kernel's buffers would have changed the layout of buffers that checkpoints save by name.
+- **In checkpoints.** The errors go into checkpoints with the nodes: 16 bytes a node, 17 MB on
+  twelve storeys in a checkpoint of about 350 MB. Resuming needs them. Without them a run carried
+  on with `--continue` would drop up to half a float's step at each node, so a run cut into pieces
+  would no longer be the same to the bit as an unbroken one, and a collapse is chaotic enough for
+  that to change the draw. With them it is the same to the bit (`SolverCheckpointTests`).
+- **Older runs.** A checkpoint saved with floats carries on precisely with the errors starting from
+  none. That is how the runs below started from the earlier runs' checkpoints. A checkpoint saved
+  precisely is refused by a body built with floats. `whole-event.json` records which was used
+  (`preciseDisplacements`, as it records the friction and the air). `--continue` carries on as the
+  run was saved (as floats, for a run saved before this date) unless `--float-displacements` or
+  `--precise-displacements` is given. The readers (`--outcome`, `--inspect`, `--breakdown`) build
+  the body precisely if any state they read was saved so.
+
+**The same to the bit where it should be.**
+- **Every other scene.** `blastbench digest` gives the same 42 variants in 6 sets as before.
+- **Floats.** From the friction run's 2 s checkpoint (`friction/f12-default`),
+  `--float-displacements` on this build gives every column of `phases.csv` but the clocks as that
+  run did, to 2.11 s.
+- **Kept precisely.** From the energy budget's 2 s checkpoint (`energy/s12-default`), this build
+  gives the prototype's run (`rest-failing/proto20`) to the bit. So that run, to 5 s, is this
+  build's too.
+- **Not reproducible: the assumed-strain friction run.** This build with floats does not carry
+  `friction/f12-assumed` on to the bit from 1.5 s: by 1.60 s, 19,788 elements have failed against
+  19,739. The build before this change (`rest-failing/bin`) gives the same as this build, to the
+  bit, so main itself moved since that run, at the rounding. The likeliest cause is the work trace
+  that counts switched elements' modes (emmettl/bombcad-work#36, 30 October), which whole-event
+  runs compile in. So the assumed-strain rows below compare a new draw kept precisely with the old
+  draw as floats. Today's element compares the same draw both ways.
+
+**The ends rerun.** Twelve storeys, friction 0.6, the air awake, read at rest at 5 s. Each was
+carried on from the last checkpoint before any node had fallen 16 m from where it started, where a
+float's step reaches 1.9 µm. For today's element that was 2.0 s: 7% of the mass is 8–16 m out
+then. For assumed strain it was 1.5 s: at 2.0 s, 3% of its mass is already beyond 16 m.
+
+| Twelve storeys, 5 s | Today's element, as floats (the range) | Kept precisely, from 2.0 s | Assumed strain, as floats (the range) | Kept precisely, from 1.5 s |
+|---|---|---|---|---|
+| Floor area down; sagged 0.3 m or more | 237.4; 349.9 m² | 237.4; 349.9 m² | 309.2; 413.6 m² | 309.0; 413.6 m² |
+| Storeys past 15% (by floor) | 11 (14 / 18 / 17 / 17 / 16 / 17 / 18 / 18 / 19 / 19 / 18 / 17%) | the same, to the per cent | 12 (16 / 23 / 23 / 23 / 21 / 23 / 24 / 25 / 24 / 24 / 23 / 20%) | the same, to the per cent |
+| Elements failed: floors / walls / face walls | 22,560: 1,491 / 16,960 / 4,109 | **17,953**: 1,488 / 12,421 / 4,044 | 52,361: 6,984 / 35,817 / 9,560 | **51,108**: 7,045 / 34,468 / 9,595 |
+| Of them failing from 3.5 to 5 s | 2,167 | 582 | 1,325 | 530 |
+| Rubble | 34.0 t | **26.6 t** | 77.6 t | **75.6 t** |
+| Gravity's work; peak kinetic energy | 19.08 MJ; 6.19 MJ | 19.07 MJ; 6.23 MJ | 20.28 MJ; 7.56 MJ | 20.28 MJ; 7.55 MJ |
+| Debris outside the plan; beyond 2 / 5 / 10 m | 63.7 t; 28.2 / 6.4 / 0.1 t | 62.5 t; 28.1 / 9.8 / 0.2 t | 61.6 t; 24.7 / 1.6 / 0.0 t | 62.8 t; 24.1 / 1.5 / 0.2 t |
+| Reach of 90 / 99%; the furthest | 5.0 / 7.4 m; 39.2 m | 6.3 / **9.1 m**; 29.2 m | 3.8 / 5.8 m; 55.1 m | 3.7 / **5.4 m**; 55.2 m |
+| Of it moving faster than 0.5 m/s; mean speed | 0.8 t; 0.06 m/s | 5.7 t; 0.14 m/s | 0.6 t; 0.14 m/s | 0.3 t; 0.15 m/s |
+
+- **What comes down does not move.** The floor area down, the sagged area, every floor's share and
+  gravity's work are the same at both ends, as the prototype found on the other draw.
+- **Today's element: a fifth fewer failures and a fifth less rubble**, nearly all of them walls
+  (12,421 against 16,960 failed). The other draw, kept precisely (the prototype's run), reads the
+  same way: 18,577 against 23,426 failed, 27.6 against 35.4 t. Two draws kept precisely differ by
+  3% in failures (17,953 and 18,577), as two as floats did (22,560 and 23,426).
+- **Assumed strain hardly moves: 2.4% fewer failures, 2.0 t less rubble.** Its switched elements
+  (81% of them) have no hourglass control to work against the rounding, and the collapse is over
+  sooner. Up to 2.8 s the two draws are within 0.2% of each other (49,239 and 49,326 failed). The
+  difference is the failing at rest, 350 a second from 3.5 to 5 s against 880.
+- **Today's debris reaches further: 99% within 9.1 m, not 7.4 m**, with 9.8 t beyond 5 m against
+  6.4 t. The prototype's draw read 8.2 against 7.5 m. Kept precisely, more of the debris is
+  still moving at 3.5–5 s (5.7 t faster than 0.5 m/s at 5 s), and it goes on out. As floats, the
+  pile's hum most likely held it back, though that was not traced. Carried on to 7 s, it stops: 9.2 m at 6 s and 7 s, nothing
+  outside the plan moving faster than 0.5 m/s at 7 s. Assumed strain's reach shrinks a little (5.4
+  against 5.8 m), on a new draw.
+
+**The pile at rest.** Today's element, kept precisely, from 5 to 7 s on the friction run's draw:
+33 and 23 elements fail a second (against 1,708 and 1,818 as floats on the 10 s run's draw), the
+rubble grows by 0.1 t, and the kinetic energy falls from 10.2 to 3.2 kJ (6.5 kJ at 7 s as floats).
+The prototype's run read the same from 5 to 10 s: 60 to 28 a second, 1.3 kJ at 10 s.
+
+**The range, as quoted from today.** **Twelve storeys lose 237–309 m² of their floor**, 11–12
+storeys past 15%, with 18,000–51,100 elements failed and 27–76 t of rubble, 19.1–20.3 MJ of
+gravity's work. **Three storeys lose none to 19% of their floor**, with 861–8,059 elements failed, 1.4–12.2 t of rubble. **The debris comes to rest, 99% of it within
+1.3–9.1 m of the plan**, under 0.3 t beyond 10 m in any run. Assumed strain is still the more
+damaging end of every output except the twelve storeys' debris reach, which is now further apart:
+5.4 against 9.1 m.
+
+**Three storeys not rerun.** Their debris lies under 8 m from where it started. At 7 s, 3% of the
+assumed-strain block's mass is 4–8 m out, and all but 23 of its 267,219 nodes are within 8 m. A
+float's step there is at most 0.48 µm, a quarter of twelve storeys'. Nor do their piles hum. From 5
+to 7 s, as floats, they fail 1.5 and 11 elements a second (3 and 22 in all), not the twelve
+storeys' 1,700. Their numbers stand as quoted, made with floats. Rerunning them would cost about
+three GPU hours (today's from 0.5 s and assumed strain from 1.0 s, to 5 s) for a change too small to
+show in the range.
+
+**The dust.** The pile on the friction run's draw is quiet by 6 s: nothing outside the plan moves
+faster than 0.5 m/s, its reach holds at 9.2 m, the kinetic energy is 3–4 kJ and falling, and 23–33
+elements fail a second. That is quiet enough to run the dust (Next, item 4) on twelve storeys
+with today's element. It still needs the air awake and the run past 5 s: about 1,300 GPU seconds a
+simulated second. The dust itself is not started, for the user's word.
+
+**What it cost.** 28,600 s of GPU by the processes' own count, about 7.9 hours, on a GPU shared two
+to four ways:
+- 1,870 s for the four short checks;
+- 9,810 s for today's element from 2 to 7 s (6,360 s of it to 5 s, against 6,700 s for the same
+  stretch as floats);
+- 16,930 s for assumed strain from 1.5 to 5 s, against 10,530 s as floats. The difference is most
+  likely the sharing: three other jobs held the GPU for most of it, and today's element, sharing
+  with it, cost the same as floats.
+
+The assumed-strain run went in four pieces of 60–101 minutes, and the other in three of up to 77
+minutes. Neither passed 3.1 GB of footprint. Reading the checkpoints took about twenty minutes.
+
+**Where a user sees it.** The collapse's standing quotes the range above, and its level stays
+illustrative, with no band. The 10 s run's entry now says the rounding is fixed in whole-event runs.
+The whole-event run is still not offered in the app.
+
+Runs and tables: `/Volumes/StudioData/bombcad/whole-event/precise/`:
+- `p12-default` is today's element kept precisely, from `friction/f12-default`'s 2 s checkpoint
+  to 7 s, with checkpoints kept at 2, 3.5, 5 and 7 s;
+- `p12-assumed` is assumed strain kept precisely, from `friction/f12-assumed`'s 1.5 s checkpoint
+  to 5 s, with checkpoints kept at 1.5, 3.5 and 5 s;
+- `outcome-*.csv` hold the outcome reader's rows;
+- `check-*` are the four checks: `compare.py` set their rows against the runs they came from, and
+  `check-f12a-mainbin` is the build before this change;
+- `disp.py` is the reader of how far nodes have moved at a checkpoint;
+- `lane.sh` and `check.sh` are how the runs were made;
+- `bin/` is the build and its patch.
 
 ## Dust: what it would take
 
@@ -1665,12 +1814,15 @@ Nothing is built for dust. What it would need, from what the model has:
 2. **The 10 s run**: run ([the 10 s run](#the-10-s-run-31-october-2026)), twelve storeys with today's
    element. The collapse is over by 3.5 s, but the block at rest goes on failing walls. Since
    31 October results are read at rest, at 5 s, and the failing at rest is traced to the rounding
-   of the fallen debris's displacements; keeping them precisely is prototyped and proposed
-   ([read at rest](#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026)).
+   of the fallen debris's displacements. Whole-event runs keep them precisely since 1 November
+   ([adopted](#adopted-displacements-kept-precisely-1-november-2026)), and the pile at rest is
+   quiet.
 3. **Collapse earned** only after limitation 1's next attack, cracked concrete's stiffness and
    shear, not taken up; since 25 October the case for running it on the assumed-strain element,
    where the stabilisation no longer hides it (section 7).
-4. **Dust** after that, as sketched.
+4. **Dust** after that, as sketched. The pile is now quiet enough for it: kept precisely, the
+   twelve-storey pile is still by 6 s
+   ([adopted](#adopted-displacements-kept-precisely-1-november-2026)). Not started.
 5. **The debris's reach**: done. Coulomb friction 0.6 on the ground is the whole-event default
    since 30 October ([adopted](#adopted-ground-friction-06-30-october-2026)). The debris comes to
    rest, 99% of it within 1.5–7.4 m, and the twelve-storey assumed-strain end has been run with it.

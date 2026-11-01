@@ -138,6 +138,45 @@ struct SolverCheckpointTests {
         #expect(straight == resumed)
     }
 
+    @Test(
+        "Solid elements with their displacements kept precisely carry on from a checkpoint to the bit, and from a float run's"
+    )
+    func preciseDisplacementsCarryOn() throws {
+        let scene = ScenarioPreset.blastWall.scenario
+        let configuration = SolverConfiguration.recommended
+        let (straight, resumed) = try StructureSolver.$keepsDisplacementsPrecisely.withValue(true) {
+            try straightAndResumed(scene, cellSize: 0.5, configuration: configuration, steps: 192, at: 128)
+        }
+        #expect(straight == resumed)
+
+        // A run saved with its displacements as floats carries on precisely, its rounding errors
+        // starting from none; a precise run's checkpoint, with them, is refused by a float solver.
+        let floats = try BlastSolver(
+            device: device, scenario: scene, cellSize: 0.5, configuration: configuration)
+        floats.advance(steps: 64)
+        let place = folder("floats")
+        defer { try? FileManager.default.removeItem(at: place) }
+        try floats.saveCheckpoint(to: place, scene: scene)
+        let precise = try StructureSolver.$keepsDisplacementsPrecisely.withValue(true) {
+            try BlastSolver(device: device, scenario: scene, cellSize: 0.5, configuration: configuration)
+        }
+        let solids = try #require(precise.bodies.first?.solids)
+        #expect(solids.preciseDisplacements)
+        let nodesOnly = solids.nodeCount * MemoryLayout<StructureNode>.stride
+        #expect(solids.nodeBuffer.length == nodesOnly + solids.nodeCount * StructureSolver.residualStride)
+        try precise.restoreCheckpoint(from: place, scene: scene)
+        let tail = UnsafeRawBufferPointer(
+            start: solids.nodeBuffer.contents() + nodesOnly, count: solids.nodeBuffer.length - nodesOnly)
+        #expect(tail.allSatisfy { $0 == 0 })
+        precise.advance(steps: 64)
+        let preciseSaved = folder("precise")
+        defer { try? FileManager.default.removeItem(at: preciseSaved) }
+        try precise.saveCheckpoint(to: preciseSaved, scene: scene)
+        #expect(throws: SolverCheckpoint.Refusal.self) {
+            try floats.restoreCheckpoint(from: preciseSaved, scene: scene)
+        }
+    }
+
     @Test("A glazed building's recorded loads and vented panes carry on from a checkpoint to the bit")
     func envelopesCarryOn() throws {
         let (scene, _) = try FragmentVentingTests().scene()
