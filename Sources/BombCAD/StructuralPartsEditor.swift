@@ -17,6 +17,7 @@ struct StructuralPartsEditor: View {
             } label: {
                 HStack {
                     Image(systemName: model.selection == .part(part.id) ? "chevron.down" : "chevron.right")
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading) {
                         Text(part.name)
                         Text(
@@ -27,6 +28,7 @@ struct StructuralPartsEditor: View {
                     Spacer()
                 }.contentShape(.rect)
             }.buttonStyle(.plain)
+                .accessibilityAddTraits(model.selection == .part(part.id) ? .isSelected : [])
         }
         if let selected, let body = model.settings.scenario.structure {
             let materials = selected.regions.map { body.material(of: $0) }

@@ -95,6 +95,59 @@ extension SimulationModel {
         camera = .framing(scenario)
     }
 
+    /// A direction the camera orbits in from the keyboard or an assistive app.
+    enum Orbit { case left, right, up, down }
+
+    /// The camera turned a step (15°) about its target, as a drag would turn it.
+    func orbitCamera(_ direction: Orbit) {
+        let step = Float.pi / 12
+        switch direction {
+        case .left: camera.orbit(deltaAzimuth: step, deltaElevation: 0)
+        case .right: camera.orbit(deltaAzimuth: -step, deltaElevation: 0)
+        case .up: camera.orbit(deltaAzimuth: 0, deltaElevation: step)
+        case .down: camera.orbit(deltaAzimuth: 0, deltaElevation: -step)
+        }
+    }
+
+    /// The camera a step nearer its target or farther from it, within the view's limits.
+    func zoomCamera(in nearer: Bool) {
+        camera.zoom(by: nearer ? 0.8 : 1.25, within: zoomLimits)
+    }
+
+    /// What the 3D view shows, in words, for an assistive app: the scene, its source, what is in
+    /// it, the time and what the surfaces are painted with.
+    var viewportSummary: String {
+        let scene = settings.scenario
+        let size = scene.domainSize
+        var parts = ["\(scene.name), \(String(format: "%.0f × %.0f × %.0f m", size.x, size.y, size.z))"]
+        if scene.deflagration != nil {
+            parts.append("a gas cloud")
+        } else {
+            let at = settings.chargePosition
+            parts.append(
+                "\(SimulationSettings.massText(settings.chargeMass)) of TNT at \(String(format: "%.0f, %.0f, %.1f m", at.x, at.y, at.z))"
+            )
+        }
+        func count(_ n: Int, _ one: String, _ many: String) -> String? {
+            n == 0 ? nil : "\(n) \(n == 1 ? one : many)"
+        }
+        let contents = [
+            count(scene.structuralObjects.count, "structure", "structures"),
+            count(scene.envelopeObjects.count, "building envelope", "building envelopes"),
+            count(scene.fixedObjects.count, "block", "blocks"),
+            count(
+                (scene.rigidObjects?.count ?? 0) + (scene.rigidCars?.count ?? 0), "freestanding object",
+                "freestanding objects"),
+            count(scene.gauges.count, "gauge", "gauges"),
+        ].compactMap { $0 }
+        if !contents.isEmpty { parts.append(contents.joined(separator: ", ")) }
+        let state =
+            isRunning ? "running" : time == 0 ? "ready" : time >= duration - 1e-9 ? "finished" : "paused"
+        parts.append(String(format: "t = %.1f ms, %@", time * 1000, state))
+        parts.append("surfaces show \(renderSettings.mode.title.lowercased())")
+        return parts.joined(separator: "; ")
+    }
+
     /// Switches to a built-in layout, adopting its charge, camera and duration.
     func select(_ preset: ScenarioPreset) {
         // A preset replaces the scene within this project; retained assets support undo.

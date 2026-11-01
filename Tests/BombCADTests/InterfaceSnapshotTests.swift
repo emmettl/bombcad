@@ -229,7 +229,7 @@ struct InterfaceSnapshotTests {
 
     /// A blast wall on a hill, with freestanding objects and every companion model in use, so
     /// that each of the Run sidebar's sections shows its settings.
-    private func everySection() throws -> ProjectDocument {
+    func everySection() throws -> ProjectDocument {
         var scene = ScenarioPreset.blastWall.scenario
         scene.boxes = [Box(min: SIMD3(7, 9, 0), max: SIMD3(10, 14, 3))]
         scene.rigidObjects = [
@@ -281,7 +281,7 @@ struct InterfaceSnapshotTests {
     }
 
     /// A methane cloud in a vented room.
-    private func gasRoom() -> ProjectDocument {
+    func gasRoom() -> ProjectDocument {
         var scene = Scenario(
             name: "Vented room", domainSize: SIMD3(8, 6, 4), boxes: [],
             charge: Charge(mass: 0, position: SIMD3(1, 1, 1)))

@@ -379,6 +379,8 @@ private struct FreestandingRow: View {
                     .accessibilityLabel("Remove \(object?.name ?? car?.name ?? "object")")
             }
         }
+        // Named by the object alone, not with its Duplicate button's name, which reads after it.
+        .accessibilityLabel(object?.name ?? car?.name ?? "Object")
         .contextMenu {
             Button("Duplicate", systemImage: "plus.square.on.square") { model.duplicateFreestanding(id: id) }
         }

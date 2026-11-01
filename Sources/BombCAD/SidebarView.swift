@@ -13,7 +13,7 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $tab) {
+            Picker("Sidebar", selection: $tab) {
                 ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
@@ -633,8 +633,10 @@ struct LabeledSlider: View {
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
-            Slider(value: $value, in: range)
+            // Read as its title and the value shown above it, "TNT, 50 kg", not the slider's own number.
+            Slider(value: $value, in: range) { Text(title) }
                 .labelsHidden()
+                .accessibilityValue(text)
         }
     }
 }

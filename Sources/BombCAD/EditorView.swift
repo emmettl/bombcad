@@ -774,6 +774,7 @@ private struct GaugeRow: View {
                     HStack {
                         Image(systemName: isSelected ? "chevron.down" : "chevron.right")
                             .frame(width: 12)
+                            .accessibilityHidden(true)
                         Text(gauge.name)
                         Spacer()
                         Text(
@@ -787,6 +788,9 @@ private struct GaugeRow: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                // Selecting opens the row's fields below it.
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityHint(isSelected ? "Closes its fields" : "Opens its fields below")
                 Button("Remove", systemImage: "trash", role: .destructive, action: remove)
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
@@ -815,8 +819,10 @@ private struct GaugeRow: View {
     }
 
     private func field(axis: Int) -> some View {
+        // The name as the hidden title: with its label hidden, a field reads its title and an
+        // accessibility label one after the other ("Position X (m), Near façade, position X (m)").
         TextField(
-            "Position \(["X", "Y", "Z"][axis]) (m)",
+            "\(gauge.name), position \(["X", "Y", "Z"][axis]) (m)",
             value: Binding(
                 get: { Double(gauge.position[axis]) },
                 set: { gauge.position[axis] = max((Float($0) / 0.05).rounded() * 0.05, 0) }),
@@ -826,7 +832,6 @@ private struct GaugeRow: View {
         .multilineTextAlignment(.trailing)
         .frame(width: 62)
         .labelsHidden()
-        .accessibilityLabel("\(gauge.name), position \(["X", "Y", "Z"][axis]) (m)")
     }
 }
 
@@ -846,6 +851,7 @@ private struct BoxRow: View {
                     HStack {
                         Image(systemName: isSelected ? "chevron.down" : "chevron.right")
                             .frame(width: 12)
+                            .accessibilityHidden(true)
                         Text(title)
                         Spacer()
                         Text(summary)
@@ -855,6 +861,9 @@ private struct BoxRow: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                // Selecting opens the row's fields below it.
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityHint(isSelected ? "Closes its fields" : "Opens its fields below")
                 Button("Remove", systemImage: "trash", role: .destructive, action: remove)
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
@@ -892,13 +901,16 @@ private struct BoxRow: View {
     }
 
     private func field(_ field: String, _ value: Binding<Double>) -> some View {
-        TextField(field, value: value, format: .number.precision(.fractionLength(0...3)))
-            .textFieldStyle(.roundedBorder)
-            .multilineTextAlignment(.trailing)
-            .frame(width: 62)
-            .labelsHidden()
-            // With two boxes open, "Corner X (m)" alone would not say whose.
-            .accessibilityLabel("\(title), \(field.prefix(1).lowercased() + field.dropFirst())")
+        // With two boxes open, "Corner X (m)" alone would not say whose; the name is the hidden
+        // title, which the field reads alone.
+        TextField(
+            "\(title), \(field.prefix(1).lowercased() + field.dropFirst())", value: value,
+            format: .number.precision(.fractionLength(0...3))
+        )
+        .textFieldStyle(.roundedBorder)
+        .multilineTextAlignment(.trailing)
+        .frame(width: 62)
+        .labelsHidden()
     }
 
     private func snap(_ value: Double) -> Float { (Float(value) / step).rounded() * step }

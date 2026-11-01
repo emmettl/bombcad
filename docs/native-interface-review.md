@@ -333,9 +333,117 @@ Left, with the reason:
   go, since the scene is loaded again only then; the charge's marker and the rings follow it.
 - In the overlay, Pause becoming Resume widens the button and moves Stop.
 
+## Offscreen accessibility pass (1 November 2026)
+
+With the user's go-ahead (emmettl/bombcad-work#27), the keyboard reach and the accessibility tree
+were checked as far as they can be without a screen. VoiceOver itself, on a real screen, stays for
+the user ([checklist below](#voiceover-on-a-real-screen)).
+
+**How the tree is read offscreen.** The earlier note that a hosted view builds no accessibility
+elements holds until an assistive client asks: SwiftUI builds its tree only then. The test process
+now finishes launching, with no Dock icon or menu bar, and asks itself for its children through the
+accessibility API (`AXUIElementCreateApplication` on its own pid, from a background thread), after
+which a hosted view's elements read as VoiceOver reads them: role, name, value and its description,
+help. The API answers only a process trusted for accessibility, which the test runner is when the
+app that started it is (Terminal or Claude here); nothing in System Settings was changed and no
+window is shown. `AccessibilityTreeTests` reads 27 panel states this way, 2,140 elements of which
+725 are controls: the Run sidebar with every section and a gas room's, the Edit tab with a gauge,
+a block and a linked part, the main window, the chart, Compare Runs, Export for Rendering, the
+parameter sweep, Help, Infer Charge, Protective Design, the model import and its repair sheet,
+Settings, New District, envelope damage, people, the fire after the blast with and without its
+layer, Run on and the remote run's overlay in four states.
+
+Found and fixed:
+
+1. **Every titled slider had no name** and read its raw number: the charge's read "1.69897", a
+   logarithm. The 35 sliders built as a title over a slider now read their title and the value
+   shown, "TNT equivalent, 50 kg".
+2. **A hidden title and an accessibility label are both read.** A gauge's position fields read
+   "Position X (m), Wall, front, position X (m)", a box's six fields likewise, the advisor's target
+   "Percent, Peaks within (%)", Base connection "Base connection, Base connection" and Protective
+   Design's condition "Worst glazing condition, Worst glazing condition allowed". The 18 October
+   fixes 3 and 8 had added the second name without seeing this. The name is now the hidden title
+   alone (five places, eleven fields and pickers).
+3. **A freestanding object's row** read with its Duplicate button's name, "Crate, Duplicate Crate";
+   it reads "Crate".
+4. **Compare Runs:** each run's Name field and its Use this run's inputs, Export CSV… and Remove
+   read alike for every run; they name the run ("Remove “Second run”").
+5. **New District's three Choose… buttons** say which file: "Choose map…", "Choose building
+   heights…", "Choose terrain…".
+6. **The sidebar's Run and Edit layout tabs** were an unnamed group; it is "Sidebar".
+7. **The 3D view was not in the tree at all** (a Metal view has no role). It is "3D view", its value
+   a summary ("Open ground, 64 × 64 × 32 m; 100 kg of TNT at 32, 32, 0.0 m; 5 gauges; t = 0.0 ms,
+   ready; surfaces show …"), with a hint and the camera's moves as actions.
+8. **The view took no keys** but ⌘0's Reset Camera. **View ▸ Camera** orbits in 15° steps (⌥⌘←,
+   ⌥⌘→, ⌥⌘↑, ⌥⌘↓) and zooms (⌘=, ⌘−).
+9. **The colour scales** under the view (the field, the thermal radiation, the ignition key, the
+   structure's damage) read as loose numbers; each reads as one element with its range and colours:
+   "Colour scale: Peak overpressure (kPa)", logarithmic from its lowest tick in dark purple to its
+   highest in pale yellow.
+10. **The chart** was an unnamed group whose lines could not be read. The pressure and structure
+    charts are named, give a summary (the gauges, how far they run and the highest peak, at which;
+    "No samples yet" before a run) and
+    carry their lines as VoiceOver's audio graph (`AXChartDescriptor`, up to 300 points a line).
+11. **The readout beside it** read a gauge's name and its peak, or "–", as two texts; each row
+    reads as one, "5 m, no peak yet". The structure's rows likewise, and the time and state over
+    the view ("t = 0.0 ms, Ready").
+12. **The rows that open a gauge, a block or a linked part** read their chevron and did not say
+    which was open; the chevron is hidden and the open row is selected, with a hint.
+13. **A building could be selected only by clicking it in the view**, the only way to its sides'
+    chances and its switch to start a fire. Each building in Envelope building damage has **Select
+    This Building** when opened.
+14. **The fire's hour slider** read its lower end as "0"; "0 hours".
+15. **The toolbar's ⋯ menu** was a symbol alone; it is "More File Actions", with help.
+16. The iPad viewer's play button and slider had no names; they have, unchecked (it is not built on
+    the Mac).
+
+Passed: every other control and image named, including Help's topic list, the import sheet, the
+parameter sweep and Settings; every sheet closes with Escape and acts with Return where it has an
+action (Compare Runs, Export for Rendering, the sweep, Infer Charge, Protective Design, the model,
+IFC and plan imports, the repair sheet), and opens in a field (18 October); New District's map,
+placed by clicking, has its longitude and latitude fields, and Place Charge the charge's sliders.
+
+Not checkable offscreen: the window's toolbar (a hosted view has none), Tab order and focus rings
+with Full Keyboard Access (the test process is never active), and VoiceOver's speech.
+
+**The tests.** `AccessibilityTreeTests` fails on an unnamed control or image, a name that says a part
+of itself twice, a slider that reads only its number, and checks the view's summary, a legend, the
+chart and a readout row; it runs where the test runner is trusted for accessibility and is skipped
+elsewhere, as on the CI mini. `AccessibilityLabelTests` holds the same in the sources everywhere:
+no hidden title beside an accessibility label, no unnamed picker or symbol-only button or menu, no
+unnamed slider, the view, legends, chart and camera menu described, and a building selectable
+without the view.
+
+### VoiceOver on a real screen
+
+For the user, with VoiceOver on (⌘F5) and, for the Tab pass, Full Keyboard Access (System Settings
+▸ Keyboard ▸ Keyboard navigation); the open-ground layout and the street sample will do.
+
+1. **The view.** VO-move to it: it should say "3D view" and the summary. Open the Actions menu
+   (VO-⌘-Space) and orbit and zoom; the summary's time should change as a run plays.
+2. **Camera keys.** With focus in the sidebar, ⌥⌘← and ⌘= move the view, and ⌥⌘ arrows do not move a
+   field's cursor instead.
+3. **Sliders.** On the charge's TNT slider: "TNT equivalent, 100 kg, slider"; VO-↑ and VO-↓ step it,
+   and the value spoken follows.
+4. **Fields named once.** Open a gauge in the Edit tab: its fields read "Wall, front, position X
+   (m)", once; the advisor's target reads "Peaks within (%)".
+5. **Legend and chart.** Under the view, the colour scale reads its range; after a short run, the
+   chart reads its summary and VO-Shift-↓ into it offers the audio graph (Chart Details); the
+   readout reads "5 m, 12.3 kPa".
+6. **Compare Runs** (⇧⌘K with two kept runs): each run's buttons say which run.
+7. **Selecting a building without the pointer.** After a quick estimate, open a building in
+   Envelope building damage and press Select This Building; Selected building appears, and with
+   the fire after the blast its Start a fire here switch.
+8. **Tab with Full Keyboard Access** through the Run sidebar, the Edit tab and each sheet: every
+   button, switch, picker and stepper is reached, in reading order, and the view is skipped.
+9. **The toolbar:** "More File Actions" and the other buttons by name.
+10. **The rest of the list below** for the panels added since 0.6.0.
+
 ## Remaining checks
 
 For a person at a real screen:
+
+- The [VoiceOver walk-through](#voiceover-on-a-real-screen) of the 1 November fixes.
 
 - The panels above on the real screen: Colour by on its own row, the drag preview while dragging,
   the learned field model's real download dialog (its icon, the app's, is a folder offscreen), and

@@ -227,7 +227,7 @@ struct FireSection: View {
         Slider(value: $model.fireHour, in: 0...max(hours, 0.25), step: 0.25) {
             Text("Hour")
         } minimumValueLabel: {
-            Text("0").font(.caption)
+            Text("0").font(.caption).accessibilityLabel("0 hours")
         } maximumValueLabel: {
             Text(String(format: "%.0f h", hours)).font(.caption)
         }

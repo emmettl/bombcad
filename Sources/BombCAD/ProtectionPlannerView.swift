@@ -63,11 +63,10 @@ struct ProtectionPlannerView: View {
             GridRow {
                 Text("Target")
                 HStack {
-                    Picker("Worst glazing condition", selection: $planner.condition) {
+                    Picker("Worst glazing condition allowed", selection: $planner.condition) {
                         ForEach(Self.conditions, id: \.self) { Text("GSA \($0.rawValue)").tag($0) }
                     }
                     .labelsHidden().frame(width: 100)
-                    .accessibilityLabel("Worst glazing condition allowed")
                     Text("or better, except with a chance under")
                     TextField("Chance (%)", value: $planner.chance, format: .percent).frame(width: 60)
                         .accessibilityLabel("Largest chance accepted")

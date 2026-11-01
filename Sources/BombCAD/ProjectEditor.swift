@@ -94,6 +94,26 @@ struct SimulationCommands: Commands {
             Button("Export Results as CSV…") { model?.requestsResultsExport = true }
                 .disabled(model == nil || model?.stepCount == 0)
         }
+        // The 3D view takes no keys of its own; its camera's moves are here, and are the view's
+        // actions for an assistive app.
+        CommandGroup(after: .toolbar) {
+            Menu("Camera") {
+                Button("Orbit Left") { model?.orbitCamera(.left) }
+                    .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+                Button("Orbit Right") { model?.orbitCamera(.right) }
+                    .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+                Button("Orbit Up") { model?.orbitCamera(.up) }
+                    .keyboardShortcut(.upArrow, modifiers: [.command, .option])
+                Button("Orbit Down") { model?.orbitCamera(.down) }
+                    .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+                Divider()
+                Button("Zoom In") { model?.zoomCamera(in: true) }
+                    .keyboardShortcut("=")
+                Button("Zoom Out") { model?.zoomCamera(in: false) }
+                    .keyboardShortcut("-")
+            }
+            .disabled(model == nil)
+        }
         CommandMenu("Simulation") {
             Button(model?.isRunning == true ? "Pause" : "Run") { model?.toggleRun() }
                 .keyboardShortcut(.space, modifiers: [])

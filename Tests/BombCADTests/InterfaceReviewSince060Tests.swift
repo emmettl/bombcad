@@ -59,7 +59,7 @@ extension InterfaceSnapshotTests {
     }
 
     /// Six glazed buildings round a 50 kg charge, at 20 to 100 m, a fence 10 m in front of it.
-    private func street() throws -> ProjectDocument {
+    func street() throws -> ProjectDocument {
         var scene = Scenario(
             name: "Street with a fence", domainSize: SIMD3(160, 60, 20), boxes: [],
             charge: Charge(mass: 50, position: SIMD3(20, 30, 0.5)))

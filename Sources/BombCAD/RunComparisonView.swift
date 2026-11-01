@@ -424,17 +424,19 @@ private struct SavedRunRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle(run.name, isOn: $selected).checkboxToggleStyle()
-            TextField("Name", text: $draft).textFieldStyle(.roundedBorder).disabled(!editable)
-                .onSubmit {
-                    do {
-                        try rename(draft)
-                        draft = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                        renameError = nil
-                    } catch {
-                        renameError = error.localizedDescription
-                    }
+            TextField("Name of “\(run.name)”", text: $draft).textFieldStyle(.roundedBorder).disabled(
+                !editable
+            )
+            .onSubmit {
+                do {
+                    try rename(draft)
+                    draft = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    renameError = nil
+                } catch {
+                    renameError = error.localizedDescription
                 }
-                .help("Press Return to rename this run; names must be unique and at most 120 characters.")
+            }
+            .help("Press Return to rename this run; names must be unique and at most 120 characters.")
             if let renameError {
                 Text(renameError).font(.caption).foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
@@ -447,9 +449,12 @@ private struct SavedRunRow: View {
             Text("\(run.solverVersion) · \(run.appVersion)").font(.caption2).foregroundStyle(.secondary)
             if differs { Text("Inputs differ from the editor.").font(.caption).foregroundStyle(.secondary) }
             Button("Use this run’s inputs", action: useInputs).disabled(!editable)
+                .accessibilityLabel("Use the inputs of “\(run.name)”")
             HStack {
                 Button("Export CSV…", action: export)
+                    .accessibilityLabel("Export “\(run.name)” as CSV…")
                 Button("Remove", role: .destructive, action: remove).disabled(!editable)
+                    .accessibilityLabel("Remove “\(run.name)”")
             }.controlSize(.small)
         }
         .onAppear { draft = run.name }

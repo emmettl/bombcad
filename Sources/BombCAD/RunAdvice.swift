@@ -239,18 +239,19 @@ struct AdvisorSection: View {
             }
             HStack {
                 if quantity == .time {
+                    // Named by its hidden title alone, as its picker reads.
                     TextField(
-                        "Minutes", value: $minutes, format: .number.precision(.significantDigits(1...3))
+                        "\(quantity.title) (min)", value: $minutes,
+                        format: .number.precision(.significantDigits(1...3))
                     )
                     .labelsHidden().frame(maxWidth: 56).multilineTextAlignment(.trailing)
-                    .accessibilityLabel("\(quantity.title) (min)")
                     Text("min")
                 } else {
                     TextField(
-                        "Percent", value: $percent, format: .number.precision(.significantDigits(1...3))
+                        "\(quantity.title) (%)", value: $percent,
+                        format: .number.precision(.significantDigits(1...3))
                     )
                     .labelsHidden().frame(maxWidth: 56).multilineTextAlignment(.trailing)
-                    .accessibilityLabel("\(quantity.title) (%)")
                     Text("%")
                 }
                 Spacer()

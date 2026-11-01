@@ -25,6 +25,18 @@ run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
 wheel to zoom (out to three times the domain's longest side, or the district's with far buildings). Space runs and pauses, ⌘R resets.
+From the keyboard, **View ▸ Camera** orbits in 15° steps (⌥⌘ and an arrow) and zooms (⌘= and ⌘−);
+**Simulation ▸ Reset Camera** (⌘0) frames the scene again.
+
+**With VoiceOver or the keyboard alone.** The view reads as "3D view" with a summary of the scene:
+its name and size, the charge, what is in it, the time and what the surfaces show. Its actions
+(VoiceOver's Actions menu) are the camera's moves. The colour scales read as their range, the chart
+below the view by what it plots with VoiceOver's audio graph of its lines, and each gauge's peak
+with its name. Everything placed by clicking in the view also has a control in the sidebar: the
+charge's sliders, a gauge's or a block's fields, and under Envelope building damage each building's
+**Select This Building**, which selects it as a click does (its chances and, with the fire after the
+blast, its switch to start a fire). What has been checked, and what still needs a person at a
+screen, is in the [native interface review](native-interface-review.md#offscreen-accessibility-pass-1-november-2026).
 
 Structures are drawn in their materials' colours: concrete warm grey, steel blue-grey, profiled
 sheeting light metallic, glass tinted and see-through, timber warm brown, brick red-brown, blockwork

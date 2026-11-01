@@ -155,8 +155,11 @@ private struct PressureReadout: View {
                 Text(trace.peak > 0 ? String(format: "%.1f kPa", trace.peak) : "–")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel(
+                        trace.peak > 0 ? String(format: "%.1f kPa", trace.peak) : "no peak yet")
             }
             .font(.callout)
+            .accessibilityElement(children: .combine)
             GaugeExpectationLine(model: model, name: trace.name, peak: trace.peak)
         }
         Spacer(minLength: 0)
@@ -222,6 +225,7 @@ private struct StructureReadout: View {
                 .foregroundStyle(.secondary)
         }
         .font(.callout)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -244,6 +248,28 @@ private struct PressureChart: View {
         .chartLegend(.hidden)
         .chartForegroundStyleScale(domain: model.traces.map(\.name), range: GaugeChartView.palette)
         .chartOverlay { proxy in NowLine.overlay(model: model, proxy: proxy) }
+        // Drawn as one plot, which assistive apps cannot read: a summary, and the histories as an
+        // audio graph.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Overpressure at the gauges against time")
+        .accessibilityValue(summary)
+        .accessibilityChartDescriptor(
+            HistoryChartDescriptor(
+                title: "Overpressure at the gauges", quantity: "Overpressure", unit: "kPa",
+                duration: model.duration,
+                series: model.traces.map { trace in
+                    (trace.name, trace.points.map { ($0.time, $0.overpressure) })
+                }
+            ))
+    }
+
+    /// The gauges and the highest peak among them.
+    private var summary: String {
+        let sampled = model.traces.filter { !$0.points.isEmpty }
+        guard let highest = sampled.max(by: { $0.peak < $1.peak }) else { return "No samples yet" }
+        return String(
+            format: "%d gauges to %.0f ms; the highest peak %.1f kPa, at %@", sampled.count,
+            sampled.compactMap(\.points.last?.time).max() ?? 0, highest.peak, highest.name)
     }
 
     private struct Point {
@@ -284,6 +310,18 @@ private struct StructureChart: View {
         .chartXAxisLabel("Time since detonation (ms)")
         .chartYAxisLabel("Largest deflection of intact structure (mm)")
         .chartOverlay { proxy in NowLine.overlay(model: model, proxy: proxy) }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Largest deflection of the intact structure against time")
+        .accessibilityValue(String(format: "Largest so far %.0f mm", model.peakDeflection))
+        .accessibilityChartDescriptor(
+            HistoryChartDescriptor(
+                title: "Largest deflection of the intact structure", quantity: "Deflection", unit: "mm",
+                duration: model.duration,
+                series: model.settings.scenario.structuralObjects.count > 1
+                    ? model.settings.scenario.structuralObjects.map { object in
+                        (object.name, (model.bodyHistories[object.id] ?? []).map { ($0.time, $0.deflection) })
+                    }
+                    : [("Structure", model.structureHistory.map { ($0.time, $0.deflection) })]))
     }
 
     private struct Point {
@@ -323,5 +361,38 @@ private struct NowLine: View {
             path.addLine(to: CGPoint(x: x, y: plot.maxY))
         }
         .stroke(.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+    }
+}
+
+/// A chart's histories as VoiceOver's audio graph reads them: time across, one series a line, at
+/// most a few hundred points each.
+struct HistoryChartDescriptor: AXChartDescriptorRepresentable {
+    let title: String
+    let quantity: String
+    let unit: String
+    /// The run's length, in seconds.
+    let duration: Double
+    /// Each line's name and its points, time in milliseconds.
+    let series: [(String, [(Double, Double)])]
+
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let unit = unit
+        let values = series.flatMap { $0.1.map(\.1) }
+        let low = min(values.min() ?? 0, 0)
+        let high = max(values.max() ?? 1, low + 1)
+        let x = AXNumericDataAxisDescriptor(
+            title: "Time since detonation", range: 0...max(duration * 1000, 1), gridlinePositions: []
+        ) { String(format: "%.1f ms", $0) }
+        let y = AXNumericDataAxisDescriptor(
+            title: "\(quantity) (\(unit))", range: low...high, gridlinePositions: []
+        ) { String(format: "%.1f %@", $0, unit) }
+        let lines = series.map { name, points in
+            let stride = max(1, points.count / 300)
+            let kept = Swift.stride(from: 0, to: points.count, by: stride).map { points[$0] }
+            return AXDataSeriesDescriptor(
+                name: name, isContinuous: true, dataPoints: kept.map { AXDataPoint(x: $0.0, y: $0.1) })
+        }
+        return AXChartDescriptor(
+            title: title, summary: nil, xAxis: x, yAxis: y, additionalAxes: [], series: lines)
     }
 }

@@ -28,7 +28,7 @@ struct AnchorageEditor: View {
                 ForEach(BaseConnection.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
                 if choice == "custom" { Text("Custom connection").tag("custom") }
             }
-            .labelsHidden().accessibilityLabel(title)
+            .labelsHidden()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         if law != nil && turns {

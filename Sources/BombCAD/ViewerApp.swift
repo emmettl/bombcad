@@ -696,11 +696,15 @@
                         } label: {
                             Image(systemName: viewer.isPlaying ? "pause.fill" : "play.fill")
                         }
+                        .accessibilityLabel(viewer.isPlaying ? "Pause replay" : "Play replay")
                         Slider(
                             value: Binding(
                                 get: { Double(viewer.index) },
                                 set: { viewer.scrubbed(to: Int($0.rounded())) }),
-                            in: 0...Double(max(viewer.count - 1, 1)), step: 1)
+                            in: 0...Double(max(viewer.count - 1, 1)), step: 1
+                        )
+                        .accessibilityLabel("Replay time")
+                        .accessibilityValue(String(format: "%.1f ms", 1000 * viewer.time))
                         Text(String(format: "%.1f ms", 1000 * viewer.time)).monospacedDigit().frame(
                             width: 100)
                     }

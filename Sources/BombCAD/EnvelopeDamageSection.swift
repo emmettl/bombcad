@@ -265,6 +265,15 @@ struct EnvelopeDamageSection: View {
                         .font(.caption).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
+                        // As a click on it in the view selects it: from the keyboard, and with
+                        // VoiceOver, the only way to its sides' chances and its fire switch.
+                        if model.inspectedEnvelope != building.id {
+                            Button("Select This Building") { model.inspectedEnvelope = building.id }
+                                .controlSize(.small)
+                                .help(
+                                    "Select it as a click in the view does, to see its sides' chances and, with the fire after the blast, start a fire in it."
+                                )
+                        }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {

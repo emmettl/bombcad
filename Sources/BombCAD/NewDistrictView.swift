@@ -655,6 +655,7 @@ extension SimulationModel {
                 HStack {
                     Text(detail ?? "None").foregroundStyle(detail == nil ? .secondary : .primary).lineLimit(1)
                     Button("Choose…") { importing = choose }
+                        .accessibilityLabel("Choose \(title.lowercased())…")
                 }
             }
             .help(help)

@@ -28,7 +28,7 @@
                     .frame(width: 310)
                 Divider()
                 VStack(spacing: 0) {
-                    MetalView(model: model)
+                    Viewport(model: model)
                         .dropDestination(for: URL.self) { urls, _ in
                             guard !model.sweep.isActive, urls.count == 1, !importLoader.isLoading,
                                 importLoader.result == nil,
@@ -115,8 +115,9 @@
                         Button("Import Layout JSON…") { isImportingJSON = true }
                         Button("Export for Rendering…") { model.showsRenderExport = true }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Label("More File Actions", systemImage: "ellipsis.circle")
                     }
+                    .help("Save As, import a layout JSON or export for rendering")
                     Button("Export Layout JSON…", systemImage: "doc.text") { isExportingJSON = true }
                     Button(
                         importLoader.isLoading ? "Checking Model…" : "Import Model…", systemImage: "cube.box"
@@ -257,6 +258,28 @@
 
     }
 
+    /// The 3D view, a drawing assistive apps cannot read: a summary of the scene for them, and the
+    /// camera's moves as its actions (also in View ▸ Camera, with their keys).
+    private struct Viewport: View {
+        let model: SimulationModel
+
+        var body: some View {
+            MetalView(model: model)
+                .accessibilityElement()
+                .accessibilityLabel("3D view")
+                .accessibilityValue(model.viewportSummary)
+                .accessibilityHint("Drag to orbit, Shift-drag to pan, pinch or scroll to zoom.")
+                .accessibilityAddTraits(.allowsDirectInteraction)
+                .accessibilityAction(named: "Orbit left") { model.orbitCamera(.left) }
+                .accessibilityAction(named: "Orbit right") { model.orbitCamera(.right) }
+                .accessibilityAction(named: "Orbit up") { model.orbitCamera(.up) }
+                .accessibilityAction(named: "Orbit down") { model.orbitCamera(.down) }
+                .accessibilityAction(named: "Zoom in") { model.zoomCamera(in: true) }
+                .accessibilityAction(named: "Zoom out") { model.zoomCamera(in: false) }
+                .accessibilityAction(named: "Reset camera") { model.resetCamera() }
+        }
+    }
+
     /// Time and playback state, drawn over the viewport.
     private struct StatusOverlay: View {
         let model: SimulationModel
@@ -272,6 +295,7 @@
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(.regularMaterial, in: .rect(cornerRadius: 10))
+            .accessibilityElement(children: .combine)
         }
 
         private var statusLine: String {
@@ -313,6 +337,10 @@
             }
             .padding(10)
             .background(.regularMaterial, in: .rect(cornerRadius: 10))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Colour scale: \(settings.mode.title) (\(settings.mode.unit))")
+            .accessibilityValue(
+                "Logarithmic, from \(ticks.first ?? "") in dark purple to \(ticks.last ?? "") in pale yellow")
         }
 
         /// Labels at each decade of the logarithmic scale, lowest first.
@@ -363,6 +391,11 @@
             }
             .padding(10)
             .background(.regularMaterial, in: .rect(cornerRadius: 10))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Colour key: ignition so far, illustrative")
+            .accessibilityValue(
+                "Orange: hot enough to ignite under steady heating. Pale yellow: past a short pulse's ignition fluence. Test thresholds for combustible surfaces, not a fire model: nothing spreads or burns."
+            )
         }
 
         private var scale: some View {
@@ -383,6 +416,10 @@
             }
             .padding(10)
             .background(.regularMaterial, in: .rect(cornerRadius: 10))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Colour scale: \(quantity.title) so far (\(quantity.unit))")
+            .accessibilityValue(
+                "Logarithmic, from \(ticks.first ?? "") in dark red to \(ticks.last ?? "") in pale yellow")
         }
 
         /// Labels at each decade of the scale, lowest first.
@@ -414,6 +451,9 @@
             }
             .padding(10)
             .background(.regularMaterial, in: .rect(cornerRadius: 10))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Colour scale: structure damage")
+            .accessibilityValue("From sound in light grey, through yellow and orange, to failing in dark red")
         }
     }
 
