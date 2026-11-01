@@ -2,13 +2,16 @@ import BlastCore
 import SwiftUI
 
 /// Under the view: replay a recorded run, the last one or a kept one, and scrub through it with
-/// no physics: play, pause, step and drag (`TimelinePlayback`).
+/// no physics: play, pause, step and drag (`TimelinePlayback`); or, shown before a run, the live
+/// blast wave's estimate (`LiveWaveControls`).
 struct TimelineBar: View {
     let model: SimulationModel
 
     var body: some View {
         if let playback = model.playback {
             PlaybackControls(model: model, playback: playback)
+        } else if model.liveWaveShown, !model.isRunning {
+            LiveWaveControls(model: model)
         } else if !model.isRunning, model.recentTimeline != nil || !model.replayableRuns.isEmpty {
             HStack(spacing: 8) {
                 Menu("Replay") {

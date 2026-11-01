@@ -165,10 +165,38 @@ public struct RenderSettings: Sendable, Hashable {
     public var highlight: Box?
     /// Craters to shade into the ground (see `CraterMark`), up to four, once a run has dug them.
     public var craters: [CraterMark] = []
+    /// The live blast wave (`LiveWave`) laid over the scene at its time, when shown; the field is
+    /// handed over by `SceneRenderer.setLiveWave`.
+    public var liveWave: LiveWaveDisplay?
 
     public init() {}
 
     public var surfaceScale: Float { mode == .impulse ? impulseScale : pressureScale }
+}
+
+/// How the live blast wave is drawn: the time it shows, s from the burst, and how opaque its colour
+/// is over the scene. Coloured by its overpressure on a log scale from `scaleBottom` up to the
+/// surfaces' scale (`RenderSettings.pressureScale`).
+public struct LiveWaveDisplay: Sendable, Hashable {
+    public var time: Float
+    public var opacity: Float
+    public static let scaleBottom: Float = 1000
+
+    public init(time: Float, opacity: Float = 0.7) {
+        self.time = time
+        self.opacity = opacity
+    }
+}
+
+/// Layout matches `LiveWaveUniforms` in `Render.metal`.
+private struct LiveWaveUniforms {
+    var eye: SIMD4<Float>
+    var right: SIMD4<Float>
+    var up: SIMD4<Float>
+    var forward: SIMD4<Float>
+    var clip: SIMD4<Float>
+    var plan: SIMD4<Float>
+    var scale: SIMD4<Float>
 }
 
 /// A crater as the view shades it into the ground: its centre in the plane, the apparent crater's
@@ -283,6 +311,11 @@ public final class SceneRenderer {
     private var freestandingBuffer: MTLBuffer?
     private var freestandingCount = 0
     private let compositePipeline: MTLRenderPipelineState
+    private let liveWavePipeline: MTLRenderPipelineState
+    /// The live wave's field, a cell a texel: arrival (s, 1e9 where it never comes), peak (Pa),
+    /// the positive phase (s) and the Friedlander decay; and the plan's size, m.
+    private var liveWaveTexture: MTLTexture?
+    private var liveWavePlan: SIMD2<Float> = .zero
     private let sceneDepthState: MTLDepthStencilState
     private let meshDepthState: MTLDepthStencilState
     /// Tested against what is drawn but not written, for glass.
@@ -354,6 +387,8 @@ public final class SceneRenderer {
         linePipeline = try pipeline(vertex: "lineVertex", fragment: "lineFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
+        liveWavePipeline = try pipeline(
+            vertex: "fullscreenVertex", fragment: "liveWaveFragment", depth: false, blended: true)
 
         func depthState(_ compare: MTLCompareFunction, writes: Bool = true) throws -> MTLDepthStencilState {
             let descriptor = MTLDepthStencilDescriptor()
@@ -644,6 +679,34 @@ public final class SceneRenderer {
             return
         }
         lines.withUnsafeBytes { lineBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: length) }
+    }
+
+    /// The live blast wave to lay over the scene while `settings.liveWave` is set; nil for none.
+    public func setLiveWave(_ field: LiveWave.Field?) {
+        guard let field, field.columns > 0, field.rows > 0 else {
+            liveWaveTexture = nil
+            return
+        }
+        if liveWaveTexture?.width != field.columns || liveWaveTexture?.height != field.rows {
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .rgba32Float, width: field.columns, height: field.rows, mipmapped: false)
+            descriptor.usage = .shaderRead
+            descriptor.storageMode = .shared
+            liveWaveTexture = device.makeTexture(descriptor: descriptor)
+        }
+        guard let liveWaveTexture else { return }
+        var texels = [SIMD4<Float>](repeating: .zero, count: field.columns * field.rows)
+        for n in texels.indices {
+            let arrival = field.arrival[n]
+            texels[n] = SIMD4(
+                arrival.isFinite ? arrival : 1e9, field.peak[n], field.duration[n], field.decay[n])
+        }
+        texels.withUnsafeBytes { bytes in
+            liveWaveTexture.replace(
+                region: MTLRegionMake2D(0, 0, field.columns, field.rows), mipmapLevel: 0,
+                withBytes: bytes.baseAddress!, bytesPerRow: field.columns * 16)
+        }
+        liveWavePlan = SIMD2(Float(field.columns), Float(field.rows)) * field.cell
     }
 
     /// Values to paint onto the surfaces while `settings.thermal` is set; nil for none.
@@ -943,6 +1006,21 @@ public final class SceneRenderer {
         encoder.setFragmentTexture(depthTarget, index: 1)
         encoder.setFragmentTexture(field, index: 2)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        // The live blast wave over it all, on the scene's surfaces.
+        if let wave = settings.liveWave, let liveWaveTexture {
+            let top = max(settings.pressureScale * 1000, LiveWaveDisplay.scaleBottom * 10)
+            var live = LiveWaveUniforms(
+                eye: uniforms.eye, right: uniforms.right, up: uniforms.up, forward: uniforms.forward,
+                clip: uniforms.clip, plan: SIMD4(liveWavePlan.x, liveWavePlan.y, wave.time, wave.opacity),
+                scale: SIMD4(
+                    top, log10(top / LiveWaveDisplay.scaleBottom), Float(liveWaveTexture.width),
+                    Float(liveWaveTexture.height)))
+            encoder.setRenderPipelineState(liveWavePipeline)
+            encoder.setFragmentBytes(&live, length: MemoryLayout<LiveWaveUniforms>.stride, index: 0)
+            encoder.setFragmentTexture(depthTarget, index: 0)
+            encoder.setFragmentTexture(liveWaveTexture, index: 1)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
         encoder.endEncoding()
     }
 

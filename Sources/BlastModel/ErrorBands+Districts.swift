@@ -76,6 +76,21 @@ extension ValidationTables {
             id: "learnedModel2Walls", low: 0.653, high: 0.653,
             document: "learned-models.md#on-the-clear-top-terms-25-october-2026",
             quote: "both pass the tenths test on the new terms, at skill 0.653"),
+        // The live blast wave against Beirut's 4 m runs it was not fitted to, cell by cell at 2 m
+        // (`LiveWave.standing`; emmettl/bombcad-work#112 item 2): peaks within ×1.25 in sight and
+        // shielded, and the shielded arrivals' mean error beyond 200 m.
+        Figure(
+            id: "liveWavePeakSight", low: 0.91, high: 0.91,
+            document: "live-wave.md#judged-against-the-solver-1-november-2026",
+            quote: "×1.02, 91%, 97% within ×1.5"),
+        Figure(
+            id: "liveWavePeakShielded", low: 0.68, high: 0.68,
+            document: "live-wave.md#judged-against-the-solver-1-november-2026",
+            quote: "×1.02, 68%, 90% within ×1.5"),
+        Figure(
+            id: "liveWaveArrivalShielded", low: 0.013, high: 0.054,
+            document: "live-wave.md#judged-against-the-solver-1-november-2026",
+            quote: "×0.998, 1.3% (×1.010, 1.9%)", "×0.954, 5.4% (×0.985, 5.9%)"),
         // The drag preview, each side's glass a strip for each way its outline faces it since 29
         // October 2026 (emmettl/bombcad-work#110; 82–93% with one strip for the side).
         Figure(

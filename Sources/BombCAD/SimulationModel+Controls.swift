@@ -145,6 +145,7 @@ extension SimulationModel {
             isRunning ? "running" : time == 0 ? "ready" : time >= duration - 1e-9 ? "finished" : "paused"
         parts.append(String(format: "t = %.1f ms, %@", time * 1000, state))
         parts.append("surfaces show \(renderSettings.mode.title.lowercased())")
+        if let wave = liveWaveSummary { parts.append(wave) }
         return parts.joined(separator: "; ")
     }
 

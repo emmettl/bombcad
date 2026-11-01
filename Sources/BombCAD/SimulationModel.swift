@@ -939,6 +939,27 @@ final class SimulationModel {
     /// and the key their costs are kept under.
     @ObservationIgnored var automaticPlaces: [String: String] = [:]
     @ObservationIgnored var runCostKey: String?
+    /// The blast wave, live (`LiveWave`; SimulationModel+LiveWave.swift): whether it is shown, the
+    /// field for the charge where it is now, the time it shows and whether it plays, how fast, and
+    /// what it says of itself.
+    var liveWaveShown = false {
+        didSet { if liveWaveShown != oldValue { liveWaveShownChanged() } }
+    }
+    var liveWave: LiveWave.Field?
+    var liveWaveTime = 0.0
+    var liveWavePlaying = false
+    var liveWaveSpeed = LiveWaveSpeed.tenth
+    var liveWaveStatus = ""
+    /// The plans the wave is worked out on, fine and (on a large district, while dragging) coarse,
+    /// by their cell, with the scene they were laid out for (`sceneVersion`); what is being worked
+    /// out, what waits and what is shown; and the task that plays it.
+    @ObservationIgnored var liveWavePlans: [Float: (version: Int, plan: LiveWave.Plan)] = [:]
+    @ObservationIgnored var liveWaveInFlight = false
+    @ObservationIgnored var liveWaveWaiting: LiveWaveRequest?
+    @ObservationIgnored var liveWaveShownFor: LiveWaveRequest?
+    @ObservationIgnored var liveWavePlayTask: Task<Void, Never>?
+    /// Counts the fields shown, so that the view hands each new one to the renderer once.
+    @ObservationIgnored var liveWaveVersion = 0
 
     init(document: ProjectDocument? = nil, playbackSpeed: PlaybackSpeed = .x100) {
         let scenario = document?.scenario ?? SimulationSettings().scenario

@@ -150,6 +150,11 @@ struct SimulationCommands: Commands {
                 .disabled(
                     model == nil || model?.settings.scenario.envelopeObjects.isEmpty != false
                         || model?.stepCount != 0 || model?.estimatingEnvelopeDamage == true)
+            Button(model?.liveWaveShown == true ? "Hide Live Blast Wave" : "Show Live Blast Wave") {
+                model?.liveWaveShown.toggle()
+            }
+            .keyboardShortcut("b", modifiers: [.command, .option])
+            .disabled(model == nil || model?.settings.scenario.deflagration != nil)
         }
     }
 }

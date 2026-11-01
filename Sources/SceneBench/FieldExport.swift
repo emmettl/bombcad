@@ -29,6 +29,13 @@ import simd
 /// mask is air there over a cell whose building, if any, is lower; the roof's, air over a cell with
 /// a building. The 2 m files are as they were, and without either flag nothing else is written.
 ///
+/// `--arrival [--arrival-threshold 500]` adds `arrival.npy` (rows × columns): when the overpressure
+/// first reached the threshold, s, read on the solver's exposure plane `--above` over the ground
+/// under the charge (`configureExposurePlane`), NaN where the plane lies more than 1.5 m from that
+/// height over the cell's own ground, touches a solid, or was never reached; and `arrival.json`,
+/// the plane's height and threshold. For judging the live blast wave (docs/live-wave.md). It only
+/// observes: the other files are the same to the bit with it or without.
+///
 /// `district-compare --export-field folder` writes the same files from its own run.
 enum FieldExport {
     /// The channels of `inputs.npy`, in order, with their units.
@@ -271,6 +278,16 @@ enum FieldExport {
         }
         if args.contains("--first-phase") || args.contains("--cuda-job") {
             try recordFirstPhase(solver: solver, scene: scene, above: above, levels: levels)
+        }
+        if args.contains("--arrival") {
+            guard !args.contains("--cuda-job") else {
+                throw BlastError.allocationFailed("--arrival is for Metal runs, not --cuda-job")
+            }
+            let chargeGround =
+                scene.terrain?.height(at: SIMD2(scene.charge.position.x, scene.charge.position.y)) ?? 0
+            try solver.configureExposurePlane(
+                heightM: chargeGround + above,
+                arrivalThresholdPa: value("arrival-threshold").flatMap(Float.init) ?? 500)
         }
         let traceIndices: [Int]
         if let text = value("trace-columns") {
@@ -739,6 +756,25 @@ enum FieldExport {
                 to: folder.appending(path: "levels-targets.npy"))
             try NPY.write(
                 levelMask, shape: [levels.count, ny, nx], to: folder.appending(path: "levels-mask.npy"))
+        }
+        // `--arrival`: the exposure plane's arrivals where it lies near the height over the ground.
+        if let exposure = solver.exposureSnapshot(), exposure.nx == nx, exposure.ny == ny {
+            var arrival = [Float](repeating: .nan, count: plan)
+            for n in 0..<plan {
+                guard abs(exposure.heightM - (groundMap[n] + above)) <= 1.5, !exposure.everSolid[n],
+                    let t = exposure.arrivalS[n]
+                else { continue }
+                arrival[n] = t
+            }
+            try NPY.write(arrival, shape: [ny, nx], to: folder.appending(path: "arrival.npy"))
+            let described: [String: Any] = [
+                "planeHeightM": exposure.heightM, "thresholdPa": exposure.thresholdPa,
+                "reached": arrival.filter(\.isFinite).count,
+                "units":
+                    "s, when the overpressure first reached the threshold on the plane; NaN where the plane is more than 1.5 m from the height over the cell's ground, touched a solid, or was never reached",
+            ]
+            try JSONSerialization.data(withJSONObject: described, options: [.prettyPrinted, .sortedKeys])
+                .write(to: folder.appending(path: "arrival.json"))
         }
         let ci = Int(charge.x / dx)
         let cj = Int(charge.y / dx)

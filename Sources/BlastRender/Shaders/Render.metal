@@ -1194,3 +1194,84 @@ fragment float4 compositeFragment(VertexOut in [[stage_in]],
 
     return float4(colour, 1.0f);
 }
+
+// The live blast wave (`LiveWave`, docs/live-wave.md), laid over the finished scene after the
+// composite: each pixel's surface found again from the scene's depth, and the plan's cell under it
+// read for when the front arrives there, its peak, its positive phase and its decay. Before the
+// front, nothing; at it, a bright line; behind it, the overpressure now as it decays, over the peak
+// it left, coloured on the log scale. Layout matches `LiveWaveUniforms` in `SceneRenderer.swift`.
+struct LiveWaveUniforms {
+    float4 eye;        // xyz
+    float4 right;      // camera basis, pre-scaled by the field of view, as RenderUniforms'
+    float4 up;
+    float4 forward;
+    float4 clip;       // x = near plane, y = far plane
+    float4 plan;       // xy = the plan's size in metres from the origin, z = time (s), w = opacity
+    float4 scale;      // x = top of the colour scale (Pa), y = its decades, z = columns, w = rows
+};
+
+fragment float4 liveWaveFragment(VertexOut in [[stage_in]],
+                                 constant LiveWaveUniforms &u [[buffer(0)]],
+                                 depth2d<float> sceneDepth [[texture(0)]],
+                                 texture2d<float> wave [[texture(1)]]) {
+    uint2 pixel = uint2(in.position.xy);
+    float depth = sceneDepth.read(pixel);
+    if (depth >= 1.0f) {
+        discard_fragment();
+    }
+    float3 direction = normalize(u.forward.xyz + in.ndc.x * u.right.xyz + in.ndc.y * u.up.xyz);
+    float distance = viewFromDepth(depth, u.clip.x, u.clip.y) / dot(direction, u.forward.xyz);
+    float3 p = u.eye.xyz + distance * direction;
+    float2 uv = p.xy / u.plan.xy;
+    if (uv.x < 0.0f || uv.y < 0.0f || uv.x >= 1.0f || uv.y >= 1.0f) {
+        discard_fragment();
+    }
+    // Between the four cells' centres about the point: the arrival and the log of the peak, of those
+    // the front reaches; the duration and decay of the nearest.
+    float2 size = u.scale.zw;
+    float2 c = uv * size - 0.5f;
+    int2 base = int2(floor(c));
+    float2 f = c - float2(base);
+    float arrival = 0.0f, logPeak = 0.0f, weight = 0.0f;
+    float4 nearest = float4(1.0e9f, 0.0f, 0.0f, 0.0f);
+    float nearestWeight = -1.0f;
+    for (int k = 0; k < 4; ++k) {
+        int2 offset = int2(k & 1, k >> 1);
+        int2 cell = clamp(base + offset, int2(0), int2(size) - 1);
+        float4 value = wave.read(uint2(cell));
+        float w = (offset.x ? f.x : 1.0f - f.x) * (offset.y ? f.y : 1.0f - f.y);
+        if (w > nearestWeight) {
+            nearestWeight = w;
+            nearest = value;
+        }
+        if (value.x < 1.0e8f && value.y > 0.0f) {
+            arrival += w * value.x;
+            logPeak += w * log(value.y);
+            weight += w;
+        }
+    }
+    if (weight <= 0.0f) {
+        discard_fragment();
+    }
+    arrival /= weight;
+    float peak = exp(logPeak / weight);
+    float t = u.plan.z;
+    float tau = t - arrival;
+    // A line a pixel or two wide where the front is now, whatever the zoom.
+    float across = max(fwidth(arrival), 1.0e-6f);
+    if (tau < -1.5f * across) {
+        discard_fragment();
+    }
+    float duration = max(nearest.z, 1.0e-6f);
+    float x = clamp(tau / duration, 0.0f, 1.0f);
+    float now = tau < duration ? peak * (1.0f - x) * exp(-nearest.w * x) : 0.0f;
+    float share = clamp(now / peak, 0.0f, 1.0f);
+    float left = logScale(peak, u.scale.x, u.scale.y);
+    float3 colour = heat(0.15f + 0.85f * left);
+    colour = mix(colour, heat(0.35f + 0.65f * logScale(now, u.scale.x, u.scale.y)) * 1.35f, share);
+    float alpha = u.plan.w * (0.55f + 0.45f * share);
+    float line = 1.0f - smoothstep(0.0f, 1.5f * across, fabs(tau));
+    colour = mix(colour, float3(1.0f, 0.98f, 0.92f), line);
+    alpha = max(alpha, 0.95f * line);
+    return float4(saturate(colour), saturate(alpha));
+}

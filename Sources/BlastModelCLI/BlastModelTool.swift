@@ -19,6 +19,14 @@ enum BlastModelTool {
             "surrogate-extract", "the surrogate's features and a run's loads, for fitting",
             SurrogateBench.extract
         ),
+        (
+            "live-wave-judge", "the live blast wave against district runs' peaks and arrivals",
+            LiveWaveJudge.run
+        ),
+        (
+            "live-wave-time", "what the live blast wave costs a recompute on a laid-out district",
+            LiveWaveJudge.time
+        ),
         ("district-glass", "a district run's saved strips' glass, against GEER's survey", DistrictGlass.run),
         ("glass-calibrate", "the glass chances' reliability against runs and GEER", GlassCalibration.run),
         (

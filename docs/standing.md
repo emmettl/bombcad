@@ -35,6 +35,10 @@ from building to building over the hours after the blast ([Fire spread](fire-spr
 `FireSpread.standing`). Neither changes a scene's standing; a scene still lists fire among what
 it leaves out.
 
+The [live blast wave](live-wave.md) (Simulation ▸ Show Live Blast Wave) gives its standing in its
+bar's help (`LiveWave.standing`). It is illustrative, judged against BombCAD's own 4 m district runs
+cell by cell, and it does not change a scene's standing either.
+
 ## Derived from the scene
 
 The standing is worked out from the scene's actual settings each time they change

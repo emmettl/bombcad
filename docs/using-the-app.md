@@ -60,6 +60,16 @@ stopped. On Beirut's 14,000 buildings a preview takes one to two seconds on a bu
 one for the damage on a quieter one), and the full estimate one to two minutes
 ([dragging the charge](surrogate-first-look.md#dragging-the-charge-20-october-2026)).
 
+**Simulation ▸ Show Live Blast Wave** (⌥⌘B) draws the blast front sweeping the scene before a run.
+It is an estimate, not a run: Kingery–Bulmash along the shortest paths round and over the buildings,
+fitted to BombCAD's own 4 m district runs. A bar under the view has play, a slider over the wave's
+time, a speed and the colour key. The front is a bright line, the overpressure decays behind it, and
+each place keeps the colour of its peak, so the shadows behind buildings stay. With **Place Charge**
+on, drag the charge and the wave follows it in tens of milliseconds, on cells twice as large while
+you drag a large district. It is illustrative: on Beirut, 91% of cells in sight and 68% behind
+buildings came within ×1.25 of the runs' peaks, and arrivals beyond 200 m came within 0.4–5% on
+average ([the live wave](live-wave.md)).
+
 With **Refine close calls with the solver** on (Envelope building damage, on by default), once the
 full estimate is in the app runs the air on the nearest buildings whose chances lie between 0.2 and
 0.8, for the colouring shown. It runs them on a scene cut round them, with finer air along the way

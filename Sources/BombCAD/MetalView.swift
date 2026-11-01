@@ -1,4 +1,5 @@
 #if os(macOS)
+    import BlastCore
     import BlastRender
     import MetalKit
     import SceneRender
@@ -34,6 +35,8 @@
             private var frameSeconds = 0.0
             /// The paint last handed to the renderer, which keeps it between frames.
             private var paint: SurfacePaint?
+            /// The live blast wave's field last handed to it, by `liveWaveVersion`.
+            private var liveWaveVersion = -1
 
             /// The share of the GPU the view may take while a run goes as fast as it can. A frame of
             /// the blast wave is ray-marched through the whole domain at every pixel, so at 60 frames
@@ -69,6 +72,7 @@
                 var lines: [SIMD4<Float>]
                 var camera: OrbitCamera
                 var freestanding: [SceneRenderer.OrientedBox]
+                var liveWave: LiveWave.Field?
             }
 
             /// Draws on the view's timer during a run, and otherwise when marked as needing display:
@@ -105,6 +109,11 @@
                 if model.isDraggingCharge { settings.chargeAt = model.settings.chargePosition }
                 settings.highlight = model.highlightedBox
                 settings.craters = model.shownCraters.map(CraterMark.init)
+                // The live blast wave, at the time its bar shows, before any run.
+                let wave = model.liveWave
+                if model.drawsLiveWave {
+                    settings.liveWave = LiveWaveDisplay(time: Float(model.liveWaveTime))
+                }
                 // The ground points read the project's points and the run's estimate, both observed.
                 // A run elsewhere draws what its last frame sent over its scene.
                 let remote = model.shownRemoteRun
@@ -133,7 +142,8 @@
                 return Frame(
                     settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
                     freestanding: replay.map { $0.1?.freestanding ?? [] }
-                        ?? remote.flatMap(\.overlay.freestanding.value) ?? model.freestandingBoxes())
+                        ?? remote.flatMap(\.overlay.freestanding.value) ?? model.freestandingBoxes(),
+                    liveWave: wave)
             }
 
             func draw(in view: MTKView) {
@@ -162,6 +172,10 @@
                 if frame.paint != paint {
                     paint = frame.paint
                     renderer.setSurfacePaint(paint)
+                }
+                if model.liveWaveVersion != liveWaveVersion {
+                    liveWaveVersion = model.liveWaveVersion
+                    renderer.setLiveWave(frame.liveWave)
                 }
                 if view.bounds.width > 0 {
                     renderer.pixelsPerPoint = Float(view.drawableSize.width / view.bounds.width)

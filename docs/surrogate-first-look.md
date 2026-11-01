@@ -2151,6 +2151,8 @@ not kept:
 - **Headless**: `BombCAD run project.bombcad --surrogate first-look.json` writes the buildings'
   damage as `--envelope-damage` would, marked as an estimate with its method and standing, and
   does not run (`--resolution` and `--mass` change the inputs as for a run).
+- **The front itself, live**: [the live blast wave](live-wave.md) draws the arrival, peak and
+  shadows over the plan as the charge is dragged, on its own model, not this one's components.
 - **Beyond a near run**: the [hybrid far field](hybrid-far-field.md) carries a district past a 3-D
   run of its near field with these loads, matched to the run where they meet.
 - **The terms in use** are the deep-city terms refitted with each wall facing as its building's
