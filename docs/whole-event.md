@@ -94,7 +94,11 @@ by 7 s, most as the walls fail from 2 to 3.5 s; 30 kg are in the air at 3.3 s; t
 10 mg/m³ fills the 31 m domain and its dense core (1 g/m³) reaches its faces, so its reach is the
 domain's; 19 kg settle on the pile and the block, 7.4 kg on the ground, and 0.24 kg leaves. Its
 standing is illustrative: the energy per kilogram of fines (5×10⁴ J/kg, 2×10⁴–2×10⁵) is rock's.
-Carrying it by default in whole-event runs is for the user's decision.
+
+**1 November ([adopted: the dust](#adopted-the-dust-1-november-2026)):** whole-event runs carry the
+dust by default (the user's decision; `--no-dust` for the earlier runs). Nothing else moves: the
+air and the structure are the same to the bit with it. Stage 2 (the dense cloud's coupling, what it
+hides, the hand-over to the cloud spread, a larger domain) waits until it can be done cheaply.
 
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
@@ -117,7 +121,7 @@ blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--eve
                       [--erode-crushed-bare] [--release-bare-hourglass] [--assumed-strain]
                       [--breakdown <checkpoint>] [--outcome <checkpoint or run folder>]
                       [--ground-friction 0.6] [--split-work] [--dump-split <from s>]
-                      [--dust] [--dust-energy 5e4] [--dust-impact-share 0.2] [--dust-fine-share 0.15]
+                      [--no-dust] [--dust-energy 5e4] [--dust-impact-share 0.2] [--dust-fine-share 0.15]
                       [--dust-maps 1,2,3,5,7,10]
 ```
 
@@ -156,11 +160,14 @@ air on 1.19 million cells of 0.25 m), with:
 - `--outcome <run folder>` reads every saved state in the folder, one row each, and ends by naming
   the row to quote: the first saved at 5 s, or at rest if the block comes to rest later, by the
   folder's `phases.csv` ([read at rest](#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026)).
-- `--dust` carries the collapse's dust ([dust, stage 1](#dust-stage-1-1-november-2026)), off by
-  default: `dust.csv` gets a row at each sample, `dust-column-<ms>.csv` and a picture the mass over
-  each column at the `--dust-maps` times, and `--outcome` a dust row after each saved state's.
-  `--continue` carries on as the run was saved; given to a run saved without it, the dust starts
-  from none there.
+- **the collapse's dust** ([dust, stage 1](#dust-stage-1-1-november-2026)), carried by default
+  since 1 November 2026 ([adopted](#adopted-the-dust-1-november-2026)); `--no-dust` leaves it out,
+  as the runs before then did, and a run with sleeping air cannot carry it. `dust.csv` gets a row at
+  each sample, `dust-column-<ms>.csv` and a picture the mass over each column at the `--dust-maps`
+  times, and `--outcome` a dust row after each saved state's. `--continue` carries on as the run
+  was saved: one saved without dust carries on without it unless `--dust` is given, when its dust
+  starts from none there; one saved with it keeps it. `whole-event.json` records the dust's
+  coefficients (`dust`, none without it), and the checkpoints its fields, ledger and sources.
 - `--split-work` splits the census by source (section 5); `--dump-split <from s>` also writes each
   sample's split node by node from that time on (`split-nodes-<t>.bin`, four float4s a node as the
   node kernel sums them, and `split-particles-<t>.bin`), a diagnostic.
@@ -1825,9 +1832,9 @@ The sketch as written before the dust was built (stage 1 is built since 1 Novemb
 ## Dust, stage 1, 1 November 2026
 
 Next's item 4 (emmettl/bombcad-work#36), on the user's word of 1 November: the collapse's dust, as
-a passive cloud the air carries. It is off by default everywhere: `blastbench wholeevent --dust`
-asks for it, and no other run, scene, test or digest moves. Whether whole-event runs should carry it
-by default is for the user's decision ([below](#for-the-users-decision-the-dust)). Its standing is
+a passive cloud the air carries. As built it was off by default everywhere: `blastbench wholeevent
+--dust` asked for it, and no other run, scene, test or digest moved. Whole-event runs carry it by
+default since the user's decision the same day ([adopted](#adopted-the-dust-1-november-2026)). Its standing is
 illustrative: its two coefficients are rock's, not concrete's, and nothing it gives has been
 compared with a measurement.
 
@@ -1996,13 +2003,16 @@ illustrative. The whole-event run is still not offered in the app.
 ### For the user's decision: the dust
 
 1. **Whole-event runs carry the dust by default.** It changes nothing else, to the bit, adds kernels
-   that were not timed apart (the run was no slower than earlier ones) and 50 MB a checkpoint, and the collapse's runs would then all have their
-   cloud. `--no-dust` would give today's runs. Proposed.
+   that were not timed apart (the run was no slower than earlier ones) and 50 MB a checkpoint, and
+   the collapse's runs would then all have their cloud. `--no-dust` would give today's runs.
+   Proposed. (Adopted the same day: [the dust](#adopted-the-dust-1-november-2026).)
 2. **Before quoting how far the cloud goes**, a domain that holds it, or the hand-over to the cloud
-   spread (stage 2, below): in a domain 4 m beyond the plan, its reach is the domain's.
+   spread (stage 2, below): in a domain 4 m beyond the plan, its reach is the domain's. (Deferred
+   with stage 2.)
 
 Runs and tables: `/Volumes/StudioData/bombcad/whole-event/dust/`:
-- `d12-default`, twelve storeys to 7 s, with its `dust.csv`, column maps and checkpoints every 0.5 s;
+- `d12-default`, twelve storeys to 7 s, with its `dust.csv` and column maps, and its checkpoints at
+  0.5, 2, 3.5, 5 and 7 s (saved every 0.5 s, read with `--outcome`, the rest dropped);
   `outcome-d12-default.csv` the outcome reader's rows, the dust's after each (at four thresholds);
 - `d3-default`, three storeys to 2 s;
 - `c3-straight`, `c3-pieces` and `c3-nodust`, the checks to 0.3 s; `c3-fix` the rubble's;
@@ -2011,7 +2021,8 @@ Runs and tables: `/Volumes/StudioData/bombcad/whole-event/dust/`:
 
 ### Stage 2, not started: the plan
 
-Recorded as Next (item 6), for the user's word.
+Recorded as Next (item 6). Deferred on the user's word of 1 November until it can be done cheaply
+([adopted: the dust](#adopted-the-dust-1-november-2026)).
 - **The dense cloud's coupling.** The dust's density added to the air's in its momentum and, with
   the well-balanced gravity option, in its weight, so that the falling block's dusty air spreads as a
   gravity current. Peak cells hold 1–2 kg/m³ here, as much as the air itself, so this is where the
@@ -2027,6 +2038,38 @@ Recorded as Next (item 6), for the user's word.
   settling out by its speed; or a larger domain around the block, on coarser cells beyond it.
 - **Deposits on the rubble.** Fines settle through the rubble's cells (particles do not mask the air)
   onto the ground beneath; a particle's frontal area (`debrisArea`) could catch them where they pass.
+
+## Adopted: the dust, 1 November 2026
+
+The user's decisions on the proposals above (emmettl/bombcad-work#36), the same day.
+
+**Whole-event runs carry the dust by default.** `blastbench wholeevent` now carries the collapse's
+dust, with the coefficients of [stage 1](#dust-stage-1-1-november-2026), unless `--no-dust` is
+given, which gives the runs before this date.
+- **A new run** carries it unless `--no-dust`. A run whose air sleeps (`--sleeping-air`) cannot carry
+  it, since frozen air carries nothing, so such a run goes without it. `--dust` with `--sleeping-air`
+  is refused.
+- **A run carried on** with `--continue` keeps what it was saved with. One saved with the dust keeps
+  it, whatever is given (`--no-dust` is noted and set aside). One saved without it carries on
+  without it. That covers every run before this date, whose `whole-event.json` records no dust.
+  Given `--dust`, such a run begins its dust from none at its checkpoint. That was chosen over
+  starting it by default, because a run carried on should stay the run it was, and a cloud begun part
+  way through a collapse would miss the fines made before it.
+- **The readers** (`--outcome`, `--inspect`, `--breakdown`) take it as any state they read was saved.
+- **Recorded.** `whole-event.json` holds the dust's coefficients (`dust`; none without it), as it
+  holds the friction, the air and the displacements. The checkpoints hold the dust's fields, ledger
+  and sources as a part of their own.
+- **Nothing else moves.** The air and the structure are the same to the bit with the dust on, as
+  [stage 1](#dust-stage-1-1-november-2026) showed (every column of `phases.csv` on three storeys to
+  0.3 s). The solver's dust stays off unless a run asks for it, so no other scene, test or digest
+  changes. The twelve-storey run of stage 1 (`dust/d12-default`) is a run on these defaults.
+
+**Stage 2 is deferred** until it can be done cheaply (Next, item 6): the dense cloud's coupling,
+what it hides, the hand-over to the cloud spread and a larger domain. The cloud's reach is quoted
+as the domain's until then.
+
+**Where a user sees it.** The collapse's standing notes the dust as carried by whole-event runs by
+default, still illustrative. The whole-event run is still not offered in the app.
 
 ## Next
 
@@ -2046,14 +2089,21 @@ Recorded as Next (item 6), for the user's word.
    shear, not taken up; since 25 October the case for running it on the assumed-strain element,
    where the stabilisation no longer hides it (section 7).
 4. **Dust**: stage 1 built ([dust, stage 1](#dust-stage-1-1-november-2026)), a passive cloud,
-   opt-in (`--dust`). Twelve storeys make 46 kg of fines by 7 s, hold 30 kg in the air at 3.3 s, and
-   fill the 31 m domain; 19 kg settle on the pile and the block. Whether whole-event runs carry it by
-   default is for the user's decision.
+   carried by whole-event runs by default since 1 November
+   ([adopted](#adopted-the-dust-1-november-2026); `--no-dust` leaves it out). Twelve storeys make
+   46 kg of fines by 7 s, hold 30 kg in the air at 3.3 s, and fill the 31 m domain; 19 kg settle on
+   the pile and the block.
 5. **The debris's reach**: done. Coulomb friction 0.6 on the ground is the whole-event default
    since 30 October ([adopted](#adopted-ground-friction-06-30-october-2026)). The debris comes to
    rest, 99% of it within 1.5–7.4 m, and the twelve-storey assumed-strain end has been run with it.
    Whether the solver takes friction by default for every scene is a separate question, for the
    debris comparisons to decide.
-6. **The dust's stage 2**, for the user's word: the dense cloud's density in the air's momentum and
-   weight, what it hides (its optical depth), the hand-over to the cloud spread once the domain is
-   full, and deposits on the rubble ([the plan](#stage-2-not-started-the-plan)).
+6. **The dust's stage 2: deferred** on the user's word of 1 November, until it can be done cheaply.
+   The dense cloud's density in the air's momentum and weight, what it hides (its optical depth),
+   the hand-over to the cloud spread once the domain is full, a larger domain, and deposits on the
+   rubble ([the plan](#stage-2-not-started-the-plan)). Why it waits: each is a step of its own,
+   not a setting. The coupling touches the air's own sweeps and remask, where every digest would
+   want checking again. A larger domain multiplies a twelve-storey run's cost, which is already
+   1–2 hours of GPU to 7 s. The hand-over and the optical depth are worth their cost only once the
+   cloud's coefficients rest on more than rock's data. Until then the passive cloud stands, its reach
+   quoted as the 31 m domain's.

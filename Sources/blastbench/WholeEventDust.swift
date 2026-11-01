@@ -5,8 +5,9 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-// `blastbench wholeevent --dust`: the collapse's dust carried by the air (AirDust; emmettl/bombcad-work#36,
-// docs/whole-event.md, "Dust, stage 1"). Off unless asked for. Its coefficients by option:
+// `blastbench wholeevent`'s dust: the collapse's dust carried by the air (AirDust; emmettl/bombcad-work#36,
+// docs/whole-event.md, "Dust, stage 1"), by default since 1 November 2026 (adopted: the dust);
+// `--no-dust` leaves it out, as runs before then did. Its coefficients by option:
 // `--dust-energy <J/kg>` (5e4), `--dust-impact-share <0-1>` (0.2), `--dust-fine-share <0-1>` (0.15).
 // Each sample appends a row to `<dir>/dust.csv`: what has been made (by class and source), what is
 // airborne, settled (on the ground beyond and under the plan, on solids) and gone out of the domain,

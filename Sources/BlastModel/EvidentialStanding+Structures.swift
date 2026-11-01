@@ -902,9 +902,10 @@ extension StandingScene {
                         + "carried by the air in two classes, 10 and 100 µm. 46 kg are made by 7 s, most as "
                         + "the walls fail; 30 kg are in the air at 3.3 s; the cloud fills the 31 m domain, so "
                         + "its reach is the domain's; 19 kg settle on the pile and the block. Every mass "
-                        + "scales as the inverse of the energy per kilogram. Off unless asked for "
-                        + "(`--dust`), and the collapse is the same with it",
-                    "whole-event.md#dust-stage-1-1-november-2026"),
+                        + "scales as the inverse of the energy per kilogram. Whole-event runs carry it by "
+                        + "default since 1 November (`--no-dust` leaves it out), and the collapse is the same "
+                        + "with it",
+                    "whole-event.md#adopted-the-dust-1-november-2026"),
                 StandingEvidence(
                     "Large-panel flats coming down in sleeping air (the three-storey runs before 31 October)",
                     "Not a test: asleep, the air is frozen as it was, and its pressures on the falling faces "

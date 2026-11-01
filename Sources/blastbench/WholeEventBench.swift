@@ -16,7 +16,7 @@ import simd
 //                         [--budget 80 (minutes)] [--checkpoint-every 1] [--frames 1,2,4,6,8,10]
 //                         [--sleeping-air] [--no-rubble] [--dir /Volumes/StudioData/bombcad/whole-event/<name>]
 //                         [--continue] [--ground-friction 0.6 (0 for the frictionless ground)]
-//                         [--float-displacements]
+//                         [--float-displacements] [--no-dust]
 //
 // Runs in pieces: after `--budget` minutes of wall time it saves a checkpoint at the next 64-step
 // boundary and stops; `--continue` (with the same options) carries on from the latest checkpoint
@@ -74,7 +74,8 @@ private struct WholeEventState: Codable {
     /// Whether the nodes keep their displacements precisely (`StructureSolver.preciseDisplacements`);
     /// nil in a run saved before it was recorded (1 November 2026), whose displacements were floats.
     var preciseDisplacements: Bool?
-    /// The dust's coefficients, if the run carries its dust (`--dust`, AirDust); nil without it.
+    /// The dust's coefficients, if the run carries its dust (AirDust; by default since 1 November
+    /// 2026); nil without it (`--no-dust`, and every run saved before that date).
     var dust: DustSettings?
 }
 
@@ -213,8 +214,16 @@ func runWholeEvent(device: MTLDevice) throws {
         print("No solid structure")
         exit(2)
     }
-    // The dust (`--dust`; WholeEventDust.swift): as the run was saved with `--continue` (begun there
-    // if given and the run had none), as any state they read was saved for the readers, else as given.
+    // The dust (WholeEventDust.swift), carried by default since 1 November 2026 (docs/whole-event.md,
+    // adopted: the dust): a new run carries it unless `--no-dust`, or unless its air sleeps, when it
+    // cannot (`--dust` with `--sleeping-air` is refused). `--continue` carries on as the run was saved:
+    // a run saved without it (before that date, or with `--no-dust`) carries on without it unless
+    // `--dust` is given, when its dust starts from none there; a run saved with it keeps it, whatever
+    // is given. The readers take it as any state they read was saved.
+    if flag("dust"), flag("no-dust") {
+        print("--dust and --no-dust: give one (the dust is carried unless --no-dust)")
+        exit(2)
+    }
     func savedDust(_ folder: URL) -> DustSettings? {
         let state = try? JSONDecoder().decode(
             WholeEventState.self, from: Data(contentsOf: folder.appending(path: "whole-event.json")))
@@ -222,11 +231,13 @@ func runWholeEvent(device: MTLDevice) throws {
     }
     let dust: DustSettings?
     if let latest {
-        dust = savedDust(latest) ?? (flag("dust") ? wholeEventDustSettings() : nil)
+        let saved = savedDust(latest)
+        if saved != nil, flag("no-dust") { print("The saved run carries its dust: taken as it was saved") }
+        dust = saved ?? (flag("dust") ? wholeEventDustSettings() : nil)
     } else if let reading {
         dust = (outcomeFolders ?? [reading]).lazy.compactMap(savedDust).first
     } else {
-        dust = flag("dust") ? wholeEventDustSettings() : nil
+        dust = flag("no-dust") || (airSleeps && !flag("dust")) ? nil : wholeEventDustSettings()
     }
     if dust != nil, airSleeps {
         print("--dust needs the air awake: asleep, it is frozen and carries nothing")
