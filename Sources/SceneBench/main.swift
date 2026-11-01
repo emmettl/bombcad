@@ -94,6 +94,10 @@ enum SceneBench {
             try ThresholdRefine.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "response-data" {
+            try ResponseData.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "drag-time" {
             try DragTime.run(Array(args.dropFirst()))
             return

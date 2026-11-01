@@ -132,6 +132,30 @@ struct EnvelopeDamageSection: View {
                             + "of its peak at once, as the runs' loads do, which breaks more glass far out "
                             + "(docs/glass-probability.md). A candidate, off by default."
                     )
+                Picker("Drag preview", selection: $model.dragPreviewPath) {
+                    ForEach(SimulationModel.DragPreviewPath.allCases) { Text($0.label).tag($0) }
+                }
+                .help(
+                    "While the charge is dragged, how each building's nearest components are judged: by their SDOF and "
+                        + "the chances' draws on the CPU, as the quick estimate itself, or by the learned response, "
+                        + "small networks trained on that code that run on the GPU, live. Letting go makes the full "
+                        + "estimate either way."
+                )
+                if model.dragPreviewPath == .learned {
+                    ForEach(LiveResponse.standing, id: \.self) {
+                        Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(
+                            horizontal: false, vertical: true)
+                    }
+                    if model.quickEstimateLearnedPeaks {
+                        Text("With the learned field model on, the drag preview stays the SDOF's.")
+                            .font(.caption).foregroundStyle(.orange).fixedSize(
+                                horizontal: false, vertical: true)
+                    }
+                    if let problem = model.liveModelProblem {
+                        Text(problem).font(.caption).foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 Toggle(
                     "Learned field model for façade peaks",
                     isOn: Binding(

@@ -860,6 +860,32 @@ final class SimulationModel {
     @ObservationIgnored var learnedNetwork:
         (url: URL, network: LearnedFieldNetwork, levelsURL: URL?, levels: LearnedFieldNetwork?)?
     @ObservationIgnored var learnedEstimator: (scene: Scenario, estimator: LearnedField.Estimator)?
+    /// How a preview made while the charge is dragged is judged (emmettl/bombcad-work#112): each
+    /// component's SDOF and the chances' draws on the CPU, as the quick estimate itself (the
+    /// default), or the learned response on the GPU, live (`LiveResponse`). Remembered. Letting go
+    /// makes the full estimate either way.
+    enum DragPreviewPath: String, CaseIterable, Identifiable, Sendable {
+        case sdof
+        case learned
+
+        var id: Self { self }
+        var label: String {
+            switch self {
+            case .sdof: "SDOF and draws (CPU)"
+            case .learned: "Learned response (GPU)"
+            }
+        }
+    }
+    var dragPreviewPath =
+        DragPreviewPath(rawValue: UserDefaults.standard.string(forKey: SimulationModel.dragPreviewKey) ?? "")
+        ?? .sdof
+    {
+        didSet { learnedDefaults.set(dragPreviewPath.rawValue, forKey: Self.dragPreviewKey) }
+    }
+    static let dragPreviewKey = "quickEstimate.dragPreview"
+    /// The learned response, once built (its weights are the app's own), and why it could not be.
+    @ObservationIgnored var liveModel: LiveResponse.Model?
+    var liveModelProblem: String?
     /// While the charge is dragged in the view (Place Charge on): the scene is loaded again only
     /// once it is let go, and a quick estimate on screen follows it (`beginDrag`).
     var isDraggingCharge = false

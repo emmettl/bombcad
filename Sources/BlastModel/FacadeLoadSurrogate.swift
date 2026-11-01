@@ -92,13 +92,13 @@ public enum FacadeLoadSurrogate {
         public let columns: Int
         public let rows: Int
         /// Each cell's blocks: a range of `entries`, cells x fastest.
-        let starts: [Int32]
+        package let starts: [Int32]
         /// A block over a cell: its bottom and top and its owner (index in the objects).
-        let entries: [(low: Float, high: Float, owner: Int32)]
+        package let entries: [(low: Float, high: Float, owner: Int32)]
         /// Each cell's highest block top, m (−∞ with none), whatever its owner: the walls a
         /// street runs between.
-        let tops: [Float]
-        let terrain: Terrain?
+        package let tops: [Float]
+        package let terrain: Terrain?
         /// Where the façades' facing is taken from (`Incidence`): the cells' faces, or each
         /// building's map outline where it has one.
         public let incidence: Incidence
@@ -1119,6 +1119,8 @@ public enum FacadeLoadSurrogate {
         /// The predicted loads as a run's recorder would give them, for `EnvelopeDamageAssessment`.
         public var loads: [EnvelopeComponentLoad]
         public var seconds: Double
+        /// A preview's passes' times (`Prepared.preview`); nil for any other estimate.
+        public var previewStages: Prepared.PreviewStages?
 
         /// The components outside the distances the terms were fitted over, their loads extrapolated.
         public var outsideFit: Int { predictions.filter(\.outsideFit).count }

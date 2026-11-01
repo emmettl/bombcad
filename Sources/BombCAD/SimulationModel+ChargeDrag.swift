@@ -107,12 +107,18 @@ extension SimulationModel {
         let knownEstimator = learnedEstimator.flatMap {
             $0.scene == layout && $0.estimator.network === (knownLevels ?? knownNetwork) ? $0.estimator : nil
         }
+        // The learned response, if asked for and the learned field model is off (its strips draw a
+        // scatter of their own, which the response was not trained on): built once.
+        let liveWanted = waiting.preview && dragPreviewPath == .learned && !learnedWanted
+        let knownLive = liveModel
+        let liveTried = liveModelProblem != nil
         lookInFlight = true
         estimatingEnvelopeDamage = true
         if !waiting.preview { envelopeDamageStatus = "Estimating…" }
         Task { [weak self] in
-            let (prepared, look, estimator, problem, networks) = await Task.detached(priority: .userInitiated)
-            {
+            let (prepared, look, estimator, problem, networks, live, liveProblem) = await Task.detached(
+                priority: .userInitiated
+            ) {
                 // The previews' kept responses grow with each place: begun again past a few
                 // hundred thousand.
                 let prepared =
@@ -153,15 +159,39 @@ extension SimulationModel {
                     yieldLogSD: logSD, loadScatter: terms.loadScatter, samples: samples)
                 // A preview's few yields spread evenly, not drawn: drawn, they share one error.
                 uncertainty.stratified = waiting.preview
-                let look = prepared.look(
-                    charge: waiting.charge, mass: Double(scenario.charge.mass),
-                    constructions: { scenario.envelopeConstruction(for: $0) },
-                    uncertainty: uncertainty,
-                    preview: waiting.preview, parts: parts, learned: estimator, terms: terms)
-                return (prepared, look, estimator, problem, networks)
+                var live = knownLive
+                var liveProblem: String?
+                if liveWanted, live == nil, !liveTried {
+                    (live, liveProblem) = Self.makeLiveModel()
+                }
+                var liveLook: FacadeLoadSurrogate.Prepared.Look?
+                if liveWanted, let live {
+                    do {
+                        liveLook = try prepared.livePreview(
+                            charge: waiting.charge, mass: Double(scenario.charge.mass),
+                            uncertainty: uncertainty,
+                            parts: parts, terms: terms, model: live)?.look
+                        if liveLook == nil {
+                            liveProblem =
+                                "The learned response was not trained on every building's construction or glazing here: the preview is the SDOF's."
+                        }
+                    } catch {
+                        liveProblem = "The learned response failed (\(error)): the preview is the SDOF's."
+                    }
+                }
+                let look =
+                    liveLook
+                    ?? prepared.look(
+                        charge: waiting.charge, mass: Double(scenario.charge.mass),
+                        constructions: { scenario.envelopeConstruction(for: $0) },
+                        uncertainty: uncertainty,
+                        preview: waiting.preview, parts: parts, learned: estimator, terms: terms)
+                return (prepared, look, estimator, problem, networks, live, liveProblem)
             }.value
             guard let self else { return }
             self.lookInFlight = false
+            if let live { self.liveModel = live }
+            if liveWanted { self.liveModelProblem = liveProblem }
             self.preparedDistrict = (layout, cellSize, prepared)
             if let estimator, let networks {
                 self.learnedNetwork = (weightsURL, networks.0, levelsURL, networks.1)
@@ -193,6 +223,18 @@ extension SimulationModel {
         }
     }
 
+    /// The learned response for the drag preview: the app's own weights, on the GPU, else on the CPU;
+    /// or why there is none.
+    nonisolated static func makeLiveModel() -> (LiveResponse.Model?, String?) {
+        guard let weights = LiveResponse.Weights.builtIn else {
+            return (nil, "This build has no learned response: the preview is the SDOF's.")
+        }
+        if let engine = try? LiveDragGPU(weights: weights) {
+            return (LiveResponse.Model(weights: weights, engine: engine), nil)
+        }
+        return (LiveResponse.Model(weights: weights, engine: LiveResponse.CPUEngine(weights: weights)), nil)
+    }
+
     /// Shows `look`: the parts it worked out replace the estimate's; the rest stay until a full
     /// look replaces them, and a preview says so.
     func applyLook(_ look: FacadeLoadSurrogate.Prepared.Look, parts: FacadeLoadSurrogate.Prepared.Parts) {
@@ -201,7 +243,12 @@ extension SimulationModel {
         if parts.contains(.structure) { envelopeStructureChances = look.structure }
         envelopeDamageIsEstimate = true
         envelopeEstimateIsPreview = look.preview
-        if look.preview {
+        if look.preview, let engine = look.learnedResponse {
+            envelopeDamageStatus = String(
+                format:
+                    "Preview while dragging, %.0f ms: each building side judged by its component nearest the charge, through the learned response on the %@ (illustrative). The full estimate follows when you let go.",
+                look.totalSeconds * 1000, engine)
+        } else if look.preview {
             envelopeDamageStatus = String(
                 format:
                     "Preview while dragging, %.1f s: each building side judged by its component nearest the charge, %@. The full estimate follows when you let go.",

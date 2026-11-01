@@ -702,9 +702,9 @@ def collect(root):
     for path in sorted((root / "Sources").rglob("*.metal")):
         relative = str(path.relative_to(root))
         # BlastCore's shaders are compiled together, joined into one source (ShaderLibrary in
-        # StructureTypes.swift); Thermal.metal and the renderer's are compiled on their own.
+        # StructureTypes.swift); Thermal.metal, LiveDrag.metal and the renderer's are compiled on their own.
         library = str(path.parent.relative_to(root)) if path.parent.name == "Shaders" else relative
-        if path.name == "Thermal.metal":
+        if path.name in ("Thermal.metal", "LiveDrag.metal"):
             library = relative
         metal += parse_metal(path.read_text(encoding="utf-8"), relative, library)
     for base in ("Sources", "Packages"):

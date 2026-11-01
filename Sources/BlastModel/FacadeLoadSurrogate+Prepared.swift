@@ -14,10 +14,31 @@ extension FacadeLoadSurrogate {
         let objects: [SceneObject]
         let components: [[EnvelopeComponent]]
         let mixes: [GlazingMix?]
+        /// Each object's construction, as `Scenario.envelopeConstruction(for:)` gives it.
+        let constructions: [EnvelopeConstruction]
         /// Each component's group for a preview (`preview(charge:mass:)`), as `components`: its
         /// kind and side, and for a façade strip facing as its building's outline, which way that
         /// is (`previewGroups(_:owner:raster:)`).
         let previewGroups: [[Int]]
+        /// Each component's facing for its cosine of incidence (`Raster.outlineNormal` where its
+        /// building's outline gives one, else its face's own normal), as `components`: worked out
+        /// once, for the live drag (`livePreview`).
+        let facings: [[SIMD3<Float>]]
+        /// This layout's own identity, for what a GPU keeps of it between frames.
+        public let identity = UUID()
+        /// Each object's preview groups laid out once (`choices`): each component's group (in the
+        /// groups' keys' order), its outer face's centre, and each group's area and side.
+        let groupLayout: [GroupLayout]
+
+        struct GroupLayout: Sendable {
+            var group: [Int32] = []
+            var centres: [SIMD3<Float>] = []
+            var areas: [Double] = []
+            var sides: [Int32] = []
+            var sideCount = 0
+            /// Whether each component is a façade strip.
+            var facades: [Bool] = []
+        }
         /// How long laying it out took, s.
         public let seconds: Double
         /// The SDOF responses and the panes' responses met so far by previews, kept between them.
@@ -57,9 +78,22 @@ extension FacadeLoadSurrogate {
                 }
             }
             var groups = [[Int]](repeating: [], count: objects.count)
+            var facings = [[SIMD3<Float>]](repeating: [], count: objects.count)
             groups.withUnsafeMutableBufferPointer { out in
-                concurrently(iterations: objects.count) { n in
-                    out[n] = Self.previewGroups(components[n], owner: n, raster: raster)
+                facings.withUnsafeMutableBufferPointer { facingOut in
+                    concurrently(iterations: objects.count) { n in
+                        let normals = components[n].map { component -> SIMD3<Float>? in
+                            component.kind == .facade
+                                ? raster.outlineNormal(
+                                    region: component.region, axis: component.axis,
+                                    outward: component.outward,
+                                    owner: n) : nil
+                        }
+                        out[n] = Self.previewGroups(components[n], normals: normals)
+                        facingOut[n] = zip(components[n], normals).map { component, normal in
+                            normal ?? outerFace(component).normal
+                        }
+                    }
                 }
             }
             self.raster = raster
@@ -67,7 +101,35 @@ extension FacadeLoadSurrogate {
             self.objects = objects
             self.components = components
             self.previewGroups = groups
-            self.mixes = objects.map { scene.envelopeConstruction(for: $0.id).glazing }
+            var layouts = [GroupLayout](repeating: GroupLayout(), count: objects.count)
+            layouts.withUnsafeMutableBufferPointer { out in
+                concurrently(iterations: objects.count) { n in
+                    let keys = Array(Set(groups[n])).sorted()
+                    let index = Dictionary(uniqueKeysWithValues: keys.enumerated().map { ($1, $0) })
+                    let sideKeys = Array(Set(keys.map { $0 >> 16 })).sorted()
+                    let sideIndex = Dictionary(uniqueKeysWithValues: sideKeys.enumerated().map { ($1, $0) })
+                    var layout = GroupLayout()
+                    layout.group = groups[n].map { Int32(index[$0]!) }
+                    layout.centres = components[n].map { outerFace($0).centre }
+                    layout.facades = components[n].map { $0.kind == .facade }
+                    layout.areas = [Double](repeating: 0, count: keys.count)
+                    for (k, component) in components[n].enumerated() {
+                        let spans = component.spans
+                        layout.areas[Int(layout.group[k])] += Double(spans.x * spans.y)
+                    }
+                    layout.sides = keys.map { Int32(sideIndex[$0 >> 16]!) }
+                    layout.sideCount = sideKeys.count
+                    out[n] = layout
+                }
+            }
+            groupLayout = layouts
+            self.facings = facings
+            // The recorded constructions by object, the last for each as `envelopeConstruction(for:)`.
+            let recorded = Dictionary(
+                (scene.envelopeConstructions ?? []).map { ($0.objectID, $0) },
+                uniquingKeysWith: { _, last in last })
+            constructions = objects.map { recorded[$0.id] ?? .assumed(objectID: $0.id) }
+            self.mixes = constructions.map(\.glazing)
             let took = start.duration(to: .now)
             seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
         }
@@ -157,62 +219,54 @@ extension FacadeLoadSurrogate {
             roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil
         ) -> (estimate: Estimate, sides: [GlassSideStrips]) {
             let start = ContinuousClock.now
+            var clock = start
+            func lap() -> Double {
+                let now = ContinuousClock.now
+                let took = clock.duration(to: now)
+                clock = now
+                return Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
+            }
             let open = raster.openReach(around: charge)
+            let openS = lap()
             // Each group's nearest component, its features, the group's area, and its prediction and
-            // load where it is in the estimate.
+            // load where it is in the estimate; worked out in passes (the choice, the sight lines, the
+            // loads), each timed (`Estimate.previewStages`).
             typealias Chosen = (
                 component: EnvelopeComponent, features: Features, area: Double,
                 judged: (Prediction, EnvelopeComponentLoad)?
             )
+            let picked = choices(charge: charge)
+            let selectS = lap()
             var perObject = [[Chosen]](repeating: [], count: objects.count)
             perObject.withUnsafeMutableBufferPointer { out in
                 concurrently(iterations: objects.count) { n in
-                    // Nearest of each group, and the group's area.
-                    var nearest: [Int: (index: Int, distance: Float, area: Double)] = [:]
-                    for (k, component) in components[n].enumerated() {
-                        let key = previewGroups[n][k]
-                        let d = simd_distance_squared(outerFace(component).centre, charge)
-                        let spans = component.spans
-                        let area = Double(spans.x * spans.y)
-                        if let current = nearest[key] {
-                            nearest[key] = (
-                                d < current.distance ? k : current.index, min(d, current.distance),
-                                current.area + area
-                            )
-                        } else {
-                            nearest[key] = (k, d, area)
-                        }
-                    }
-                    // The estimate takes the nearest of each kind and side, whichever way it faces;
-                    // a side's other facings' nearest strips go to its glass alone.
-                    var nearestOfSide: [Int: (index: Int, distance: Float)] = [:]
-                    for (key, chosen) in nearest {
-                        let side = key >> 16
-                        if let current = nearestOfSide[side],
-                            current.distance < chosen.distance
-                                || (current.distance == chosen.distance && current.index < chosen.index)
-                        {
-                            continue
-                        }
-                        nearestOfSide[side] = (chosen.index, chosen.distance)
-                    }
-                    out[n] = nearest.sorted { $0.key < $1.key }.map { key, chosen -> Chosen in
-                        let component = components[n][chosen.index]
+                    out[n] = picked[n].map { choice -> Chosen in
+                        let component = components[n][choice.index]
                         var f = features(component, owner: n, charge: charge, raster: raster)
                         f.chargeOpenM = open
-                        let terms = component.kind == .roof ? roofCoefficients ?? coefficients : coefficients
                         if let learned {
+                            let terms =
+                                component.kind == .roof ? roofCoefficients ?? coefficients : coefficients
                             f = learned.adjusted(
                                 f, of: component, mass: mass, cellSize: Double(cellSize), coefficients: terms)
                         }
-                        guard nearestOfSide[key >> 16]?.index == chosen.index else {
-                            return (component, f, chosen.area, nil)
-                        }
-                        let p = predict(f, mass: mass, cellSize: Double(cellSize), coefficients: terms)
-                        return (component, f, chosen.area, (p, load(component, p, binS: binS)))
+                        return (component, f, choice.area, nil)
                     }
                 }
             }
+            let featuresS = lap()
+            perObject.withUnsafeMutableBufferPointer { out in
+                concurrently(iterations: objects.count) { n in
+                    for (c, choice) in picked[n].enumerated() where choice.judged {
+                        let component = out[n][c].component
+                        let terms = component.kind == .roof ? roofCoefficients ?? coefficients : coefficients
+                        let p = predict(
+                            out[n][c].features, mass: mass, cellSize: Double(cellSize), coefficients: terms)
+                        out[n][c].judged = (p, load(component, p, binS: binS))
+                    }
+                }
+            }
+            let loadsS = lap()
             var result = Estimate(
                 components: [], owners: [], features: [], predictions: [], loads: [], seconds: 0)
             result.ownerKeys = objects.map(\.drawKey)
@@ -244,9 +298,107 @@ extension FacadeLoadSurrogate {
                     }
                 }
             }
+            let assembleS = lap()
             let took = start.duration(to: .now)
             result.seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
+            result.previewStages = PreviewStages(
+                openReach: openS, choice: selectS, sightLines: featuresS, loads: loadsS, assembly: assembleS)
             return (result, sides)
+        }
+
+        /// What a preview's passes took, s (`preview(charge:mass:)`): the charge's open reach, the
+        /// choice of each group's nearest component, their sight lines and features, their loads
+        /// (predictions and pulses), and laying the estimate and the glazed sides out.
+        public struct PreviewStages: Sendable, Equatable {
+            public var openReach = 0.0
+            public var choice = 0.0
+            public var sightLines = 0.0
+            public var loads = 0.0
+            public var assembly = 0.0
+        }
+
+        /// Each object's components a preview takes with the charge at `charge`, in its groups' order:
+        /// the nearest of each group (`previewGroups`), the group's area, m², and whether it is the
+        /// nearest of its kind and side, which the estimate takes (the rest go to the glass alone).
+        package func choices(charge: SIMD3<Float>) -> [[(index: Int, area: Double, judged: Bool)]] {
+            var picked = [[(index: Int, area: Double, judged: Bool)]](repeating: [], count: objects.count)
+            picked.withUnsafeMutableBufferPointer { out in
+                concurrently(iterations: (objects.count + 63) / 64) { chunk in
+                    for n in (chunk * 64)..<min(objects.count, (chunk + 1) * 64) {
+                        let layout = groupLayout[n]
+                        let groups = layout.areas.count
+                        var best = [(index: Int, distance: Float)](repeating: (-1, .infinity), count: groups)
+                        for (k, centre) in layout.centres.enumerated() {
+                            let g = Int(layout.group[k])
+                            let d = simd_distance_squared(centre, charge)
+                            if best[g].index < 0 || d < best[g].distance { best[g] = (k, d) }
+                        }
+                        // The nearest of each kind and side; the lowest index where two are as near.
+                        var side = [(index: Int, distance: Float)](
+                            repeating: (-1, .infinity), count: layout.sideCount)
+                        for g in 0..<groups {
+                            let s = Int(layout.sides[g])
+                            let chosen = best[g]
+                            if side[s].index >= 0,
+                                side[s].distance < chosen.distance
+                                    || (side[s].distance == chosen.distance && side[s].index < chosen.index)
+                            {
+                                continue
+                            }
+                            side[s] = chosen
+                        }
+                        out[n] = (0..<groups).map { g in
+                            (
+                                best[g].index, layout.areas[g],
+                                side[Int(layout.sides[g])].index == best[g].index
+                            )
+                        }
+                    }
+                }
+            }
+            return picked
+        }
+
+        /// `choices` as first written, by dictionaries: the reference its tests hold it to.
+        package func referenceChoices(charge: SIMD3<Float>) -> [[(index: Int, area: Double, judged: Bool)]] {
+            var picked = [[(index: Int, area: Double, judged: Bool)]](repeating: [], count: objects.count)
+            picked.withUnsafeMutableBufferPointer { out in
+                concurrently(iterations: objects.count) { n in
+                    // Nearest of each group, and the group's area.
+                    var nearest: [Int: (index: Int, distance: Float, area: Double)] = [:]
+                    for (k, component) in components[n].enumerated() {
+                        let key = previewGroups[n][k]
+                        let d = simd_distance_squared(outerFace(component).centre, charge)
+                        let spans = component.spans
+                        let area = Double(spans.x * spans.y)
+                        if let current = nearest[key] {
+                            nearest[key] = (
+                                d < current.distance ? k : current.index, min(d, current.distance),
+                                current.area + area
+                            )
+                        } else {
+                            nearest[key] = (k, d, area)
+                        }
+                    }
+                    // The estimate takes the nearest of each kind and side, whichever way it faces;
+                    // a side's other facings' nearest strips go to its glass alone.
+                    var nearestOfSide: [Int: (index: Int, distance: Float)] = [:]
+                    for (key, chosen) in nearest {
+                        let side = key >> 16
+                        if let current = nearestOfSide[side],
+                            current.distance < chosen.distance
+                                || (current.distance == chosen.distance && current.index < chosen.index)
+                        {
+                            continue
+                        }
+                        nearestOfSide[side] = (chosen.index, chosen.distance)
+                    }
+                    out[n] = nearest.sorted { $0.key < $1.key }.map { key, chosen in
+                        (chosen.index, chosen.area, nearestOfSide[key >> 16]?.index == chosen.index)
+                    }
+                }
+            }
+            return picked
         }
 
         /// What a look at the district gives: the estimate, each building's damage on it, each
@@ -265,6 +417,9 @@ extension FacadeLoadSurrogate {
             public var learnedStrips = 0
             public var learnedSeconds = 0.0
             public var learnedError: String?
+            /// Judged by the live drag's learned response (`livePreview`), not the SDOF and draws, and
+            /// where it ran ("GPU" or "CPU").
+            public var learnedResponse: String?
             public var totalSeconds: Double {
                 seconds.estimate + seconds.damage + seconds.glass + seconds.structure + learnedSeconds
             }
@@ -359,26 +514,22 @@ extension FacadeLoadSurrogate {
             return look
         }
 
-        /// `components`' groups for a preview, `owner` their owner's index in the raster's objects:
-        /// by axis, way out and kind (`kindCode`); and a façade strip facing as its
-        /// building's outline (`Raster.outlineNormal`) by that facing too, each different facing of
+        /// `components`' groups for a preview, `normals` each one's outline facing where it has one
+        /// (`Raster.outlineNormal`): by axis, way out and kind (`kindCode`); and a façade strip facing
+        /// as its building's outline by that facing too, each different facing of
         /// the building a group of its own. Facing as the outline, one side's strips (thin along one
         /// axis, out one way) may lie on edges facing quite different ways: a corner cut at 45° and
         /// the front beside it, or the two slanted fronts of a building turned to the grid. In one
         /// group for them all, the nearest strip, often facing the charge squarely, stood for those
         /// facing away too, and the preview blew out sides the full estimate leaves whole
         /// (emmettl/bombcad-work#110; docs/surrogate-first-look.md).
-        static func previewGroups(_ components: [EnvelopeComponent], owner: Int, raster: Raster) -> [Int] {
+        static func previewGroups(_ components: [EnvelopeComponent], normals: [SIMD3<Float>?]) -> [Int] {
             var facings: [SIMD2<Int32>] = []
-            return components.map { component in
+            return zip(components, normals).map { component, outline in
                 let key =
                     ((component.axis * 2 + (component.outward > 0 ? 1 : 0)) * 8 + kindCode(component.kind))
                     << 16
-                guard component.kind == .facade,
-                    let normal = raster.outlineNormal(
-                        region: component.region, axis: component.axis, outward: component.outward,
-                        owner: owner)
-                else { return key }
+                guard component.kind == .facade, let normal = outline else { return key }
                 // Facings within a thousandth the same (an edge's normal, the same for every strip on it).
                 let facing = SIMD2(Int32((normal.x * 1000).rounded()), Int32((normal.y * 1000).rounded()))
                 let index = facings.firstIndex(of: facing) ?? facings.count

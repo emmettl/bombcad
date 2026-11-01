@@ -156,6 +156,75 @@ struct ChargeDragTests {
         #expect(model.envelopeLoads.map(\.outerPa) != before)
     }
 
+    @Test("With the learned response chosen, the preview is the GPU's for map buildings, else the SDOF's")
+    func learnedPreview() async throws {
+        // emmettl/bombcad-work#112: built as Beirut's map buildings are, the drag preview is the
+        // learned response's; built otherwise, the SDOF's, saying why.
+        let temporary = try TemporaryDefaults()
+        defer { temporary.remove() }
+        let weights = try #require(LiveResponse.Weights.builtIn)
+        for mapBuilt in [true, false] {
+            var scene = Scenario(
+                name: "Learned drag", domainSize: SIMD3(120, 60, 20), boxes: [],
+                charge: Charge(mass: 50, position: SIMD3(20, 30, 0.5)))
+            for x: Float in [50, 80] {
+                let id = try scene.addEnvelopeObject(
+                    BuildingEnvelope(solids: [Box(min: SIMD3(x, 22, 0), max: SIMD3(x + 10, 38, 9))]))
+                var construction = EnvelopeConstruction(objectID: id, source: .user, detail: "glazed")
+                construction.glazing = .apartments
+                // Walls a little thicker than any of Beirut's.
+                construction.wallThicknessM += 0.03
+                if mapBuilt {
+                    // The construction most of Beirut's buildings take, as the networks know it.
+                    let known = try weights.header.signatures.map {
+                        try JSONDecoder().decode(EnvelopeConstruction.self, from: Data($0.utf8))
+                    }
+                    construction = try #require(
+                        known.first { $0.glazing != nil && $0.walls == .reinforcedConcrete })
+                    construction.objectID = id
+                }
+                scene.setEnvelopeConstruction(construction)
+            }
+            var document = ProjectDocument(scenario: scene)
+            document.runSettings?.resolution = "coarse"
+            let model = SimulationModel(document: document)
+            model.learnedDefaults = temporary.defaults
+            model.refinesCloseCalls = false
+            model.quickEstimateLearnedPeaks = false
+            model.dragPreviewPath = .learned
+            func settle() async throws {
+                while model.estimatingEnvelopeDamage || model.isLoadingInputs {
+                    try await Task.sleep(for: .milliseconds(20))
+                }
+            }
+            try await settle()
+            model.quickEstimate()
+            try await settle()
+            model.isPlacingCharge = true
+            model.camera = OrbitCamera(target: SIMD3(24, 30, 0), distance: 80, azimuth: -1.57, elevation: 1.5)
+            #expect(model.beginDrag(ndc: .zero, aspectRatio: 1, modifiers: []))
+            model.camera = OrbitCamera(target: SIMD3(30, 30, 0), distance: 80, azimuth: -1.57, elevation: 1.5)
+            model.drag(ndc: .zero, aspectRatio: 1, modifiers: [])
+            try await settle()
+            #expect(model.envelopeEstimateIsPreview)
+            if mapBuilt {
+                #expect(
+                    model.envelopeDamageStatus.contains("learned response"), "\(model.envelopeDamageStatus)")
+                #expect(model.liveModelProblem == nil)
+                #expect(model.envelopeDamage.count == 2)
+            } else {
+                #expect(!model.envelopeDamageStatus.contains("learned response"))
+                #expect(model.liveModelProblem?.contains("not trained") == true)
+            }
+            model.endDrag()
+            try await Task.sleep(for: .milliseconds(300))
+            try await settle()
+            // Let go, the full estimate as ever.
+            #expect(!model.envelopeEstimateIsPreview)
+        }
+        #expect(temporary.defaults.string(forKey: SimulationModel.dragPreviewKey) == "learned")
+    }
+
     @Test("Once the full estimate is in, its close calls are run in the air and their results shown in place")
     func closeCalls() async throws {
         var scene = Scenario(

@@ -35,12 +35,27 @@ enum DragTime {
 
         let prepared = FacadeLoadSurrogate.Prepared(
             scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
+        // `--live [--response file.bclr] [--engine cpu]`: the previews judged by the learned response
+        // (emmettl/bombcad-work#112), its weights built in unless given, on the GPU unless asked.
+        var live: LiveResponse.Model?
+        if args.contains("--live") || value("response") != nil {
+            let weights =
+                try value("response").map { try LiveResponse.Weights(contentsOf: URL(filePath: $0)) }
+                ?? LiveResponse.Weights.builtIn
+            guard let weights else { throw BlastError.allocationFailed("no live response weights built in") }
+            let engine: LiveResponse.Engine =
+                value("engine") == "cpu"
+                ? LiveResponse.CPUEngine(weights: weights) : try LiveDragGPU(weights: weights)
+            live = LiveResponse.Model(weights: weights, engine: engine)
+            print("Live response: \(weights.header.trainedOn ?? "?"), on the \(engine.label)")
+        }
         print(
             String(
                 format: "Prepared %d buildings, %d components on the air, in %.2f s",
                 scene.envelopeObjects.count, prepared.componentCount, prepared.seconds))
         let constructions = { (id: UUID) in scene.envelopeConstruction(for: id) }
-        for move in moves {
+        // `--no-full`: not the full estimate's own times at each move.
+        for move in args.contains("--no-full") ? [] : moves {
             var charge = scene.charge.position
             charge.x += move
             var clock = ContinuousClock.now
@@ -100,17 +115,49 @@ enum DragTime {
             var clock = ContinuousClock.now
             let (preview, sides) = prepared.preview(charge: charge, mass: mass, coefficients: coefficients)
             let previewS = seconds(clock)
-            let (damage, damageS, _) = FacadeLoadSurrogate.damage(preview, constructions: constructions)
+            var (damage, damageS, _) = FacadeLoadSurrogate.damage(preview, constructions: constructions)
             clock = .now
-            let (glass, _) = FacadeLoadSurrogate.glassProbabilities(
+            var (glass, _) = FacadeLoadSurrogate.glassProbabilities(
                 sides: sides, mass: mass, cellSize: dx, uncertainty: previewUncertainty,
                 coefficients: coefficients,
                 responses: previewResponses)
             let glassS = seconds(clock)
-            let (structure, structureS) = FacadeLoadSurrogate.structureProbabilities(
+            var (structure, structureS) = FacadeLoadSurrogate.structureProbabilities(
                 preview, mass: mass, cellSize: dx, constructions: constructions,
                 uncertainty: previewUncertainty,
                 coefficients: coefficients)
+            if let live {
+                // The learned response's in place of the CPU's, judged below as they are.
+                guard
+                    let (look, stages) = try prepared.livePreview(
+                        charge: charge, mass: mass, uncertainty: previewUncertainty,
+                        terms: terms, model: live)
+                else { throw BlastError.allocationFailed("the live response does not know this district") }
+                // The live colours against the CPU preview's own, building by building.
+                let cpuCodes = Dictionary(
+                    uniqueKeysWithValues: damage.map { ($0.id, EnvelopeDamageColour.code($0)) })
+                var differ: [String: Int] = [:]
+                for building in look.damage {
+                    let mine = EnvelopeDamageColour.code(building)
+                    if let theirs = cpuCodes[building.id], theirs != mine {
+                        differ["\(theirs)→\(mine)", default: 0] += 1
+                    }
+                }
+                print(
+                    "  live damage colour against the CPU preview's: \(differ.values.reduce(0, +)) of \(look.damage.count) differ "
+                        + differ.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(
+                            separator: ", "))
+                damage = look.damage
+                glass = look.glass
+                structure = look.structure
+                print(
+                    String(
+                        format:
+                            "Live, moved %4.0f m: %d components, %d sides, %d buildings; choice %.3f, loads %.3f, inputs %.3f, networks %.3f, answers %.3f s",
+                        move, look.estimate.components.count, look.glass.count, look.structure.count,
+                        stages.choice,
+                        stages.loads, stages.inputs, stages.networks, stages.answers))
+            }
             print(
                 String(
                     format:
@@ -267,6 +314,25 @@ enum DragTime {
             for step in steps {
                 var charge = scene.charge.position
                 charge.x += step
+                if let live {
+                    let clock = ContinuousClock.now
+                    guard
+                        let (look, stages) = try dragged.livePreview(
+                            charge: charge, mass: mass, uncertainty: dragUncertainty,
+                            parts: parts, terms: terms, model: live)
+                    else {
+                        throw BlastError.allocationFailed("the live response does not know this district")
+                    }
+                    print(
+                        String(
+                            format:
+                                "Drag frame at %4.0f m: estimate %.2f s, damage %.2f s, glass %.2f s, walls %.2f s; %.2f s; live: district %.4f, choice %.4f, loads %.4f, inputs %.4f, networks %.4f, answers %.4f s (GPU %.4f); %.4f s in all",
+                            step, look.seconds.estimate, look.seconds.damage, look.seconds.glass,
+                            look.seconds.structure, look.totalSeconds, stages.district, stages.choice,
+                            stages.loads,
+                            stages.inputs, stages.networks, stages.answers, stages.gpu, seconds(clock)))
+                    continue
+                }
                 let look = dragged.look(
                     charge: charge, mass: mass, constructions: constructions, uncertainty: dragUncertainty,
                     preview: true,
@@ -278,6 +344,13 @@ enum DragTime {
                         step, look.seconds.estimate, look.seconds.damage, look.seconds.glass,
                         look.seconds.structure,
                         look.totalSeconds) + String(format: "; resident %.1f GB", residentGB())
+                        + (look.estimate.previewStages.map {
+                            String(
+                                format:
+                                    "; preview: open reach %.3f, choice %.3f, sight lines %.3f, loads %.3f, assembly %.3f s; %d components, %d sides",
+                                $0.openReach, $0.choice, $0.sightLines, $0.loads, $0.assembly,
+                                look.estimate.components.count, look.glass.count)
+                        } ?? "")
                         + (learned == nil
                             ? ""
                             : String(
@@ -287,6 +360,8 @@ enum DragTime {
             }
             var charge = scene.charge.position
             charge.x += steps.last ?? 0
+            // `--no-let-go`: the frames alone, not the full look where the drag stops.
+            guard !args.contains("--no-let-go") else { return }
             let full = dragged.look(
                 charge: charge, mass: mass, constructions: constructions,
                 uncertainty: uncertainty(100), learned: learned, terms: terms)
@@ -305,6 +380,29 @@ enum DragTime {
             print(
                 "  responses kept: SDOF \(dragged.memo.misses) integrated, \(dragged.memo.hits) reused; "
                     + String(format: "resident %.1f GB", residentGB()))
+        }
+
+        // `--check-choices`: the preview's choice by its groups laid out once against the choice by
+        // dictionaries, at each move (emmettl/bombcad-work#112).
+        if args.contains("--check-choices") {
+            for move in moves {
+                var charge = scene.charge.position
+                charge.x += move
+                var clock = ContinuousClock.now
+                let fast = prepared.choices(charge: charge)
+                let fastS = seconds(clock)
+                clock = .now
+                let reference = prepared.referenceChoices(charge: charge)
+                let referenceS = seconds(clock)
+                let same =
+                    fast.map { $0.map(\.index) } == reference.map { $0.map(\.index) }
+                    && fast.map { $0.map(\.area) } == reference.map { $0.map(\.area) }
+                    && fast.map { $0.map(\.judged) } == reference.map { $0.map(\.judged) }
+                print(
+                    String(
+                        format: "Choices at %.0f m: %@, %.4f s against %.4f s", move,
+                        (same ? "the same" : "DIFFER") as NSString, fastS, referenceS))
+            }
         }
 
         if args.contains("--check") {

@@ -2624,6 +2624,194 @@ Heidke 0.78, as facing as the cells; concrete walls moderate or worse Brier 0.00
 The standing's figures (`learnedModel2Glass`, `learnedModel2GlassUpper`, `learnedModel2Walls`)
 still quote the section on the clear-top terms.
 
+## The live drag's learned response (1 November 2026)
+
+emmettl/bombcad-work#112, track item 1. The user, 1 November 2026: the app is to answer live, and
+the solver and the full estimate are the referee and the source of training data. Here the drag
+preview ([dragging the charge](surrogate-first-look.md#dragging-the-charge-20-october-2026)) gets
+there: small networks stand in for each component's SDOF and the chances' draws, and the sight
+lines and loads move to the GPU. A Beirut frame goes from 0.6–0.8 s to 20–25 ms. It is an option,
+**Drag preview: Learned response (GPU)**, off by default; **SDOF and draws (CPU)** stays, by name,
+and letting go still makes the full estimate.
+
+### Where a frame went
+
+Beirut at 0.5 kt (14,169 buildings, 724,512 components; `scenebench drag-time --drag 0,5,…,100
+--parts …`, each preview's passes timed, `Estimate.previewStages`), the CPU path's later frames on
+the Studio at load 5–20:
+
+| Stage | Damage colouring | Glass's chances (10 draws) | Walls' and roofs' (20 draws) |
+|---|---|---|---|
+| Each group's nearest component | 0.013 s | 0.014 s | 0.015 s |
+| Sight lines and features: the 67,699 components judged, and the glass's other facings | 0.16 s | 0.17 s | 0.16 s |
+| Predictions and pulses | 0.022 s | 0.025 s | 0.023 s |
+| Laying the estimate and the sides out | 0.045 s | 0.043 s | 0.050 s |
+| SDOF and damage, or the draws | 0.52 s | 0.35 s | 0.42 s |
+| **The frame** | **0.77 s** | **0.61 s** | **0.69 s** |
+
+So the SDOF and the draws were two-thirds of a frame and the sight lines a quarter. Neither alone
+would reach 30 frames a second: both had to go.
+
+### What was learned
+
+Three networks, dense layers with SiLU between (`LiveResponse`, `Scripts/ml/train_response.py`):
+
+- **The component network** (25 inputs → 256, 256, 128 → 6): a component's damage load as the SDOF
+  meets it (its peak and impulse rounded to 3%, its rise to a twentieth, as
+  `FacadeLoadSurrogate.load` rounds them), its construction (one of the four Beirut is built of, by
+  signature), and its shape and holding (kind, spans, one-way span, standing free, edges held, panel
+  height, the building above and below it). It gives the damage level, none to failed, and whether
+  its façade pane breaks. A pane counts as broken above a logit of −1.5, chosen on Beirut at four
+  places of the charge 200–600 m from those judged below (at 0 it missed 13–15 broken panes a
+  place that the CPU's preview found, and found 2–3 it did not; at −1.5, 2–5 differ).
+- **The glass network** (45 → 128, 128, 64 → 5): a glazed side's strips, up to four, largest
+  first, each its glass load at the yield (peak, impulse, rise and front), how its log peak and log
+  impulse move with the log of the yield (from a second prediction at the yield × e^0.25), its share
+  of the side's area and its scaled distance; the side's area and mix, the yield's spread and the
+  load scatter at its middle. It gives the side's chances: some broken, blown out, the share
+  broken, thrown past 3b, and its openings blown out.
+- **The walls network** (320 → 256, 128, 64 → 3): a building's walls and façade strips, up to
+  eight, most loaded first, and its roof, each its load as the walls' chances take it (the
+  structures' rise, the roofs' terms), its slope with the yield, scaled distance, load scatter, side
+  and shape; its construction and the yield's spread. It gives the chances of walls moderate or
+  worse, heavy or worse, and roof moderate or worse.
+
+They see what the draws are taken over as inputs, so one network serves every yield spread the app
+offers (exactly, ×1.25, ×1.5, ×2, ×3) and the adopted load scatter. A district built of anything
+else, or with glazing it does not know, is left to the CPU's preview, as are the learned field
+model's strips (they draw a scatter of their own), so with that option on the preview stays the
+SDOF's.
+
+### The training data
+
+`scenebench response-data` (Sources/SceneBench/ResponseData.swift) lays Beirut's district out once
+and, for each of 400 frames, places a charge at random on the open ground within 1.5 km of the
+scene's (never within 100 m of the places judged below), of 5 t to 2 kt evenly in the log, with a
+yield spread drawn from the app's five. In half the frames each building's peaks are raised or
+lowered by up to ×2 of their own, so that peak and impulse are seen apart. The CPU code the
+networks stand in for gives the answers, on the preview's components:
+
+- each component's level and glass by `EnvelopeDamageAssessment` (and each once more under a load
+  moved up to 0.8 of a decade in peak and impulse);
+- each side's glass chances by `glassProbabilities`, on 64 draws spread evenly (a full estimate's
+  pane table);
+- each building's walls' and roof's by `structureProbabilities`, on as many.
+
+Rows with every answer none and no damage are thinned to one in ten and weighted so. 400 frames
+gave 15.1 million component rows, 4.2 million sides and 0.64 million buildings, 3.3 GB (665 MB
+gzipped for the PC), in about 90 minutes on the Studio's CPU at a nice of 10, beside other sessions. No solver run was needed.
+`LiveResponse.batch` lays the inputs out from the CPU's predictions, as the data was made; the app
+lays them out from the GPU's (`livePreview`), and `LiveResponseTests` holds the two together.
+
+### Training
+
+On bombcad-pc's RTX 3080 Ti through `remote-train.py`, frames 9 modulo 10 held out, AdamW with a
+one-cycle rate to 2 × 10⁻³, batches of 4,096. The glass and walls networks (round 1, job
+`live-response-1`, 20 epochs) took 147 s; the component network was trained again wider for 40
+epochs (round 2, `live-response-2`, the other two kept), 242 s. On held-out frames:
+
+| Network | Held out |
+|---|---|
+| Component | level exact 99.996% of rows (99.2% of the 12,576 damaged), glass broken exact 99.983% |
+| Glass | some broken within 0.1 of the 64 draws' on 99.997% of sides, blown out 99.91%, thrown past 3b 99.59% |
+| Walls | walls moderate+ within 0.1 on 99.97% of buildings, heavy+ 99.97%, roof 99.88% |
+
+### How the weights ship
+
+The weights are float16, 534,271 bytes (SHA-256 `9e990bdb…a22a0be`), built into the app as base64
+in `Sources/BlastModel/LiveResponse+Embedded.swift` by `Scripts/ml/embed_response.py`: no
+download. The file is on StudioData at `ml/live-response-2/app/live-response.bclr`. They were
+trained only on BombCAD's own CPU code run over Beirut's district (OpenStreetMap buildings, GHSL
+heights, Copernicus terrain: see [Beirut, 2020](beirut-2020.md) for the licences); no measured data
+went into them.
+
+```bash
+python3 -I Scripts/ml/remote-train.py bombcad-pc $BOMBCAD_DATA/scratch/live-drag/data1-gz \
+    Scripts/ml/train_response.py --job live-response-1 --args --epochs 20 \
+    --hidden "component:128,128,64;side:128,128,64;building:256,128,64"
+python3 -I Scripts/ml/remote-train.py bombcad-pc $BOMBCAD_DATA/scratch/live-drag/data1-gz \
+    Scripts/ml/train_response.py --job live-response-2 --args --epochs 40 --units component \
+    --hidden "component:256,256,128;side:128,128,64;building:256,128,64" \
+    --keep ~/bombcad-ml/jobs/live-response-1/out/nets.pt
+python3 -I Scripts/ml/embed_response.py $BOMBCAD_DATA/ml/live-response-2/out/live-response.bclr \
+    --broken-threshold -1.5 --out $BOMBCAD_DATA/ml/live-response-2/app/live-response.bclr
+```
+
+### On the GPU
+
+`LiveDragGPU` (BlastCore, LiveDrag.metal):
+
+- **`liveLoads`**, one thread a chosen component: its sight line (`Raster.sight`, the edge and its
+  side reach), its street (`Raster.canyon`), the open air in front (`Raster.reach`) and its
+  features, then the surrogate's prediction (`FacadeLoadSurrogate.predict`: Kingery–Bulmash's fits,
+  the terms, the far and close-in terms, the glass front), at the yield and at the yield × e^0.25.
+  In float, against the CPU's double: on a test street with terrain and a block in the way, every
+  feature and load agrees within 10⁻³ but where a line passing a cell's edge crosses one block more
+  or fewer (`LiveDragGPUTests`). The district's raster goes to the GPU once.
+- **The networks** as MPS matrix products, a layer at a time, the inputs' standardisation folded
+  into the first layer's weights, and a small kernel adding the biases and SiLU.
+
+The CPU keeps the choice of each group's nearest component (now by groups laid out once, not by
+dictionaries: the same components, `LiveResponseTests` and `drag-time --check-choices`), the
+networks' rows, and their answers. Only the colouring shown is worked out, as before, and only the
+components it needs go to the GPU.
+
+### Frame times
+
+Beirut at 0.5 kt, 21 frames 5 m apart (`drag-time --live --no-let-go --drag 0,5,…,100`), on the
+Studio at load 11–15 with a BombCAD server holding a GPU slot:
+
+| Colouring | First frame | Later frames, median (range) | GPU | Before (CPU, load 5–20) |
+|---|---|---|---|---|
+| Damage | 73 ms | **25 ms** (25–31) | 11 ms | 0.77 s |
+| Glass's chances | 70 ms | **25 ms** (22–33) | 10 ms | 0.61 s |
+| Walls' and roofs' chances | 64 ms | **21 ms** (20–28) | 12 ms | 0.69 s |
+
+A later damage frame's median stages: the choice 2.3 ms, the GPU's loads 6.6 ms, the rows 4.7 ms,
+the networks 6.5 ms, the answers 2.9 ms. The first frame also signs the district's constructions
+and sends its raster to the GPU. At load 30–40, with a whole-event run on the GPU, frames took
+35–60 ms. So **30 frames a second is met on a Studio not heavily shared**, every colouring, the
+first frame aside.
+
+### Against the full estimate
+
+As the preview was judged (`drag-time --agreement`, Beirut's 4 m layout, 0.5 kt, yield within
+×1.5, the full estimate on 100 draws; the charge where it was and 60 m east, places the training
+never drew within 100 m of), on the same build:
+
+| Within 0.1 of the full estimate | The SDOF and draws (CPU) | The learned response (GPU) |
+|---|---|---|
+| Glass blown out, of 53,530 sides | 85.7–85.8% (10 draws), 91.2–91.4% (20) | **96.8–96.9%** |
+| Glass some broken | 94.5–94.6% (10), 97.3% (20) | **99.3%** |
+| Openings blown out | 100.0% | 100.0% |
+| Walls moderate+, of 14,169 buildings | 99.7–99.8% (10), 99.8–99.9% (20) | **99.9%** |
+| Walls heavy+ | 99.9% | **100.0%** |
+| Roof moderate+ | 98.6–98.9% (10), 98.8–98.9% (20) | 98.8–98.9% |
+| Damage colour the same | 99.5% | 99.5% |
+
+So the learned response gives the glass blown out within 0.1 of the full estimate's on 96.8–96.9%
+of sides, the walls' and roofs' chances within 0.1 on 98.8–100.0% of buildings, and the damage
+colour the same for 99.5% of buildings: as good as the CPU's preview on every measure, and closer on
+the glass, whose 10 draws scattered where the networks give what many draws converge to. Its blown
+out reads +0.017 high on average (the CPU's 10 draws +0.012–0.013), the preview's nearest strip
+standing for its side. Against the CPU's preview itself, 3–6 buildings of 14,169 take another
+damage colour.
+
+### The decision for the user
+
+Whether to make **Learned response (GPU)** the drag preview's default. It meets the agreement
+target on every measure and the frame target on a Studio not heavily shared, and the full estimate
+still follows when the charge is let go. Against it, or to settle first:
+
+- **It is trained on Beirut alone,** its four constructions and four glazing mixes. Another
+  district built of the same (as New District's are) is within its inputs; one built otherwise
+  falls back to the CPU, and says so.
+- **It is not judged elsewhere.** A made-up district or another city's would be the next check.
+- **With the learned field model on, it is not used.**
+- **Its weights add 0.5 MB to the app** (0.7 MB of source).
+
+The recommendation: make it the default, the CPU's preview kept by name.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
