@@ -15,6 +15,11 @@
 // bit, not a particle. The state's first word is set once any particle has been made, its second
 // while this substep has made one (cleared as the substep's particles move).
 
+// The dust's impact losses summed in `rubbleMove` (`AirDust`, Dust.metal); undefined, as for every
+// run without dust, the kernel is as it was.
+constant bool rubbleDustConstant [[function_constant(31)]];
+constant bool rubbleDust = is_function_constant_defined(rubbleDustConstant) && rubbleDustConstant;
+
 // Whether slot `index` holds a particle, from its bit in the rubble's state.
 static inline bool rubbleInUse(const device uint *state, uint index) {
     return ((state[rubbleBits + index / 32u] >> (index % 32u)) & 1u) != 0u;
@@ -358,6 +363,7 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
                        constant TerrainUniforms &t [[buffer(11)]],
                        const device float *terrainHeights [[buffer(12)]],
                        device float4 *work [[buffer(13)]],
+                       device float4 *dustImpacts [[buffer(14)]],
                        uint index [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -390,6 +396,7 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
     float3 velocity = float3(p.velocity) + dt * (force / p.mass - gravityPull(u));
     velocity *= max(0.0f, 1.0f - u.damping * dt);
     position += dt * velocity;
+    float3 flying = velocity;  // before the ground stops it (for the dust's impact losses)
     // The ground: the floor, or on a terrain its surface under the particle.
     float ground = t.enabled != 0u ? terrainHeight(position.xy, t, terrainHeights) : 0.0f;
     if (position.z < ground && u.groundFriction >= 0.0f) {
@@ -419,6 +426,22 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
         float kinetic = 0.5f * p.mass * dot(velocity - before, velocity + before);
         work[index] += float4(contactWork, airWork, kinetic + p.mass * dot(gravityPull(u), moved) - contactWork - airWork,
                               -0.5f * p.mass * length_squared(velocity - before));
+    }
+    if (rubbleDust) {
+        // The dust's impact losses (`dustFromImpacts`, Dust.metal): contact's work over the way the
+        // particle moved and the kinetic energy the ground took, summed; each time the sum falls
+        // below the least it had reached, the fall is a loss to be turned to fines. A contact's
+        // spring gives back what it stored, so a bounce counts only what it kept.
+        // (Over the step's own move, dt v, not the position's change: that would have the compiler
+        // take the move apart from the position's update, and round the particle differently.)
+        float contactWork = contactEnabled(u, failureGate) ? dt * dot(forces[index].xyz, flying) : 0.0f;
+        float4 s = dustImpacts[index];
+        s.x += contactWork - 0.5f * p.mass * (dot(flying, flying) - dot(velocity, velocity));
+        if (s.x < s.y) {
+            s.z += s.y - s.x;
+            s.y = s.x;
+        }
+        dustImpacts[index] = s;
     }
     particles[index].position = position;
     particles[index].velocity = velocity;

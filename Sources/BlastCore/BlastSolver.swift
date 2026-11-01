@@ -162,6 +162,8 @@ public final class BlastSolver {
         var redistributeCutDefects: MTLComputePipelineState
         var keepStructureCut: MTLComputePipelineState
         var takeStructureCut: MTLComputePipelineState
+        /// The function constants they were made with.
+        var constants: MTLFunctionConstantValues
     }
     /// Structures' outlines as cut cells, when `configuration.structureCutCells` laid them at the
     /// last restart (`StructureCutGeometry`): per cell its record, the records, their walls,
@@ -295,6 +297,10 @@ public final class BlastSolver {
     /// and its kernel, while the air has sub-grid mixing.
     var viscosityBuffer: MTLBuffer?
     var viscosityPipeline: MTLComputePipelineState?
+    /// A collapse's dust, when the run carries it (`enableDust`, AirDust.swift); nil otherwise.
+    var dust: AirDust?
+    /// Whether the run carries a collapse's dust (`enableDust`).
+    public var carriesDust: Bool { dust != nil }
     var periodicPipeline: MTLComputePipelineState?
     public internal(set) var radiatedEnergy = 0.0
     public internal(set) var radiationHistory: [(time: Double, energy: Double)] = []

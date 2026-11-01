@@ -28,6 +28,26 @@ final class RubbleSystem {
     /// particle's work by source compiled in, and that work (a float4 a slot).
     var tracedMove: MTLComputePipelineState?
     var work: MTLBuffer?
+    /// With the dust (`AirDust`): each slot's impact losses, which the move kernel specialised for
+    /// it adds up (a float4 a slot; owned and saved by the dust, so held here out of the
+    /// checkpoint's sight).
+    var dustImpactsHeld: BufferReference?
+    var dustImpacts: MTLBuffer? { dustImpactsHeld?.buffer }
+
+    /// The move kernel with what is asked of it compiled in: each particle's work by source for the
+    /// census split (constant 28, with `work`), its impact losses for the dust (31, with
+    /// `dustImpacts`); the plain kernel without either.
+    func specialiseMove() throws {
+        guard work != nil || dustImpacts != nil else {
+            tracedMove = nil
+            return
+        }
+        let constants = MTLFunctionConstantValues()
+        var on = true
+        if work != nil { constants.setConstantValue(&on, type: .bool, index: 28) }
+        if dustImpacts != nil { constants.setConstantValue(&on, type: .bool, index: 31) }
+        tracedMove = try ShaderLibrary.pipeline("rubbleMove", in: library, constants: constants)
+    }
 
     /// `masses` is each element's mass and the share of it that is steel; zero mass for elements
     /// that do not turn to rubble.
@@ -142,4 +162,11 @@ extension StructureSolver {
         flagBuffer.contents().storeBytes(of: UInt8(6), toByteOffset: index, as: UInt8.self)
         failureGateBuffer.contents().storeBytes(of: 1, as: UInt32.self)
     }
+}
+
+/// A buffer held by an object that a checkpoint's search for buffers does not look into
+/// (`SolverCheckpoint.sharedBuffers`): one another part owns and saves.
+final class BufferReference {
+    let buffer: MTLBuffer
+    init(_ buffer: MTLBuffer) { self.buffer = buffer }
 }

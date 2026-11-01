@@ -216,6 +216,21 @@ marks what a session cannot get.
 | A map of what burned in Halifax, 1917, with times (the Halifax Relief Commission's, or J. Ruffman and C. D. Howell (eds.), *Ground Zero*, 1994) | Nova Scotia Archives | Not searched in archives | `sources/halifax-1917-fire/` | A blast's own fire through timber, against the timber contrast run |
 | Records of fire after the Beirut blast beyond the port (Lebanese Civil Defence) | Lebanese Civil Defence; the press | Not found | `data/Beirut2020/fires/` | Whether any building outside the port burned, which the judging assumes did not |
 
+### For the collapse's dust (emmettl/bombcad-work#36, 1 November 2026)
+
+What would set the [dust's](whole-event.md#dust-stage-1-1-november-2026) two coefficients from
+concrete itself, which no open source does: the energy per kilogram of fines (5×10⁴ J/kg, from rock's
+drop-weight tests and Bond's grinding indices) and the share of the rubble's impact losses that makes
+fines (0.2, from split-Hopkinson tests on ore). **Needs the user** marks what a session cannot get.
+
+| Document or data | Where | Blocked here by | Save to `$BOMBCAD_DATA/…` | Unlocks |
+|---|---|---|---|---|
+| Nedeljković, Kamat, Holthuizen, Tošić, Schlangen and Fennis, "Energy consumption of a laboratory jaw crusher during normal and high strength concrete recycling", *Minerals Engineering* 204 (2023) 108421 | [doi:10.1016/j.mineng.2023.108421](https://doi.org/10.1016/j.mineng.2023.108421); TU Delft's repository | **Needs the user**: paywall; the repository did not answer | `sources/nedeljkovic-2023-jaw-crusher/` | Crushing energy (kWh/t) and the fines below 63 µm for concrete of two strengths: the energy per kilogram of fines for concrete, not rock |
+| The WRAP Fugitive Dust Handbook (Countess Environmental, 2006), its demolition chapter | wrapair.org (now redirects elsewhere); an Internet Archive snapshot | Host gone; snapshot not found | `sources/wrap-fugitive-dust-2006/` | Where the 0.00042 lb of PM10 per cubic foot of building demolished (URBEMIS's default, 6.7 g/m³) comes from |
+| A measured mass of dust from a building's implosion or collapse | none known: AP-42 §13.2.3 gives implosion as "NA"; Beck et al. (2003) and Dorevitch et al. (2006) measured concentrations only | Not found | `data/implosion-dust/` | Both coefficients from one event, by the cloud's mass against its fracture work |
+| The total mass of the World Trade Center's dust, as Lioy et al. (2002, *EHP* 110:703) give it | [doi:10.1289/ehp.02110703](https://doi.org/10.1289/ehp.02110703) | The archived page's figure is garbled | `sources/lioy-2002-wtc-dust/` | A collapse's dust mass for its rubble, against the model's share |
+| Fragments of blast-loaded reinforced concrete sieved below 1 mm | none found: Li et al. (2016) and the split-Hopkinson fractal studies sieve to 0.5 mm | Not found | `data/blast-fines/` | The fines blast cracking makes, close in, where today's coefficient is rock's |
+
 ## To request
 
 Datasets in no open document, which have to be asked of their owners. Drafts, with contacts

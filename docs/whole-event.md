@@ -85,6 +85,17 @@ reaches further (99% within 9.1 m, not 7.4 m). Assumed strain hardly moves (51,1
 failed). The range quoted is 18,000–51,100 elements failed and 27–76 t of rubble. At rest the pile
 fails 23–33 elements a second, not 1,700, and is quiet enough for the dust.
 
+**1 November ([dust, stage 1](#dust-stage-1-1-november-2026)):** the collapse's dust, carried by
+the air as a passive cloud of two classes (10 and 100 µm), made from the elements' fracture and
+crushing work and a share of the rubble's impact losses, settling and counted. Opt-in
+(`blastbench wholeevent --dust`); without it nothing changes, and with it the air and the
+structure are the same to the bit. On twelve storeys with today's element, 46 kg of fines are made
+by 7 s, most as the walls fail from 2 to 3.5 s; 30 kg are in the air at 3.3 s; the cloud at
+10 mg/m³ fills the 31 m domain and its dense core (1 g/m³) reaches its faces, so its reach is the
+domain's; 19 kg settle on the pile and the block, 7.4 kg on the ground, and 0.24 kg leaves. Its
+standing is illustrative: the energy per kilogram of fines (5×10⁴ J/kg, 2×10⁴–2×10⁵) is rock's.
+Carrying it by default in whole-event runs is for the user's decision.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -106,6 +117,8 @@ blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--eve
                       [--erode-crushed-bare] [--release-bare-hourglass] [--assumed-strain]
                       [--breakdown <checkpoint>] [--outcome <checkpoint or run folder>]
                       [--ground-friction 0.6] [--split-work] [--dump-split <from s>]
+                      [--dust] [--dust-energy 5e4] [--dust-impact-share 0.2] [--dust-fine-share 0.15]
+                      [--dust-maps 1,2,3,5,7,10]
 ```
 
 The street preset (500 kg of TNT 8 m from the east flank wall, 670,560 solid elements of 87.5 mm,
@@ -143,6 +156,11 @@ air on 1.19 million cells of 0.25 m), with:
 - `--outcome <run folder>` reads every saved state in the folder, one row each, and ends by naming
   the row to quote: the first saved at 5 s, or at rest if the block comes to rest later, by the
   folder's `phases.csv` ([read at rest](#read-at-rest-and-the-walls-that-fail-at-rest-31-october-2026)).
+- `--dust` carries the collapse's dust ([dust, stage 1](#dust-stage-1-1-november-2026)), off by
+  default: `dust.csv` gets a row at each sample, `dust-column-<ms>.csv` and a picture the mass over
+  each column at the `--dust-maps` times, and `--outcome` a dust row after each saved state's.
+  `--continue` carries on as the run was saved; given to a run saved without it, the dust starts
+  from none there.
 - `--split-work` splits the census by source (section 5); `--dump-split <from s>` also writes each
   sample's split node by node from that time on (`split-nodes-<t>.bin`, four float4s a node as the
   node kernel sums them, and `split-particles-<t>.bin`), a diagnostic.
@@ -1768,7 +1786,8 @@ Runs and tables: `/Volumes/StudioData/bombcad/whole-event/precise/`:
 
 ## Dust: what it would take
 
-Nothing is built for dust. What it would need, from what the model has:
+The sketch as written before the dust was built (stage 1 is built since 1 November:
+[dust, stage 1](#dust-stage-1-1-november-2026)). What it would need, from what the model has:
 - **Where it comes from.** Crushing and fracture make fines in proportion to the new surface,
   so in proportion to the fracture and crushing work the trace already separates by element; and
   rubble landing makes more, in proportion to the impact energy contact takes out. A source per
@@ -1803,6 +1822,212 @@ Nothing is built for dust. What it would need, from what the model has:
                                     leaves the domain ─► cloud spread (gravity current, puff)
 ```
 
+## Dust, stage 1, 1 November 2026
+
+Next's item 4 (emmettl/bombcad-work#36), on the user's word of 1 November: the collapse's dust, as
+a passive cloud the air carries. It is off by default everywhere: `blastbench wholeevent --dust`
+asks for it, and no other run, scene, test or digest moves. Whether whole-event runs should carry it
+by default is for the user's decision ([below](#for-the-users-decision-the-dust)). Its standing is
+illustrative: its two coefficients are rock's, not concrete's, and nothing it gives has been
+compared with a measurement.
+
+**How it is built** (`AirDust` and Dust.metal in BlastCore; the coefficients and the readings in
+BlastModel's `CollapseDust.swift`).
+- **Where the fines come from.**
+  - *The elements.* Each air step, each element's fracture and crushing work, as its trace counts
+    them (the census's fracture and crushing, less the bars' share of the cracks' shear: dowel action
+    and kinking), divided by an energy per kilogram of fines. Fines come only from a rise of that work
+    past the most it had reached, and only as far as the element's work in all rises past its own.
+    So work given back (a crack closing, unloading on a cracked plane) makes none. Nor does work the
+    midpoint trace moves between an element's channels while it is at rest (section 5), which leaves
+    its total as it was. Without that second condition the three-storey block at rest made 1.1 kg of
+    fines a second, from its floors' cracked elements, whose fracture channel grew while their bars'
+    fell and their total held. With it, it makes 0.08 kg a second.
+  - *The rubble.* Each substep, the rubble's move kernel adds up each particle's contact work over
+    its step and the kinetic energy the ground takes from it. Each time that sum falls below the
+    least it has reached, the fall is an impact loss. So a bounce counts only what it kept. A share
+    of the loss, divided by the same energy per kilogram, is fines.
+  - Both go to the air cell holding the element's centre or the particle. Where that cell is solid,
+    they go to the first cell of air among its 26 neighbours, those above first. Where there is none
+    they wait in the solid cell until it opens. Fines made outside the air's domain (a piece thrown
+    beyond it) are counted as gone.
+  - The fines are split between two classes: **10 µm** (PM10), 15% of them, settling at 7.5 mm/s,
+    and **100 µm**, settling at 0.55 m/s. The speeds are Stokes's, with Schiller and Naumann's drag
+    for the larger, for grains of 2,500 kg/m³.
+- **Carried by the air.** Each class is a density in each air cell, in two copies that swap as the
+  air's state does.
+  - Each air sweep keeps its cells' mass fluxes through their low and high faces. These are dust
+    variants of the sweeps (`sweepDust`, `sweepTilesDust`, made from the sweeps' source by
+    `addingDustSweep`), so the ordinary sweeps are unchanged.
+  - `dustSweep` then carries the fines through the same faces, each at the mass fraction of the
+    cell it leaves, as afterburning's products and oxygen are carried. In the vertical sweep each
+    class also falls through every face at its settling speed.
+  - A face shared by two cells of air has one flux, read from the cell below's own record, so the
+    fines are conserved by construction.
+  - A face to a solid cell or the ground takes no fines with the air: what falls onto it is
+    **deposited**. What goes out through an open face has **left the domain**.
+- **Counted.** Each cell keeps a ledger of six 64-bit counts in quanta of 10⁻¹⁵ kg: settled, gone
+  and made there, by class. Fines are made in whole quanta, and what crosses to a solid or out of
+  the domain is rounded to whole quanta before it leaves the field. So the ledger is exact, and
+  made = airborne + deposited + gone holds to the field's own rounding: 10⁻⁷ of what was made in
+  the runs below. Deposits are told apart: on the ground beyond the plan, on the ground within it
+  (under the pile), and on solids above the ground (the floors, the walls' heads).
+- **Passive.** Neither the air nor the structure reads the fines. A dense collapse cloud would push
+  the air and weigh on it: that is stage 2.
+
+**The same to the bit where it should be.**
+- **Without dust nothing changes.**
+  - Every dust kernel is a pipeline of its own, and the dust sweeps are siblings of the ordinary ones.
+  - The rubble's move kernel sums the impacts only under a function constant (31, `rubbleDust`),
+    undefined without dust.
+  - No buffer, checkpoint part or digest of a run without dust changes: `make ship`'s digests are
+    bit-identical, 42 variants in 6 sets.
+- **With dust, the air and the structure are as without it, to the bit.**
+  - The three-storey block run to 0.3 s with dust and without it gives every column of `phases.csv`
+    but the clocks the same.
+  - So does a struck wall with rubble, run 128 steps (`AirDustTests`).
+  - The first build did not: summing the impacts over the particle's change of position had the
+    compiler take the move apart from the position's update, and the rubble rounded differently
+    (by 0.05 s, five more nodes in contact). Taken over dt v instead, it does not.
+- **Resumes.**
+  - Checkpoints carry the dust's fields, ledger and sources, in a part of their own ("dust").
+  - A run carried on from one is the same to the bit as one unbroken, dust included. The struck
+    wall saved at step 128 shows it (`AirDustTests`). So does the three-storey block cut into seven
+    pieces by a budget of 18 s, every row of `phases.csv` and `dust.csv` equal to an unbroken run's
+    to 0.3 s.
+  - The elements' fines are read from the trace's sums as they stand. So a whole-event run with dust
+    no longer folds the sums as it saves: they are folded only at the samples, as in an unbroken run,
+    and the checkpoint holds them as they were.
+  - A run carried on with `--dust` from a checkpoint saved without it starts its dust from none.
+- **Conservation.** In still air, fines put into the cells on the ground and on a block settle on
+  each at their speeds, at the explicit scheme's rate 1 − exp(−w t / Δx), to 1%. The ledger closes
+  to 10⁻⁶ (`AirDustTests`).
+
+**The coefficients** (`DustSettings`; illustrative, from rock and grinding, none from concrete
+itself; the sources and what is wanted are in [data wanted](data-wanted.md#for-the-collapses-dust-emmettlbombcad-work36-1-november-2026)):
+
+| Coefficient | Taken | Range | From |
+|---|---|---|---|
+| Energy per kilogram of fines below about 100 µm | 5×10⁴ J/kg | 2×10⁴–2×10⁵ | Drop-weight tests on rock (Ouchterlony, Sanchidrián and Genç, *Minerals* 11 (2021) 1262, the fragmentation-energy fan of Banini's hornfels): 45–150 kJ/kg of energy put in for the fines below 100 µm. Bond's work indices (cement clinker 13.6, limestone 9.9 kWh/t): 40–60 kJ/kg to grind to 100 µm. Lower bound by Bažant, Le, Greening and Benson (*J. Eng. Mech.* 134 (2008) 892) spreading the fracture energy over the new faces: 3–5 kJ/kg for this concrete, which over-predicts fines by an order of magnitude, since most of the energy goes elsewhere (Tromans, *Minerals Engineering* 21 (2008) 613: under 1–2% to new surface) |
+| The share of the rubble's impact losses that makes fines | 0.2 | 0.05–0.5 | At most 43% of the impact energy went to fracture in Bbosa's split-Hopkinson tests on ore (MSc thesis, Cape Town, 2007); rubble landing also loses to its target, friction and rearrangement |
+| The fine class's share of the fines | 0.15 | 0.05–0.35 | The World Trade Center's settled dust 0.5–0.7 km away: 1.2–1.7% of it below 10 µm, 3–5% of what was below 53–75 µm (Lioy et al., *EHP* 110 (2002) 703), low because the fines stayed aloft; a Schuhmann distribution of modulus 0.5–1 gives 0.1–0.32 |
+
+A sanity check, not a calibration: URBEMIS's default for demolition, 0.00042 lb of PM10 per cubic
+foot of building (6.7 g/m³; back-calculated from the Town of Atherton's 2013 run), is 15–45 g of
+PM10 a tonne of building. The twelve-storey run below makes 6.9 kg of its 10 µm class from a
+938 t block of which 26 t turns to rubble: 7 g a tonne of the block, or 270 g a tonne of rubble.
+The US EPA gives no factor for an implosion (AP-42 §13.2.3, "NA"), and no measured mass of a
+collapse's dust was found.
+
+**The runs.** On this change's build, `blastbench wholeevent --dust` with today's element and
+the whole-event defaults (the air awake, friction 0.6, displacements kept precisely), from the start:
+no earlier run carried dust, and the fines begin with the blast's first cracks (3 kg by 0.1 s), so no
+checkpoint of an earlier run would do.
+- **Three storeys to 2 s** (`d3-default`): the block stands, as it does with today's element. It
+  makes 3.6 kg of fines by 1 s, 2.5 kg of them in the blast's first 0.1 s, and 0.1 kg more to 2 s.
+  The air holds 2.5 kg at 2 s, 0.5 kg of it the fine class. Its domain is 12 m high, and the cloud at
+  10 mg/m³ reaches its top in 0.05 s, carried up by the blast.
+- **Twelve storeys to 7 s** (`d12-default`), the run asked for. The collapse is today's element's, a
+  new draw (the first kept precisely from the start): at 5 s, 243.9 m² of floor down, 11 storeys past
+  15%, 17,383 elements failed, 25.6 t of rubble, 99% of the debris within 5.2 m of the plan. That is
+  within the range but for its failures, 3% under its lower end (18,000), as two draws of the same
+  element have differed before.
+
+| Twelve storeys, the dust | 0.5 s | 1 s | 2 s | 3 s | 3.5 s | 5 s | 7 s |
+|---|---|---|---|---|---|---|---|
+| Elements failed | 1,250 | 2,500 | 5,600 | 11,800 | 16,900 | 17,383 | 17,489 |
+| Fines made, kg: by the elements / the rubble's impacts | 5.3 / 0.04 | 9.2 / 0.08 | 17.2 / 0.27 | 35.2 / 1.49 | 41.9 / 2.59 | 42.7 / 3.03 | 42.8 / 3.13 |
+| In the air, kg: 10 µm / 100 µm | 0.8 / 3.9 | 1.4 / 6.1 | 2.6 / 10.1 | 5.4 / 20.9 | 6.6 / 22.4 | 6.7 / 15.6 | 6.7 / 12.4 |
+| Of it held in solid cells | 0.2 | 0.4 | 1.2 | 5.2 | 5.7 | 4.6 | 3.8 |
+| Settled, kg: on the ground beyond the plan / under it / on solids above the ground | 0.04 / 0.08 / 0.4 | 0.1 / 0.2 / 1.4 | 0.5 / 0.3 / 3.8 | 1.6 / 0.7 / 8.0 | 2.5 / 0.8 / 12.0 | 5.0 / 1.0 / 17.2 | 6.4 / 1.1 / 19.2 |
+| Gone out of the domain, kg | 0.14 | 0.14 | 0.14 | 0.15 | 0.16 | 0.20 | 0.24 |
+| The cloud at 10 mg/m³: volume; top | 9,700 m³; 35.5 m | 12,300 m³; 35.5 m | 14,200 m³; 35.5 m | 15,300 m³; 35.5 m | 15,700 m³; 35.5 m | 16,400 m³; 35.5 m | 17,000 m³; 35.5 m |
+| The cloud at 1 g/m³: volume; top; reach beyond the plan | 725 m³; 31.8 m; 9.0 m | 1,035 m³; 35.0 m; 11.1 m | 1,730 m³; 34.8 m; 13.9 m | 2,340 m³; 34.5 m; 14.3 m | 2,710 m³; 34.2 m; 14.4 m | 3,230 m³; 29.8 m; 14.5 m | 3,400 m³; 32.5 m; 14.5 m |
+| The densest air cell | 0.20 kg/m³ | 0.73 | 1.1 | 2.4 | 0.94 | 0.86 | 0.60 |
+
+- **The fines follow the walls' failures.** Of the 46 kg made by 7 s, 25 kg are made from 2 to
+  3.5 s, as 11,300 elements fail, most of them the wall panels; the blast's cracks make 3 kg in its
+  first 0.1 s; the pile at rest makes 0.2 kg a second from 4 s. The rubble's impacts make 3.1 kg, 7%.
+- **Peak airborne: 30.4 kg at 3.3 s**, 6.6 kg of it the 10 µm class. The 100 µm class settles within
+  seconds (it falls 0.55 m/s), so by 7 s the air holds 19.1 kg, a third of it 10 µm grains, which
+  fall 5 cm in that time and stay up.
+- **How high and how far: everywhere the domain reaches.** The domain stands 4 m beyond the plan
+  on three sides and above the roof, and 14 m on the charge's side. The cloud at 10 mg/m³ reaches its
+  top (35.5 m) and its open faces in its first 0.1 s, thrown up the struck face by the blast, and
+  fills the domain's air from 3 s (17,000 m³ of about 18,000 at 7 s). The dense cloud, 1 g/m³ (in
+  which the 10 µm class alone would hide what is 30 m away), reaches above the roof by 1 s and the
+  open face 14.5 m beyond the plan by 5 s; it grows to 3,400 m³ by 7 s, lying lower as its coarse
+  grains settle (its top 29–32.5 m from 5 s).
+- **When it leaves the domain: it touches the open faces from 0.05 s, but little goes out**: 0.24 kg
+  by 7 s, 0.5% of what was made. The air there is still once the blast has passed, and the model has
+  no wind. The 31 m domain cannot say how far the cloud goes: it is full. That is the hand-over to
+  the cloud spread (stage 2).
+- **How much settles on the pile: 19.2 kg on solids above the ground by 7 s** (the pile, the
+  standing block's floors and the walls' heads, 42% of what was made), 1.1 kg on the ground under the
+  plan and 6.4 kg on the ground beyond it. 3.8 kg is still in solid cells: made in cells a solid
+  fills, or shut in by a wall that moved into its cell. It comes out as cells open (5.7 kg at 3.5 s).
+- **The column's mass** (`dust-column-*.csv` and their pictures, 1, 2, 3, 5 and 7 s): over the pile
+  up to 1.4 kg/m² at 3 s; over the domain, the median column holds 16–26 g/m² from 3 to 7 s, the
+  90th centile about 0.1 kg/m². With the geometric limit's mass extinction (120 m²/kg for 10 µm,
+  12 for 100 µm; `DustSettings.extinction`), the median column's optical depth looking down is about
+  1 at 5 s: the domain is hazed throughout, the pile hidden.
+- **The ledger closes**: made less airborne, settled and gone is under 10⁻⁵ kg in 46 kg at every
+  sample.
+
+**Sensitivity.** The dust is passive, so every mass scales as the inverse of the energy per kilogram:
+with 2.5×10⁴ J/kg (×0.5) the run makes 92 kg and holds 61 kg at its peak; with 10⁵ (×2), 23 and
+15 kg. The cloud bounded at 10 mg/m³ is, at ×0.5 and ×2, this run's cloud at 5 and 20 mg/m³
+(`dust.csv` from `--outcome`): at 5 s 17,000 and 15,300 m³ against 16,400 m³, its top at the
+domain's top in each. Its extent hardly moves because the cloud fills the domain. The impact share
+scales only the rubble's 7%: at 0.05 or 0.5, 43.6 or 50.6 kg made. The fine class's share moves the
+fine class in proportion (0.05–0.35: 2.3–16 kg of it made).
+
+**What it cost.** About 9,800 s of GPU, 2.7 hours, on a GPU shared with two other sessions:
+5,235 s for the twelve-storey run to 7 s (2,534 s to 3.5 s, where `energy/s12-default` took 9,950 s
+on a GPU shared three and four ways; the dust's own kernels were not timed apart); 1,860 s for two twelve-storey starts stopped as the two flaws above
+were found; 1,700 s for the three-storey runs to 2 s; about 700 s for the checks; the outcome reader and
+the tests the rest. The dust holds 127 MB more on the GPU on twelve storeys (its two copies,
+ledger, counters, the fluxes and each element's and particle's state) and about 50 MB more in a
+checkpoint (399 MB at 7 s).
+
+**Where a user sees it.** The collapse's standing notes the dust as a piece of evidence of its own,
+illustrative. The whole-event run is still not offered in the app.
+
+### For the user's decision: the dust
+
+1. **Whole-event runs carry the dust by default.** It changes nothing else, to the bit, adds kernels
+   that were not timed apart (the run was no slower than earlier ones) and 50 MB a checkpoint, and the collapse's runs would then all have their
+   cloud. `--no-dust` would give today's runs. Proposed.
+2. **Before quoting how far the cloud goes**, a domain that holds it, or the hand-over to the cloud
+   spread (stage 2, below): in a domain 4 m beyond the plan, its reach is the domain's.
+
+Runs and tables: `/Volumes/StudioData/bombcad/whole-event/dust/`:
+- `d12-default`, twelve storeys to 7 s, with its `dust.csv`, column maps and checkpoints every 0.5 s;
+  `outcome-d12-default.csv` the outcome reader's rows, the dust's after each (at four thresholds);
+- `d3-default`, three storeys to 2 s;
+- `c3-straight`, `c3-pieces` and `c3-nodust`, the checks to 0.3 s; `c3-fix` the rubble's;
+- `lane.sh` and `check3.sh` how they were run, `tools/cloud.py` the reader of `dust.csv`;
+- `bin/` the build the runs were made with, `bin2/` the reader's (its four thresholds).
+
+### Stage 2, not started: the plan
+
+Recorded as Next (item 6), for the user's word.
+- **The dense cloud's coupling.** The dust's density added to the air's in its momentum and, with
+  the well-balanced gravity option, in its weight, so that the falling block's dusty air spreads as a
+  gravity current. Peak cells hold 1–2 kg/m³ here, as much as the air itself, so this is where the
+  passive cloud is least right. It needs the air's sweeps to take the dust (the dust variants already
+  keep it beside them) and the remask to move it with the cells; the digests without dust stay.
+- **What it hides.** The optical depth by the mass extinction coefficients (`DustSettings.extinction`,
+  0.12 and 0.012 m²/g, the geometric limit; IMPROVE's 0.6–1 m²/g for size-spread PM10 as the other
+  end), marched through the field as the fireball's volume is ([thermal radiation](thermal-radiation.md)):
+  views and sight lines, and the thermal pulse's shading where the two overlap.
+- **The hand-over to the cloud spread.** The domain is full within seconds. Each class's mass and
+  centre, the cloud's height and spread at the domain's edge, handed to the fireball's cloud spread
+  ([cloud spread](fireball-rise.md): a gravity current, then a Pasquill puff), with each class
+  settling out by its speed; or a larger domain around the block, on coarser cells beyond it.
+- **Deposits on the rubble.** Fines settle through the rubble's cells (particles do not mask the air)
+  onto the ground beneath; a particle's frontal area (`debrisArea`) could catch them where they pass.
+
 ## Next
 
 1. **Close the energy budget**: done ([energy budget](#energy-budget-30-october-2026)). The
@@ -1820,11 +2045,15 @@ Nothing is built for dust. What it would need, from what the model has:
 3. **Collapse earned** only after limitation 1's next attack, cracked concrete's stiffness and
    shear, not taken up; since 25 October the case for running it on the assumed-strain element,
    where the stabilisation no longer hides it (section 7).
-4. **Dust** after that, as sketched. The pile is now quiet enough for it: kept precisely, the
-   twelve-storey pile is still by 6 s
-   ([adopted](#adopted-displacements-kept-precisely-1-november-2026)). Not started.
+4. **Dust**: stage 1 built ([dust, stage 1](#dust-stage-1-1-november-2026)), a passive cloud,
+   opt-in (`--dust`). Twelve storeys make 46 kg of fines by 7 s, hold 30 kg in the air at 3.3 s, and
+   fill the 31 m domain; 19 kg settle on the pile and the block. Whether whole-event runs carry it by
+   default is for the user's decision.
 5. **The debris's reach**: done. Coulomb friction 0.6 on the ground is the whole-event default
    since 30 October ([adopted](#adopted-ground-friction-06-30-october-2026)). The debris comes to
    rest, 99% of it within 1.5–7.4 m, and the twelve-storey assumed-strain end has been run with it.
    Whether the solver takes friction by default for every scene is a separate question, for the
    debris comparisons to decide.
+6. **The dust's stage 2**, for the user's word: the dense cloud's density in the air's momentum and
+   weight, what it hides (its optical depth), the hand-over to the cloud spread once the domain is
+   full, and deposits on the rubble ([the plan](#stage-2-not-started-the-plan)).

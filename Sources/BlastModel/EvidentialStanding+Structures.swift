@@ -896,6 +896,16 @@ extension StandingScene {
                         + "5 s. Results are still read at rest, at 5 s",
                     "whole-event.md#adopted-displacements-kept-precisely-1-november-2026"),
                 StandingEvidence(
+                    "Large-panel flats' dust (twelve storeys, today's element, a passive cloud)",
+                    "Not a test, and its coefficients are rock's: fines made from the elements' fracture and "
+                        + "crushing work at 5×10⁴ J/kg (2×10⁴–2×10⁵) and a fifth of the rubble's impact losses, "
+                        + "carried by the air in two classes, 10 and 100 µm. 46 kg are made by 7 s, most as "
+                        + "the walls fail; 30 kg are in the air at 3.3 s; the cloud fills the 31 m domain, so "
+                        + "its reach is the domain's; 19 kg settle on the pile and the block. Every mass "
+                        + "scales as the inverse of the energy per kilogram. Off unless asked for "
+                        + "(`--dust`), and the collapse is the same with it",
+                    "whole-event.md#dust-stage-1-1-november-2026"),
+                StandingEvidence(
                     "Large-panel flats coming down in sleeping air (the three-storey runs before 31 October)",
                     "Not a test: asleep, the air is frozen as it was, and its pressures on the falling faces "
                         + "do a third of gravity's work as the struck bay starts down. With assumed strain three "

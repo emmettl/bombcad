@@ -163,6 +163,8 @@ extension BlastSolver: SolverCheckpointing {
         }
         if let deflagrationStage { parts.append(deflagrationStage.checkpoint()) }
         if let congestion { parts.append(congestion.checkpoint()) }
+        // The dust's fields, ledger and sources (AirDust.swift), only in a run that carries it.
+        if let dust { parts.append(ClosureCheckpoint.buffers(of: dust, name: "dust")) }
         return parts
     }
 
@@ -203,7 +205,7 @@ extension BlastSolver: SolverCheckpointing {
                 + (envelopeVenting == nil ? [] : ["venting"])
                 + (exposurePlane == nil ? [] : ["exposurePlane"])
                 + (firstPhaseColumns == nil ? [] : ["firstPhaseColumns"])
-                + (deflagrationStage == nil ? [] : ["deflagration"]),
+                + (deflagrationStage == nil ? [] : ["deflagration"]) + (dust == nil ? [] : ["dust"]),
             complete: true, parts: [], rawBytes: 0, storedBytes: 0, seconds: 0)
         return try SolverCheckpoint.write(checkpointSubsystems, header: header, to: folder)
     }
@@ -233,7 +235,13 @@ extension BlastSolver: SolverCheckpointing {
         guard refinementLevels.map(\.maxPatches) == header.pools else {
             throw SolverCheckpoint.Refusal(description: "the pools could not grow to their saved sizes")
         }
-        try SolverCheckpoint.read(checkpointSubsystems, header: header, from: folder)
+        // A run that carries dust from a state saved without it: the dust starts from none there.
+        var subsystems = checkpointSubsystems
+        if let dust, !header.parts.contains(where: { $0.name == "dust" }) {
+            subsystems.removeAll { $0.checkpointName == "dust" }
+            dust.reset()
+        }
+        try SolverCheckpoint.read(subsystems, header: header, from: folder)
         frameExtractor?.invalidate()
         exposureNeedsInitialSample = false
         firstPhaseNeedsInitialSample = false
@@ -255,6 +263,10 @@ extension BlastSolver {
         }
         fold(stateBuffers[current], stateBuffers[current].length)
         if hasSpecies { fold(speciesBuffers[current], speciesBuffers[current].length) }
+        if let dust {
+            fold(dust.fields[current], dust.fields[current].length)
+            fold(dust.ledger, dust.ledger.length)
+        }
         fold(peakBuffer, peakBuffer.length)
         fold(impulseBuffer, impulseBuffer.length)
         for word in [

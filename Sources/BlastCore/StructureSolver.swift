@@ -263,8 +263,11 @@ public final class StructureSolver {
     private var slipBuffer: MTLBuffer
     /// The work trace (`tracesWork`): each element's work by mechanism since it was last folded
     /// into `workSums`, `WorkChannel.allCases.count` floats per element.
-    private var workBuffer: MTLBuffer?
+    private(set) var workBuffer: MTLBuffer?
     private var workSums: [Double] = []
+    /// Called whenever the trace's GPU sums are folded into `workSums` and cleared (the dust's
+    /// readings of them start again from zero, `AirDust`).
+    var workFolded: (() -> Void)?
     private var slipSupportBuffer: MTLBuffer
     private var barForceBuffer: MTLBuffer
     /// The base's connection to the ground, three `SIMD4<Float>` per node (see `anchorForce` in
@@ -1071,6 +1074,7 @@ public final class StructureSolver {
         if let workBuffer {
             memset(workBuffer.contents(), 0, workBuffer.length)
             workSums = workSums.map { _ in 0 }
+            workFolded?()
         }
         memset(slipBuffer.contents(), 0, slipBuffer.length)
         memset(barForceBuffer.contents(), 0, barForceBuffer.length)
@@ -1263,15 +1267,11 @@ public final class StructureSolver {
         else { throw BlastError.allocationFailed("the census split") }
         memset(buffer.contents(), 0, buffer.length)
         if let rubble = rubbleSystem {
-            let constants = MTLFunctionConstantValues()
-            var on = true
-            constants.setConstantValue(&on, type: .bool, index: 28)
-            rubble.tracedMove = try ShaderLibrary.pipeline(
-                "rubbleMove", in: rubble.library, constants: constants)
             guard let work = device.makeBuffer(length: max(rubble.count, 1) * 16, options: .storageModeShared)
             else { throw BlastError.allocationFailed("the rubble's census split") }
             memset(work.contents(), 0, work.length)
             rubble.work = work
+            try rubble.specialiseMove()
         }
         // The element kernels sum the air's work on faces apart, in the cracked points' slot.
         if crackedPointBuffer == nil, let traced = elementConstants.copy() as? MTLFunctionConstantValues {
@@ -1495,6 +1495,7 @@ public final class StructureSolver {
             workSums[n] += Double(raw[n])
         }
         memset(workBuffer.contents(), 0, workBuffer.length)
+        workFolded?()
         let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
         var totals = [Double](repeating: 0, count: channels)
         for n in 0..<elementCount {
@@ -2456,6 +2457,7 @@ public final class StructureSolver {
                 encoder.setBytes(&terrain.uniforms, length: MemoryLayout<TerrainUniforms>.stride, index: 11)
                 encoder.setBuffer(terrain.heights, offset: 0, index: 12)
                 encoder.setBuffer(rubble.work ?? placeholderBuffer, offset: 0, index: 13)
+                encoder.setBuffer(rubble.dustImpacts ?? placeholderBuffer, offset: 0, index: 14)
                 encoder.dispatchThreads(
                     MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
@@ -2582,6 +2584,9 @@ public final class StructureSolver {
         get { gpuSubsteps.target }
         set { gpuSubsteps.target = newValue }
     }
+
+    /// The uniforms the substeps take with `fluid`, for the dust's kernels (AirDust.swift).
+    func makeDustUniforms(fluid: FluidBinding) -> StructureUniforms { makeUniforms(fluid: fluid) }
 
     private func makeUniforms(fluid: FluidBinding?) -> StructureUniforms {
         let h = model.elementSize

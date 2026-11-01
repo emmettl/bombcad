@@ -74,6 +74,8 @@ private struct WholeEventState: Codable {
     /// Whether the nodes keep their displacements precisely (`StructureSolver.preciseDisplacements`);
     /// nil in a run saved before it was recorded (1 November 2026), whose displacements were floats.
     var preciseDisplacements: Bool?
+    /// The dust's coefficients, if the run carries its dust (`--dust`, AirDust); nil without it.
+    var dust: DustSettings?
 }
 
 /// Whole-event runs' ground friction by default: Coulomb 0.6, concrete on concrete or hard ground,
@@ -211,6 +213,26 @@ func runWholeEvent(device: MTLDevice) throws {
         print("No solid structure")
         exit(2)
     }
+    // The dust (`--dust`; WholeEventDust.swift): as the run was saved with `--continue` (begun there
+    // if given and the run had none), as any state they read was saved for the readers, else as given.
+    func savedDust(_ folder: URL) -> DustSettings? {
+        let state = try? JSONDecoder().decode(
+            WholeEventState.self, from: Data(contentsOf: folder.appending(path: "whole-event.json")))
+        return state?.dust
+    }
+    let dust: DustSettings?
+    if let latest {
+        dust = savedDust(latest) ?? (flag("dust") ? wholeEventDustSettings() : nil)
+    } else if let reading {
+        dust = (outcomeFolders ?? [reading]).lazy.compactMap(savedDust).first
+    } else {
+        dust = flag("dust") ? wholeEventDustSettings() : nil
+    }
+    if dust != nil, airSleeps {
+        print("--dust needs the air awake: asleep, it is frozen and carries nothing")
+        exit(2)
+    }
+    if let dust, latest != nil || reading != nil { try solver.enableDust(dust) }
     solids.contactMode = .always
     // Coulomb friction on the ground, 0.6 by default (`wholeEventGroundFriction`). `--ground-friction 0`
     // gives the frictionless ground of the runs before 30 October 2026, where what lands sheds its
@@ -233,11 +255,20 @@ func runWholeEvent(device: MTLDevice) throws {
     if let folders = outcomeFolders {
         // One checkpoint, or every checkpoint in a run's folder, in order.
         print(WholeEventOutcome.header)
+        if dust != nil { print("dust," + WholeEventDust.header) }
         var times: [Double] = []
         for folder in folders {
             solids.tracesWork = true
             let header = try solver.restoreCheckpoint(from: folder, scene: scenario)
             print(WholeEventOutcome(solids, storeys: storeys).row(time: header.time))
+            // With the dust: its row (dust.csv's columns, after "dust,") and its column map, beside
+            // the run's own.
+            if let (row, field) = WholeEventDust.row(
+                solver, scenario: scenario, time: header.time, step: header.stepCount)
+            {
+                print("dust," + row)
+                WholeEventDust.writeMap(field, time: header.time, to: folder.deletingLastPathComponent())
+            }
             times.append(header.time)
             fflush(stdout)
         }
@@ -264,27 +295,32 @@ func runWholeEvent(device: MTLDevice) throws {
         state.groundFriction = solids.groundFrictionCoefficient
         state.airSleeps = airSleeps
         state.preciseDisplacements = precise
+        state.dust = dust
         print(String(format: "Resumed from %@: step %d, %.4f s", folder.path, header.stepCount, header.time))
         // Rows written after this checkpoint by a piece that did not reach its next are dropped.
-        if let text = try? String(contentsOf: csv, encoding: .utf8) {
-            let kept = text.split(separator: "\n").filter { line in
-                guard let step = line.split(separator: ",").dropFirst().first.flatMap({ Int($0) }) else {
-                    return true
+        for csv in [csv, dir.appending(path: "dust.csv")] {
+            if let text = try? String(contentsOf: csv, encoding: .utf8) {
+                let kept = text.split(separator: "\n").filter { line in
+                    guard let step = line.split(separator: ",").dropFirst().first.flatMap({ Int($0) }) else {
+                        return true
+                    }
+                    return step <= header.stepCount
                 }
-                return step <= header.stepCount
+                try (kept.joined(separator: "\n") + "\n").write(to: csv, atomically: true, encoding: .utf8)
             }
-            try (kept.joined(separator: "\n") + "\n").write(to: csv, atomically: true, encoding: .utf8)
         }
     } else {
         // Settled under its own weight first, then the trace begins: the work from here on is the event's.
         solver.settleStructures()
         solids.tracesWork = true
+        if let dust { try solver.enableDust(dust) }
         state = WholeEventState(
             stepCount: 0, time: 0, wallSeconds: 0, gpuSeconds: 0, baselineRise: solids.census().massTimesRise,
             nextSample: 0, nextCheckpoint: checkpointEvery, framesDone: [],
             groundFriction: solids.groundFrictionCoefficient, airSleeps: airSleeps,
-            preciseDisplacements: precise)
+            preciseDisplacements: precise, dust: dust)
         try? fm.removeItem(at: csv)
+        try? fm.removeItem(at: dir.appending(path: "dust.csv"))
     }
     print(
         String(
@@ -318,6 +354,14 @@ func runWholeEvent(device: MTLDevice) throws {
     }
     let out = try FileHandle(forWritingTo: csv)
     out.seekToEndOfFile()
+    // The dust's rows (WholeEventDust.swift), and the times its column maps are written at.
+    let dustCSV = dir.appending(path: "dust.csv")
+    if dust != nil, !fm.fileExists(atPath: dustCSV.path) {
+        try (WholeEventDust.header + "\n").write(to: dustCSV, atomically: true, encoding: .utf8)
+    }
+    let dustOut = dust == nil ? nil : try FileHandle(forWritingTo: dustCSV)
+    dustOut?.seekToEndOfFile()
+    let dustMaps = (option("dust-maps") ?? "1,2,3,5,7,10").split(separator: ",").compactMap { Double($0) }
 
     let renderer = try SceneRenderer(device: device)
     func frame(_ time: Double) {
@@ -444,6 +488,18 @@ func runWholeEvent(device: MTLDevice) throws {
             ]
             guard phases else { return }
             out.write((values.joined(separator: ",") + "\n").data(using: .utf8)!)
+            if let dustOut,
+                let (row, field) = WholeEventDust.row(
+                    solver, scenario: scenario, time: solver.time, step: solver.stepCount)
+            {
+                dustOut.write((row + "\n").data(using: .utf8)!)
+                for time in dustMaps where solver.time >= time - 1e-9 {
+                    let stem = String(format: "dust-column-%05.0fms.csv", time * 1000)
+                    if !fm.fileExists(atPath: dir.appending(path: stem).path) {
+                        WholeEventDust.writeMap(field, time: time, to: dir)
+                    }
+                }
+            }
             print(
                 String(
                     format:
@@ -512,8 +568,10 @@ func runWholeEvent(device: MTLDevice) throws {
     }
 
     func save() throws {
-        // The work trace's GPU sums folded in first, so the checkpoint holds them all.
-        _ = solids.workTotals()
+        // The work trace's GPU sums folded in first, so the checkpoint holds them all. Not with the
+        // dust, whose fines are read from the sums as they stand: folded only at the samples, they
+        // are the same in a run cut into pieces as in one unbroken (the checkpoint holds the sums).
+        if dust == nil { _ = solids.workTotals() }
         let folder = dir.appending(path: String(format: "step-%07d", solver.stepCount))
         let saved = try solver.saveCheckpoint(to: folder, scene: scenario)
         var snapshot = state
@@ -631,6 +689,7 @@ func runWholeEvent(device: MTLDevice) throws {
     let last = dir.appending(path: String(format: "step-%07d", solver.stepCount))
     if option("step-by") == nil, solver.time >= end - 1e-9, !fm.fileExists(atPath: last.path) { try save() }
     out.closeFile()
+    dustOut?.closeFile()
     print(
         String(
             format: "%@ at %.3f s: wall %.0f s, GPU %.0f s this run %.0f s; largest displacement %.1f m",

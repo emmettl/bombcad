@@ -289,39 +289,45 @@ extension BlastSolver {
             if axes.isEmpty { axes = [0] }
 
             airStage("coarse sweeps")
-            encoder.setComputePipelineState(tilesEnabled ? tiledSweepPipeline : sweepPipeline)
-            if let capture = sweepUpdateCapture {
-                encoder.setBuffer(capture.buffer, offset: 0, index: 30)
+            // The sweeps' buffers that stay through the step's sweeps (bound again after the dust's).
+            func bindSweepBuffers() {
+                encoder.setComputePipelineState(tilesEnabled ? tiledSweepPipeline : sweepPipeline)
+                if let capture = sweepUpdateCapture {
+                    encoder.setBuffer(capture.buffer, offset: 0, index: 30)
+                }
+                if let dust { encoder.setBuffer(dust.massFlux, offset: 0, index: 30) }
+                encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+                encoder.setBuffer(peakBuffer, offset: 0, index: 3)
+                encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
+                encoder.setBuffer(controlBuffer, offset: 0, index: 5)
+                encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 6)
+                encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
+                encoder.setBuffer(tileListBuffer, offset: 0, index: 9)
+                encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
+                encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 13)
+                encoder.setBuffer(refinement?.coarseFlux ?? refinementPlaceholder, offset: 0, index: 14)
+                encoder.setBuffer(
+                    refinement?.coarseSpeciesFlux ?? refinementPlaceholder, offset: 0, index: 15)
+                encoder.setBuffer(experimentalBoxMask ?? noSpecies, offset: 0, index: 16)
+                encoder.setBuffer(experimentalBoxImpulse ?? noSpecies, offset: 0, index: 17)
+                // Not read without gravity, or without mixing.
+                encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 18)
+                encoder.setBuffer(mixingViscosity() ?? noSpecies, offset: 0, index: 19)
+                encoder.setBuffer(terrainCut?.columns ?? noSpecies, offset: 0, index: 20)
+                encoder.setBuffer(terrainCut?.records ?? noSpecies, offset: 0, index: 21)
+                encoder.setBuffer(terrainCut?.walls ?? noSpecies, offset: 0, index: 22)
+                encoder.setBuffer(terrainCut?.defects ?? noSpecies, offset: 0, index: 23)
+                encoder.setBuffer(terrainCut?.ceilings ?? noSpecies, offset: 0, index: 24)
+                // Not read without congestion.
+                encoder.setBuffer(congestionBuffer ?? noSpecies, offset: 0, index: 25)
+                // Not read without structures' cut cells.
+                encoder.setBuffer(structureCut?.index ?? noSpecies, offset: 0, index: 26)
+                encoder.setBuffer(structureCut?.records ?? noSpecies, offset: 0, index: 27)
+                encoder.setBuffer(structureCut?.walls ?? noSpecies, offset: 0, index: 28)
+                encoder.setBuffer(
+                    compensatedSweep?.residuals ?? structureCut?.defects ?? noSpecies, offset: 0, index: 29)
             }
-            encoder.setBuffer(maskBuffer, offset: 0, index: 2)
-            encoder.setBuffer(peakBuffer, offset: 0, index: 3)
-            encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
-            encoder.setBuffer(controlBuffer, offset: 0, index: 5)
-            encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 6)
-            encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
-            encoder.setBuffer(tileListBuffer, offset: 0, index: 9)
-            encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
-            encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 13)
-            encoder.setBuffer(refinement?.coarseFlux ?? refinementPlaceholder, offset: 0, index: 14)
-            encoder.setBuffer(refinement?.coarseSpeciesFlux ?? refinementPlaceholder, offset: 0, index: 15)
-            encoder.setBuffer(experimentalBoxMask ?? noSpecies, offset: 0, index: 16)
-            encoder.setBuffer(experimentalBoxImpulse ?? noSpecies, offset: 0, index: 17)
-            // Not read without gravity, or without mixing.
-            encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 18)
-            encoder.setBuffer(mixingViscosity() ?? noSpecies, offset: 0, index: 19)
-            encoder.setBuffer(terrainCut?.columns ?? noSpecies, offset: 0, index: 20)
-            encoder.setBuffer(terrainCut?.records ?? noSpecies, offset: 0, index: 21)
-            encoder.setBuffer(terrainCut?.walls ?? noSpecies, offset: 0, index: 22)
-            encoder.setBuffer(terrainCut?.defects ?? noSpecies, offset: 0, index: 23)
-            encoder.setBuffer(terrainCut?.ceilings ?? noSpecies, offset: 0, index: 24)
-            // Not read without congestion.
-            encoder.setBuffer(congestionBuffer ?? noSpecies, offset: 0, index: 25)
-            // Not read without structures' cut cells.
-            encoder.setBuffer(structureCut?.index ?? noSpecies, offset: 0, index: 26)
-            encoder.setBuffer(structureCut?.records ?? noSpecies, offset: 0, index: 27)
-            encoder.setBuffer(structureCut?.walls ?? noSpecies, offset: 0, index: 28)
-            encoder.setBuffer(
-                compensatedSweep?.residuals ?? structureCut?.defects ?? noSpecies, offset: 0, index: 29)
+            bindSweepBuffers()
             for (n, axis) in axes.enumerated() where !asleep {
                 if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
@@ -337,6 +343,11 @@ extension BlastSolver {
                         threadsPerThreadgroup: tileThreads)
                 } else {
                     dispatchGrid(encoder, pipeline: sweepPipeline)
+                }
+                if dust != nil {
+                    // The fines through the faces just crossed, then the sweeps' buffers again.
+                    encodeDustSweep(encoder, uniforms: uniforms, tiles: tilesEnabled ? tileThreads : nil)
+                    bindSweepBuffers()
                 }
                 // Where the air is refined, after refluxing instead (below).
                 if let terrainCut, n == axes.count - 1, !terrainCut.geometry.cutColumns.isEmpty,
@@ -517,6 +528,8 @@ extension BlastSolver {
                     encodeRemask(encoder, allocate: !asleep)
                     if !asleep { encodeInteractionCheck(encoder) }
                 }
+                // The fines the substeps made, counted to the air cells holding them.
+                if dust != nil { encodeDustSources(encoder, fluid: binding) }
                 if let refinement, refining {
                     refinement.encodeSync(
                         encoder, parent: coarseView(species: currentSpecies), control: controlBuffer,
@@ -527,6 +540,8 @@ extension BlastSolver {
                     }
                 }
             }
+            // The fines made this step, into the air that will carry them.
+            if dust != nil { encodeDustInjection(encoder, uniforms: uniforms) }
             phase("air")
             if refining {
                 encodeRegrid(
@@ -933,6 +948,7 @@ extension BlastSolver {
         let key =
             16 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0) + (cut ? 8 : 0)
             + (porous ? 1024 : 0) + (structureCutOn ? 2048 : 0) + (burnMixing ? 4096 : 0)
+            + (dust != nil ? 8192 : 0)
         if let kernels = cellKernelsByModel[key] { return kernels }
         var constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -947,12 +963,14 @@ extension BlastSolver {
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }
+        // With the dust, the sweeps that keep their faces' mass fluxes for it (`addingDustSweep`).
+        let dusty = dust != nil ? "Dust" : ""
         let kernels = CellKernels(
-            sweep: try pipeline("sweep"), sweepTiles: try pipeline("sweepTiles"),
+            sweep: try pipeline("sweep" + dusty), sweepTiles: try pipeline("sweepTiles" + dusty),
             collectTiles: try pipeline("collectTiles"),
             redistributeCutDefects: try pipeline("redistributeCutDefects"),
             keepStructureCut: try pipeline("keepStructureCut"),
-            takeStructureCut: try pipeline("takeStructureCut"))
+            takeStructureCut: try pipeline("takeStructureCut"), constants: constants)
         cellKernelsByModel[key] = kernels
         return kernels
     }

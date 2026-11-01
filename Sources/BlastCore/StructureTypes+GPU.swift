@@ -24,7 +24,7 @@ extension ShaderLibrary {
             "Footing", "Extract",
             "Radiation",
             "Gravity",
-            "Deflagration", "Mixing",
+            "Deflagration", "Mixing", "Dust",
         ]
         let source = try files.map { name in
             guard
@@ -52,6 +52,9 @@ extension ShaderLibrary {
             probe.contract = rounding.contract
         }
         var source = try mainSource()
+        // The sweeps that keep their faces' mass fluxes for the dust (`AirDust`), as siblings: the
+        // ordinary sweeps' source is unchanged.
+        source = try addingDustSweep(to: source)
         if firstPhasePressure { source = try addingFirstPhasePressureCapture(to: source) }
         if compensatedSweep { source = try addingCompensatedSweep(to: source) }
         if sweepUpdates { source = try addingSweepUpdateCapture(to: source, compensated: compensatedSweep) }

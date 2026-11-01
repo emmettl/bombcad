@@ -127,6 +127,7 @@ extension BlastSolver {
         // The slivers a structure shut in are found again from where it stands (`remaskCapSlivers`).
         if let cappedSliverBuffer { memset(cappedSliverBuffer.contents(), 0, cappedSliverBuffer.length) }
         exposurePlane?.reset()
+        dust?.reset()
         exposureNeedsInitialSample = exposurePlane != nil
         sweepUpdateCapture = nil
         clockInputCapture = nil
