@@ -2993,10 +2993,33 @@ BombCAD server holding a GPU slot:
   short on the damage colour. The alternative is to fall back to the CPU for districts other than
   Beirut and New District's, or to keep the CPU's preview as the default for the damage colouring.
 - **The fire's preview draws while a slider moves:** 40 now (41 ms); 20 would keep the wind at 30
-  frames a second.
+  frames a second. *Decided 2 November: 40 kept, and the fire given its own fast path
+  ([below](#the-fires-fast-path-2-november-2026)); 20 draws saved only 2 ms, its set-up being the
+  rest.*
 - **Whether a what-if should be applicable to the project** (an Apply button), or stay, as now, for
   the estimate alone.
 - **The weights stay built in,** as the user decided on 1 November: 0.57 MB now (0.75 MB of source).
+
+### The fire's fast path (2 November 2026)
+
+The fire's preview set the pace while its wind moved, or while the charge was dragged with the fire
+shown. Its 40 draws took 41–45 ms on Beirut, and 38 ms of that was laying out the buildings and
+their neighbours again on every layer. Now the district is kept between layers
+(`FireSpread.LayerCache`). The buildings' fixed parts are laid out again only when the scene
+changes. The neighbours are built again only when the wind's speed first takes their reach past
+the first table, and then once for the strongest wind's. Each frame refreshes only the glass and
+the walls from the live estimate. The layer is the same to the bit, by test and on Beirut's 47
+frames
+([fire after the blast](fire-spread.md#a-fast-path-for-the-preview-2-november-2026)).
+
+| Beirut, 14,169 buildings | Before | Now | Load |
+|---|---|---|---|
+| A frame of the fire's wind sliders | 45 ms | 8.2–8.5 ms | 10–30 |
+| A drag frame as the app draws it, the last frame's fire behind it | 44 ms or more | 25 ms (23–32) | 15–17 |
+| A drag frame and its fire one after the other | 74 ms | 34 ms (31–41) | 10 / 30 |
+
+So the wind holds well over 30 frames a second. A drag with the fire shown holds 30 as the app
+draws it, where the next frame's estimate hides the fire's 8 ms.
 
 ## Not done yet
 

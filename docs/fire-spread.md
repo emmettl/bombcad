@@ -317,6 +317,9 @@ model and the same defaults as `scenebench fire`.
 wind, hours or construction cancels the draws under way, between chunks of 20, and starts again.
 - While the charge is dragged or a slider held, 40 draws make a preview. When it is let go, the
   full 200 follow.
+- Since 2 November 2026 the district is kept between layers, so that a drag or the wind's sliders
+  lay out only each building's glass and walls again: the preview takes 8 ms on Beirut, not 44
+  ([below](#a-fast-path-for-the-preview-2-november-2026)).
 - The progress shows as draws done of the total.
 - Each building's ignition times over the draws are kept, so the hour slider recolours the view
   without drawing again.
@@ -628,6 +631,77 @@ from yellow at the edges, through blue in the west, to near-certain purple in th
 chance legend's eighths, and a picked seed in the top colour with the map then the same as at all.
 `FireAfterBlastTests` covers the default log ramp, the seed's top colour, and the linear ramp by
 name. `InterfaceReviewFireTests` prints the counts by colour for both measures.
+
+## A fast path for the preview (2 November 2026)
+
+emmettl/bombcad-work#113. The preview's 40 draws took 41–45 ms on Beirut's whole district. Of that,
+38 ms was set-up, laid out again on every layer: the buildings from the scene (24 ms) and each
+building's neighbours (14 ms). The draws themselves were a few milliseconds. Twenty preview draws
+would have saved 2 ms, so the user kept 40 and asked for the set-up to be kept instead.
+
+**What is kept** (`FireSpread.LayerCache`, which the app holds and `layer(…, cache:)` takes):
+
+- **The buildings' fixed parts:** outline, height, cladding, roof, use, fuel and windows. They are
+  laid out again only when the scene's objects or constructions, the use taken for untagged
+  buildings, or the cladding override change.
+- **The neighbours.** The first table is for the wind's reach. When the wind's speed first takes
+  the reach past it, the table is built for the strongest wind's reach. From then on each speed
+  takes the start of each building's list, so the wind speed slider builds it once at most. A
+  list for a lesser reach is the start of the longer one: the lists are sorted by separation, then
+  target, and a pair's exposure does not depend on the reach. The wind's bearing never builds it.
+- **The fires' stages,** again only when the buildings or the fire's parameters change.
+- Each layer refreshes only each building's broken glass, summed side by side in the estimate's
+  order as before, and its failed walls. The glass's sides are matched to their buildings once
+  while the estimate gives the same sides in the same order.
+
+The draws' summary also skips the lists of a building that no draw caught, most of a district
+(no ignition times, no mode, chances nought).
+
+**The same, to the bit.** The cached layer is the one made without the cache, with the same values
+from the same code in the same order. Floating-point arithmetic gives no reason here for them to
+differ, so they are compared exactly:
+
+- `FireSpreadCacheTests` (Linux-safe) compares every part of a layer through the cache with one
+  made without it: the buildings, every draw's ignition times, the neighbours' times, the seeds and
+  the summary's JSON. A block of 24 buildings, a third timber, goes through each change:
+  - the glass and walls of another frame, and the charge dragged;
+  - the wind turned, then its speed through 0–25 m/s;
+  - sides in another order or fewer;
+  - a building's construction, every building's cladding, and the fire's parameters.
+
+  The test also checks what the cache laid out again each time.
+- On Beirut (`scenebench drag-time … --fire --fire-cache --fire-check`), all 47 frames of a drag
+  and of the wind's sliders gave the same layer with the cache as without it.
+- The summary's shortcut, by `scenebench fire` on Beirut's saved look: 200 draws, 20 fires at random,
+  12 hours, with the cladding as built and all timber. The timeline and buildings CSVs are
+  byte-identical to the build before. The JSON is identical except for its fresh building ids and
+  timings.
+
+**Timings,** Beirut's whole district (14,169 buildings), 0.5 kt at the port, through the learned
+response, the fire as the app's preview draws it (40 draws, 20 fires at random within 1.5 km, the
+airport's 5.7 m/s, 12 h), on the M4 Max under `gpu-slot --mem 6` (`drag-time --live --parts glass
+--drag 0,5,…,100 --fire --wind-slide …`; `--fire-cache` the app's cache; `--fire-overlap` the app's
+order, each frame's fire behind the next frame's estimate):
+
+| | Before | Now | Load |
+|---|---|---|---|
+| The wind's sliders, a frame (bearing, or speed) | 45 ms (44–49) | 8.2–8.5 ms (7.6–10.5) | 10–30 |
+| The wind's speed first past the first table's reach (once) | 45 ms | 25 ms | 15–30 |
+| The first layer of a scene | 49 ms | 41–42 ms | 10–30 |
+| A drag frame and its fire, one after the other | 74 ms (68–77) | 34 ms (31–41) | 10 / 30 |
+| A drag frame as the app draws it, the last frame's fire behind it | 44 ms or more (the fire's) | 25 ms (23–32) | 15–17 |
+
+- **The wind's sliders keep up at more than 100 frames a second** (8 ms a frame). Most of it is now
+  the draws and their summary.
+- **A drag with the fire shown holds 30 frames a second as the app draws it** (25 ms a frame at
+  load 15–17). The estimate of the next frame (25 ms) hides the 8 ms fire, where before the fire
+  (44 ms) set the pace. One after the other, frame and fire take 34 ms, just short of 30 frames a
+  second.
+- With the Studio heavily shared (load 35–45), the estimate itself takes 57–69 ms, and a frame with
+  the fire behind it takes 62 ms with the cache, 74 ms without.
+
+**Checks.** `FireSpreadCacheTests`; `FireSpreadTests` unchanged; the app holds one
+`LayerCache` for every layer (`SimulationModel.fireCache`), so `FireAfterBlastTests` draws through it.
 
 ## The literature, and why this model
 

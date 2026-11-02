@@ -266,16 +266,24 @@ extension FireSpread {
 
     /// The layer for `scene`, its glass and walls from `source` and its seeds and wind from
     /// `settings`: `members` draws, `chunk` at a time, nil if `stop` says so between them, and
-    /// `progress` told the draws done after each chunk.
+    /// `progress` told the draws done after each chunk. With `cache`, the district's fixed parts are
+    /// kept between layers (`LayerCache`), for a drag or a slider; the same layer either way.
     public static func layer(
         scene: Scenario, source: LayerSource, thermal: ThermalFlags? = nil, settings: LayerSettings,
         members: Int, preview: Bool = false, seed: UInt64 = 0, stepS: Double = 900, chunk: Int = 20,
-        parameters: Parameters = Parameters(), stop: () -> Bool = { false },
+        parameters: Parameters = Parameters(), cache: LayerCache? = nil, stop: () -> Bool = { false },
         progress: (Int) -> Void = { _ in }
     ) -> Layer? {
         let clock = ContinuousClock.now
+        var kept: District?
+        if let cache, case .estimate(let glass, let structure) = source {
+            kept = cache.district(
+                scene: scene, glass: glass, structure: structure, untaggedUse: settings.untaggedUse,
+                cladding: settings.cladding, wind: settings.wind, parameters: parameters)
+        }
         let buildings: [Building] =
             switch source {
+            case .estimate where kept != nil: kept!.buildings
             case .estimate(let glass, let structure):
                 Self.buildings(
                     scene: scene, glass: glass, structure: structure, untaggedUse: settings.untaggedUse,
@@ -307,7 +315,7 @@ extension FireSpread {
                     in: buildings, from: charge, fromM: settings.randomFromM, toM: settings.randomToM))
         }
         if stop() { return nil }
-        let district = District(buildings: buildings, wind: settings.wind, parameters: parameters)
+        let district = kept ?? District(buildings: buildings, wind: settings.wind, parameters: parameters)
         let ignitions = seeds.sorted().map { Ignition(building: $0) }
         let horizonS = max(settings.hours, 0) * 3600
         guard

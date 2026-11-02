@@ -496,6 +496,19 @@ extension FireSpread {
             stages = buildings.map { FireSpread.stages(of: $0, parameters: parameters) }
         }
 
+        /// The same with its neighbours and stages given, as `LayerCache` keeps them: they read only
+        /// the buildings' fixed parts and the wind's speed, never their broken glass or failed walls.
+        init(
+            buildings: [Building], wind: Wind, parameters: Parameters, exposures: [[Exposure]],
+            stages: [Stages]
+        ) {
+            self.buildings = buildings
+            self.wind = wind
+            self.parameters = parameters
+            self.exposures = exposures
+            self.stages = stages
+        }
+
         /// One draw, `member` of the ensemble whose draws `seed` sets: the same arguments give the
         /// same fire on any machine. Each chance is drawn once for its pair (or building, or side)
         /// and mode, so the fire is the earliest arrival over the pairs whose draws came up, the
@@ -781,8 +794,22 @@ extension FireSpread {
         ignitions.reserveCapacity(district.buildings.count)
         fromNeighbour.reserveCapacity(district.buildings.count)
         for n in district.buildings.indices {
-            let times = draws.compactMap { $0.ignitedS[n] }.sorted()
             let seedDraws = fixed.contains(n) ? draws.count : randomIn[n].count
+            let others = draws.count - seedDraws
+            // A building no draw caught, most of a district, the same summary without its lists:
+            // no times, no mode (a draw keeps a mode only where it caught), its chances nought.
+            guard draws.contains(where: { $0.ignitedS[n] != nil }) else {
+                buildings.append(
+                    Ensemble.Building(
+                        index: n, id: district.buildings[n].id, chance: 0 / Double(count),
+                        seedDraws: seedDraws,
+                        neighbourChance: others > 0 ? 0 / Double(others) : 0, medianIgnitionS: nil, mode: nil,
+                        burnS: district.stages[n].totalS))
+                ignitions.append([])
+                fromNeighbour.append([])
+                continue
+            }
+            let times = draws.compactMap { $0.ignitedS[n] }.sorted()
             let other: [Double]
             if fixed.contains(n) {
                 other = []
@@ -793,7 +820,6 @@ extension FireSpread {
                 other = draws.indices.compactMap { seeded.contains($0) ? nil : draws[$0].ignitedS[n] }
                     .sorted()
             }
-            let others = draws.count - seedDraws
             var tally: [Mode: Int] = [:]
             for d in draws { if let m = d.mode[n] { tally[m, default: 0] += 1 } }
             let mode = tally.max { ($0.value, $1.key.rawValue) < ($1.value, $0.key.rawValue) }?.key

@@ -18,6 +18,10 @@ extension SimulationModel {
     /// The draws a preview takes, while the charge or a slider moves, and the full ensemble.
     nonisolated static let fireDraws = (preview: 40, full: 200)
 
+    /// The district the fire keeps between layers, its buildings' fixed parts and their neighbours,
+    /// so that a drag or a slider lays out only the glass and walls again (emmettl/bombcad-work#113).
+    nonisolated static let fireCache = FireSpread.LayerCache()
+
     /// The hours the fire may be drawn over.
     static let fireHorizons: [Double] = [3, 6, 12, 24]
 
@@ -77,7 +81,7 @@ extension SimulationModel {
         fireTask = Task.detached(priority: .userInitiated) {
             let layer = FireSpread.layer(
                 scene: scenario, source: source, thermal: thermal, settings: settings, members: members,
-                preview: preview, stop: { Task.isCancelled },
+                preview: preview, cache: Self.fireCache, stop: { Task.isCancelled },
                 progress: { done in
                     Task { @MainActor in
                         guard let model = weak.value, model.fireGeneration == generation else { return }

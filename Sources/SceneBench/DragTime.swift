@@ -286,6 +286,63 @@ enum DragTime {
                     .joined(separator: ", ") as NSString))
         }
 
+        // The fire after the blast as the app's preview draws it (40 draws, 20 fires at random within
+        // 1.5 km, 12 h) on a look's glass and walls: with `--fire-cache`, its district kept between
+        // frames as the app keeps it, and with `--fire-check` drawn without it too, to show the two
+        // the same (emmettl/bombcad-work#113).
+        let fireCache = args.contains("--fire-cache") ? FireSpread.LayerCache() : nil
+        func fire(
+            on look: FacadeLoadSurrogate.Prepared.Look, charge: SIMD3<Float>, wind: FireSpread.Wind
+        ) -> String {
+            var settings = FireSpread.LayerSettings()
+            settings.randomCount = 20
+            settings.wind = wind
+            var moved = scene
+            moved.charge.position = charge
+            let source = FireSpread.LayerSource.estimate(glass: look.glass, structure: look.structure)
+            let clock = ContinuousClock.now
+            let layer = FireSpread.layer(
+                scene: moved, source: source, settings: settings, members: 40, preview: true, cache: fireCache
+            )
+            var line = String(
+                format: "fire, 40 draws: %.4f s, %d buildings", seconds(clock), layer?.ids.count ?? 0)
+            if let fireCache {
+                let r = fireCache.rebuilt
+                line +=
+                    " (laid out again:\(r.buildings ? " buildings" : "")\(r.neighbours ? " neighbours" : "")"
+                    + "\(r.stages ? " stages" : "")\(r.buildings || r.neighbours || r.stages ? "" : " nothing"))"
+                if args.contains("--fire-check") {
+                    let plain = FireSpread.layer(
+                        scene: moved, source: source, settings: settings, members: 40, preview: true)
+                    let same =
+                        plain?.ids == layer?.ids && plain?.ignitions == layer?.ignitions
+                        && plain?.fromNeighbour == layer?.fromNeighbour
+                    line += same ? "; the same as without the cache" : "; NOT THE SAME as without the cache"
+                }
+            }
+            return line
+        }
+
+        // `--wind-slide "5.7@240,5.7@245,…"` (m/s @ degrees from): the fire's wind sliders moved, the
+        // charge and the estimate where they are, frame by frame: the fire drawn again on each.
+        if let live, let windText = value("wind-slide") {
+            var windUncertainty = uncertainty(previewDraws)
+            windUncertainty.stratified = true
+            guard
+                let (look, _) = try prepared.livePreview(
+                    charge: scene.charge.position, mass: mass, uncertainty: windUncertainty, parts: .all,
+                    terms: terms, model: live)
+            else { throw BlastError.allocationFailed("the live response does not know this district") }
+            for item in windText.split(separator: ",") {
+                let pair = item.split(separator: "@").compactMap { Double($0) }
+                guard pair.count == 2 else { continue }
+                let wind = FireSpread.Wind(speedMS: pair[0], fromDegrees: pair[1])
+                print(
+                    String(format: "Wind frame, %.1f m/s from %.0f°: ", pair[0], pair[1])
+                        + fire(on: look, charge: scene.charge.position, wind: wind))
+            }
+        }
+
         // `--slide 300000,350000,…` (kg) and `--slide-what-ifs "glass=toughened;glass=laminated;…"`
         // (`--what-if`'s, as built for an empty one): a slider moved, the charge where it is, frame by
         // frame through the learned response, each what-if laid on the district first, as the app
@@ -367,6 +424,7 @@ enum DragTime {
                 case "structure": .structure
                 default: .all
                 }
+            var behind: FireBehind?
             for step in steps {
                 var charge = scene.charge.position
                 charge.x += step
@@ -387,27 +445,35 @@ enum DragTime {
                             look.seconds.structure, look.totalSeconds, stages.district, stages.choice,
                             stages.loads,
                             stages.inputs, stages.networks, stages.answers, stages.gpu, seconds(clock)))
-                    // `--fire`: the fire after the blast drawn on the frame's glass as the app's preview
-                    // draws it (40 draws, 20 fires at random within 1.5 km, the airport's wind, 12 h),
-                    // with `--wind` degrees to turn the wind frame by frame (emmettl/bombcad-work#113).
+                    // `--fire`: the fire drawn on the frame's glass (`fire(on:)`), with `--wind` degrees to
+                    // turn the wind frame by frame, and the frame and its fire timed together. With
+                    // `--fire-overlap`, as the app draws it: the frame's fire behind the next frame's
+                    // estimate, each frame timed to when its estimate and the last frame's fire are both done.
                     if args.contains("--fire") {
-                        var fire = FireSpread.LayerSettings()
-                        fire.randomCount = 20
                         let turn = value("wind").flatMap(Double.init) ?? 0
-                        fire.wind = FireSpread.Wind(
+                        let wind = FireSpread.Wind(
                             speedMS: 5.7,
                             fromDegrees: (240 + turn * Double(step)).truncatingRemainder(dividingBy: 360))
-                        var moved = scene
-                        moved.charge.position = charge
-                        let fireClock = ContinuousClock.now
-                        let layer = FireSpread.layer(
-                            scene: moved, source: .estimate(glass: look.glass, structure: look.structure),
-                            settings: fire,
-                            members: 40, preview: true)
-                        print(
-                            String(
-                                format: "  fire, 40 draws: %.4f s, %d buildings", seconds(fireClock),
-                                layer?.ids.count ?? 0))
+                        if args.contains("--fire-overlap") {
+                            if let behind {
+                                behind.group.wait()
+                                print("  the last frame's \(behind.line)")
+                            }
+                            print(
+                                String(
+                                    format: "  the frame, the last frame's fire behind it, %.4f s",
+                                    seconds(clock)))
+                            let next = FireBehind()
+                            next.work = { fire(on: look, charge: charge, wind: wind) }
+                            next.start()
+                            behind = next
+                        } else {
+                            let line = fire(on: look, charge: charge, wind: wind)
+                            print(
+                                String(
+                                    format: "  %@; the frame with its fire %.4f s", line as NSString,
+                                    seconds(clock)))
+                        }
                     }
                     continue
                 }
@@ -435,6 +501,10 @@ enum DragTime {
                                 format: "; learned peaks %.2f s at %d strips%@", look.learnedSeconds,
                                 look.learnedStrips,
                                 (look.learnedError ?? "") as NSString)))
+            }
+            if let behind {
+                behind.group.wait()
+                print("  the last frame's \(behind.line)")
             }
             var charge = scene.charge.position
             charge.x += steps.last ?? 0
@@ -525,5 +595,20 @@ enum DragTime {
             }
         }
         return result == KERN_SUCCESS ? Double(info.resident_size) / 1e9 : .nan
+    }
+}
+
+/// A frame's fire drawn on another thread while the next frame's estimate is made, as the app draws it.
+private final class FireBehind: @unchecked Sendable {
+    let group = DispatchGroup()
+    var work: (() -> String)?
+    var line = ""
+
+    func start() {
+        group.enter()
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            line = work?() ?? ""
+            group.leave()
+        }
     }
 }
