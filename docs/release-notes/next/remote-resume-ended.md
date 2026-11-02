@@ -1,3 +1,0 @@
-kind: fixed
-
-**A run on a Mac nearby that finished while its connection was down is taken up again whole.** When the app reconnects to a run the sharing Mac kept going, that Mac hands over the run's scene view, progress and, if it has finished, its result as soon as the session opens. If those arrived before the app had asked for the run, as they could on a busy Mac, they were dropped: the view came back without its scene, and a run that had already finished never delivered its result, so the app waited for it until its silence limit gave up. The app now keeps what arrives for the run it reconnected to until it asks for it.
