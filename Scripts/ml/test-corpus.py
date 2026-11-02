@@ -3,6 +3,7 @@ list. Skipped without NumPy (the Studio's ML venv has it)."""
 
 import importlib.util
 import json
+import re
 import struct
 import tempfile
 import unittest
@@ -90,6 +91,28 @@ class CorpusTests(unittest.TestCase):
         self.assertEqual(c["cpu"], 42.0)
         self.assertEqual(c["stages"], [(0.1, 0.2, 0.3, 0.4)])
         self.assertAlmostEqual(c["gb"], 0.243449856)
+
+
+class RangesFollowTheWeights(unittest.TestCase):
+    """LiveResponseRangeTests' ranges are written for the built-in weights; `make ci-test` says at once
+    when the weights change and the ranges do not (the scenes themselves are checked in `swift test`)."""
+
+    def test_the_ranges_name_the_built_in_weights(self):
+        root = HERE.parent.parent
+        ranges = (root / "Tests" / "BlastModelTests" / "LiveResponseRanges.swift").read_text()
+
+        def sha(path, name):
+            match = re.search(r'%s(?:: String\?)? = "([0-9a-f]{64})"' % name, path.read_text()[:4000])
+            return match.group(1) if match else None
+        sources = root / "Sources" / "BlastModel"
+        self.assertEqual(sha(sources / "LiveResponse+Embedded.swift", "embeddedSHA256"),
+                         re.search(r'trainedSHA256\s*=\s*"([0-9a-f]{64})"', ranges).group(1),
+                         "the built-in weights changed: run Scripts/ml/corpus.py ranges")
+        thrown = sources / "LiveResponse+Thrown.swift"
+        if thrown.exists():
+            self.assertEqual(sha(thrown, "embeddedThrownSHA256"),
+                             re.search(r'trainedThrownSHA256: String\?\s*=\s*"([0-9a-f]{64})"', ranges).group(1),
+                             "the glass thrown's weights changed: run Scripts/ml/corpus.py ranges --thrown …")
 
 
 if __name__ == "__main__":

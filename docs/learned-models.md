@@ -3418,7 +3418,9 @@ A test fails if the weights change and the ranges do not follow. Another fails i
 scene is added without being checked. Known gaps are listed in `known`, scene by scene. A new gap
 fails, and so does one that has closed (then take it off the list).
 
-The check is CPU only and runs in `swift test` and on the Linux lane. In a debug build, the square
+The check is CPU only and runs in `swift test`, in the Linux workflow (`linux-blastmodel.yml`)
+and on check-affected's Linux lane. `make ci-test` checks that the ranges name the built-in weights
+(`test-corpus.py`), so a retrained network without new ranges fails there too. In a debug build, the square
 and street take 3–4 s and the presets under 1 s. Beirut takes 15–25 s, most of it laying the
 district out. `make check-affected` runs the suite whenever any of these changes:
 

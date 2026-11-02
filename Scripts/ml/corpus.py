@@ -778,7 +778,7 @@ def ranges(args):
     lines = ["// The live response's training ranges: each input's 0.1% and 99.9% points over the rows",
              "// the built-in weights were trained on (emmettl/bombcad-work#118). Written by",
              "// `Scripts/ml/corpus.py ranges` from %s;" % ", ".join(sorted({f.parent.parent.name + "/" + f.parent.name for _, fs in units for f in fs})),
-             "// run it again whenever the built-in weights change. swift-format-ignore-file",
+             "// run it again whenever the built-in weights change, then `make format`.",
              "extension LiveResponseRangeTests {",
              '    static let trainedSHA256 = "%s"' % digest,
              '    static let trainedThrownSHA256: String? = %s' % (
