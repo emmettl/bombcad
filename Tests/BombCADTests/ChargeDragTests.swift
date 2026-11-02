@@ -70,7 +70,13 @@ struct ChargeDragTests {
         model.quickEstimateClearTopTerms = false
         model.quickEstimateCellsFacingTerms = false
         model.quickEstimateGlassFront = false
-        #expect(model.surrogateTerms == .adopted && model.surrogateTerms == .deepCityOutline)
+        #expect(model.surrogateTerms == .adopted && model.surrogateTerms == .deepCityOutlineBarriers)
+        // A barrier counted as a building crossed, as on the terms of 28 October to 3 November.
+        model.quickEstimateBarrierAsBuilding = true
+        #expect(model.surrogateTerms == .deepCityOutline)
+        #expect(temporary.defaults.bool(forKey: SimulationModel.barrierAsBuildingKey))
+        #expect(SimulationModel.barrierAsBuildingKey != "quickEstimate.barrierShielding")
+        model.quickEstimateBarrierAsBuilding = false
         model.quickEstimateGlassFront = true
         #expect(model.surrogateTerms == .deepCityOutlineFront)
         model.quickEstimateCellsFacingTerms = true

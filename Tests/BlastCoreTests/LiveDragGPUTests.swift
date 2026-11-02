@@ -83,7 +83,8 @@ struct LiveDragGPUTests {
         let cpu = LiveResponse.CPUEngine(weights: nil)
         let (request, _, _) = prepared.liveRequest(
             charge: scene.charge.position, mass: 500, coefficients: .deepCityOutlineBarriers)
-        let (plain, _, _) = prepared.liveRequest(charge: scene.charge.position, mass: 500)
+        let (plain, _, _) = prepared.liveRequest(
+            charge: scene.charge.position, mass: 500, coefficients: .deepCityOutline)
         let (a, b, open) = (try gpu.loads(request), try cpu.loads(request), try gpu.loads(plain))
         var lowered = 0
         for item in 0..<request.count {
