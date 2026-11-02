@@ -55,7 +55,7 @@ struct ChargeFromDamageMarkingTests {
     func incremental() throws {
         let network = try #require(ChargeFromDamage.Network.builtIn)
         let reference = SIMD2(300.0, 200.0)
-        var marking = ChargeFromDamage.Marking(network: network, reference: reference)
+        var marking = ChargeFromDamage.Marking(network: network, reference: reference, weighing: .independent)
         #expect(marking.incremental)
         #expect(marking.posterior == nil)
         let list = Self.marks(count: 30)
@@ -89,7 +89,7 @@ struct ChargeFromDamageMarkingTests {
         marking.recentre(on: moved)
         #expect(Self.close(marking.posterior, network.posterior(marks: expected, reference: moved)) < 1e-4)
         // All at once, and all cleared.
-        var again = ChargeFromDamage.Marking(network: network, reference: reference)
+        var again = ChargeFromDamage.Marking(network: network, reference: reference, weighing: .independent)
         again.replaceAll(list)
         #expect(
             Self.close(again.posterior, network.posterior(marks: list.map(\.mark), reference: reference))
@@ -101,6 +101,59 @@ struct ChargeFromDamageMarkingTests {
         #expect(
             Self.close(again.posterior, network.posterior(marks: [list[0].mark], reference: reference)) < 1e-6
         )
+    }
+
+    @Test("Weighed as erring together, one at a time as the whole set, neighbours' weights and all")
+    func weighedTogether() throws {
+        let network = try #require(ChargeFromDamage.Network.builtIn)
+        let reference = SIMD2(300.0, 200.0)
+        // Neighbours, a shared correlation and a shared error at once, whatever the adopted one is.
+        let weighing = try #require(
+            ChargeFromDamage.Weighing.named("neighbours=60,power=0.7,rho=0.02,yield=0.4,place=40"))
+        #expect(weighing.weighsNeighbours && !weighing.isIndependent)
+        var marking = ChargeFromDamage.Marking(network: network, reference: reference, weighing: weighing)
+        let list = Self.marks(count: 40)
+        for (n, item) in list.enumerated() {
+            marking.set(item.mark, for: item.id)
+            if [0, 4, 19, 39].contains(n) {
+                let whole = network.posterior(
+                    marks: list.prefix(n + 1).map(\.mark), reference: reference, weighing: weighing)
+                #expect(Self.close(marking.posterior, whole) < 1e-4, "after \(n + 1) marks")
+            }
+        }
+        marking.set(nil, for: list[3].id)
+        let left = list.map(\.mark).enumerated().filter { $0.offset != 3 }.map(\.element)
+        #expect(
+            Self.close(
+                marking.posterior, network.posterior(marks: left, reference: reference, weighing: weighing))
+                < 1e-4)
+        // Weighed as independent again: stage 2's posterior, to the summed likelihood's.
+        marking.weigh(as: .independent)
+        #expect(Self.close(marking.posterior, network.posterior(marks: left, reference: reference)) < 1e-4)
+        #expect(ChargeFromDamage.Weighing.named("independent") == .independent)
+        #expect(ChargeFromDamage.Weighing.named(ChargeFromDamage.Weighing.adopted.name) == .adopted)
+        #expect(ChargeFromDamage.Weighing.named("neighbours=x") == nil)
+        // Weighed together, the posterior is no narrower than as independent.
+        let independent = network.posterior(marks: left, reference: reference)
+        marking.weigh(as: weighing)
+        let wide = try #require(marking.posterior)
+        #expect(
+            wide.yieldQuantile(0.95) / wide.yieldQuantile(0.05)
+                >= independent.yieldQuantile(0.95) / independent.yieldQuantile(0.05))
+        #expect(wide.region(0.9).count >= independent.region(0.9).count)
+    }
+
+    @Test("Neighbours' weights: a cluster counts as about one, lone marks as one each")
+    func neighbourWeights() throws {
+        let w = try #require(ChargeFromDamage.Weighing.named("neighbours=50"))
+        // Ten marks at one place, and two far apart.
+        let places = (0..<10).map { _ in SIMD2(0.0, 0.0) } + [SIMD2(1000, 0), SIMD2(0, 1000)]
+        let weights = w.weights(places)
+        #expect(weights.prefix(10).allSatisfy { abs($0 - 0.1) < 1e-9 })
+        #expect(abs(weights[10] - 1) < 1e-9 && abs(weights[11] - 1) < 1e-9)
+        #expect(ChargeFromDamage.Weighing.independent.weights(places).allSatisfy { $0 == 1 })
+        let rho = try #require(ChargeFromDamage.Weighing.named("rho=0.1"))
+        #expect(abs(rho.sharedScale(count: 11) - 0.5) < 1e-12)
     }
 
     @Test("A mark is weighed in well under a frame")

@@ -254,6 +254,9 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     /// A district's buildings beyond its near field, judged after the run on the far field carried
     /// from it (docs/hybrid-far-field.md), saved as `farField.json`.
     var farField: FarFieldSet?
+    /// The buildings marked in Read the Charge from the Damage, saved as `chargeMarks.json`
+    /// (emmettl/bombcad-work#116); a project saved before has none.
+    var chargeMarks: ChargeFromDamage.SavedMarks?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -295,6 +298,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         thermal = model.thermalSpec
         cloud = model.cloudSpec
         farField = model.farFieldSet
+        chargeMarks = model.chargeMarking.saved
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -419,6 +423,9 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             try set.validate()
             farField = set
         }
+        if let data = archive.files["chargeMarks.json"] {
+            chargeMarks = try JSONDecoder().decode(ChargeFromDamage.SavedMarks.self, from: data)
+        }
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -483,6 +490,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             files["farField.json"] = try ProjectArchive.encodeJSON(farField)
         } else {
             files.removeValue(forKey: "farField.json")
+        }
+        if let chargeMarks {
+            files["chargeMarks.json"] = try ProjectArchive.encodeJSON(chargeMarks)
+        } else {
+            files.removeValue(forKey: "chargeMarks.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.

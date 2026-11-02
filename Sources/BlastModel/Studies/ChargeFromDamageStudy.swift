@@ -13,9 +13,9 @@ import simd
 /// charge-from-damage merge --out table.bcct part.bcct…
 /// charge-from-damage merge-masonry --table t.bcct --masonry m.bcct --out u.bcct
 /// charge-from-damage judge --tables a.bcct,b.bcct [--weights net.bccd] [--cases 300] [--counts 1,3,10,30]
-///     [--seed 7] [--about-damage] [--out judge.json]
+///     [--seed 7] [--about-damage] [--weighing name] [--out judge.json]
 /// charge-from-damage infer [--weights net.bccd] --marks marks.csv [--table table.bcct] [--subsets 1,3,10,30]
-///     [--hold]
+///     [--hold] [--weighing name]
 /// ```
 ///
 /// `table` works out the quick estimate's chances (`ChargeFromDamage.ChanceTable`) for a district's
@@ -42,7 +42,8 @@ package enum ChargeFromDamageStudy {
     package static func run(_ args: [String]) throws {
         StudyOutput.lineBuffered()
         guard let mode = args.first else {
-            throw BlastError.allocationFailed("charge-from-damage table|merge|merge-masonry|judge|infer")
+            throw BlastError.allocationFailed(
+                "charge-from-damage table|merge|merge-masonry|judge|infer|looks|judge-looks|survey")
         }
         let rest = Array(args.dropFirst())
         switch mode {
@@ -51,13 +52,29 @@ package enum ChargeFromDamageStudy {
         case "merge-masonry": try mergeMasonry(rest)
         case "judge": try judge(rest)
         case "infer": try infer(rest)
+        case "looks": try looks(rest)
+        case "judge-looks": try judgeLooks(rest)
+        case "survey": try survey(rest)
         default:
             throw BlastError.allocationFailed(
-                "charge-from-damage table|merge|merge-masonry|judge|infer, not \(mode)")
+                "charge-from-damage table|merge|merge-masonry|judge|infer|looks|judge-looks|survey, not \(mode)"
+            )
         }
     }
 
     static func value(_ args: [String], _ name: String) -> String? { SurrogateBench.value(args, name) }
+
+    /// `--weighing name` (`ChargeFromDamage.Weighing.named`): how the marks are weighed together, the
+    /// adopted weighing unless named; `independent` is stage 2's.
+    static func weighing(_ args: [String]) throws -> ChargeFromDamage.Weighing {
+        guard let name = value(args, "weighing") else { return .adopted }
+        guard let w = ChargeFromDamage.Weighing.named(name) else {
+            throw BlastError.allocationFailed(
+                "no weighing \(name): independent, \(ChargeFromDamage.Weighing.adopted.name) or neighbours=…,rho=…,yield=…,place=…"
+            )
+        }
+        return w
+    }
 
     // MARK: - table
 
@@ -372,40 +389,10 @@ package enum ChargeFromDamageStudy {
                         continue
                     }
                     if let visit = field("VID"), visit != "0" { continue }
-                    let type = (field("Str_Type") ?? "").lowercased()
-                    let stone = type.hasPrefix("stone masonry bearing") || type.hasPrefix("sandstone bearing")
-                    let concrete =
-                        type.hasPrefix("reinforced concrete frame")
-                        || type.hasPrefix("reinforced concrete walls")
-                        || type == "rc frame"
-                    guard stone || concrete else {
-                        skipped += 1
-                        continue
-                    }
-                    let classes = damage.uppercased().split(separator: "-").compactMap {
-                        Int($0.trimmingCharacters(in: .whitespaces).dropFirst())
-                    }
-                    guard let low = classes.min(), let high = classes.max() else {
-                        skipped += 1
-                        continue
-                    }
-                    let seen: ChargeFromDamage.WallsSeen
-                    if stone {
-                        // Stone at the line it was calibrated at, D3 against heavy (`damage-yield`):
-                        // the model's masonry walls go from undamaged to heavy at once, so less than
-                        // heavy is undamaged to it. With D2 read as damaged the yield reads 2–2.5 kt.
-                        guard low >= 3 || high < 3 else {
-                            skipped += 1
-                            continue
-                        }
-                        seen = low >= 3 ? .heavy : .undamaged
-                    } else if high <= 1 {
-                        seen = .undamaged
-                    } else if low >= 3 {
-                        seen = .heavy
-                    } else if low >= 2 {
-                        seen = .damaged
-                    } else {
+                    guard
+                        let (seen, stone) = ChargeFromDamage.geerStructure(
+                            damage: damage, type: field("Str_Type"))
+                    else {
                         skipped += 1
                         continue
                     }
@@ -534,6 +521,8 @@ package enum ChargeFromDamageStudy {
         // `--about-damage`: the marks chosen as a user at the panel would, from where the damage is.
         let aboutDamage = args.contains("--about-damage")
         if aboutDamage { print("Marks chosen about the damage, as a user marks them") }
+        let weighing = try Self.weighing(args)
+        print("Weighed as \(weighing.name)")
         print(
             "Network \(h.name): trained on \(h.trainedOn.joined(separator: ", ")), \(h.grid)² cells of \(String(format: "%.1f", 2 * h.halfWidthM / Double(h.grid))) m"
         )
@@ -591,7 +580,7 @@ package enum ChargeFromDamageStudy {
                 for c in drawn {
                     let marks = c.marks.map(table.mark)
                     var clock = ContinuousClock.now
-                    let p = network.posterior(marks: marks, reference: .zero)
+                    let p = network.posterior(marks: marks, reference: .zero, weighing: weighing)
                     learnedSeconds.append(StudyClock.seconds(clock))
                     // One more mark, added to the others' summed likelihood, as the app adds it.
                     if network.summed, let last = marks.last {
@@ -688,34 +677,7 @@ package enum ChargeFromDamageStudy {
     // MARK: - infer
 
     static func readMarks(_ path: String) throws -> [(index: Int, mark: ChargeFromDamage.Mark)] {
-        let text = try String(contentsOfFile: path, encoding: .utf8)
-        var marks: [(Int, ChargeFromDamage.Mark)] = []
-        for line in text.split(whereSeparator: \.isNewline).dropFirst() {
-            let f = line.split(separator: ",", omittingEmptySubsequences: false).map {
-                $0.trimmingCharacters(in: .whitespaces)
-            }
-            guard f.count >= 9, let index = Int(f[0]), let east = Double(f[1]), let north = Double(f[2]),
-                let height = Double(f[3]), let footprint = Double(f[4]), let built = Double(f[5])
-            else { continue }
-            let walls: ChargeFromDamage.Walls =
-                f[6] == "masonry" ? .masonry : f[6] == "other" ? .other : .concrete
-            let glass: ChargeFromDamage.GlassSeen? =
-                f[7] == "whole" ? .whole : f[7] == "broken" ? .broken : nil
-            let seen: ChargeFromDamage.WallsSeen? =
-                f[8] == "undamaged"
-                ? .undamaged : f[8] == "damaged" ? .damaged : f[8] == "heavy" ? .heavy : nil
-            marks.append(
-                (
-                    index,
-                    ChargeFromDamage.Mark(
-                        building: ChargeFromDamage.Building(
-                            east: east, north: north, heightM: height, footprintM2: footprint,
-                            builtShare: built,
-                            walls: walls, glazed: glass != nil),
-                        glass: glass, walls: seen)
-                ))
-        }
-        return marks
+        ChargeFromDamage.readMarks(text: try String(contentsOfFile: path, encoding: .utf8))
     }
 
     static func infer(_ args: [String]) throws {
@@ -725,6 +687,7 @@ package enum ChargeFromDamageStudy {
         let network = try ChargeFromDamage.Network.named(value(args, "weights"))
         let h = network.header
         let all = try readMarks(path)
+        let weighing = try Self.weighing(args)
         let table = try value(args, "table").map {
             try ChargeFromDamage.ChanceTable(contentsOf: URL(filePath: $0))
         }
@@ -756,7 +719,7 @@ package enum ChargeFromDamageStudy {
                     return max(abs(m.x), abs(m.y)) < 2 * h.halfWidthM / Double(h.grid)
                 }) : nil
         if held != nil { print("The place held at the reference (the four cells round it)") }
-        print("\(all.count) marks from \(path); \(ChargeFromDamage.standing)")
+        print("\(all.count) marks from \(path), weighed as \(weighing.name); \(ChargeFromDamage.standing)")
         for (label, keep) in kinds {
             let kept = all.compactMap { m in keep(m.mark).map { (m.index, $0) } }
             guard !kept.isEmpty else { continue }
@@ -770,8 +733,7 @@ package enum ChargeFromDamageStudy {
                 let p =
                     network.summed
                     ? network.posterior(
-                        joint: network.joint(marks: some.map(\.1), reference: .zero), reference: .zero,
-                        only: held)
+                        marks: some.map(\.1), reference: .zero, weighing: weighing, only: held)
                     : network.posterior(marks: some.map(\.1), reference: .zero)
                 let took = StudyClock.seconds(clock)
                 print(String(format: "  %4d learned (%.1f ms): ", n, 1000 * took) + p.summary(standing: ""))

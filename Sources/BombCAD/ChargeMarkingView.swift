@@ -1,6 +1,7 @@
 #if os(macOS)
     import BlastCore
     import SwiftUI
+    import UniformTypeIdentifiers
 
     /// Simulation ▸ Read the Charge from the Damage…: a panel beside the view (emmettl/bombcad-work#116,
     /// stage 2). A click on a building marks it with the brush chosen here; the chance of where the
@@ -9,6 +10,7 @@
     struct ChargeMarkingView: View {
         let model: SimulationModel
         @Bindable var marking: ChargeMarkingModel
+        @State private var importing = false
 
         var body: some View {
             VStack(alignment: .leading, spacing: 0) {
@@ -51,7 +53,14 @@
                             YieldChart(posterior: posterior)
                             ChanceKey()
                         }
+                        if let warning = oversure {
+                            Label(warning, systemImage: "exclamationmark.triangle")
+                                .font(.callout).foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         actions
+                        survey
+                        weighingChoice
                         if marking.hasMarks {
                             Text(
                                 String(
@@ -71,6 +80,87 @@
                 }
             }
             .task(id: model.sceneVersion) { await marking.open(model) }
+            .fileImporter(
+                isPresented: $importing,
+                allowedContentTypes: [
+                    .commaSeparatedText, .folder, UTType(filenameExtension: "shp") ?? .data,
+                    UTType(filenameExtension: "dbf") ?? .data,
+                ]
+            ) { picked in
+                guard case .success(let url) = picked else { return }
+                Task {
+                    let accessing = url.startAccessingSecurityScopedResource()
+                    defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+                    await marking.loadSurvey(url, model)
+                }
+            }
+        }
+
+        /// Said when the marks' answer is likely surer than it should be: weighed as independent
+        /// (stage 2's) past a few dozen marks, or, however weighed, past a hundred, where on the
+        /// districts held out the regions held the truth less often than they say
+        /// (docs/charge-inference.md, "Marks that err together").
+        private var oversure: String? {
+            guard let m = marking.marking else { return nil }
+            if m.weighing.isIndependent, m.marks.count > 20 {
+                return
+                    "The marks are weighed as independent: with \(m.marks.count) of them the regions and the yield's range are likely far narrower than they should be."
+            }
+            guard m.marks.count > ChargeMarkingModel.manyMarks else { return nil }
+            return
+                "With \(m.marks.count) marks the answer is likely surer than it should be: it rests on the quick estimate's own errors, which so many marks share. Tested with every building marked, the nine-in-ten region held the true place 70% of the time on a made-up district and 28% on Beirut."
+        }
+
+        @ViewBuilder private var survey: some View {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("A survey").font(.caption.weight(.semibold))
+                Button("Load a Survey…") { importing = true }
+                    .disabled(marking.marking == nil || marking.isWorking)
+                    .help(
+                        "Mark the buildings a survey saw, in place of these marks: a marks CSV, GEER's façade shapefile or structural .dbf, a CSV of lat,lon,class, or a folder of them"
+                    )
+                HStack {
+                    Text("Corner").font(.caption)
+                    TextField("Longitude", text: $marking.cornerLongitude).frame(width: 90)
+                        .accessibilityLabel("Scene corner longitude")
+                    TextField("Latitude", text: $marking.cornerLatitude).frame(width: 90)
+                        .accessibilityLabel("Scene corner latitude")
+                }
+                .help(
+                    "The longitude and latitude of the scene's corner (0, 0), as a map import places it, to put a survey's places on the scene"
+                )
+                if !marking.surveyReport.isEmpty {
+                    Text(marking.surveyReport).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if marking.farBuildings > 0 {
+                    Text(
+                        "The far field's \(marking.farBuildings.formatted(.number)) buildings can be marked too."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+
+        private var weighingChoice: some View {
+            Picker(
+                "Weigh the marks",
+                selection: Binding(
+                    get: { marking.weighing.isIndependent },
+                    set: { independent in
+                        Task {
+                            await marking.weigh(
+                                as: independent ? .independent : .adopted, model)
+                        }
+                    })
+            ) {
+                Text("As erring together").tag(false)
+                Text("As independent (stage 2)").tag(true)
+            }
+            .help(
+                "Neighbouring buildings judged by the same estimate, or seen by the same survey, err together; weighed as independent, many marks make the answer far too sure"
+            )
+            .disabled(marking.isWorking)
         }
 
         private var countsText: String {

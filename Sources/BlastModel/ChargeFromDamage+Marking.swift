@@ -25,10 +25,17 @@ extension ChargeFromDamage {
         public private(set) var posterior: Posterior?
         /// How long the last change took to weigh, from the mark to the posterior, s.
         public private(set) var lastSeconds = 0.0
+        /// How the marks are weighed together (stage 3): `joint` holds each mark's log likelihood
+        /// times its weight (`weights`, by its neighbours), and the posterior takes the weighing's
+        /// shared scale and error.
+        public private(set) var weighing: Weighing
+        /// Each mark's weight in `joint`, by its id (1 unless the weighing counts neighbours).
+        private var weights: [UUID: Double] = [:]
 
-        public init(network: Network, reference: SIMD2<Double>) {
+        public init(network: Network, reference: SIMD2<Double>, weighing: Weighing = .adopted) {
             self.network = network
             self.reference = reference
+            self.weighing = weighing
             let h = network.header
             let bins = h.yieldBins ?? 1
             empty =
@@ -47,16 +54,40 @@ extension ChargeFromDamage {
             let kept = mark.flatMap { $0.glass == nil && $0.walls == nil ? nil : $0 }
             let old = marks[id]
             guard old != kept else { return }
-            if incremental {
-                if let old { network.addDistance(old, reference: reference, to: &joint, weight: -1) }
-                if let kept { network.addDistance(kept, reference: reference, to: &joint) }
-            }
+            let oldWeights = weights
             if let kept {
                 if old == nil { order.append(id) }
                 marks[id] = kept
             } else {
                 marks[id] = nil
                 order.removeAll { $0 == id }
+            }
+            reweight()
+            if incremental {
+                // The mark itself out at its old weight and in at its new; its neighbours' changed
+                // weights taken in by the change alone, or, if most changed, all worked out again.
+                let changed =
+                    weighing.weighsNeighbours
+                    ? marks.keys.filter { $0 != id && abs((weights[$0] ?? 0) - (oldWeights[$0] ?? 0)) > 1e-5 }
+                    : []
+                if changed.count > max(8, marks.count / 3) {
+                    rebuildJoint()
+                } else {
+                    if let old {
+                        network.addDistance(
+                            old, reference: reference, to: &joint, weight: -Float(oldWeights[id] ?? 1))
+                    }
+                    if let kept {
+                        network.addDistance(
+                            kept, reference: reference, to: &joint, weight: Float(weights[id] ?? 1))
+                    }
+                    for other in changed {
+                        guard let mark = marks[other] else { continue }
+                        network.addDistance(
+                            mark, reference: reference, to: &joint,
+                            weight: Float((weights[other] ?? 1) - (oldWeights[other] ?? 1)))
+                    }
+                }
             }
             // Cleared to none, the sum is zero again, exactly.
             if marks.isEmpty { joint = empty }
@@ -77,6 +108,18 @@ extension ChargeFromDamage {
             lastSeconds = StudyClock.seconds(clock)
         }
 
+        /// Weighs the marks together as `weighing` does: the sum worked out again.
+        public mutating func weigh(as weighing: Weighing) {
+            guard weighing != self.weighing else { return }
+            let clock = ContinuousClock.now
+            self.weighing = weighing
+            rebuild()
+            lastSeconds = StudyClock.seconds(clock)
+        }
+
+        /// The marks' weights summed: their effective number by their neighbours.
+        public var weightedCount: Double { weights.values.reduce(0, +) }
+
         /// Searches about `place` (the scene's metres): the sum worked out again about it.
         public mutating func recentre(on place: SIMD2<Double>) {
             guard place != reference else { return }
@@ -89,10 +132,24 @@ extension ChargeFromDamage {
         /// The marks in the order given.
         public var orderedMarks: [Mark] { order.compactMap { marks[$0] } }
 
+        /// Each mark's weight by its neighbours, worked out again.
+        private mutating func reweight() {
+            let ids = order
+            let found = weighing.weights(
+                ids.compactMap { marks[$0] }.map { SIMD2($0.building.east, $0.building.north) })
+            weights = Dictionary(uniqueKeysWithValues: zip(ids, found))
+        }
+
         /// The summed log likelihood from nothing, the marks spread over the cores.
         private mutating func rebuild() {
+            reweight()
+            rebuildJoint()
+            reweigh()
+        }
+
+        private mutating func rebuildJoint() {
             if incremental {
-                let list = orderedMarks
+                let list = order.compactMap { id in marks[id].map { ($0, Float(weights[id] ?? 1)) } }
                 let parts = min(max(list.count / 16, 1), 8)
                 var sums = [[Float]](repeating: [], count: parts)
                 let size = joint.count
@@ -102,7 +159,7 @@ extension ChargeFromDamage {
                     concurrently(iterations: parts) { p in
                         var part = [Float](repeating: 0, count: size)
                         for k in stride(from: p, to: list.count, by: parts) {
-                            network.addDistance(list[k], reference: reference, to: &part)
+                            network.addDistance(list[k].0, reference: reference, to: &part, weight: list[k].1)
                         }
                         out[p] = part
                     }
@@ -111,7 +168,6 @@ extension ChargeFromDamage {
                 for part in sums { for i in 0..<size where part[i] != 0 { total[i] += part[i] } }
                 joint = total
             }
-            reweigh()
         }
 
         private mutating func reweigh() {
@@ -121,7 +177,9 @@ extension ChargeFromDamage {
             }
             posterior =
                 incremental
-                ? network.posterior(joint: joint, reference: reference)
+                ? network.posterior(
+                    joint: joint, reference: reference, scale: weighing.sharedScale(count: weightedCount),
+                    weighing: weighing)
                 : network.posterior(marks: orderedMarks, reference: reference)
         }
     }

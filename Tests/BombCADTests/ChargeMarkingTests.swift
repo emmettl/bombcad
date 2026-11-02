@@ -81,7 +81,8 @@ struct ChargeMarkingTests {
         #expect(marking.counts == .init(buildings: 3, glassBroken: 1, glassWhole: 1, heavy: 1))
         let three = try #require(marking.posterior)
         let marks = try #require(marking.marking?.orderedMarks)
-        let whole = network.posterior(marks: marks, reference: SIMD2(60, 60))
+        let whole = network.posterior(
+            marks: marks, reference: SIMD2(60, 60), weighing: try #require(marking.marking?.weighing))
         #expect(
             zip(three.cellProbabilities, whole.cellProbabilities).map { abs($0 - $1) }.max() ?? 1 < 1e-4)
         try click(ids[3])
@@ -124,5 +125,71 @@ struct ChargeMarkingTests {
         model.showsChargeMarking = false
         try click(ids[4])
         #expect(model.selection == .building(ids[4]))
+    }
+
+    @Test("The marks are kept with the project, and a survey is put on the scene's buildings")
+    func keptAndSurveyed() async throws {
+        let (document, ids) = try Self.document()
+        // A project saved before stage 3 has none.
+        #expect(try ProjectDocument(archive: document.makeArchive()).chargeMarks == nil)
+        let model = SimulationModel(document: document)
+        model.refinesCloseCalls = false
+        let marking = model.chargeMarking
+        model.showsChargeMarking = true
+        await marking.open(model)
+        #expect(marking.saved == nil)
+        let buildings = ChargeFromDamage.buildings(scene: model.settings.scenario)
+        marking.set(ChargeFromDamage.Mark(building: buildings[0], glass: .broken), for: ids[0], model)
+        marking.set(ChargeFromDamage.Mark(building: buildings[2], walls: .damaged), for: ids[2], model)
+        await marking.weigh(as: .independent, model)
+        let saved = try #require(marking.saved)
+        #expect(saved.marks.map(\.id) == [ids[0], ids[2]])
+        #expect(saved.weighing == "independent")
+
+        // Saved, read back and opened: the same marks on the same buildings, weighed as before.
+        let archive = try ProjectDocument(model: model).makeArchive()
+        #expect(archive.files["chargeMarks.json"] != nil)
+        let reopened = try ProjectDocument(archive: archive)
+        #expect(reopened.chargeMarks == saved)
+        let again = SimulationModel(document: reopened)
+        again.refinesCloseCalls = false
+        #expect(again.chargeMarking.saved == saved)
+        again.showsChargeMarking = true
+        await again.chargeMarking.open(again)
+        #expect(again.chargeMarking.mark(of: ids[0])?.glass == .broken)
+        #expect(again.chargeMarking.mark(of: ids[2])?.walls == .damaged)
+        #expect(again.chargeMarking.weighing == .independent)
+        let before = try #require(marking.posterior)
+        let after = try #require(again.chargeMarking.posterior)
+        #expect(zip(before.cellProbabilities, after.cellProbabilities).map { abs($0 - $1) }.max() ?? 1 < 1e-6)
+
+        // A marks CSV about the scene's charge: two buildings found, one place with none near.
+        let csv = FileManager.default.temporaryDirectory.appending(path: "survey-\(UUID().uuidString).csv")
+        defer { try? FileManager.default.removeItem(at: csv) }
+        // Block 2's middle is (76, 21) and block 5's (71, 91); the charge is at (60, 60).
+        try """
+        building,east,north,height,footprint,built,walls,glass,seen
+        -1,16,-39,9,144,0.1,concrete,broken,-
+        -1,11,31,9,144,0.1,masonry,-,heavy
+        -1,-55,55,9,144,0.1,concrete,whole,-
+        """.write(to: csv, atomically: true, encoding: .utf8)
+        await again.chargeMarking.loadSurvey(csv, again)
+        #expect(again.chargeMarking.error == nil)
+        #expect(again.chargeMarking.mark(of: ids[1])?.glass == .broken)
+        #expect(again.chargeMarking.mark(of: ids[4])?.walls == .heavy)
+        #expect(again.chargeMarking.mark(of: ids[4])?.building.walls == .masonry)
+        #expect(again.chargeMarking.mark(of: ids[0]) == nil)
+        #expect(again.chargeMarking.counts.buildings == 2)
+        #expect(again.chargeMarking.surveyReport.contains("2 of 3 entries matched, on 2 buildings"))
+        #expect(again.chargeMarking.surveyReport.contains("1 unmatched"))
+        // The stone kept as masonry when saved.
+        #expect(again.chargeMarking.saved?.marks.first { $0.id == ids[4] }?.wallsAs == .masonry)
+        // A GEER file needs the corner.
+        let geer = FileManager.default.temporaryDirectory.appending(path: "geer-\(UUID().uuidString).csv")
+        defer { try? FileManager.default.removeItem(at: geer) }
+        try "lat,lon,class\n33.9,35.5,2\n".write(to: geer, atomically: true, encoding: .utf8)
+        await again.chargeMarking.loadSurvey(geer, again)
+        #expect(again.chargeMarking.error?.contains("corner") == true)
+        #expect(again.chargeMarking.counts.buildings == 2)
     }
 }

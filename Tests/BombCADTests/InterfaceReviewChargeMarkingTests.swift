@@ -106,6 +106,11 @@ struct InterfaceReviewChargeMarkingTests {
         )
         model.showsChargeMarking = true
         let marking = model.chargeMarking
+        // `BOMBCAD_CHARGE_MARKING_WEIGHING`: stage 2's `independent`, or another by name.
+        if let name = ProcessInfo.processInfo.environment["BOMBCAD_CHARGE_MARKING_WEIGHING"] {
+            marking.weighing = try #require(ChargeFromDamage.Weighing.named(name))
+        }
+        print("Weighed as \(marking.weighing.name)")
         await marking.open(model)
         let network = try #require(marking.marking?.network)
 
@@ -115,6 +120,8 @@ struct InterfaceReviewChargeMarkingTests {
         var rows: [String] = []
         var offs: [Int: [Double]] = [:]
         var factors: [Int: [Double]] = [:]
+        // How often the truth fell in the 50% and 90% regions (place) and intervals (yield).
+        var held: [Int: [(place50: Bool, place90: Bool, yield50: Bool, yield90: Bool)]] = [:]
         var estimates: [Double] = []
         for k in 0..<12 {
             let angle = 2 * Double.pi * random.uniform()
@@ -139,7 +146,8 @@ struct InterfaceReviewChargeMarkingTests {
                 format: "charge %2d: %4.0f m from the middle, %@", k, r,
                 ChargeFromDamage.Posterior.mass(mass) as NSString)
             for count in [3, 10, 30, order.count] where count <= order.count {
-                var some = ChargeFromDamage.Marking(network: network, reference: middle)
+                var some = ChargeFromDamage.Marking(
+                    network: network, reference: middle, weighing: marking.weighing)
                 some.replaceAll(order.prefix(count).compactMap { id in all.marks[id].map { (id, $0) } })
                 guard let p = some.posterior else { continue }
                 let off = simd_distance(p.mostProbablePlace, truth)
@@ -147,6 +155,13 @@ struct InterfaceReviewChargeMarkingTests {
                 let key = count == order.count ? -1 : count
                 offs[key, default: []].append(off)
                 factors[key, default: []].append(factor)
+                let u = p.yieldCDF(mass)
+                held[key, default: []].append(
+                    (
+                        p.regionHolds(truth, mass: 0.5), p.regionHolds(truth, mass: 0.9),
+                        u >= 0.25 && u <= 0.75,
+                        u >= 0.05 && u <= 0.95
+                    ))
                 line += String(
                     format: "; %d marks: %.0f m off, ×%.2f (90%% %@–%@)", count, off, factor,
                     ChargeFromDamage.Posterior.mass(p.yieldQuantile(0.05)) as NSString,
@@ -164,12 +179,13 @@ struct InterfaceReviewChargeMarkingTests {
             }
         }
         for key in [3, 10, 30, -1] {
-            guard let o = offs[key], let f = factors[key] else { continue }
+            guard let o = offs[key], let f = factors[key], let h = held[key] else { continue }
             let summary = String(
                 format:
-                    "%@ marks: likeliest place off the charge %.0f m (median), %.0f m (90th); yield off by ×%.2f (median), ×%.2f (90th); %d charges",
+                    "%@ marks: likeliest place off the charge %.0f m (median), %.0f m (90th); yield off by ×%.2f (median), ×%.2f (90th); %d charges; the truth in the place's 50%%/90%% regions %d/%d, the yield's intervals %d/%d",
                 (key < 0 ? "all" : String(key)) as NSString, Self.quantile(o, 0.5), Self.quantile(o, 0.9),
-                Self.quantile(f, 0.5), Self.quantile(f, 0.9), o.count)
+                Self.quantile(f, 0.5), Self.quantile(f, 0.9), o.count, h.filter(\.place50).count,
+                h.filter(\.place90).count, h.filter(\.yield50).count, h.filter(\.yield90).count)
             print(summary)
             rows.append(summary)
         }

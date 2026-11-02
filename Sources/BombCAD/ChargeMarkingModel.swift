@@ -58,12 +58,35 @@ final class ChargeMarkingModel {
     }
 
     var brush = Brush.glassBroken
+    /// Past this many marks the panel says the answer is likely surer than it should be: weighed as
+    /// erring together the regions held the truth as often as they say up to 30 marks on the
+    /// districts held out, not with every building marked.
+    static let manyMarks = 100
     /// The marks and their posterior; nil until the scene's buildings are read.
     private(set) var marking: ChargeFromDamage.Marking?
     /// The scene's envelope buildings as the network sees them, by id, and the scene they were read
-    /// from (`sceneVersion`).
+    /// from (`sceneVersion`): the far field's too, where the scene has one (New District's near and
+    /// far), with each one's blocks' plan, for a survey to be put on and the outlines drawn over.
     @ObservationIgnored private var buildings: [UUID: ChargeFromDamage.Building] = [:]
+    @ObservationIgnored private var plans:
+        [UUID: (rects: [(low: SIMD2<Double>, high: SIMD2<Double>)], top: Float)] =
+            [:]
     @ObservationIgnored private var readFor: Int?
+    @ObservationIgnored private var readFar: FarFieldSet?
+    /// How many of the buildings read are the far field's.
+    private(set) var farBuildings = 0
+    /// Marks kept with the project, waiting for the scene's buildings to be read (`restore`).
+    @ObservationIgnored private var pending: ChargeFromDamage.SavedMarks?
+    /// Buildings whose walls a survey said are stone, weighed as masonry whatever the scene says.
+    @ObservationIgnored private var wallsAs: [UUID: ChargeFromDamage.Walls] = [:]
+    /// How the marks are weighed together (stage 3: `ChargeFromDamage.Weighing.adopted`; stage 2's
+    /// `independent` by choice).
+    var weighing = ChargeFromDamage.Weighing.adopted
+    /// The scene's corner (0, 0) in longitude and latitude, for a survey placed by it.
+    var cornerLongitude = ""
+    var cornerLatitude = ""
+    /// What the last survey loaded came to, in words; empty before one.
+    private(set) var surveyReport = ""
     /// Reading the buildings, or weighing many marks at once.
     private(set) var isWorking = false
     private(set) var error: String?
@@ -93,35 +116,81 @@ final class ChargeMarkingModel {
     /// Reads the scene's buildings, if not read for this scene, and starts the search about its
     /// charge. Marks of buildings still in the scene are kept, at their buildings' new places.
     func open(_ model: SimulationModel) async {
-        guard readFor != model.sceneVersion, !isWorking else { return }
+        guard readFor != model.sceneVersion || readFar != model.farFieldSet, !isWorking else { return }
         guard let network = ChargeFromDamage.Network.builtIn else {
             error = "No charge-from-damage network is built into this copy of BombCAD."
             return
         }
         isWorking = true
         defer { isWorking = false }
-        let scene = model.settings.scenario
+        let near = model.settings.scenario
+        let far = model.farFieldSet
         let version = model.sceneVersion
-        let read = await Task.detached(priority: .userInitiated) {
+        let (read, plans, farCount) = await Task.detached(priority: .userInitiated) {
+            // The far buildings beside the near ones, as the far field judges them.
+            let scene = far.flatMap { try? $0.combined(with: near) } ?? near
             let list = ChargeFromDamage.buildings(scene: scene)
-            return Dictionary(
+            let read = Dictionary(
                 zip(scene.envelopeObjects.map(\.id), list).filter { $0.1.footprintM2 > 0 },
                 uniquingKeysWith: { a, _ in a })
+            var plans: [UUID: (rects: [(low: SIMD2<Double>, high: SIMD2<Double>)], top: Float)] = [:]
+            for object in scene.envelopeObjects {
+                let blocks = object.envelope?.blocks ?? []
+                guard !blocks.isEmpty else { continue }
+                plans[object.id] = (
+                    blocks.map {
+                        (SIMD2(Double($0.min.x), Double($0.min.y)), SIMD2(Double($0.max.x), Double($0.max.y)))
+                    }, blocks.map(\.max.z).max() ?? 0
+                )
+            }
+            let farIDs = Set(far?.buildings.map(\.id) ?? [])
+            return (read, plans, read.keys.filter { farIDs.contains($0) }.count)
         }.value
         buildings = read
+        self.plans = plans
+        farBuildings = farCount
         readFor = version
+        readFar = far
         let charge = model.settings.chargePosition
-        let reference = marking?.reference ?? SIMD2(Double(charge.x), Double(charge.y))
-        let kept = (marking?.order ?? []).compactMap { id -> (id: UUID, mark: ChargeFromDamage.Mark)? in
-            guard var mark = marking?.marks[id], let building = read[id] else { return nil }
-            mark.building = building
-            return (id, mark)
+        let saved = pending
+        pending = nil
+        if let saved {
+            weighing = saved.weighing.flatMap(ChargeFromDamage.Weighing.named) ?? weighing
+            if let corner = saved.corner, corner.count == 2 {
+                cornerLongitude = String(corner[0])
+                cornerLatitude = String(corner[1])
+            }
+            wallsAs = Dictionary(
+                saved.marks.compactMap { m in m.wallsAs.map { (m.id, $0) } }, uniquingKeysWith: { a, _ in a })
         }
-        var fresh = ChargeFromDamage.Marking(network: network, reference: reference)
+        let reference =
+            saved.map { s in
+                s.reference.flatMap { $0.count == 2 ? SIMD2($0[0], $0[1]) : nil }
+                    ?? SIMD2(Double(charge.x), Double(charge.y))
+            }
+            ?? marking?.reference ?? SIMD2(Double(charge.x), Double(charge.y))
+        let previous: [(id: UUID, glass: ChargeFromDamage.GlassSeen?, walls: ChargeFromDamage.WallsSeen?)] =
+            saved.map { $0.marks.map { ($0.id, $0.glass, $0.walls) } }
+            ?? (marking?.order ?? []).compactMap { id in marking?.marks[id].map { (id, $0.glass, $0.walls) } }
+        let kept = previous.compactMap { m -> (id: UUID, mark: ChargeFromDamage.Mark)? in
+            guard let building = self.building(m.id, in: read) else { return nil }
+            return (m.id, ChargeFromDamage.Mark(building: building, glass: m.glass, walls: m.walls))
+        }
+        if saved != nil { aboutCharge = reference == SIMD2(Double(charge.x), Double(charge.y)) }
+        var fresh = ChargeFromDamage.Marking(network: network, reference: reference, weighing: weighing)
         if !kept.isEmpty { fresh = await Self.weighed(fresh, replacing: kept) }
         marking = fresh
         error = nil
         refresh(model)
+    }
+
+    /// Building `id` as the network sees it, its walls as a survey said they are if it did.
+    private func building(
+        _ id: UUID, in read: [UUID: ChargeFromDamage.Building]? = nil
+    ) -> ChargeFromDamage.Building? {
+        guard var building = (read ?? buildings)[id] else { return nil }
+        if let walls = wallsAs[id] { building.walls = walls }
+        return building
     }
 
     /// Whether `id` is a building the network can be told of.
@@ -129,7 +198,7 @@ final class ChargeMarkingModel {
 
     /// Lays the brush on building `id`, as a click in the view does.
     func apply(to id: UUID, _ model: SimulationModel) {
-        guard canMark(id), let building = buildings[id] else { return }
+        guard canMark(id), let building = building(id) else { return }
         let mark = brush.applied(to: marking?.marks[id] ?? ChargeFromDamage.Mark(building: building))
         marking?.set(mark, for: id)
         refresh(model)
@@ -144,16 +213,141 @@ final class ChargeMarkingModel {
 
     func clearAll(_ model: SimulationModel) {
         guard let marking, !isWorking else { return }
-        self.marking = ChargeFromDamage.Marking(network: marking.network, reference: marking.reference)
+        self.marking = ChargeFromDamage.Marking(
+            network: marking.network, reference: marking.reference, weighing: weighing)
+        wallsAs = [:]
+        surveyReport = ""
         refresh(model)
+    }
+
+    /// Weighs the marks as `weighing` does (the default, or stage 2's as independent).
+    func weigh(as weighing: ChargeFromDamage.Weighing, _ model: SimulationModel) async {
+        self.weighing = weighing
+        guard let marking, !isWorking, marking.weighing != weighing else { return }
+        isWorking = true
+        self.marking = await Task.detached(priority: .userInitiated) {
+            var moved = marking
+            moved.weigh(as: weighing)
+            return moved
+        }.value
+        isWorking = false
+        refresh(model)
+    }
+
+    /// The scene's corner (0, 0), if both are given.
+    var corner: SIMD2<Double>? {
+        guard let lon = Double(cornerLongitude), let lat = Double(cornerLatitude), abs(lat) < 90,
+            abs(lon) <= 180
+        else { return nil }
+        return SIMD2(lon, lat)
+    }
+
+    /// Loads a survey (`ChargeFromDamage.readSurvey`: a marks CSV, GEER's façade shapefile or
+    /// structural .dbf, a CSV of façades, or a folder of them), puts it on the scene's buildings, near
+    /// and far (`ChargeFromDamage.match`), and marks them with it in place of the marks given; says
+    /// how many of its entries found a building and how many did not.
+    func loadSurvey(_ url: URL, _ model: SimulationModel) async {
+        guard let marking, !isWorking else { return }
+        let charge = model.settings.chargePosition
+        let corner = corner
+        let ids = Array(plans.keys.filter { buildings[$0] != nil })
+        let footprints = ids.map { plans[$0]!.rects }
+        isWorking = true
+        defer { isWorking = false }
+        let read = await Task.detached(priority: .userInitiated) {
+            Result {
+                let survey = try ChargeFromDamage.readSurvey(
+                    url, corner: corner, charge: SIMD2(Double(charge.x), Double(charge.y)))
+                return (survey, ChargeFromDamage.match(survey, footprints: footprints))
+            }
+        }.value
+        switch read {
+        case .failure(let failure):
+            error = failure.localizedDescription
+            surveyReport = ""
+        case .success(let (survey, match)):
+            error = nil
+            wallsAs = [:]
+            var list: [(id: UUID, mark: ChargeFromDamage.Mark)] = []
+            for (n, seen) in match.marks.sorted(by: { $0.key < $1.key }) {
+                let id = ids[n]
+                if seen.masonry { wallsAs[id] = .masonry }
+                guard let building = building(id) else { continue }
+                list.append(
+                    (id, ChargeFromDamage.Mark(building: building, glass: seen.glass, walls: seen.walls)))
+            }
+            let farIDs = Set(model.farFieldSet?.buildings.map(\.id) ?? [])
+            let onFar = list.filter { farIDs.contains($0.id) }.count
+            surveyReport = Self.surveyWords(
+                file: url.lastPathComponent, survey: survey, match: match, buildings: list.count, far: onFar)
+            self.marking = await Self.weighed(marking, replacing: list)
+        }
+        refresh(model)
+    }
+
+    /// A survey's matching in words: "Facade_damage.shp: 8,227 façades. 7,901 entries put on 1,402
+    /// buildings (310 of them the far field's); 326 found no building within 15 m; 12 records left
+    /// out."
+    static func surveyWords(
+        file: String, survey: ChargeFromDamage.Survey, match: ChargeFromDamage.SurveyMatch, buildings: Int,
+        far: Int
+    ) -> String {
+        func n(_ v: Int) -> String { v.formatted(.number) }
+        var words = "\(file): \(survey.parts.joined(separator: ", ")). "
+        words +=
+            "\(n(match.matched)) of \(n(survey.entries.count)) entries matched, on \(n(buildings)) building\(buildings == 1 ? "" : "s")"
+        if far > 0 { words += " (\(n(far)) of them the far field's)" }
+        words += "; \(n(match.unmatched)) unmatched, with no building within 15 m"
+        if survey.skipped > 0 {
+            words += "; \(n(survey.skipped)) records left out, their class not one the network weighs"
+        }
+        if match.repeated > 0 {
+            words += "; \(n(match.repeated)) walls repeated on a building already marked"
+        }
+        return words + "."
+    }
+
+    // MARK: - Kept with the project
+
+    /// The marks as the project keeps them (`chargeMarks.json`); nil without any. Before the
+    /// buildings are read, the marks the project was opened with.
+    var saved: ChargeFromDamage.SavedMarks? {
+        if let pending { return pending }
+        guard let marking, !marking.marks.isEmpty else { return nil }
+        return ChargeFromDamage.SavedMarks(
+            marks: marking.order.compactMap { id in
+                marking.marks[id].map {
+                    ChargeFromDamage.SavedMarks.Saved(
+                        id: id, glass: $0.glass, walls: $0.walls, wallsAs: wallsAs[id])
+                }
+            },
+            reference: aboutCharge ? nil : [marking.reference.x, marking.reference.y],
+            weighing: weighing == .adopted ? nil : weighing.name,
+            corner: corner.map { [$0.x, $0.y] })
+    }
+
+    /// Takes the marks a project was saved with, weighed once the scene's buildings are read
+    /// (`open`); nil clears them.
+    func restore(_ saved: ChargeFromDamage.SavedMarks?) {
+        pending = saved
+        marking = nil
+        readFor = nil
+        wallsAs = [:]
+        surveyReport = ""
+        counts = Counts()
+        paint = nil
+        lines = []
+        words = ""
     }
 
     /// Marks every building the last run or quick estimate judged, as its damage would be marked
     /// (`ChargeFromDamage.seen`), in place of the marks given.
     func markFromDamage(_ model: SimulationModel) async {
         guard let marking, !isWorking else { return }
-        let list = model.envelopeDamage.compactMap { damage -> (id: UUID, mark: ChargeFromDamage.Mark)? in
-            guard let building = buildings[damage.id] else { return nil }
+        // The far field's buildings too, where the run judged them.
+        let list = (model.envelopeDamage + model.farFieldDamage).compactMap {
+            damage -> (id: UUID, mark: ChargeFromDamage.Mark)? in
+            guard let building = building(damage.id) else { return nil }
             let (glass, walls) = ChargeFromDamage.seen(damage)
             guard glass != nil || walls != nil else { return nil }
             return (damage.id, ChargeFromDamage.Mark(building: building, glass: glass, walls: walls))
@@ -265,7 +459,10 @@ final class ChargeMarkingModel {
         var lines: [SIMD4<Float>] = []
         // Each marked building outlined over its roof: its glass, and its walls above that.
         for id in marking?.order ?? [] {
-            guard let mark = marking?.marks[id], let box = scenario.object(id: id)?.bounds else { continue }
+            guard let mark = marking?.marks[id], let plan = plans[id] else { continue }
+            let low = plan.rects.reduce(SIMD2(Double.infinity, .infinity)) { simd_min($0, $1.low) }
+            let high = plan.rects.reduce(SIMD2(-Double.infinity, -.infinity)) { simd_max($0, $1.high) }
+            let box = (min: SIMD2<Float>(low), max: SIMD3(Float(high.x), Float(high.y), plan.top))
             var kinds: [Float] = []
             if let glass = mark.glass {
                 kinds.append(glass == .broken ? LineKind.glassBroken : LineKind.glassWhole)

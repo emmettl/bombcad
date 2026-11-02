@@ -671,7 +671,9 @@ What it does not do:
   in its logarithm and the place's flat over the disc. A charge beyond is put at the disc's edge.
 - **Marks taken as independent given the charge,** as the full inference takes them: a survey's
   neighbours, which err together, make it too sure (1,351 glass marks give a 90% interval of a
-  factor 1.3).
+  factor 1.3). Since stage 3 the panel and the commands take an error shared by every mark
+  ([below](#marks-that-err-together-surveys-and-kept-marks-2-november-2026)); calibrated up to 30
+  marks, still too sure with hundreds.
 - **In the app** since 2 November 2026: Simulation ▸ Read the Charge from the Damage…
   ([below](#marking-the-damage-in-the-app-2-november-2026)).
 
@@ -777,11 +779,199 @@ pin. Thirty marks bring the place to 100–160 m and the yield to a factor 1.5 o
 district. On Beirut, its buildings few near the port and its charges drawn anywhere on the disc,
 thirty marks leave the place 350–430 m off.
 
-**Not done:** the far field's buildings (New District's near and far) cannot be marked, only the
-scene's; a survey file cannot be loaded into the panel (`blastmodel charge-from-damage infer`
-takes one); the marks are not saved with the project.
+Stage 2 left three things undone: marking the far field's buildings, loading a survey file, and
+saving the marks with the project. Stage 3 did all three
+([below](#marks-that-err-together-surveys-and-kept-marks-2-november-2026)).
 
 The judgements are in `$BOMBCAD_DATA/scratch/issue116/stage2`.
+
+### Marks that err together, surveys and kept marks (2 November 2026)
+
+emmettl/bombcad-work#116, stage 3. Stage 2 summed the marks' log likelihoods as if the marks were
+independent given the charge. They are not. Every building is judged by the same quick estimate
+(or seen by the same surveyor), and that estimate's errors are shared, more or less, by all of them.
+With every building marked, the 90% yield intervals missed the true yield for 8 of 12 charges.
+
+**The weighing.** `ChargeFromDamage.Weighing` adds the marks' shared error to the posterior.
+Three forms were built, each off at zero:
+- **Neighbours' weights:** each mark scaled by one over the count of marks near it.
+- **A correlation shared by all:** the sum scaled by 1 / (1 + (n − 1) ρ).
+- **A shared error of the charge:** the marks' joint likelihood taken over a normal offset of the
+  log yield (σ in ln kg) and of the place (σ in m) that every mark shares. The posterior is then
+  the independent one blurred by that offset, in log yield within each cell and over the cells bin
+  by bin.
+
+The shared error widens a posterior only once it is narrower than the error itself. So it changes
+little at 3 or 10 marks and sets a floor to the width once there are hundreds.
+
+**Adopted: `shared`, 0.5 in ln yield (a factor 1.65) and 12 m in place.** It is now the panel's and
+the commands' weighing (the user approved it on 2 November 2026). Stage 2's is kept by name, as
+`independent`: `--weighing independent` on `judge`, `infer`, `judge-looks` and `survey`, or
+**Weigh the marks: As independent (stage 2)** in the panel. Any other weighing can be named by its
+parameters, for example `--weighing yield=0.5,place=12,neighbours=50`.
+
+**How it was judged: the app's own path, headless.** `charge-from-damage looks` makes the quick
+estimate (the full look, as Quick Estimate makes it) for charges drawn over a district's inner
+350 m, 200 kg to 1 kt, and marks the damage as **Mark from the Damage Shown** does. Each look takes
+0.1–1.5 s on bombcad-pc. `judge-looks` then weighs 3, 10 and 30 of those marks and all of them,
+chosen two ways: at random, or about the damage as a user would (a building seen damaged, then
+buildings drawn by e^(−d / L), L 100–500 m, as `--about-damage` draws them). The search is about the
+district's middle, as in stage 2.
+- **Calibrated on** the four made-up districts the network trained on: 100 charges each, 400 in all.
+- **Reported on** the mixed district it never saw (150 charges) and on Beirut's 1 km scene
+  (100 charges, many of them in the harbour). Neither was used to choose the weighing.
+
+The calibration grid (`$BOMBCAD_DATA/scratch/issue116/stage3/cfd-judge{1,2}-bombcad-pc`) covered:
+- the yield's σ from 0.3 to 1.0 and the place's from 0 to 60 m;
+- ρ from 0.01 to 0.1;
+- neighbours' lengths from 50 to 200 m, and combinations of these.
+
+What it showed:
+- **The place was already wide enough.** At 3–30 marks the place's 90% region held the truth
+  0.91–0.97 of the time, and its 50% region 0.56–0.70. Neighbours' weights and ρ widened the place
+  further (to 0.98–1.00), which made it worse.
+- **The yield was not.** At 30 marks it held 0.78–0.84, and with all marks 0.33.
+- **A shared error of the yield** puts the yield right at every count without touching the place
+  while the marks are few. The place's 12 m matters only with every building marked: 10 m did
+  nothing, 15 m overshot.
+
+**Before and after, with the truth inside the 50% / 90% regions and intervals** (the share of
+charges; the errors are the likeliest cell's distance from the truth and the median yield's factor
+off it, both medians):
+
+| District | Marks | Place, independent | Place, shared | Yield, independent | Yield, shared | Place off | Yield off: independent → shared |
+|---|---|---|---|---|---|---|---|
+| training (400) | 3 at random | 0.58 / 0.95 | 0.57 / 0.95 | 0.57 / 0.96 | 0.61 / 0.97 | 322 → 311 m | ×2.12 → ×2.03 |
+| | 10 at random | 0.61 / 0.97 | 0.61 / 0.97 | 0.51 / 0.89 | 0.60 / 0.96 | 142 → 138 m | ×1.65 → ×1.62 |
+| | 30 at random | 0.69 / 0.97 | 0.69 / 0.97 | 0.37 / 0.78 | 0.57 / 0.94 | 55 → 56 m | ×1.46 → ×1.43 |
+| | 30 about the damage | 0.67 / 0.95 | 0.67 / 0.96 | 0.41 / 0.84 | 0.59 / 0.97 | 50 → 51 m | ×1.48 → ×1.45 |
+| | all | 0.65 / 0.83 | 0.67 / 0.92 | 0.15 / 0.33 | 0.50 / 0.91 | 18 → 18 m | ×1.43 → ×1.41 |
+| **mixed, held out (150)** | 3 at random | 0.53 / 0.95 | 0.55 / 0.95 | 0.65 / 0.97 | 0.67 / 0.99 | 288 → 284 m | ×1.78 → ×1.79 |
+| | 10 at random | 0.61 / 0.96 | 0.60 / 0.96 | 0.61 / 0.94 | 0.70 / 0.99 | 128 → 123 m | ×1.49 → ×1.44 |
+| | 30 at random | 0.67 / 0.97 | 0.67 / 0.97 | 0.37 / 0.84 | 0.63 / 0.99 | 57 → 57 m | ×1.46 → ×1.40 |
+| | 3 about the damage | 0.55 / 0.90 | 0.57 / 0.89 | 0.49 / 0.93 | 0.53 / 0.93 | 287 → 268 m | ×2.39 → ×2.44 |
+| | 10 about the damage | 0.61 / 0.93 | 0.62 / 0.93 | 0.50 / 0.91 | 0.56 / 0.94 | 141 → 135 m | ×1.83 → ×1.79 |
+| | 30 about the damage | 0.52 / 0.95 | 0.55 / 0.95 | 0.36 / 0.85 | 0.63 / 0.98 | 59 → 57 m | ×1.50 → ×1.40 |
+| | all (1,080) | 0.38 / 0.48 | 0.38 / 0.70 | 0.09 / 0.19 | 0.52 / **1.00** | 21 → 21 m | ×1.42 → ×1.41 |
+| **Beirut, 1 km (100)** | 3 about the damage | 0.51 / 0.97 | 0.58 / 0.97 | 0.57 / 0.98 | 0.60 / 0.98 | 468 → 442 m | ×2.44 → ×2.39 |
+| | 10 about the damage | 0.52 / 0.98 | 0.52 / 0.99 | 0.54 / 0.89 | 0.58 / 0.93 | 448 → 409 m | ×2.12 → ×2.07 |
+| | 30 about the damage | 0.47 / 0.97 | 0.50 / 0.97 | 0.47 / 0.81 | 0.51 / 0.90 | 420 → 392 m | ×1.98 → ×2.01 |
+| | 30 at random | 0.50 / 0.94 | 0.50 / 0.95 | 0.37 / 0.77 | 0.47 / 0.91 | 364 → 341 m | ×2.08 → ×2.08 |
+| | all (1,553) | 0.15 / 0.29 | 0.14 / 0.28 | 0.06 / 0.23 | 0.22 / 0.47 | 198 → 198 m | ×2.50 → ×2.51 |
+
+- **Up to 30 marks, calibrated on both districts held out.** At 3–30 marks the yield's intervals
+  hold the truth 0.90–0.99 of the time at 90% and 0.47–0.70 at 50%. The place's regions hold it
+  0.89–0.99 and 0.50–0.67. Where they miss, they err wide, not narrow. With 3–10 marks the shared
+  error is barely felt and stage 2 was already about right. The fix bites at 30, where the yield's
+  90% interval went from holding the truth 0.81–0.85 of the time to 0.90–0.99.
+- **With every building marked, calibrated on the yield, not the place.** On the mixed district the
+  yield's 90% interval now holds the truth for every charge (it held 19%), and its 50% interval 52%.
+  The place's 90% region holds the truth 70% of the time (from 48%). The likeliest cell is 21 m
+  off, but a cell is 31 m across, and the 12 m chosen on training is too little here.
+- **Beirut with every building marked is not calibrated.** Its 1,553 buildings, the charge often in
+  the harbour, put the likeliest place 200 m off and the yield a factor 2.5 off. That is a bias of
+  the quick estimate on Beirut that a shared error of a factor 1.65 does not cover. The yield's
+  90% interval held the truth 47% of the time (from 23%), the place's 28%.
+- **The errors are no worse.** The median place and yield are within a few metres and a few per
+  cent of stage 2's at every count, and mostly better.
+- **On the tables' drawn cases**, which are independent by construction (`judge --seed 21`), the
+  shared weighing keeps stage 2's calibration: 0.83–0.93 at 90% on the mixed district and Beirut.
+  The yield at 30 marks moves from 0.88 to 0.93–0.95, slightly wide.
+
+So the target, regions and intervals holding the truth about 50% and 90% of the time across 3, 10,
+30 and all marks, is met up to 30 marks on both districts held out. It is met for the yield, but not
+the place, with every building marked on the made-up district, and not at all on Beirut.
+
+**A warning instead, past 100 marks.** The panel says plainly when the answer is likely surer than
+it should be:
+- with the marks weighed as independent, past 20 of them;
+- however they are weighed, past 100 (`ChargeMarkingModel.manyMarks`): "it rests on the quick
+  estimate's own errors, which so many marks share", with the held-out shares quoted.
+
+**Recorded stop (2 November 2026): calibration with hundreds of marks.** Getting there needs the
+quick estimate's own district-wide bias, which differs between districts (a factor 1.4 on the
+made-up ones, 2.5 on Beirut, and 15–30 for Beirut's glass against GEER). There are three ways it
+could go, none of them done:
+- an error that grows with the marks' spread or count, fitted on more districts than four;
+- marks drawn in training from shared draws of the load scatter rather than independent ones;
+- a run (the referee) to measure the bias on the scene itself, as `--forward-damage` does.
+
+**Surveys in the panel.** **Load a Survey…** reads any of the following and puts them on the
+scene's buildings, near and far, in place of the marks given (`ChargeFromDamage.readSurvey`,
+`match`):
+- a marks CSV, as `charge-from-damage infer` reads it, east and north about the scene's charge;
+- GEER's façade shapefile, a building's glass broken where any of its façades is W1 or worse;
+- a CSV of façades `lat,lon,class`, as the Infer Charge sheet reads one;
+- GEER's structural tables, read as `table --structure` reads them: stone at D3, concrete at D2;
+- a folder of any of these, such as DesignSafe PRJ-3030 as downloaded.
+
+Each entry goes to the building it stands in, or the nearest within 15 m. Places in longitude and
+latitude are put on the scene by its corner (0, 0), which the panel asks for, as the Infer Charge
+sheet does. A stone building's walls are weighed as masonry. The panel then says how many entries
+matched, on how many buildings (and how many of those are the far field's), how many found no
+building, and how many records were left out because their class is not one the network weighs.
+
+**Beirut's survey through it** (`charge-from-damage survey`, the panel's code headless: the 2.5 km
+scene, the corner 35.491954 E, 33.878942 N). The survey's data are on StudioData under
+Beirut2020/GEER2021 with its SOURCE.md (ODC-By), not committed.
+- **What matched:** GEER's 9,175 façades and 155 buildings (in person and from 360° photographs),
+  8,724 of 9,330 entries on 1,354 buildings. 606 found no building within 15 m, and 34 records were
+  left out (mixed structures, straddling classes).
+- **What was marked:** 1,266 buildings' glass and 141 buildings' walls, 50 of them stone. Stage 1's
+  matching gave 1,351 and 139.
+
+| Marks | Independent: yield (90%) | Shared: yield (90%) | Likeliest place | Warehouse 12 in the 90% region |
+|---|---|---|---|---|
+| Stone walls, 50 | 0.71 kt (0.30–1.63) | **0.70 kt (0.21–2.16)** | 173 m south of the warehouse | yes, and in the 50% region |
+| All walls, 141 | 2.69 kt (1.82–3.21) | 2.08 kt (0.97–3.14) | 178 m north | yes |
+| Glass, 1,266 | 29 t (25–34) | 29 t (13–66) | 386 m north-west | no |
+| Everything, 1,354 | 29 t (25–34) | 29 t (13–66) | 386 m north-west | no |
+
+With the place held at the warehouse, the stone reads 0.70 kt (0.28–1.66) shared, against 0.71 kt
+(0.49–0.89) independent.
+
+The accepted figures are 0.50–0.54 kt from the arrivals (90%: 0.36–0.85), Rigby et al.'s 0.50 kt,
+Stennett et al.'s 0.64 kt and Pilger et al.'s 0.13–2 kt.
+- **The stone holds them.** Its shared 90% interval holds every one of these, and its place regions
+  hold Warehouse 12.
+- **The glass does not.** It reads 13–66 t, the quick estimate's known bias against GEER
+  ([above](#on-beiruts-surveys)). It is wider now, but still nowhere near the true yield, and the
+  panel's past-100 warning shows.
+- **So on Beirut:** load the structural tables alone, or clear the glass, to read the yield.
+
+**Kept with the project.** The marks are saved as `chargeMarks.json` in the project package
+(`ChargeFromDamage.SavedMarks`): each building's glass and walls by its id, the stone taken as
+masonry, the place searched about if it was moved, the weighing if it is not the default, and the
+survey's corner. They are weighed again once the panel reads the scene's buildings. A project saved
+before has no such file and opens as it did. An older BombCAD keeps the file untouched, as it keeps
+any file it does not know.
+
+**The far field's buildings** (New District's near and far) can be marked: a click on one marks it,
+and Mark from the Damage Shown and a survey take them in. It was cheap because the far field's own
+`combined(with:)` already gives the near and far scene the network's features need, picking already
+reached far buildings, and their outlines come from their blocks. Far buildings 0.6–2.5 km out say
+most about the yield (the network reads distances to 8 km); the place is still searched within
+500 m.
+
+**Frame times** (release build, offscreen, `InterfaceReviewChargeMarkingTests` as in stage 2, the
+Studio loaded by other sessions; 60 buildings marked one at a time on the mixed district):
+
+| Step | Shared: median (most) | Independent: median (most) |
+|---|---|---|
+| A mark weighed into the others, to the posterior | 0.98 ms (1.24) | 0.42 ms (1.10) |
+| The paint, outlines and words laid out | 0.14 ms (0.29) | 0.18 ms (0.36) |
+| A frame at 1800 × 1200, GPU | 5.6 ms (12.1) | 6.2 ms (11.9) |
+| Click to frame drawn and read back | 10.1 ms (85.3) | 10.7 ms (90.9) |
+
+The shared error's blur costs about half a millisecond a mark, so each mark still shows within a
+frame at 60 fps but for the read-back. The same test's twelve charges, marked from the quick
+estimate (852 marks each), now hold the true yield in the 90% interval for 11 of 12 charges, against
+3 of 12 weighed as independent, and the place in its 90% region for 7, against 4. The median errors
+are unchanged: 31 m, and ×1.34 against ×1.37. (Its 3, 10 and 30 marks are drawn from an order that
+changes from run to run, so those rows are not comparable between runs. The headless judgement
+above is the measure.)
+
+The judgements, looks and sweeps are in `$BOMBCAD_DATA/scratch/issue116/stage3`.
 
 ## What it cannot do
 

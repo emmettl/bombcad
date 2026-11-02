@@ -187,6 +187,7 @@ extension SimulationModel {
         thermalSpec = document.thermal
         cloudSpec = document.cloud
         farFieldSet = document.farField
+        chargeMarking.restore(document.chargeMarks)
         projectArchive = document.archive
         projectDocumentID = document.documentID
         if let run = document.runSettings {

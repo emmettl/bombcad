@@ -817,7 +817,7 @@ extension SimulationModel {
             // Marking what was seen of a building, while the Charge from the Damage panel is open.
             if showsChargeMarking,
                 let id = ScenePicking.envelope(
-                    in: settings.scenario, origin: ray.origin, direction: ray.direction)
+                    in: settings.scenario, far: farFieldSet, origin: ray.origin, direction: ray.direction)
             {
                 chargeMarking.apply(to: id, self)
                 return
