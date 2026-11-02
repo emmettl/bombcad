@@ -505,3 +505,14 @@ square's. It now names the back lane behind the shops.
 The captures are in `$BOMBCAD_DATA/explorer/review/polish/`: `before/` holds stage 3's, and `after/`
 holds each layer of the street and the square on the warm scale, the sidebar's legend in light and
 dark, and Beirut's glass.
+
+**The charge's marker** was a red ball, and on the warm scale it sat among red buildings, hard to
+find. In the explorer it is now a bright aqua ball in a dark ring a third of its radius wide
+(`ExplorerColours.marker`, `RenderSettings.chargeMarkerOutlined`), and the live wave leaves it
+unpainted, so it reads over a pale building, a dark-red one, the ground and the wave alike. Its size
+rule is unchanged: the ball is 0.4% of the scene's width, at least 1.5 m, with the ring outside it.
+The 3D view is drawn the same in light and dark appearance. A test keeps the shader's colours and
+the Swift copy the same, and checks that the ball stays apart from every colour it sits among, the
+ring at a contrast of 7 or more against it. The workbench keeps its red ball. The captures are in
+`$BOMBCAD_DATA/explorer/review/marker/`: the square and the street, over the glass and over the wave
+at 35% of its time, each whole and close.

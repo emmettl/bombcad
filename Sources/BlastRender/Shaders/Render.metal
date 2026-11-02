@@ -14,7 +14,7 @@ struct RenderUniforms {
     float4 domain;     // xyz = size in metres, w = cell size
     float4 display;    // x = mode (0 now, 1 peak, 2 impulse), y = scale max, z = decades, w = volume opacity
     float4 counts;     // x = boxes, y = gauges, z = charge marker radius (0 hides it), w = volume scale max
-    float4 charge;     // xyz = position
+    float4 charge;     // xyz = position, w = 1 for the explorer's outlined marker
     float4 sun;        // xyz = direction towards the light
     float4 clip;       // x = near plane, y = far plane
     float4 highlightLow;   // xyz = low corner of the box to outline, w = 1 to draw it
@@ -154,6 +154,10 @@ static inline bool hitBox(float3 origin, float3 inverseDirection, float3 low, fl
     }
     return true;
 }
+
+// The explorer's charge marker's dark ring, as a share of the marker's radius
+// (ExplorerColours.markerOutlineScale).
+constant float markerOutline = 1.35f;
 
 static inline bool hitSphere(float3 origin, float3 direction, float3 centre, float radius,
                              thread float &distance) {
@@ -438,7 +442,20 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             colour = float3(0.10f, 0.80f, 0.90f) * (0.55f + 0.45f * max(dot(normal, sun), 0.0f));
         }
     }
-    if (u.counts.z > 0.0f) {
+    if (u.counts.z > 0.0f && u.charge.w > 0.5f) {
+        // The explorer's marker, apart from its warm scale and the wave's colours: a bright aqua ball
+        // in a dark ring a third of its radius wide, whatever the view (ExplorerColours.marker and
+        // markerOutline; a test keeps the two the same).
+        float t;
+        if (hitSphere(origin, direction, u.charge.xyz, u.counts.z, t) && t < nearest) {
+            nearest = t;
+            float3 normal = normalize(origin + t * direction - u.charge.xyz);
+            colour = float3(0.100f, 1.000f, 0.850f) * (0.6f + 0.4f * max(dot(normal, sun), 0.0f));
+        } else if (hitSphere(origin, direction, u.charge.xyz, markerOutline * u.counts.z, t) && t < nearest) {
+            nearest = t;
+            colour = float3(0.040f, 0.050f, 0.070f);
+        }
+    } else if (u.counts.z > 0.0f) {
         float t;
         if (hitSphere(origin, direction, u.charge.xyz, u.counts.z, t) && t < nearest) {
             nearest = t;
@@ -1218,6 +1235,7 @@ struct LiveWaveUniforms {
     float4 clip;       // x = near plane, y = far plane
     float4 plan;       // xy = the plan's size in metres from the origin, z = time (s), w = opacity
     float4 scale;      // x = top of the colour scale (Pa), y = its decades, z = columns, w = rows
+    float4 marker;     // xyz = the explorer's charge marker, w = its outer radius (0: painted over)
 };
 
 fragment float4 liveWaveFragment(VertexOut in [[stage_in]],
@@ -1234,6 +1252,10 @@ fragment float4 liveWaveFragment(VertexOut in [[stage_in]],
     float3 p = u.eye.xyz + distance * direction;
     float2 uv = p.xy / u.plan.xy;
     if (uv.x < 0.0f || uv.y < 0.0f || uv.x >= 1.0f || uv.y >= 1.0f) {
+        discard_fragment();
+    }
+    // The explorer's marker stays its own colours over the wave.
+    if (u.marker.w > 0.0f && length(p - u.marker.xyz) < 1.05f * u.marker.w) {
         discard_fragment();
     }
     // Between the four cells' centres about the point: the arrival and the log of the peak, of those

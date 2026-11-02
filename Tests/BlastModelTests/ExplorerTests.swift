@@ -136,6 +136,36 @@ struct ExplorerTests {
         // The loud end is the warm, dark-red one; the quiet end pale.
         #expect(ExplorerColours.warmRamp[7].x > 3 * ExplorerColours.warmRamp[7].z)
         #expect(ExplorerColours.warmRamp[0].x > 0.9 && ExplorerColours.warmRamp[0].z > 0.85)
+        // The charge's marker and its ring, and its ring's width.
+        for c in [ExplorerColours.marker, ExplorerColours.markerOutline] {
+            let text = String(format: "float3(%.3ff, %.3ff, %.3ff)", c.x, c.y, c.z)
+            #expect(shader.contains(text), "\(text) not in Render.metal")
+        }
+        #expect(shader.contains(String(format: "markerOutline = %.2ff", ExplorerColours.markerOutlineScale)))
+    }
+
+    @Test("The explorer's charge marker stands apart from every colour it sits among")
+    func markerContrast() {
+        // The colours a building, the ground or the comparison can take, and the wave's ramp's stops.
+        let wave: [SIMD3<Float>] = [
+            SIMD3(0.05, 0.04, 0.22), SIMD3(0.30, 0.07, 0.50), SIMD3(0.67, 0.14, 0.42),
+            SIMD3(0.92, 0.33, 0.16), SIMD3(0.99, 0.68, 0.10), SIMD3(0.99, 0.98, 0.70),
+        ]
+        let ground = SIMD3<Float>(0.42, 0.43, 0.45)
+        let around =
+            ExplorerColours.warmRamp + wave
+            + [ExplorerColours.sameColour, ExplorerColours.betterColour, ExplorerColours.worseColour, ground]
+        for c in around {
+            // Unlit or in shade (the ball's light falls to 0.6), it stays apart.
+            #expect(simd_distance(ExplorerColours.marker, c) >= 0.4, "\(c)")
+            #expect(simd_distance(0.6 * ExplorerColours.marker, c) >= 0.25, "\(c)")
+        }
+        // The ring is dark against the ball: a contrast of 7 or more, as WCAG's AAA for text.
+        func luminance(_ c: SIMD3<Float>) -> Float { simd_dot(c, SIMD3(0.2126, 0.7152, 0.0722)) }
+        let ratio =
+            (luminance(ExplorerColours.marker) + 0.05) / (luminance(ExplorerColours.markerOutline) + 0.05)
+        #expect(ratio >= 7)
+        #expect(ExplorerColours.markerOutlineScale > 1.2)
     }
 
     @Test("Written as a map, it reads back as the same buildings")

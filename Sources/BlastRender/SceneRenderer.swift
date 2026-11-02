@@ -158,6 +158,10 @@ public struct RenderSettings: Sendable, Hashable {
     public var showCharge = true
     /// The charge marker's radius, m: small in a run's scene, larger over the explorer's districts.
     public var chargeMarkerRadius: Float = 0.45
+    /// The explorer's marker: a bright aqua ball in a dark ring, left unpainted by the live wave, so
+    /// that it stands apart from the warm scale's reds and the wave's colours (`ExplorerColours.marker`);
+    /// the workbench's is a red ball under the wave.
+    public var chargeMarkerOutlined = false
     /// Where to draw the charge, when it is not where the loaded scene has it: being dragged.
     public var chargeAt: SIMD3<Float>?
     /// Fragments in flight and where they landed, and tracers, when a run flies them.
@@ -218,6 +222,8 @@ private struct LiveWaveUniforms {
     var clip: SIMD4<Float>
     var plan: SIMD4<Float>
     var scale: SIMD4<Float>
+    /// The explorer's charge marker and its outer radius, which the wave leaves unpainted; zero w paints over.
+    var marker: SIMD4<Float>
 }
 
 /// A crater as the view shades it into the ground: its centre in the plane, the apparent crater's
@@ -788,7 +794,8 @@ public final class SceneRenderer {
             counts: SIMD4(
                 Float(boxCount), Float(gaugeCount), settings.showCharge ? settings.chargeMarkerRadius : 0,
                 settings.waveScale * kiloPascal),
-            charge: SIMD4(settings.chargeAt ?? scenario.charge.position, 0),
+            charge: SIMD4(
+                settings.chargeAt ?? scenario.charge.position, settings.chargeMarkerOutlined ? 1 : 0),
             sun: sun,
             clip: SIMD4(Self.nearPlane, Self.farPlane, 0, 0),
             highlightLow: SIMD4(settings.highlight?.min ?? .zero, settings.highlight == nil ? 0 : 1),
@@ -1035,7 +1042,11 @@ public final class SceneRenderer {
                 clip: uniforms.clip, plan: SIMD4(liveWavePlan.x, liveWavePlan.y, wave.time, wave.opacity),
                 scale: SIMD4(
                     top, log10(top / LiveWaveDisplay.scaleBottom), Float(liveWaveTexture.width),
-                    Float(liveWaveTexture.height)))
+                    Float(liveWaveTexture.height)),
+                marker: SIMD4(
+                    uniforms.charge.x, uniforms.charge.y, uniforms.charge.z,
+                    settings.chargeMarkerOutlined && settings.showCharge
+                        ? ExplorerColours.markerOutlineScale * settings.chargeMarkerRadius : 0))
             encoder.setRenderPipelineState(liveWavePipeline)
             encoder.setFragmentBytes(&live, length: MemoryLayout<LiveWaveUniforms>.stride, index: 0)
             encoder.setFragmentTexture(depthTarget, index: 0)

@@ -329,6 +329,14 @@ public enum ExplorerColours {
     ]
     public static let warmOffset = 4096
 
+    /// The charge's marker in the explorer: a bright aqua ball, far from the warm scale's reds and
+    /// neutrals, the blue for better and the wave's colours, in a dark ring `markerOutlineScale` times
+    /// its radius, so that it reads over a pale building, a dark-red one, the ground and the wave alike
+    /// (Render.metal; a test keeps the two the same).
+    public static let marker = SIMD3<Float>(0.100, 1.000, 0.850)
+    public static let markerOutline = SIMD3<Float>(0.040, 0.050, 0.070)
+    public static let markerOutlineScale: Float = 1.35
+
     /// A chance code (`EnvelopeChanceColour.code`) on the warm scale; any other code as it is.
     public static func warm(_ code: Int) -> Int {
         code >= EnvelopeChanceColour.first && code < EnvelopeChanceColour.first + warmOffset

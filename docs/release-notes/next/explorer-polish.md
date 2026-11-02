@@ -6,3 +6,5 @@ the wave worked out on coarser cells while dragging and in full on let-go. The e
 glass, walls, people and fire on a warm scale from pale to a loud dark red, with a plain legend under
 each layer, so the worst-hit buildings no longer look untouched; the workbench's colours are
 unchanged ([the explorer's polish](../../explorer.md#polish-beirut-at-30-frames-a-second-a-warm-scale-the-new-weights-2-november-2026)).
+The charge's marker in the explorer is now a bright aqua ball in a dark ring, left clear of the
+wave, so it stands out among the red buildings.

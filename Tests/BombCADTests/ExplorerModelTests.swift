@@ -45,6 +45,7 @@ struct ExplorerModelTests {
 
         // No solver here: the air's starting ball is not drawn, and the charge's marker is large enough to see.
         #expect(!model.renderSettings.showWave && model.renderSettings.chargeMarkerRadius > 1)
+        #expect(model.renderSettings.chargeMarkerOutlined)
         // The layers: the wave on plain buildings, the glass by the explorer's own score, the wave
         // then not drawn over it.
         #expect(!model.showsEnvelopeDamage && model.explorerColouring == nil && !model.explorerHidesLiveWave)

@@ -245,9 +245,10 @@ final class ExplorerModel {
         origin = charge
         let size = model.settings.scenario.domainSize
         // No solver here: the air's starting ball of hot gas is not drawn, and the charge's marker is
-        // sized to be seen over a district.
+        // sized to be seen over a district, in colours apart from the warm scale's and the wave's.
         model.renderSettings.showWave = false
         model.renderSettings.chargeMarkerRadius = max(1.5, 0.004 * max(size.x, size.y))
+        model.renderSettings.chargeMarkerOutlined = true
         if let opening = scene.opening { AccessibilityNotification.Announcement(opening).post() }
         model.camera = OrbitCamera(
             target: SIMD3(charge.x, charge.y, 0), distance: 0.7 * max(size.x, size.y), azimuth: -1.9,

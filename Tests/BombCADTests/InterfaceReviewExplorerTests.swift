@@ -50,10 +50,12 @@ struct InterfaceReviewExplorerTests {
         return frame.gpuSeconds
     }
 
-    /// The view written to `stage3/name.png` under the review folder.
-    private func stage3(_ model: SimulationModel, camera: OrbitCamera, _ name: String) throws {
+    /// The view written to `folder/name.png` under the review folder.
+    private func capture(_ model: SimulationModel, camera: OrbitCamera, in path: String, _ name: String)
+        throws
+    {
         let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
-        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: "stage3")
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: path)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let renderer = try #require(model.renderer)
         let queue = try #require(model.commandQueue)
@@ -73,6 +75,11 @@ struct InterfaceReviewExplorerTests {
         let rep = NSBitmapImageRep(cgImage: frame.image)
         try #require(rep.representation(using: .png, properties: [:])).write(
             to: folder.appending(path: "\(name).png"))
+    }
+
+    /// The view written to `stage3/name.png` under the review folder.
+    private func stage3(_ model: SimulationModel, camera: OrbitCamera, _ name: String) throws {
+        try capture(model, camera: camera, in: "stage3", name)
     }
 
     private func stage3Sidebar(_ explorer: ExplorerModel, _ name: String, height: CGFloat = 1500) throws {
@@ -192,29 +199,9 @@ struct InterfaceReviewExplorerTests {
         explorer.close()
     }
 
-    /// The view written to `polish/name.png` under the review folder.
+    /// The view written to `polish/after/name.png` under the review folder.
     private func polish(_ model: SimulationModel, camera: OrbitCamera, _ name: String) throws {
-        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
-        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: "polish/after")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let renderer = try #require(model.renderer)
-        let queue = try #require(model.commandQueue)
-        var settings = model.renderSettings
-        settings.showCharge = true
-        settings.chargeAt = model.settings.chargePosition
-        settings.liveWave =
-            model.drawsLiveWave && !model.explorerHidesLiveWave
-            ? LiveWaveDisplay(time: Float(model.liveWaveTime)) : nil
-        renderer.settings = settings
-        renderer.setLiveWave(model.liveWave)
-        renderer.setLines(model.explorerLines)
-        model.applyEnvelopeDamageColours()
-        renderer.pixelsPerPoint = 2
-        let frame = try #require(
-            renderer.snapshot(commandQueue: queue, width: 1800, height: 1200, camera: camera))
-        let rep = NSBitmapImageRep(cgImage: frame.image)
-        try #require(rep.representation(using: .png, properties: [:])).write(
-            to: folder.appending(path: "\(name).png"))
+        try capture(model, camera: camera, in: "polish/after", name)
     }
 
     private func polishSidebar(_ explorer: ExplorerModel, _ name: String) throws {
@@ -318,6 +305,31 @@ struct InterfaceReviewExplorerTests {
         try await settle(model)
         try polish(model, camera: camera(model, share: 0.5), "beirut-glass")
         explorer.close()
+    }
+
+    @Test("Capture the charge's marker on the square and the street, over the glass and the wave")
+    func marker() async throws {
+        let model = SimulationModel(document: ProjectDocument.newProject())
+        try await settle(model)
+        model.liveWaveLearned = ProcessInfo.processInfo.environment[LiveWave.Refinement.environmentKey] != nil
+        let explorer = ExplorerModel(model: model)
+        explorer.reduceMotion = true
+        for scene in [ExplorerScene.square, .street] {
+            await explorer.open(scene)
+            try await settle(model)
+            #expect(model.renderSettings.chargeMarkerOutlined)
+            model.scrubLiveWave(to: 0.35 * model.liveWaveEnd)
+            try capture(model, camera: camera(model), in: "marker", "\(scene.rawValue)-wave-035")
+            try capture(
+                model, camera: camera(model, share: 0.12), in: "marker", "\(scene.rawValue)-wave-035-close")
+            explorer.layer = .glass
+            try await settle(model)
+            try capture(model, camera: camera(model), in: "marker", "\(scene.rawValue)-glass")
+            try capture(
+                model, camera: camera(model, share: 0.12), in: "marker", "\(scene.rawValue)-glass-close")
+            explorer.close()
+        }
+        #expect(!model.renderSettings.chargeMarkerOutlined)
     }
 
     private func settle(_ model: SimulationModel) async throws {

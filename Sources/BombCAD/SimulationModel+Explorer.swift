@@ -19,6 +19,7 @@ extension SimulationModel {
         explorerHidesLiveWave = false
         explorerLines = []
         explorerWarmRamp = false
+        renderSettings.chargeMarkerOutlined = false
         previewsWhileDragging = true
         liveWaveDragCoarsening = 2
         liveWaveDragRefines = true
