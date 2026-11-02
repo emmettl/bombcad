@@ -276,9 +276,10 @@ struct FacadeLoadSurrogateTests {
         typealias S = FacadeLoadSurrogate
         // Adopted on 25 October 2026 (emmettl/bombcad-work#99, then #105) and 28 October (#109):
         // the defaults are the deep-city-outline set's, the clear-top set with far terms refitted
-        // with each wall facing as its map outline, and its scatter refitted with it.
-        #expect(S.TermSet.adopted == .deepCityOutline)
-        #expect(S.Coefficients.adopted == .deepCityOutline)
+        // with each wall facing as its map outline, and its scatter refitted with it; since 3 November
+        // (#117) with a barrier wall's own shelter, which changes nothing without a barrier.
+        #expect(S.TermSet.adopted == .deepCityOutlineBarriers)
+        #expect(S.Coefficients.adopted == .deepCityOutlineBarriers)
         #expect(S.Uncertainty().loadScatter == S.Uncertainty.outlineLeaveOneOut)
         #expect(S.Uncertainty.adoptedLoadScatter == S.Uncertainty.outlineLeaveOneOut)
         #expect(S.TermSet.deepCity.loadScatter == S.Uncertainty.clearTopLeaveOneOut)
@@ -312,12 +313,12 @@ struct FacadeLoadSurrogateTests {
         // Its pulse rises over about a third of its length, as the runs' do.
         #expect(adopted.riseShare > 0.2 && adopted.riseShare < 0.45, "\(adopted.riseShare)")
         // The benches' names for them.
-        #expect(try SurrogateBench.termSet([]) == .deepCityOutline)
+        #expect(try SurrogateBench.termSet([]) == .deepCityOutlineBarriers)
         #expect(try SurrogateBench.termSet(["--terms", "deep-city"]) == .deepCity)
         #expect(try SurrogateBench.termSet(["--terms", "clear-top"]) == .clearTop)
         #expect(try SurrogateBench.termSet(["--terms", "fitted"]) == .fitted)
         #expect(throws: (any Error).self) { try SurrogateBench.termSet(["--terms", "drained"]) }
-        #expect(try SurrogateBench.coefficients([]) == .deepCityOutline)
+        #expect(try SurrogateBench.coefficients([]) == .deepCityOutlineBarriers)
         #expect(try SurrogateBench.coefficients(["--terms", "clear-top"]) == clear)
         #expect(try SurrogateBench.coefficients(["--terms", "fitted"]) == .fitted)
         #expect(try SurrogateBench.loadScatter(["--terms", "fitted"]) == S.Uncertainty.leaveOneOut)

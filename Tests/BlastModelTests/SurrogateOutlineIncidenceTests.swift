@@ -108,7 +108,7 @@ struct SurrogateOutlineIncidenceTests {
     @Test("The outline sets are named, the default since 28 October, and save with their facing")
     func namedSets() throws {
         // Adopted on 28 October 2026 (emmettl/bombcad-work#109), the front not.
-        #expect(S.TermSet.adopted == .deepCityOutline && S.Coefficients.adopted.incidence == .outline)
+        #expect(S.TermSet.adopted == .deepCityOutlineBarriers && S.Coefficients.adopted.incidence == .outline)
         #expect(S.Coefficients.adopted.glassFront == nil)
         #expect(SurrogateBench.incidence([]) == .outline)
         #expect(S.Coefficients.deepCity.facing == nil)
