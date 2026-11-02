@@ -87,6 +87,7 @@ struct EnvelopeDamageSection: View {
                         "For Quick Estimate's glass chances: the charge's yield within this factor either way, nine times in ten."
                     )
                 }
+                WhatIfControls(model: model)
                 if model.envelopeDamageIsEstimate || model.isRefiningCloseCalls
                     || !model.closeCallStatus.isEmpty
                 {
@@ -808,5 +809,65 @@ private struct CloseCallsRow: View {
             Text(model.closeCallStatus).font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+/// What if every building were built otherwise (emmettl/bombcad-work#113): its glass, its walls and
+/// its roof, for the quick estimate alone. Each choice re-colours the view at once through the
+/// learned response, then the full estimate follows; the project itself is not changed.
+struct WhatIfControls: View {
+    let model: SimulationModel
+    @State private var isExpanded: Bool
+
+    init(model: SimulationModel, isExpanded: Bool = false) {
+        self.model = model
+        _isExpanded = State(initialValue: isExpanded)
+    }
+
+    var body: some View {
+        let whatIf = model.quickEstimateWhatIf
+        DisclosureGroup("What if every building", isExpanded: $isExpanded) {
+            Picker(
+                "Glass",
+                selection: Binding(
+                    get: { LiveResponse.Glass.offered.firstIndex { $0.glass == whatIf.glass } ?? -1 },
+                    set: { index in
+                        model.quickEstimateWhatIf.glass =
+                            LiveResponse.Glass.offered.indices.contains(index)
+                            ? LiveResponse.Glass.offered[index].glass : nil
+                    })
+            ) {
+                Text("As built").tag(-1)
+                ForEach(LiveResponse.Glass.offered.indices, id: \.self) {
+                    Text(LiveResponse.Glass.offered[$0].name).tag($0)
+                }
+            }
+            .help("For Quick Estimate: every building's windows of this glass, in their panes and their mix.")
+            Picker(
+                "Walls",
+                selection: Binding(
+                    get: { whatIf.walls }, set: { model.quickEstimateWhatIf.walls = $0 })
+            ) {
+                Text("As built").tag(EnvelopeConstruction.Kind?.none)
+                ForEach(LiveResponse.WhatIf.wallKinds, id: \.self) { Text($0.label).tag(Optional($0)) }
+            }
+            .help("For Quick Estimate: every building's walls of this, at its usual thickness.")
+            Picker(
+                "Roof",
+                selection: Binding(
+                    get: { whatIf.roof }, set: { model.quickEstimateWhatIf.roof = $0 })
+            ) {
+                Text("As built").tag(EnvelopeConstruction.Kind?.none)
+                ForEach(LiveResponse.WhatIf.roofKinds, id: \.self) { Text($0.label).tag(Optional($0)) }
+            }
+            .help("For Quick Estimate: every building's roof of this, at its usual thickness.")
+            if !whatIf.isEmpty {
+                Text("What if: \(whatIf.label). For the quick estimate only; the project is unchanged.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Button("Back to as built") { model.quickEstimateWhatIf = LiveResponse.WhatIf() }
+                    .controlSize(.small)
+            }
+        }
+        .font(.callout)
     }
 }

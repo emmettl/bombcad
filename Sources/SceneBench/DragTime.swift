@@ -18,9 +18,12 @@ enum DragTime {
     static func run(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
-        let reference = try SurrogateBench.Reference(args)
-        let scene = reference.scene
-        let dx = reference.cellSize
+        // Beirut with its run's loads, or a made-up district from its map; with `--what-if`, every
+        // building built so (emmettl/bombcad-work#113).
+        let (district, dx) = try ResponseData.district(args)
+        let whatIf = try ResponseData.whatIf(args)
+        let scene = whatIf.applied(to: district)
+        if !whatIf.isEmpty { print("What if: \(whatIf.label)") }
         let moves = (value("moves") ?? "0,20,50").split(separator: ",").compactMap { Float($0) }
         let drawList = (value("draws") ?? "100,20").split(separator: ",").compactMap { Int($0) }
         let mass = Double(scene.charge.mass)
@@ -29,7 +32,9 @@ enum DragTime {
         let coefficients = terms.coefficients
         func uncertainty(_ samples: Int) -> FacadeLoadSurrogate.Uncertainty {
             FacadeLoadSurrogate.Uncertainty(
-                yieldLogSD: log(1.5) / 1.645, loadScatter: terms.loadScatter, samples: samples)
+                yieldLogSD: log(value("yield-within").flatMap(Double.init) ?? 1.5) / 1.645,
+                loadScatter: terms.loadScatter,
+                samples: samples)
         }
         func seconds(_ start: ContinuousClock.Instant) -> Double { DistrictBenchmark.seconds(start) }
 
@@ -281,6 +286,57 @@ enum DragTime {
                     .joined(separator: ", ") as NSString))
         }
 
+        // `--slide 300000,350000,…` (kg) and `--slide-what-ifs "glass=toughened;glass=laminated;…"`
+        // (`--what-if`'s, as built for an empty one): a slider moved, the charge where it is, frame by
+        // frame through the learned response, each what-if laid on the district first, as the app
+        // lays it on (emmettl/bombcad-work#113).
+        if let live, value("slide") != nil || value("slide-what-ifs") != nil {
+            var frames: [(label: String, mass: Double, whatIf: LiveResponse.WhatIf)] = []
+            for kg in (value("slide") ?? "").split(separator: ",").compactMap({ Double($0) }) {
+                frames.append(("\(Int(kg)) kg", kg, whatIf))
+            }
+            for text in (value("slide-what-ifs") ?? "").split(
+                separator: ";", omittingEmptySubsequences: false)
+            where value("slide-what-ifs") != nil {
+                let each = text.isEmpty ? LiveResponse.WhatIf() : try ResponseData.whatIf(text: String(text))
+                frames.append((each.label, mass, each))
+            }
+            var slideUncertainty = uncertainty(previewDraws)
+            slideUncertainty.stratified = true
+            let parts: FacadeLoadSurrogate.Prepared.Parts =
+                switch value("parts") {
+                case "damage": .damage
+                case "glass": .glass
+                case "structure": .structure
+                default: .all
+                }
+            var sliding = prepared
+            var shown = whatIf
+            for frame in frames {
+                let clock = ContinuousClock.now
+                if frame.whatIf != shown {
+                    sliding = sliding.withConstructions(of: frame.whatIf.applied(to: district))
+                    shown = frame.whatIf
+                }
+                let laidS = seconds(clock)
+                guard
+                    let (look, stages) = try sliding.livePreview(
+                        charge: scene.charge.position, mass: frame.mass, uncertainty: slideUncertainty,
+                        parts: parts,
+                        terms: terms, model: live)
+                else { throw BlastError.allocationFailed("the live response cannot read \(frame.label)") }
+                print(
+                    String(
+                        format:
+                            "Slide frame, %@: what-if laid on %.4f, district %.4f, choice %.4f, loads %.4f, inputs %.4f, networks %.4f, answers %.4f s (GPU %.4f); %.4f s in all; %d damaged, %d sides blown out ≥ 0.5",
+                        frame.label as NSString, laidS, stages.district, stages.choice, stages.loads,
+                        stages.inputs,
+                        stages.networks, stages.answers, stages.gpu, seconds(clock),
+                        look.damage.filter { $0.structuralLevels.upperBound != .none }.count,
+                        look.glass.filter { $0.blownOut >= 0.5 }.count))
+            }
+        }
+
         // `--drag 0,10,20,…`: a drag, frame by frame, each a preview with the responses kept
         // from the frames before (the app's case), then the full look where it stops.
         if let dragText = value("drag") {
@@ -331,6 +387,28 @@ enum DragTime {
                             look.seconds.structure, look.totalSeconds, stages.district, stages.choice,
                             stages.loads,
                             stages.inputs, stages.networks, stages.answers, stages.gpu, seconds(clock)))
+                    // `--fire`: the fire after the blast drawn on the frame's glass as the app's preview
+                    // draws it (40 draws, 20 fires at random within 1.5 km, the airport's wind, 12 h),
+                    // with `--wind` degrees to turn the wind frame by frame (emmettl/bombcad-work#113).
+                    if args.contains("--fire") {
+                        var fire = FireSpread.LayerSettings()
+                        fire.randomCount = 20
+                        let turn = value("wind").flatMap(Double.init) ?? 0
+                        fire.wind = FireSpread.Wind(
+                            speedMS: 5.7,
+                            fromDegrees: (240 + turn * Double(step)).truncatingRemainder(dividingBy: 360))
+                        var moved = scene
+                        moved.charge.position = charge
+                        let fireClock = ContinuousClock.now
+                        let layer = FireSpread.layer(
+                            scene: moved, source: .estimate(glass: look.glass, structure: look.structure),
+                            settings: fire,
+                            members: 40, preview: true)
+                        print(
+                            String(
+                                format: "  fire, 40 draws: %.4f s, %d buildings", seconds(fireClock),
+                                layer?.ids.count ?? 0))
+                    }
                     continue
                 }
                 let look = dragged.look(

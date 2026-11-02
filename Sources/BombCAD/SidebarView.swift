@@ -409,7 +409,11 @@ struct SidebarView: View {
                     get: { log10(Double(model.settings.chargeMass)) },
                     set: { model.settings.chargeMass = SimulationSettings.roundedMass(pow(10, $0)) }),
                 range: 0...7,
-                text: SimulationSettings.massText(model.settings.chargeMass))
+                text: SimulationSettings.massText(model.settings.chargeMass),
+                // With a quick estimate on screen, it follows the size live while the slider is held.
+                onEditingChanged: { editing in
+                    if editing { model.beginAdjustingEstimate() } else { model.endAdjustingEstimate() }
+                })
             Toggle("Afterburning and hot air", isOn: $model.settings.detailedCharge)
                 .help(
                     "Burns the charge's products in the air they mix with, and lets hot air store energy "
@@ -623,6 +627,9 @@ struct LabeledSlider: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
     let text: String
+    /// Told when the slider is taken hold of (true) and let go (false), for a control the quick
+    /// estimate follows live.
+    var onEditingChanged: (Bool) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -634,7 +641,7 @@ struct LabeledSlider: View {
                     .foregroundStyle(.secondary)
             }
             // Read as its title and the value shown above it, "TNT, 50 kg", not the slider's own number.
-            Slider(value: $value, in: range) { Text(title) }
+            Slider(value: $value, in: range, onEditingChanged: onEditingChanged) { Text(title) }
                 .labelsHidden()
                 .accessibilityValue(text)
         }

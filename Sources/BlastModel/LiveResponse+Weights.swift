@@ -24,9 +24,10 @@ extension LiveResponse {
             public var version: Int
             /// How the tensors are stored: "float16" or "float32" (nil, float32).
             public var dtype: String?
-            /// The constructions (`LiveResponse.signature`) and glazing mixes the networks know.
-            public var signatures: [String]
-            public var mixes: [String]
+            /// The widths of a construction's and a glazing mix's inputs (`LiveResponse.constructionWidth`,
+            /// `glazingWidth`): what the networks read of what a building is built of.
+            public var constructionWidth: Int
+            public var glazingWidth: Int
             public var slopeStep: Double
             public var sideStrips: Int
             public var buildingWalls: Int
@@ -53,7 +54,7 @@ extension LiveResponse {
                     Int(UInt32(littleEndian: $0.loadUnaligned(fromByteOffset: at, as: UInt32.self)))
                 }
             }
-            guard u32(4) == 1 else { throw fail("version \(u32(4)), not 1") }
+            guard u32(4) == 2 else { throw fail("version \(u32(4)), not 2") }
             let length = u32(8)
             guard data.count >= 12 + length else { throw fail("a header longer than the file") }
             header = try JSONDecoder().decode(Header.self, from: data.subdata(in: 12..<(12 + length)))
@@ -80,7 +81,9 @@ extension LiveResponse {
             }
             guard header.format == "bclr", header.slopeStep == LiveResponse.slopeStep,
                 header.sideStrips == LiveResponse.sideStrips,
-                header.buildingWalls == LiveResponse.buildingWalls
+                header.buildingWalls == LiveResponse.buildingWalls,
+                header.constructionWidth == LiveResponse.constructionWidth,
+                header.glazingWidth == LiveResponse.glazingWidth
             else { throw fail("weights for other inputs") }
             for name in ["component", "side", "building"] {
                 guard let network = header.networks[name], let last = network.layers.last,
@@ -147,10 +150,12 @@ extension LiveResponse {
             return low == high ? "\(low)%" : "\(low)–\(high)%"
         }
         return [
-            "Small networks trained on Beirut's district stand in for the preview's SDOF and draws: against the full "
+            "Small networks trained on Beirut's district and four made-up ones, over the envelope model's walls, "
+                + "roofs and glass, stand in for the preview's SDOF and draws: against the full "
                 + "estimate on Beirut at 0.5 kt, the glass blown out came within 0.1 on \(percent(glass, 0)) of sides, "
                 + "the walls' and roofs' chances on \(percent(walls, 1)) of buildings, and the damage's colour was the "
-                + "same for \(percent(damage, 1)) of buildings. Illustrative elsewhere."
+                + "same for \(percent(damage, 1)) of buildings. On a made-up district they never saw, every chance as "
+                + "close, the damage colour a point or so less (docs/learned-models.md, \"Instant what-ifs\")."
         ]
     }()
 }

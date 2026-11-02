@@ -7,9 +7,10 @@ import simd
 /// (peak, impulse, rise, and how they move with the yield) and its construction they give what the
 /// preview shows: each component's damage level, each glazed side's glass chances, and each
 /// building's walls' and roof's chances. They were trained on the CPU code they stand in for
-/// (`scenebench response-data`, `Scripts/ml/train_response.py`), run over Beirut's district at
-/// sampled charges, yields and yield spreads; the full estimate, once the charge is let go, stays
-/// the referee.
+/// (`scenebench response-data`, `Scripts/ml/train_response.py`), run over Beirut's district and
+/// made-up ones at sampled charges, yields and yield spreads, each building built as drawn over the
+/// envelope model's walls, roofs and glass (`LiveResponse.recipe`; emmettl/bombcad-work#113); the
+/// full estimate, once the charge is let go, stays the referee.
 ///
 /// The inputs are laid out here, by the same code the training data was made with, so that the
 /// networks are always fed as they were trained.
@@ -23,34 +24,6 @@ public enum LiveResponse {
     /// the walls least loaded are left out.
     public static let sideStrips = 4
     public static let buildingWalls = 8
-
-    /// A construction's kind, as one of the networks' inputs.
-    static let kinds: [EnvelopeConstruction.Kind] = [
-        .reinforcedConcrete, .reinforcedBlockwork, .unreinforcedMasonry, .profiledSteelSheeting,
-        .crossLaminatedTimber,
-    ]
-
-    /// What a construction is, for the networks: everything about it but its building and where it
-    /// came from. Two buildings built alike have the same signature; the networks know only the
-    /// signatures they were trained on (`Weights.signatures`), and a district with any other is left
-    /// to the CPU path.
-    public static func signature(_ construction: EnvelopeConstruction) -> String {
-        var c = construction
-        c.objectID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
-        c.source = .assumed
-        c.detail = ""
-        c.use = nil
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        return (try? encoder.encode(c)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
-    }
-
-    /// A glazing mix's signature (its panes, glass and condition), for the glass network.
-    public static func signature(_ mix: GlazingMix) -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        return (try? encoder.encode(mix)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
-    }
 
     /// A component's load as the networks read it: its predicted peak, impulse and rise at the
     /// charge's yield, and how its log peak and log impulse move with the log of the yield.
@@ -144,48 +117,6 @@ public enum LiveResponse {
     /// The width of `shape`.
     static let shapeWidth = 5 + 5 + 4 + 4
 
-    /// The inputs of the component network, which gives a component's damage level and whether its
-    /// glass breaks, at the charge's yield: its load as the estimate predicts it, its construction's
-    /// signature (of `signatures`) and its shape.
-    public static func componentInputs(
-        load: Load, component: EnvelopeComponent, signature: Int, signatures: Int, buildingTop: Double,
-        buildingBase: Double
-    ) -> [Float] {
-        [Float(load.log10Peak), Float(load.log10Impulse), Float(load.rise)]
-            + oneHot(signature, signatures)
-            + shape(component, buildingTop: buildingTop, buildingBase: buildingBase)
-    }
-
-    /// The inputs of the glass network, which gives a glazed side's chances: up to `sideStrips`
-    /// strips, largest first, each its load, its share of the side's area and its log scaled
-    /// distance; the side's area, its mix's signature (of `mixes`), and what the draws are taken
-    /// over (the yield's log-SD and the load scatter at the side's middle).
-    public static func sideInputs(
-        strips: [(load: Load, areaM2: Double, distanceM: Double)], mix: Int, mixes: Int, mass: Double,
-        uncertainty: FacadeLoadSurrogate.Uncertainty
-    ) -> [Float] {
-        let ordered = foldedStrips(strips)
-        let area = strips.reduce(0) { $0 + $1.areaM2 }
-        let root = cbrt(mass)
-        var values: [Float] = []
-        for n in 0..<sideStrips {
-            if n < ordered.count {
-                let s = ordered[n]
-                values +=
-                    s.load.values + [
-                        Float(s.areaM2 / max(area, 1e-9)), Float(log(max(s.distanceM / root, 1e-3))), 1,
-                    ]
-            } else {
-                values += [Float](repeating: 0, count: 9)
-            }
-        }
-        let middle = strips.map(\.distanceM).sorted()[strips.count / 2]
-        values += [Float(log10(max(area, 1e-3))), Float(uncertainty.yieldLogSD)]
-        values += scatter(uncertainty, atZ: middle / root)
-        values += oneHot(mix, mixes)
-        return values
-    }
-
     /// A side's strips, largest first, at most `sideStrips`: the rest's area added to the last kept.
     static func foldedStrips(_ strips: [(load: Load, areaM2: Double, distanceM: Double)]) -> [(
         load: Load, areaM2: Double, distanceM: Double
@@ -199,35 +130,7 @@ public enum LiveResponse {
         return ordered
     }
 
-    /// The inputs of the walls network, which gives a building's chances that its walls are damaged
-    /// moderately or worse and heavily or worse, and its roof moderately or worse: up to
-    /// `buildingWalls` of its walls and façade strips, most loaded first, each its load as the walls'
-    /// chances predict it, its side, its shape and its log scaled distance; its roof's likewise (none
-    /// for a building without one in the preview); its construction's signature, and what the draws
-    /// are taken over.
-    public static func buildingInputs(
-        walls: [(load: Load, component: EnvelopeComponent, distanceM: Double)],
-        roof: (load: Load, component: EnvelopeComponent, distanceM: Double)?, signature: Int, signatures: Int,
-        buildingTop: Double, buildingBase: Double, mass: Double, uncertainty: FacadeLoadSurrogate.Uncertainty
-    ) -> [Float] {
-        let root = cbrt(mass)
-        func slot(_ item: (load: Load, component: EnvelopeComponent, distanceM: Double)?) -> [Float] {
-            guard let item else { return [Float](repeating: 0, count: slotWidth) }
-            let z = item.distanceM / root
-            let side = item.component.axis * 2 + (item.component.outward > 0 ? 1 : 0)
-            return item.load.values + [Float(log(max(z, 1e-3))), 1] + scatter(uncertainty, atZ: z)
-                + oneHot(side, 6)
-                + shape(item.component, buildingTop: buildingTop, buildingBase: buildingBase)
-        }
-        let ordered = orderedWalls(walls)
-        var values: [Float] = []
-        for n in 0..<buildingWalls { values += slot(n < ordered.count ? ordered[n] : nil) }
-        values += slot(roof)
-        values += [Float(uncertainty.yieldLogSD)] + oneHot(signature, signatures)
-        return values
-    }
-
-    /// One slot of `buildingInputs`'s width.
+    /// One slot of a building row's width (`writeBuilding`).
     static let slotWidth = 6 + 2 + 3 + 6 + shapeWidth
 
     /// A building's walls, most loaded first (by log peak plus log impulse), at most `buildingWalls`.
@@ -271,21 +174,21 @@ extension LiveResponse {
     /// for a charge of `mass` kg, their loads predicted here on the CPU: its components' loads under
     /// `coefficients` (a roof's under `roofCoefficients`), the walls' as their chances take them
     /// (`Coefficients.forStructures`), the glass's as the glass's (`Coefficients.forGlass`), each with
-    /// its slope over the yield; the draws over `uncertainty`'s yield spread and load scatter. The
-    /// networks know `signatures` constructions and `mixes` glazing mixes; `signature` gives a
-    /// building's construction's of them, `mix` a side's mix's (nil for one they do not know).
+    /// its slope over the yield; the draws over `uncertainty`'s yield spread and load scatter. `construction` gives a
+    /// building's construction as the networks read it (`constructionFeatures`), `glazing` a side's
+    /// mix (`glazingFeatures`): nil for one they do not know.
     public static func batch(
         estimate: FacadeLoadSurrogate.Estimate, sides: [FacadeLoadSurrogate.GlassSideStrips], mass: Double,
         cellSize: Float, coefficients: FacadeLoadSurrogate.Coefficients,
         roofCoefficients: FacadeLoadSurrogate.Coefficients?, uncertainty: FacadeLoadSurrogate.Uncertainty,
-        signatures: Int, mixes: Int, signature: (UUID) -> Int?,
-        mix: (FacadeLoadSurrogate.GlassSideStrips) -> Int?
+        construction: (UUID) -> [Float]?, glazing: (FacadeLoadSurrogate.GlassSideStrips) -> [Float]?
     ) -> Batch {
         let dx = Double(cellSize)
         let stepped = mass * exp(slopeStep)
         return batch(
-            estimate: estimate, sides: sides, mass: mass, uncertainty: uncertainty, signatures: signatures,
-            mixes: mixes, signature: signature, mix: mix,
+            estimate: estimate, sides: sides, mass: mass, uncertainty: uncertainty,
+            construction: construction,
+            glazing: glazing,
             componentLoads: { k in
                 let component = estimate.components[k]
                 let f = estimate.features[k]
@@ -327,8 +230,8 @@ extension LiveResponse {
     /// (`LiveResponse.Engine`).
     public static func batch(
         estimate: FacadeLoadSurrogate.Estimate, sides: [FacadeLoadSurrogate.GlassSideStrips], mass: Double,
-        uncertainty: FacadeLoadSurrogate.Uncertainty, signatures: Int, mixes: Int, signature: (UUID) -> Int?,
-        mix: (FacadeLoadSurrogate.GlassSideStrips) -> Int?,
+        uncertainty: FacadeLoadSurrogate.Uncertainty, construction: (UUID) -> [Float]?,
+        glazing: (FacadeLoadSurrogate.GlassSideStrips) -> [Float]?,
         componentLoads: (Int) -> (damage: Load, walls: Load?),
         stripLoad: (Int, Int) -> Load
     ) -> Batch {
@@ -341,17 +244,17 @@ extension LiveResponse {
         let owners = byOwner.keys.sorted { $0.uuidString < $1.uuidString }
         var top: [UUID: Double] = [:]
         var base: [UUID: Double] = [:]
-        var signatureOf: [UUID: Int] = [:]
+        var signatureOf: [UUID: [Float]] = [:]
         var unknown = 0
         for owner in owners {
             let mine = byOwner[owner]!
             top[owner] = mine.map { Double(estimate.components[$0].region.max.z) }.max()
             base[owner] = mine.map { Double(estimate.components[$0].region.min.z) }.min()
-            if let n = signature(owner) { signatureOf[owner] = n } else { unknown += 1 }
+            if let n = construction(owner) { signatureOf[owner] = n } else { unknown += 1 }
         }
         var batch = Batch()
         batch.unknown = unknown
-        let cw = 3 + signatures + shapeWidth
+        let cw = 3 + constructionWidth + shapeWidth
         batch.componentWidth = cw
         let count = estimate.components.count
         var rows = [Float](repeating: 0, count: count * cw)
@@ -365,8 +268,8 @@ extension LiveResponse {
                     let owner = component.owner
                     var at = k * cw
                     (out[at], out[at + 1], out[at + 2]) = quantized(load)
-                    if let n = signatureOf[owner], n < signatures { out[at + 3 + n] = 1 }
-                    at += 3 + signatures
+                    if let n = signatureOf[owner] { for (j, v) in n.enumerated() { out[at + 3 + j] = v } }
+                    at += 3 + constructionWidth
                     writeShape(
                         component, buildingTop: top[owner] ?? 0, buildingBase: base[owner] ?? 0, into: out,
                         at: at)
@@ -377,7 +280,7 @@ extension LiveResponse {
         batch.components = rows
 
         // The buildings: their walls and roof.
-        let bw = slotWidth * (buildingWalls + 1) + 1 + signatures
+        let bw = slotWidth * (buildingWalls + 1) + 1 + constructionWidth
         batch.buildingWidth = bw
         var buildingRows = [Float](repeating: 0, count: owners.count * bw)
         var hasRoof = [Bool](repeating: false, count: owners.count)
@@ -400,7 +303,7 @@ extension LiveResponse {
                             }
                         }
                         writeBuilding(
-                            walls: walls, roof: roof, signature: signatureOf[owner], signatures: signatures,
+                            walls: walls, roof: roof, construction: signatureOf[owner],
                             buildingTop: top[owner] ?? 0, buildingBase: base[owner] ?? 0, root: root,
                             uncertainty: uncertainty, into: out, at: b * bw)
                         roofs[b] = roof != nil
@@ -415,9 +318,9 @@ extension LiveResponse {
         batch.buildingHasWalls = hasWalls
 
         // The glazed sides.
-        let sw = 9 * sideStrips + 2 + 3 + mixes
+        let sw = 9 * sideStrips + 2 + 3 + glazingWidth
         batch.sideWidth = sw
-        let mixOf = sides.map(mix)
+        let mixOf = sides.map(glazing)
         batch.unknown += mixOf.filter { $0 == nil }.count
         var sideRows = [Float](repeating: 0, count: sides.count * sw)
         sideRows.withUnsafeMutableBufferPointer { out in
@@ -428,7 +331,7 @@ extension LiveResponse {
                     (stripLoad(s, t), side.strips[t].areaM2, side.strips[t].features.distanceM)
                 }
                 writeSide(
-                    strips, mix: mixOf[s], mixes: mixes, root: root, uncertainty: uncertainty, into: out,
+                    strips, glazing: mixOf[s], root: root, uncertainty: uncertainty, into: out,
                     at: s * sw)
             }
         }
@@ -439,7 +342,7 @@ extension LiveResponse {
     /// `shape` written into `out` from `at`.
     /// A glazed side's row of the glass network's inputs (`sideInputs`), written in place.
     static func writeSide(
-        _ strips: [(load: Load, areaM2: Double, distanceM: Double)], mix: Int?, mixes: Int, root: Double,
+        _ strips: [(load: Load, areaM2: Double, distanceM: Double)], glazing: [Float]?, root: Double,
         uncertainty: FacadeLoadSurrogate.Uncertainty, into out: UnsafeMutableBufferPointer<Float>,
         at start: Int
     ) {
@@ -472,14 +375,13 @@ extension LiveResponse {
             out[at + 2] = Float(sc.correlation)
         }
         at += 3
-        if let mix, mix < mixes { out[at + mix] = 1 }
+        if let glazing { for (j, v) in glazing.enumerated() { out[at + j] = v } }
     }
 
     /// A building's row of the walls network's inputs (`buildingInputs`), written in place.
     static func writeBuilding(
         walls: [(load: Load, component: EnvelopeComponent, distanceM: Double)],
-        roof: (load: Load, component: EnvelopeComponent, distanceM: Double)?, signature: Int?,
-        signatures: Int,
+        roof: (load: Load, component: EnvelopeComponent, distanceM: Double)?, construction: [Float]?,
         buildingTop: Double, buildingBase: Double, root: Double, uncertainty: FacadeLoadSurrogate.Uncertainty,
         into out: UnsafeMutableBufferPointer<Float>, at start: Int
     ) {
@@ -508,7 +410,7 @@ extension LiveResponse {
         if let roof { slot(roof, at: start + buildingWalls * slotWidth) }
         let tail = start + (buildingWalls + 1) * slotWidth
         out[tail] = Float(uncertainty.yieldLogSD)
-        if let signature, signature < signatures { out[tail + 1 + signature] = 1 }
+        if let construction { for (j, v) in construction.enumerated() { out[tail + 1 + j] = v } }
     }
 
     /// As `shape`, written in place without laying a load out (a live frame writes tens of thousands):

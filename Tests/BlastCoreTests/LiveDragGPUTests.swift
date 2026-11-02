@@ -79,12 +79,12 @@ struct LiveDragGPUTests {
         var data = Data("BCLR".utf8)
         // One network of each kind, of the widths the scene's rows take, from made-up weights.
         let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
-        let signatures = Array(Set(prepared.constructions.map(LiveResponse.signature))).sorted()
-        let mixes = Array(Set(prepared.mixes.compactMap { $0.map(LiveResponse.signature) })).sorted()
+
         let widths = [
-            "component": 3 + signatures.count + LiveResponse.shapeWidth,
-            "side": 9 * LiveResponse.sideStrips + 5 + mixes.count,
-            "building": LiveResponse.slotWidth * (LiveResponse.buildingWalls + 1) + 1 + signatures.count,
+            "component": 3 + LiveResponse.constructionWidth + LiveResponse.shapeWidth,
+            "side": 9 * LiveResponse.sideStrips + 5 + LiveResponse.glazingWidth,
+            "building": LiveResponse.slotWidth * (LiveResponse.buildingWalls + 1) + 1
+                + LiveResponse.constructionWidth,
         ]
         let outputs = ["component": 6, "side": 5, "building": 3]
         var values: [Float] = []
@@ -105,12 +105,13 @@ struct LiveDragGPUTests {
                 std: (0..<sizes[0]).map { 1 + Double($0 % 5) * 0.2 }, layers: layers, outputs: [])
         }
         let header = LiveResponse.Weights.Header(
-            format: "bclr", version: 1, signatures: signatures, mixes: mixes,
+            format: "bclr", version: 2, constructionWidth: LiveResponse.constructionWidth,
+            glazingWidth: LiveResponse.glazingWidth,
             slopeStep: LiveResponse.slopeStep,
             sideStrips: LiveResponse.sideStrips, buildingWalls: LiveResponse.buildingWalls, networks: networks
         )
         let text = try JSONEncoder().encode(header)
-        for word in [UInt32(1), UInt32(text.count)] {
+        for word in [UInt32(2), UInt32(text.count)] {
             withUnsafeBytes(of: word.littleEndian) { data.append(contentsOf: $0) }
         }
         data.append(text)

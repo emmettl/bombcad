@@ -81,15 +81,30 @@ extension SimulationModel {
     private func startWaitingLook() {
         guard !lookInFlight, let waiting = lookWaiting else { return }
         lookWaiting = nil
-        let scenario = settings.scenario
+        // The scene as the what-if builds it (emmettl/bombcad-work#113): a copy, the project unchanged.
+        let whatIf = quickEstimateWhatIf
+        var base = settings.scenario
+        base.charge.position = .zero
+        let scenario = whatIf.applied(to: settings.scenario)
         let cellSize = settings.resolution.cellSize
         // The district laid out once for every place of the charge: the scene without it.
         var layout = scenario
         layout.charge.position = .zero
         let incidence = surrogateTerms.coefficients.incidence
-        let known = preparedDistrict.flatMap {
-            $0.scene == layout && $0.cellSize == cellSize && $0.prepared.raster.incidence == incidence
-                ? $0.prepared : nil
+        // Laid out alike whatever its charge's size and its buildings' construction: a what-if or a
+        // new size takes the same layout, built anew (`withConstructions`), not laid out again.
+        func shape(_ scene: Scenario) -> Scenario {
+            var scene = scene
+            scene.envelopeConstructions = nil
+            scene.charge.mass = 1
+            return scene
+        }
+        let known = preparedDistrict.flatMap { district -> FacadeLoadSurrogate.Prepared? in
+            guard district.cellSize == cellSize, district.prepared.raster.incidence == incidence,
+                shape(district.scene) == shape(layout)
+            else { return nil }
+            return district.scene.envelopeConstructions == layout.envelopeConstructions
+                ? district.prepared : district.prepared.withConstructions(of: layout)
         }
         let parts: FacadeLoadSurrogate.Prepared.Parts = waiting.preview ? previewParts : .all
         let within = quickEstimateYieldWithin
@@ -207,20 +222,54 @@ extension SimulationModel {
                             : "Learned field model's peak at %d ground-floor façade strips, in %.2f s; roofs, upper storeys and the impulse from the surrogate.",
                         look.learnedStrips, look.learnedSeconds)
             self.estimatingEnvelopeDamage = self.lookWaiting != nil
-            // Shown only for the scene as it is now, before any run.
+            // Shown only for the scene as it is now, and the what-if, before any run.
             var now = self.settings.scenario
             now.charge.position = .zero
-            if now == layout, self.settings.chargePosition == look.charge, self.stepCount == 0,
+            if now == base, self.quickEstimateWhatIf == whatIf, self.settings.chargePosition == look.charge,
+                self.stepCount == 0,
                 self.settings.scenario.charge.mass == scenario.charge.mass
             {
                 self.followedLook = (self.settings.scenario, look, parts)
                 self.applyLook(look, parts: parts)
-                if !waiting.preview { self.refineCloseCalls(look) }
+                // The close calls are run on the project's own scene, not a what-if's.
+                if !waiting.preview, whatIf.isEmpty { self.refineCloseCalls(look) }
             } else if !waiting.preview, self.lookWaiting == nil {
                 self.envelopeDamageStatus = ""
             }
             self.startWaitingLook()
         }
+    }
+
+    /// A control held that the quick estimate follows live (emmettl/bombcad-work#113): the charge's
+    /// size slider. While it is held the scene is not loaded again and each change makes a preview
+    /// (`adjustedEstimate`); let go, the scene is loaded once and the full estimate made, as a drag's.
+    func beginAdjustingEstimate() {
+        guard !isAdjustingEstimate else { return }
+        isAdjustingEstimate = true
+        estimateFollowsAdjustment = envelopeDamageIsEstimate && !envelopeDamage.isEmpty && stepCount == 0
+    }
+
+    /// A change while a control is held: a preview, if an estimate is on screen.
+    func adjustedEstimate() {
+        if isAdjustingEstimate, estimateFollowsAdjustment { requestLook(preview: true) }
+    }
+
+    func endAdjustingEstimate() {
+        guard isAdjustingEstimate else { return }
+        isAdjustingEstimate = false
+        restoresFollowedLook = estimateFollowsAdjustment
+        settingsChanged()
+        if estimateFollowsAdjustment { requestLook(preview: false) }
+    }
+
+    /// A what-if or the yield's spread changed: a preview at once, then the full estimate, if one is
+    /// on screen.
+    func estimateChoiceChanged() {
+        guard envelopeDamageIsEstimate, !envelopeDamage.isEmpty, stepCount == 0, !isDraggingCharge else {
+            return
+        }
+        requestLook(preview: true)
+        requestLook(preview: false)
     }
 
     /// The learned response for the drag preview: the app's own weights, on the GPU, else on the CPU;
@@ -277,6 +326,9 @@ extension SimulationModel {
             }
             // The close calls refined for this scene, back in place over it.
             mergeRefinedCloseCalls()
+        }
+        if !quickEstimateWhatIf.isEmpty {
+            envelopeDamageStatus += " What if: \(quickEstimateWhatIf.label) (the project unchanged)."
         }
         // The people follow the glass's chances: a preview without them leaves the last ones.
         if parts.contains(.glass) {

@@ -11,20 +11,11 @@ import simd
 struct LiveResponseTests {
     /// Weights of the right widths for `scene`, made up (the trained ones are built in once trained).
     static func madeUp(for scene: Scenario, hidden: Int = 8) throws -> LiveResponse.Weights {
-        let signatures = Array(
-            Set(scene.envelopeObjects.map { LiveResponse.signature(scene.envelopeConstruction(for: $0.id)) })
-        )
-        .sorted()
-        let mixes = Array(
-            Set(
-                scene.envelopeObjects.compactMap {
-                    scene.envelopeConstruction(for: $0.id).glazing.map(LiveResponse.signature)
-                })
-        ).sorted()
         let widths = [
-            "component": 3 + signatures.count + LiveResponse.shapeWidth,
-            "side": 9 * LiveResponse.sideStrips + 5 + mixes.count,
-            "building": LiveResponse.slotWidth * (LiveResponse.buildingWalls + 1) + 1 + signatures.count,
+            "component": 3 + LiveResponse.constructionWidth + LiveResponse.shapeWidth,
+            "side": 9 * LiveResponse.sideStrips + 5 + LiveResponse.glazingWidth,
+            "building": LiveResponse.slotWidth * (LiveResponse.buildingWalls + 1) + 1
+                + LiveResponse.constructionWidth,
         ]
         let outputs = ["component": 6, "side": 5, "building": 3]
         var values: [Float] = []
@@ -46,13 +37,14 @@ struct LiveResponseTests {
                 std: [Double](repeating: 2, count: sizes[0]), layers: layers, outputs: [])
         }
         let header = LiveResponse.Weights.Header(
-            format: "bclr", version: 1, signatures: signatures, mixes: mixes,
+            format: "bclr", version: 2, constructionWidth: LiveResponse.constructionWidth,
+            glazingWidth: LiveResponse.glazingWidth,
             slopeStep: LiveResponse.slopeStep,
             sideStrips: LiveResponse.sideStrips, buildingWalls: LiveResponse.buildingWalls, networks: networks
         )
         var data = Data("BCLR".utf8)
         let text = try JSONEncoder().encode(header)
-        for word in [UInt32(1), UInt32(text.count)] {
+        for word in [UInt32(2), UInt32(text.count)] {
             withUnsafeBytes(of: word.littleEndian) { data.append(contentsOf: $0) }
         }
         data.append(text)
@@ -124,16 +116,12 @@ struct LiveResponseTests {
 
             // Its rows are the training data's: its answers are the networks' on `batch`'s rows, the CPU's
             // own predictions, to float rounding.
-            let signatures = Dictionary(
-                weights.header.signatures.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
-            let mixes = Dictionary(
-                weights.header.mixes.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+
             let reference = LiveResponse.batch(
                 estimate: preview, sides: sides, mass: mass, cellSize: 2, coefficients: .adopted,
-                roofCoefficients: .roofs, uncertainty: uncertainty, signatures: signatures.count,
-                mixes: mixes.count,
-                signature: { signatures[LiveResponse.signature(constructions($0))] },
-                mix: { mixes[LiveResponse.signature($0.mix)] })
+                roofCoefficients: .roofs, uncertainty: uncertainty,
+                construction: { LiveResponse.constructionFeatures(constructions($0)) },
+                glazing: { LiveResponse.glazingFeatures($0.mix) })
             #expect(reference.unknown == 0)
             func sigmoid(_ x: Float) -> Double { 1 / (1 + exp(-Double(x))) }
             let sideOut = weights.run("side", rows: reference.sides, count: reference.sideCount)
@@ -204,7 +192,7 @@ struct LiveResponseTests {
         let weights = try Self.madeUp(for: scene)
         let id = try #require(scene.envelopeObjects.first?.id)
         var construction = scene.envelopeConstruction(for: id)
-        construction.wallThicknessM += 0.05
+        construction.masonryArching = true
         scene.setEnvelopeConstruction(construction)
         let model = LiveResponse.Model(weights: weights, engine: LiveResponse.CPUEngine(weights: weights))
         let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
@@ -229,13 +217,60 @@ struct LiveResponseTests {
         }
     }
 
-    @Test("A construction's signature leaves out its building and where it came from")
-    func signature() {
+    @Test("A construction is read by what it is built of, not by its building or where it came from")
+    func constructionFeatures() throws {
         let a = EnvelopeConstruction(objectID: UUID(), source: .map, detail: "one")
         let b = EnvelopeConstruction(objectID: UUID(), source: .user, detail: "two")
-        #expect(LiveResponse.signature(a) == LiveResponse.signature(b))
-        var c = b
-        c.wallThicknessM = 0.3
-        #expect(LiveResponse.signature(a) != LiveResponse.signature(c))
+        let read = try #require(LiveResponse.constructionFeatures(a))
+        #expect(read.count == LiveResponse.constructionWidth)
+        #expect(LiveResponse.constructionFeatures(b) == read)
+        // Every what-if is read, and reads apart.
+        var seen: Set<[Float]> = [read]
+        for (_, glass) in LiveResponse.Glass.offered.dropFirst() {
+            let built = try #require(LiveResponse.constructionFeatures(glass.applied(to: b)))
+            #expect(seen.insert(built).inserted)
+        }
+        for kind in LiveResponse.WhatIf.wallKinds.dropFirst() {
+            let built = try #require(
+                LiveResponse.constructionFeatures(LiveResponse.WhatIf(walls: kind).applied(to: b)))
+            #expect(seen.insert(built).inserted)
+        }
+        // The glazing too, with its glass.
+        var glazed = b
+        glazed.glazing = .commercial
+        let laminated = LiveResponse.Glass.laminated(.facade).applied(to: glazed)
+        #expect(
+            LiveResponse.glazingFeatures(try #require(laminated.glazing))
+                != LiveResponse.glazingFeatures(.commercial))
+        #expect(LiveResponse.glazingFeatures(.commercial)?.count == LiveResponse.glazingWidth)
+        // What the networks were not trained on is not read.
+        var arched = b
+        arched.masonryArching = true
+        #expect(LiveResponse.constructionFeatures(arched) == nil)
+        var odd = GlazingMix.apartments
+        odd.glazedFraction = 0.3
+        #expect(LiveResponse.glazingFeatures(odd) == nil)
+    }
+
+    @Test("A what-if builds every building of the scene so, and leaves an empty one as it is")
+    func whatIf() throws {
+        let scene = try FacadeGlassProbabilityTests.row()
+        #expect(LiveResponse.WhatIf().applied(to: scene) == scene)
+        let whatIf = LiveResponse.WhatIf(
+            glass: .toughened, walls: .unreinforcedMasonry, roof: .crossLaminatedTimber)
+        let built = whatIf.applied(to: scene)
+        for object in scene.envelopeObjects {
+            let c = built.envelopeConstruction(for: object.id)
+            #expect(
+                c.walls == .unreinforcedMasonry && c.roof == .crossLaminatedTimber && c.glassToughened == true
+            )
+            #expect(c.glazing?.glass?.toughened == true)
+        }
+        #expect(whatIf.label.contains("toughened"))
+        // A prepared district takes the new constructions without being laid out again.
+        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+        let again = prepared.withConstructions(of: built)
+        #expect(again.identity == prepared.identity && again.constructionsKey != prepared.constructionsKey)
+        #expect(again.constructions.allSatisfy { $0.walls == .unreinforcedMasonry })
     }
 }

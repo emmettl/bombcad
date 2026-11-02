@@ -2,47 +2,54 @@ import Foundation
 import simd
 
 extension LiveResponse {
-    /// What the live drag keeps of a district between frames: each building's construction's
-    /// signature and each glazed building's mix's, by the networks' lists (nil where they know it
-    /// not), worked out once (the first frame's).
+    /// What the live drag keeps of a district between frames: each building's construction and
+    /// each glazed building's mix as the networks read them (`constructionFeatures`,
+    /// `glazingFeatures`), worked out once for each set of constructions (the first frame's, and
+    /// again after a what-if changes them).
     public final class District: @unchecked Sendable {
         public let identity: UUID
-        let signatureOf: [UUID: Int]
-        let mixOf: [UUID: Int]
-        let constructionOf: [UUID: EnvelopeConstruction]
+        public let constructionsKey: UUID
+        let constructionOf: [UUID: [Float]]
+        let glazingOf: [UUID: [Float]]
+        let builtOf: [UUID: EnvelopeConstruction]
         /// The buildings the networks do not know, by construction or glazing.
         public let unknown: Int
 
-        init(prepared: FacadeLoadSurrogate.Prepared, weights: Weights) {
+        init(prepared: FacadeLoadSurrogate.Prepared) {
             identity = prepared.identity
-            let signatures = Dictionary(
-                weights.header.signatures.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
-            let mixes = Dictionary(
-                weights.header.mixes.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
-            // Built alike, signed alike: each distinct construction encoded once.
-            var known: [EnvelopeConstruction: Int?] = [:]
-            var knownMix: [GlazingMix: Int?] = [:]
-            var signatureOf: [UUID: Int] = [:]
-            var mixOf: [UUID: Int] = [:]
-            var unknown = 0
-            for (n, object) in prepared.objects.enumerated() {
-                var key = prepared.constructions[n]
-                key.objectID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
-                key.detail = ""
-                let index = known[key] ?? signatures[LiveResponse.signature(key)]
-                known[key] = index
-                if let index { signatureOf[object.id] = index } else { unknown += 1 }
-                if let mix = prepared.mixes[n] {
-                    let m = knownMix[mix] ?? mixes[LiveResponse.signature(mix)]
-                    knownMix[mix] = m
-                    if let m { mixOf[object.id] = m } else if index != nil { unknown += 1 }
+            constructionsKey = prepared.constructionsKey
+            // Each building read on its own core: a what-if reads the district again.
+            let count = prepared.objects.count
+            var features = [[Float]?](repeating: nil, count: count)
+            var glazings = [[Float]?](repeating: nil, count: count)
+            features.withUnsafeMutableBufferPointer { featureOut in
+                glazings.withUnsafeMutableBufferPointer { glazingOut in
+                    concurrently(iterations: (count + 63) / 64) { chunk in
+                        for n in (chunk * 64)..<min(count, (chunk + 1) * 64) {
+                            featureOut[n] = LiveResponse.constructionFeatures(prepared.constructions[n])
+                            glazingOut[n] = prepared.mixes[n].flatMap(LiveResponse.glazingFeatures)
+                        }
+                    }
                 }
             }
-            constructionOf = Dictionary(
+            var constructionOf: [UUID: [Float]] = [:]
+            var glazingOf: [UUID: [Float]] = [:]
+            var unknown = 0
+            for (n, object) in prepared.objects.enumerated() {
+                if let f = features[n] { constructionOf[object.id] = f } else { unknown += 1 }
+                if prepared.mixes[n] != nil {
+                    if let g = glazings[n] {
+                        glazingOf[object.id] = g
+                    } else if features[n] != nil {
+                        unknown += 1
+                    }
+                }
+            }
+            builtOf = Dictionary(
                 zip(prepared.objects, prepared.constructions).map { ($0.id, $1) },
                 uniquingKeysWith: { a, _ in a })
-            self.signatureOf = signatureOf
-            self.mixOf = mixOf
+            self.constructionOf = constructionOf
+            self.glazingOf = glazingOf
             self.unknown = unknown
         }
     }
@@ -61,8 +68,12 @@ extension LiveResponse {
 
         func district(for prepared: FacadeLoadSurrogate.Prepared) -> District {
             lock.withLock {
-                if let district, district.identity == prepared.identity { return district }
-                let made = District(prepared: prepared, weights: weights)
+                if let district, district.identity == prepared.identity,
+                    district.constructionsKey == prepared.constructionsKey
+                {
+                    return district
+                }
+                let made = District(prepared: prepared)
                 district = made
                 return made
             }
@@ -112,8 +123,6 @@ extension FacadeLoadSurrogate.Prepared {
         guard district.unknown == 0 else { return nil }
         let coefficients = terms.coefficients
         let weights = model.weights
-        let signatures = weights.header.signatures.count
-        let mixCount = weights.header.mixes.count
 
         let (request, picked, itemOf) = liveRequest(
             charge: charge, mass: mass, coefficients: coefficients, roofCoefficients: roofCoefficients,
@@ -198,9 +207,10 @@ extension FacadeLoadSurrogate.Prepared {
         let root = cbrt(mass)
 
         // The networks' rows, as `LiveResponse.batch` lays them out.
-        let cw = 3 + signatures + LiveResponse.shapeWidth
-        let sw = 9 * LiveResponse.sideStrips + 5 + mixCount
-        let bw = LiveResponse.slotWidth * (LiveResponse.buildingWalls + 1) + 1 + signatures
+        let cw = 3 + LiveResponse.constructionWidth + LiveResponse.shapeWidth
+        let sw = 9 * LiveResponse.sideStrips + 5 + LiveResponse.glazingWidth
+        let bw =
+            LiveResponse.slotWidth * (LiveResponse.buildingWalls + 1) + 1 + LiveResponse.constructionWidth
         var componentRows = [Float](repeating: 0, count: parts.contains(.damage) ? componentCount * cw : 0)
         var sideRows = [Float](repeating: 0, count: parts.contains(.glass) ? sideCount * sw : 0)
         var buildingRows = [Float](repeating: 0, count: parts.contains(.structure) ? owners.count * bw : 0)
@@ -216,23 +226,25 @@ extension FacadeLoadSurrogate.Prepared {
                                     for b in (chunk * 32)..<min(owners.count, (chunk + 1) * 32) {
                                         let n = owners[b]
                                         let layout = layouts[n]
-                                        let signature = district.signatureOf[objects[n].id]
+                                        let construction = district.constructionOf[objects[n].id]
                                         if !cOut.isEmpty {
                                             for (j, item) in layout.judged.enumerated() {
                                                 let at = (componentStart[n] + j) * cw
                                                 (cOut[at], cOut[at + 1], cOut[at + 2]) =
                                                     LiveResponse.quantized(
                                                         load(v, item, rise: 2, front: false, slopes: false))
-                                                if let signature, signature < signatures {
-                                                    cOut[at + 3 + signature] = 1
+                                                if let construction {
+                                                    for (k, value) in construction.enumerated() {
+                                                        cOut[at + 3 + k] = value
+                                                    }
                                                 }
                                                 LiveResponse.writeShape(
                                                     request.components[item], buildingTop: layout.top,
                                                     buildingBase: layout.base, into: cOut,
-                                                    at: at + 3 + signatures)
+                                                    at: at + 3 + LiveResponse.constructionWidth)
                                             }
                                         }
-                                        if !sOut.isEmpty, let mix = district.mixOf[objects[n].id] {
+                                        if !sOut.isEmpty, let mix = district.glazingOf[objects[n].id] {
                                             for (k, side) in layout.sides.enumerated() {
                                                 let strips = side.items.indices.map { t in
                                                     (
@@ -242,7 +254,7 @@ extension FacadeLoadSurrogate.Prepared {
                                                     )
                                                 }
                                                 LiveResponse.writeSide(
-                                                    strips, mix: mix, mixes: mixCount, root: root,
+                                                    strips, glazing: mix, root: root,
                                                     uncertainty: uncertainty, into: sOut,
                                                     at: (sideStart[n] + k) * sw)
                                             }
@@ -278,8 +290,7 @@ extension FacadeLoadSurrogate.Prepared {
                                         roofs[b] = roof != nil
                                         wallsOut[b] = !walls.isEmpty
                                         LiveResponse.writeBuilding(
-                                            walls: walls, roof: roof, signature: signature,
-                                            signatures: signatures,
+                                            walls: walls, roof: roof, construction: construction,
                                             buildingTop: layout.top, buildingBase: layout.base, root: root,
                                             uncertainty: uncertainty, into: bOut, at: b * bw)
                                     }

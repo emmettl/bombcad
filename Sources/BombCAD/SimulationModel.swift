@@ -740,7 +740,17 @@ final class SimulationModel {
     @ObservationIgnored var fireGeneration = 0
     /// How far the quick estimate's charge may be off: its yield within this factor either way,
     /// nine times in ten; 1 for exactly the scene's.
-    var quickEstimateYieldWithin = 1.5
+    var quickEstimateYieldWithin = 1.5 {
+        didSet { if quickEstimateYieldWithin != oldValue { estimateChoiceChanged() } }
+    }
+    /// What if every building were built otherwise, for the quick estimate and its previews alone
+    /// (emmettl/bombcad-work#113; `LiveResponse.WhatIf`): the project's scene is never changed.
+    var quickEstimateWhatIf = LiveResponse.WhatIf() {
+        didSet { if quickEstimateWhatIf != oldValue { estimateChoiceChanged() } }
+    }
+    /// While a control the estimate follows is held (`beginAdjustingEstimate`), and whether it does.
+    var isAdjustingEstimate = false
+    @ObservationIgnored var estimateFollowsAdjustment = false
     /// Whether the quick estimate takes the learned field model's peak at the ground-floor façade
     /// strips, for their damage, glass and walls (emmettl/bombcad-work#67; `LearnedField`). Off
     /// unless chosen, and remembered; without its weights the estimate is the surrogate's alone.

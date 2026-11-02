@@ -13,9 +13,9 @@ extension FacadeLoadSurrogate {
         public let cellSize: Float
         let objects: [SceneObject]
         let components: [[EnvelopeComponent]]
-        let mixes: [GlazingMix?]
+        private(set) var mixes: [GlazingMix?]
         /// Each object's construction, as `Scenario.envelopeConstruction(for:)` gives it.
-        let constructions: [EnvelopeConstruction]
+        private(set) var constructions: [EnvelopeConstruction]
         /// Each component's group for a preview (`preview(charge:mass:)`), as `components`: its
         /// kind and side, and for a façade strip facing as its building's outline, which way that
         /// is (`previewGroups(_:owner:raster:)`).
@@ -24,8 +24,23 @@ extension FacadeLoadSurrogate {
         /// building's outline gives one, else its face's own normal), as `components`: worked out
         /// once, for the live drag (`livePreview`).
         let facings: [[SIMD3<Float>]]
-        /// This layout's own identity, for what a GPU keeps of it between frames.
+        /// This layout's own identity, for what a GPU keeps of it between frames, and its
+        /// constructions' (new with each set, `withConstructions`).
         public let identity = UUID()
+        public private(set) var constructionsKey = UUID()
+
+        /// The same layout with each object built as `scene` says (its geometry the same, only what
+        /// its envelopes are built of changed, as a what-if changes it): nothing laid out again.
+        public func withConstructions(of scene: Scenario) -> Prepared {
+            var copy = self
+            let recorded = Dictionary(
+                (scene.envelopeConstructions ?? []).map { ($0.objectID, $0) },
+                uniquingKeysWith: { _, last in last })
+            copy.constructions = objects.map { recorded[$0.id] ?? .assumed(objectID: $0.id) }
+            copy.mixes = copy.constructions.map(\.glazing)
+            copy.constructionsKey = UUID()
+            return copy
+        }
         /// Each object's preview groups laid out once (`choices`): each component's group (in the
         /// groups' keys' order), its outer face's centre, and each group's area and side.
         let groupLayout: [GroupLayout]

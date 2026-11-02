@@ -153,7 +153,9 @@ struct AccessibilityLabelTests {
         #expect(bare.isEmpty, "\(bare)")
         // The titled slider reads its title and the value shown beside it.
         let sidebar = try Self.source("SidebarView.swift")
-        #expect(sidebar.contains("Slider(value: $value, in: range) { Text(title) }"))
+        #expect(
+            sidebar.contains(
+                "Slider(value: $value, in: range, onEditingChanged: onEditingChanged) { Text(title) }"))
         #expect(sidebar.contains(".accessibilityValue(text)"))
     }
 

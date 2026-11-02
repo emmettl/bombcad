@@ -248,8 +248,13 @@ extension SimulationModel {
         }
     }
     func settingsChanged() {
-        // A charge being dragged is loaded once it is let go (`endDrag`).
+        // A charge being dragged, or a control the estimate follows held, is loaded once it is let go
+        // (`endDrag`, `endAdjustingEstimate`); meanwhile the estimate follows as a preview.
         guard !isDraggingCharge else { return }
+        guard !isAdjustingEstimate else {
+            adjustedEstimate()
+            return
+        }
         guard settings != handledSettings || importsNeedResampling else { return }
         isLoadingInputs = true
         rebuildTask?.cancel()

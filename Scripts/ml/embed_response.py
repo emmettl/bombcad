@@ -29,12 +29,12 @@ def main():
     source = Path(args.weights)
     data = source.read_bytes()
     assert data[:4] == b"BCLR", "not a .bclr file"
-    _, length = struct.unpack("<II", data[4:12])
+    version, length = struct.unpack("<II", data[4:12])
     header = json.loads(data[12:12 + length])
     if args.broken_threshold is not None:
         header["brokenThreshold"] = args.broken_threshold
         text = json.dumps(header).encode()
-        data = b"BCLR" + struct.pack("<II", 1, len(text)) + text + data[12 + length:]
+        data = b"BCLR" + struct.pack("<II", version, len(text)) + text + data[12 + length:]
     if args.out:
         Path(args.out).write_bytes(data)
     digest = hashlib.sha256(data).hexdigest()

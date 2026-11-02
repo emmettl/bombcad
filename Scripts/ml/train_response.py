@@ -31,6 +31,7 @@ import torch
 from torch import nn
 
 LEVELS = 5
+SHAPE_WIDTH = 18  # `LiveResponse.shapeWidth`
 
 
 def array(folder: Path, name: str, dtype):
@@ -156,12 +157,14 @@ def train(unit, x, y, w, frame, sizes, epochs, batch, lr, device, log):
 
 
 def export(path: Path, meta, nets, dtype="float16"):
-    """`LiveResponse.Weights`: "BCLR", version 1, the header's length, the JSON header, then the
+    """`LiveResponse.Weights`: "BCLR", version 2, the header's length, the JSON header, then the
     tensors in `dtype` (float16 by default, as the field model's; or float32): each layer's weights,
     out × in, then its biases. Each network's means and deviations are in the header."""
     blobs = []
     offset = 0
-    header = {"format": "bclr", "version": 1, "dtype": dtype, "signatures": meta["signatures"], "mixes": meta["mixes"],
+    header = {"format": "bclr", "version": 2, "dtype": dtype,
+              "constructionWidth": meta["componentWidth"] - 3 - SHAPE_WIDTH,
+              "glazingWidth": meta["sideWidth"] - 9 * 4 - 5,
               "slopeStep": 0.25, "sideStrips": 4, "buildingWalls": 8, "networks": {}}
     for name, (model, mean, std, outputs) in nets.items():
         layers = []
@@ -177,7 +180,7 @@ def export(path: Path, meta, nets, dtype="float16"):
     text = json.dumps(header).encode()
     with open(path, "wb") as f:
         f.write(b"BCLR")
-        f.write(struct.pack("<II", 1, len(text)))
+        f.write(struct.pack("<II", 2, len(text)))
         f.write(text)
         for blob in blobs:
             f.write(blob.tobytes())
@@ -206,7 +209,13 @@ def main():
         log_file.write(text + "\n")
         log_file.flush()
 
-    meta = json.loads((data / "meta.json").read_text())
+    # One district's data, or a folder of districts', each its own folder with its meta.json.
+    folders = [data] if (data / "meta.json").exists() else sorted(p for p in data.iterdir() if (p / "meta.json").exists())
+    metas = [json.loads((f / "meta.json").read_text()) for f in folders]
+    meta = metas[0]
+    for other in metas[1:]:
+        for key in ("componentWidth", "sideWidth", "buildingWidth"):
+            assert other[key] == meta[key], f"{key} differs between districts"
     hidden = {k: [int(v) for v in s.split(",")] for k, s in (p.split(":") for p in args.hidden.split(";"))}
     widths = {"component": meta["componentWidth"], "side": meta["sideWidth"], "building": meta["buildingWidth"]}
     outputs = {"component": LEVELS + 1, "side": len(meta["sideOutputs"]), "building": len(meta["buildingOutputs"])}
@@ -218,7 +227,12 @@ def main():
     report = {"device": device, "units": {}}
     for unit in args.units.split(","):
         started = time.time()
-        x, y, w, frame = load(data, unit, widths[unit], answers[unit])
+        parts = [load(f, unit, widths[unit], answers[unit]) for f in folders]
+        x = np.concatenate([p[0] for p in parts])
+        y = np.concatenate([p[1] for p in parts])
+        w = np.concatenate([p[2] for p in parts])
+        # Each district's frames numbered apart; frames 9 modulo 10 of each held out.
+        frame = np.concatenate([p[3].astype(np.int64) + 100000 * n for n, p in enumerate(parts)])
         if unit == "component":
             x = quantised(x)
         log(f"{unit}: {len(x)} rows of {widths[unit]} inputs, {len(np.unique(frame))} frames")
@@ -237,7 +251,8 @@ def main():
             model.load_state_dict(state)
             nets[unit] = (model, mean, std, names_)
             report["units"][unit] = {"kept": args.keep}
-    meta["trained"] = {"trainedOn": f"{data.name}: Beirut's district, {len(meta['frames'])} frames",
+    districts = ", ".join(f"{m['district']} ({len(m['frames'])} frames)" for m in metas)
+    meta["trained"] = {"trainedOn": f"{data.name}: {districts}",
                        "epochs": args.epochs, "heldOut": "frames 9 modulo 10"}
     torch.save({k: (m.state_dict(), [l.in_features for l in m.layers] + [m.layers[-1].out_features], mean, std, o)
                 for k, (m, mean, std, o) in nets.items()}, out / "nets.pt")

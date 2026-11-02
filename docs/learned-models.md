@@ -2822,6 +2822,182 @@ construction or glazing it was not trained on, or the learned field model on) is
 the sidebar saying why. A choice made before is remembered. Nothing else changes: the full estimate
 follows when the charge is let go, as before.
 
+## Instant what-ifs (2 November 2026)
+
+emmettl/bombcad-work#113. With a quick estimate on screen, the controls a non-specialist reaches
+for answer as they move, through the live drag's learned response
+([above](#the-live-drags-learned-response-1-november-2026)):
+
+- **The charge's size.** While the TNT equivalent slider is held, each value is a live preview at the
+  charge where it is; the scene is loaded again, and the full estimate made, once it is let go, as
+  a drag's.
+- **What if** (Quick Estimate's section): every building's glass (annealed, toughened, filmed and
+  anchored three ways, laminated), every building's walls (reinforced concrete, reinforced
+  blockwork, unreinforced masonry, profiled steel sheeting, cross-laminated timber) and every
+  building's roof (concrete, sheeting, timber). A choice re-colours the view at once, then the full
+  estimate follows. A what-if builds a copy of the scene for the estimate (`LiveResponse.WhatIf`); the
+  project is never changed, and the sidebar says what the estimate is of.
+- **The yield's spread** ("Yield known to within"): a preview at once, then the full estimate.
+- **The fire's wind and hour** were already live ([fire after the blast](fire-spread.md)): its
+  preview draws 40, the hour re-colours without drawing.
+
+The controls are named for VoiceOver as every sidebar control is (`AccessibilityLabelTests`), and
+captured offscreen in light and dark (`InterfaceReviewWhatIfTests`, `BOMBCAD_INTERFACE_REVIEW`).
+
+### Every construction, not four
+
+The first networks knew Beirut's four constructions and four glazing mixes by signature, and left
+anything else to the CPU. A what-if builds otherwise, so the networks now read what a building is
+built of (`LiveResponse.constructionFeatures`, `glazingFeatures`):
+
+- its walls' kind and thickness, its roof's kind and thickness, its bars;
+- its façade panes' glass: thickness, toughened, laminated (interlayer, plies, interlayer
+  thickness, the edge's hold), filmed (thickness, anchorage), new or as designed, and the panes'
+  size;
+- for a glazed side, which of the four map mixes of panes it is, with its glass.
+
+A construction with more than these (a liner, arching, bars in both faces, strengths, a cap, sheets
+or rails other than the defaults, or glazing set side by side) still goes to the CPU, which says so.
+The weights are version 2 of the file (`constructionWidth`, `glazingWidth` in the header).
+
+### The training data, drawn over the constructions
+
+`scenebench response-data` now builds each frame's buildings from a few ways of building
+(`LiveResponse.recipe`, four a frame, a fifth of the buildings as built): walls of any of the five
+kinds at 0.6–1.6 times their usual thickness, roofs of concrete, sheeting or timber, bars at
+0.15–0.9% each way, half the time one mix of panes for all, and glass annealed, toughened, filmed (4
+or 8 mil, any anchorage) or laminated (4 or 6 mm plies, PVB or ionoplast, 0.76 or 1.52 mm, a silicone
+edge or none), new a fifth of the time. Charges from 100 kg to 5 kt. A few ways of building a frame
+keep the SDOF's and the panes' tables shared; one per building made a frame of Beirut take 2–4
+minutes and 11 GB.
+
+The districts, each generated in pieces of 30–50 frames, each piece its own `gpu-slot` job
+(`$BOMBCAD_DATA/scratch/what-ifs`, `data.sh`):
+
+| District | Frames with the glass | Frames without (the components and walls alone, `--no-glass`) |
+|---|---|---|
+| Beirut within 1.5 km of the port (4,177 buildings) | 160 | |
+| Beirut within 1.3 km | 160 | 200 |
+| Made-up perimeter blocks, flat (`make_district.py --style perimeter --seed 1`) | 90 | 100 |
+| Made-up detached houses on a grid, sloping (`grid`, seed 2) | 90 | 100 |
+| Made-up towers in plazas, flat (`towers`, seed 3) | 90 | 100 |
+| Made-up sheds, on a hill (`industrial`, seed 4) | 90 | 100 |
+| Made-up mixed blocks, a quarter turned, in a valley (`mixed`, seed 7) | held out | held out |
+
+That is 13.7 million component rows, 1.29 million sides and 1.42 million buildings, the glass's
+answers on 32 draws spread evenly, in about 1.6 hours beside other sessions (load 40–180). Each
+piece kept its tables for one frame, and Beirut was cut to 1.5 km and then 1.3 km, to hold a piece
+near 6 GB: the 1.3 km pieces peaked at 5.1 GB, the 1.5 km ones at up to 7.0 GB, two made-up ones at
+6.1–6.8 GB, the rest at 0.7–5.7 GB. Beirut's district as a whole at 2.5 km would take 11–13 GB.
+
+### Training
+
+On bombcad-pc's RTX 3080 Ti, the same three networks as the live drag's, wider inputs: the
+component network 53 inputs (256, 256, 128), the glass network 59 (128, 128, 64), the walls network
+348 (256, 128, 64). Frames 9 modulo 10 of each district held out; 40 epochs, 278 s (job
+`live-response-4`; a first round on the first 280 frames, `live-response-3`, 59 s, read the walls and
+roofs 1–1.5 points worse). On held-out frames:
+
+| Network | Held out |
+|---|---|
+| Component | level exact 99.72% of rows (98.0% of the 306,356 damaged), glass broken exact 99.90% |
+| Glass | some broken within 0.1 of the draws' on 99.83% of sides, blown out 99.39%, thrown past 3b 99.04% |
+| Walls | walls moderate+ within 0.1 on 99.21% of buildings, heavy+ 99.30%, roof 99.08% |
+
+A pane counts as broken above a logit of −1, chosen on Beirut at four places of the charge 200–600 m
+from those judged below and on the perimeter blocks at two (1–14 buildings a place took another
+colour than the CPU's preview's, against 34–72 at 0 and 17–67 at −2). The weights are 566,570
+bytes of float16 (SHA-256 `20772e95…cd252067`), built in as before
+(`ml/live-response-4/app/live-response.bclr` on StudioData).
+
+### Against the full estimate
+
+As the live drag was judged (`drag-time --agreement`, the full estimate on 100 draws, yield within
+×1.5), the preview on the CPU at 10 draws and the learned response on the same build. Within 0.1 of
+the full estimate:
+
+| Within 0.1 of the full estimate | Beirut, CPU (10 draws) | Beirut, learned | Held-out made-up district, CPU (10; 20 draws) | Held out, learned |
+|---|---|---|---|---|
+| Glass blown out | 85.7–85.8% | **96.8–96.9%** | 81.0–81.9%; 88.4–89.2% | **95.8–96.5%** |
+| Glass some broken | 94.5–94.6% | **99.1%** | 96.7–96.8%; 98.5% | **99.7%** |
+| Openings blown out | 100.0% | 100.0% | 100.0% | 100.0% |
+| Walls moderate+ | 99.7–99.8% | **99.9%** | 98.7–98.8%; 99.3% | **99.9%** |
+| Walls heavy+ | 99.9% | 100.0% | 98.8–99.0%; 99.4–99.5% | **99.8%** |
+| Roof moderate+ | 98.6–98.9% | **98.9–99.1%** | 97.7–98.3%; 98.9–99.0% | **99.2%** |
+| Damage colour the same | 99.5% | 99.5% | 99.6–99.7% | 98.3–98.4% |
+
+Beirut is the whole 2.5 km district, the charge where it was and 60 m east; the held-out district is
+the made-up mixed blocks in a valley (4,098 buildings within 1.1 km), never in the training, its
+charge at its centre and 60 m east. So on Beirut the learned response gives the glass blown out
+within 0.1 of the full estimate's on 96.8–96.9% of sides, the walls' and roofs' chances within 0.1
+on 98.9–100.0% of buildings, and the damage colour the same for 99.5% of buildings, as good as the
+CPU's preview on every measure. On the district it never saw it is better on every chance, but its
+damage colour falls 1.3 points short: it takes 64–65 buildings to have glass broken that the CPU's
+preview does not, the threshold chosen on Beirut and the perimeter blocks.
+
+**Each control moved**, on Beirut within 1.5 km (4,177 buildings), the charge at the port, against
+the full estimate at that setting:
+
+| Setting | Blown out, CPU / learned | Some broken | Walls moderate+ | Roof moderate+ | Damage colour |
+|---|---|---|---|---|---|
+| As built, 0.5 kt | 74.4 / **93.2%** | 99.7 / 100.0% | 99.2 / 99.7% | 95.7 / 97.0% | 99.3 / 99.3% |
+| Glass toughened | 97.2 / 99.2% | 91.4 / 98.0% | 99.2 / 99.7% | 95.7 / 97.0% | 99.1 / 99.1% |
+| Glass filmed, wet glazed | 74.4 / 94.1% | 99.7 / 100.0% | 99.2 / 99.8% | 95.7 / 96.9% | 99.4 / 99.3% |
+| Glass laminated | 93.7 / 98.8% | 91.1 / 97.9% | 99.2 / 99.7% | 95.7 / 97.0% | 99.5 / 99.4% |
+| Walls of unreinforced masonry | 74.4 / 93.2% | 99.7 / 100.0% | 18.0 / 14.9% | 95.7 / 96.6% | 21.9 / 22.0% |
+| Walls of profiled sheeting | 74.4 / 93.2% | 99.7 / 100.0% | 96.0 / 99.5% | 95.7 / 96.5% | 99.0 / **96.9%** |
+| Roofs of cross-laminated timber | 74.4 / 93.2% | 99.7 / 100.0% | 99.2 / 99.8% | 95.2 / 96.1% | 99.3 / 99.2% |
+| 150 t | 82.4 / 93.3% | 93.4 / 98.0% | 100.0 / 100.0% | 99.6 / 99.6% | 99.1 / **98.1%** |
+| 1.5 kt | 92.3 / 99.2% | 100.0 / 100.0% | 92.1 / 97.0% | 80.2 / 84.6% | 97.9 / 97.8% |
+| Yield within ×3 | 70.2 / 93.6% | 98.4 / 99.9% | 97.9 / 99.6% | 92.3 / 94.2% | 99.3 / 99.3% |
+
+- **The learned response follows every control as closely as the CPU's preview, or more,** but for
+  the damage colour with sheeted walls (96.9% against 99.0%) and at 150 t (98.1% against 99.1%).
+- **Masonry walls everywhere defeat the preview itself:** CPU and learned alike agree with the full
+  estimate on 15–22% of buildings. The preview judges each side by its nearest strip, a ground
+  floor's, where masonry carries the most wall above it; the full estimate's upper storeys, lighter
+  loaded, fail first. That is the preview's approximation, not the networks', and is recorded here.
+- **Roofs at 1.5 kt** agree on 80–85% either way, for the same reason: the nearest roof stands for
+  the building.
+
+### Frame times while a control moves
+
+Beirut's whole district (14,169 buildings), the charge at the port, `drag-time --live --slide
+100000,…,2000000 --slide-what-ifs …` (each value a frame through the learned response; each
+what-if laid on the district first, as the app lays it on), on the Studio at load 11–16 with a
+BombCAD server holding a GPU slot:
+
+| Colouring | The charge's size, median of 15 frames (range) | A what-if picked (one frame) | First frame |
+|---|---|---|---|
+| Damage | 25–32 ms (24–33) | 40–60 ms | 56–67 ms |
+| Glass's chances | 25 ms (23–27) | 47–58 ms | 61 ms |
+| Walls' and roofs' chances | 26 ms (25–26) | 43–55 ms | 56 ms |
+
+- **The size slider holds 30 frames a second** on the Studio not heavily shared (at load 100, 38–62
+  ms). Of a damage frame: the choice 2 ms, the GPU's loads 6–12 ms, the rows 5 ms, the networks 7–9
+  ms, the answers 3 ms. The two runs of the damage colouring took 24–26 and 31–33 ms, their GPU time
+  11 and 18 ms: the GPU's neighbours move it.
+- **A what-if takes 40–60 ms for its first frame:** laying it on 14,169 buildings (12–14 ms) and
+  reading their constructions again (11 ms, every core) come before the frame. A what-if is a
+  choice, not a slider, and the full estimate (about a minute on Beirut) follows it.
+- **The fire's wind keeps up at about 20 frames a second, not 30:** its preview's 40 draws take 41
+  ms on the CPU at load 13 (49–62 ms at load 100), after the frame's glass. It would need its own
+  fast path to reach 30: fewer preview draws (20 would take about 21 ms), or the draws on the GPU.
+  The fire's hour re-colours without drawing.
+
+### The decision for the user
+
+- **Whether the learned response should judge districts it was not trained on** (the default since
+  1 November, and with these networks it no longer falls back for other constructions). On a
+  made-up district it never saw it is better than the CPU's preview on every chance but 1.3 points
+  short on the damage colour. The alternative is to fall back to the CPU for districts other than
+  Beirut and New District's, or to keep the CPU's preview as the default for the damage colouring.
+- **The fire's preview draws while a slider moves:** 40 now (41 ms); 20 would keep the wind at 30
+  frames a second.
+- **Whether a what-if should be applicable to the project** (an Apply button), or stay, as now, for
+  the estimate alone.
+- **The weights stay built in,** as the user decided on 1 November: 0.57 MB now (0.75 MB of source).
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up

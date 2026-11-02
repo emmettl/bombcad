@@ -127,18 +127,19 @@ extension ValidationTables {
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
             quote: "the same for 99.5% of buildings"),
         // The drag preview judged by the learned response (emmettl/bombcad-work#112), against the
-        // full estimate as the preview above.
+        // full estimate as the preview above; its networks of 2 November 2026, over every
+        // construction (emmettl/bombcad-work#113).
         Figure(
             id: "livePreviewGlass", low: 0.968, high: 0.969,
-            document: "learned-models.md#the-live-drags-learned-response-1-november-2026",
+            document: "learned-models.md#instant-what-ifs-2-november-2026",
             quote: "the glass blown out within 0.1 of the full estimate's on 96.8–96.9%"),
         Figure(
-            id: "livePreviewWalls", low: 0.988, high: 1.0,
-            document: "learned-models.md#the-live-drags-learned-response-1-november-2026",
-            quote: "the walls' and roofs' chances within 0.1 on 98.8–100.0% of buildings"),
+            id: "livePreviewWalls", low: 0.989, high: 1.0,
+            document: "learned-models.md#instant-what-ifs-2-november-2026",
+            quote: "the walls' and roofs' chances within 0.1 on 98.9–100.0% of buildings"),
         Figure(
             id: "livePreviewDamage", low: 0.995, high: 0.995,
-            document: "learned-models.md#the-live-drags-learned-response-1-november-2026",
+            document: "learned-models.md#instant-what-ifs-2-november-2026",
             quote: "the damage colour the same for 99.5% of buildings"),
         // The glass chances, the quick estimate's loads and the hybrid on the deep-city terms with
         // each wall facing as its map outline, adopted on 28 October 2026 (emmettl/bombcad-work#109,

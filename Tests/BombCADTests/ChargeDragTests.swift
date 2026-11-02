@@ -162,7 +162,7 @@ struct ChargeDragTests {
         // learned response's; built otherwise, the SDOF's, saying why.
         let temporary = try TemporaryDefaults()
         defer { temporary.remove() }
-        let weights = try #require(LiveResponse.Weights.builtIn)
+        _ = try #require(LiveResponse.Weights.builtIn)
         for mapBuilt in [true, false] {
             var scene = Scenario(
                 name: "Learned drag", domainSize: SIMD3(120, 60, 20), boxes: [],
@@ -172,16 +172,10 @@ struct ChargeDragTests {
                     BuildingEnvelope(solids: [Box(min: SIMD3(x, 22, 0), max: SIMD3(x + 10, 38, 9))]))
                 var construction = EnvelopeConstruction(objectID: id, source: .user, detail: "glazed")
                 construction.glazing = .apartments
-                // Walls a little thicker than any of Beirut's.
-                construction.wallThicknessM += 0.03
-                if mapBuilt {
-                    // The construction most of Beirut's buildings take, as the networks know it.
-                    let known = try weights.header.signatures.map {
-                        try JSONDecoder().decode(EnvelopeConstruction.self, from: Data($0.utf8))
-                    }
-                    construction = try #require(
-                        known.first { $0.glazing != nil && $0.walls == .reinforcedConcrete })
-                    construction.objectID = id
+                // Built otherwise than the networks know: masonry walls arching between their returns.
+                if !mapBuilt {
+                    construction.walls = .unreinforcedMasonry
+                    construction.masonryArching = true
                 }
                 scene.setEnvelopeConstruction(construction)
             }
@@ -223,6 +217,75 @@ struct ChargeDragTests {
             #expect(!model.envelopeEstimateIsPreview)
         }
         #expect(temporary.defaults.string(forKey: SimulationModel.dragPreviewKey) == "learned")
+    }
+
+    @Test(
+        "A what-if and the charge's size re-colour live, then the full estimate follows; the project unchanged"
+    )
+    func whatIfs() async throws {
+        // emmettl/bombcad-work#113.
+        let temporary = try TemporaryDefaults()
+        defer { temporary.remove() }
+        var scene = Scenario(
+            name: "What if", domainSize: SIMD3(120, 60, 20), boxes: [],
+            charge: Charge(mass: 50, position: SIMD3(20, 30, 0.5)))
+        for x: Float in [50, 80] {
+            let id = try scene.addEnvelopeObject(
+                BuildingEnvelope(solids: [Box(min: SIMD3(x, 22, 0), max: SIMD3(x + 10, 38, 9))]))
+            var construction = EnvelopeConstruction(objectID: id, source: .user, detail: "glazed")
+            construction.glazing = .apartments
+            scene.setEnvelopeConstruction(construction)
+        }
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
+        model.learnedDefaults = temporary.defaults
+        model.refinesCloseCalls = false
+        model.quickEstimateLearnedPeaks = false
+        model.dragPreviewPath = .learned
+        func settle() async throws {
+            while model.estimatingEnvelopeDamage || model.isLoadingInputs {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+        }
+        try await settle()
+        model.quickEstimate()
+        try await settle()
+        let asBuilt = model.envelopeDamage.map(\.panesBroken)
+        let project = model.settings.scenario
+        // Every building's glass laminated: a preview, then the full estimate, both of the what-if.
+        model.quickEstimateWhatIf.glass = .laminated(.facade)
+        try await settle()
+        #expect(!model.envelopeEstimateIsPreview)
+        #expect(model.envelopeDamageStatus.contains("What if"))
+        #expect(model.settings.scenario == project)
+        var built = LiveResponse.WhatIf(glass: .laminated(.facade)).applied(to: project)
+        built.charge.position = model.settings.chargePosition
+        let (expected, _, _) = FacadeLoadSurrogate.damage(
+            FacadeLoadSurrogate.estimate(scene: built, cellSize: model.settings.resolution.cellSize),
+            constructions: { built.envelopeConstruction(for: $0) })
+        #expect(model.envelopeDamage.map(\.panesBroken) == expected.map(\.panesBroken))
+        model.quickEstimateWhatIf = LiveResponse.WhatIf()
+        try await settle()
+        #expect(model.envelopeDamage.map(\.panesBroken) == asBuilt)
+
+        // The charge's size held: previews, the scene not loaded again; let go, the full estimate.
+        let edits = model.undoStack.count
+        model.beginAdjustingEstimate()
+        for mass: Float in [80, 200, 500] {
+            model.settings.chargeMass = mass
+            model.settingsChanged()
+            try await settle()
+            #expect(model.envelopeEstimateIsPreview)
+            #expect(model.envelopeDamageStatus.hasPrefix("Preview while dragging"))
+        }
+        #expect(model.scenario.charge.mass == 50)
+        model.endAdjustingEstimate()
+        try await Task.sleep(for: .milliseconds(300))
+        try await settle()
+        #expect(!model.envelopeEstimateIsPreview)
+        #expect(model.scenario.charge.mass == 500)
+        #expect(model.undoStack.count == edits + 1)
     }
 
     @Test("Once the full estimate is in, its close calls are run in the air and their results shown in place")

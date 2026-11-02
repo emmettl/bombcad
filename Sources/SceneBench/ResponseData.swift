@@ -2,28 +2,29 @@ import BlastCore
 import Foundation
 import simd
 
-/// `scenebench response-data <district-scene's inputs> --loads folder --mass kg [--radius 2500]
-/// --out folder [--frames 200] [--first 0] [--draws 64] [--within 1500] [--keep 0.05] [--seed 1]`:
-/// training data for the live drag's learned response (emmettl/bombcad-work#112): the district laid
-/// out once (`FacadeLoadSurrogate.Prepared`), then for each frame a charge placed at random on the
-/// open ground within `--within` m of the scene's, of a mass drawn evenly in its log from 5 t to
-/// 2 kt, with a yield spread of one of the app's choices (exactly, ×1.25, ×1.5, ×2, ×3). Each frame's
-/// drag preview (`Prepared.preview`) gives the networks' inputs (`LiveResponse.batch`), and the CPU
-/// code they stand in for gives their answers:
+/// `scenebench response-data <district-scene's inputs> [--loads folder] --out folder --district name
+/// [--radius 2500] [--frames 200] [--first 0] [--draws 64] [--within 1500] [--keep 0.1] [--seed 1]
+/// [--as-built]`: training data for the live drag's learned response (emmettl/bombcad-work#112,
+/// #113): the district laid out once (`FacadeLoadSurrogate.Prepared`; with `--loads` Beirut's, as a
+/// run saved it, else from its map alone, as `make_district.py`'s made-up districts), then for each
+/// frame each building built as drawn (`LiveResponse.drawn`: its walls, roof, glazing and glass, a
+/// fifth of them as built; all as built with `--as-built`), and a charge placed at random on the open
+/// ground within `--within` m of the scene's, of 100 kg to 5 kt evenly in the log, with a yield
+/// spread of one of the app's choices (exactly, ×1.25, ×1.5, ×2, ×3). Each frame's drag preview
+/// (`Prepared.preview`) gives the networks' inputs (`LiveResponse.batch`), and the CPU code they
+/// stand in for gives their answers:
 /// - each component's damage level and whether its glass breaks (`EnvelopeDamageAssessment.assess`);
 /// - each glazed side's glass chances (`glassProbabilities`, `--draws` draws spread evenly);
 /// - each building's walls' and roof's chances (`structureProbabilities`, as many).
 ///
-/// Rows whose answers are all none (or certain) and whose loads are small are kept one in
-/// 1/`--keep`, with that weight. Each frame's rows go to `component`, `side` and `building` files of
-/// float32 (`*-x.f32` inputs, `*-y.f32` answers, `*-w.f32` weights, `*-frame.i32` the frame), with
-/// `meta.json` naming the widths and what the networks know (the district's construction signatures
-/// and glazing mixes). Charges within 100 m of the scene's own place or 60 m east of it, where
+/// Rows whose answers are all none (or certain) are kept one in 1/`--keep`, with that weight. Each
+/// frame's rows go to `component`, `side` and `building` files of float32 (`*-x.f32` inputs,
+/// `*-y.f32` answers, `*-w.f32` weights, `*-frame.i32` the frame), with `meta.json` naming the
+/// widths and the district. Charges within 100 m of the scene's own place or 60 m east of it, where
 /// `drag-time --agreement` judges the preview, are not drawn.
 enum ResponseData {
     struct Meta: Codable {
-        var signatures: [String]
-        var mixes: [String]
+        var district: String
         var componentWidth: Int
         var sideWidth: Int
         var buildingWidth: Int
@@ -35,40 +36,78 @@ enum ResponseData {
         var cellSize: Float
     }
 
+    /// A district with a run's saved loads (`--loads`, Beirut's), or one laid out from its map alone
+    /// (a made-up district, `Scripts/ml/make_district.py`), on a square of half side `--radius`.
+    static func district(_ args: [String]) throws -> (Scenario, Float) {
+        if SurrogateBench.value(args, "loads") != nil {
+            let reference = try SurrogateBench.Reference(args)
+            return (reference.scene, reference.cellSize)
+        }
+        let inputs = try DistrictInputs.read(args)
+        let (scene, _) = try inputs.scene(
+            radius: Float(SurrogateBench.value(args, "radius").flatMap(Double.init) ?? 1000))
+        return (scene, inputs.cellSize)
+    }
+
+    /// `--what-if glass=toughened,walls=masonry,roof=sheeting`: every building built so
+    /// (`LiveResponse.WhatIf`; glass annealed, toughened, film-daylight, film-wet, film-mechanical or
+    /// laminated; walls concrete, blockwork, masonry, sheeting or timber; roofs concrete, sheeting or
+    /// timber).
+    static func whatIf(_ args: [String]) throws -> LiveResponse.WhatIf {
+        try SurrogateBench.value(args, "what-if").map(whatIf(text:)) ?? LiveResponse.WhatIf()
+    }
+
+    /// A what-if from its text, as `--what-if` takes it.
+    static func whatIf(text: String) throws -> LiveResponse.WhatIf {
+        var whatIf = LiveResponse.WhatIf()
+        let kinds: [String: EnvelopeConstruction.Kind] = [
+            "concrete": .reinforcedConcrete, "blockwork": .reinforcedBlockwork,
+            "masonry": .unreinforcedMasonry,
+            "sheeting": .profiledSteelSheeting, "timber": .crossLaminatedTimber,
+        ]
+        let glasses: [String: LiveResponse.Glass] = Dictionary(
+            uniqueKeysWithValues: zip(
+                ["annealed", "toughened", "film-daylight", "film-wet", "film-mechanical", "laminated"],
+                LiveResponse.Glass.offered.map(\.glass)))
+        for part in text.split(separator: ",") {
+            let pair = part.split(separator: "=").map(String.init)
+            guard pair.count == 2 else { throw BlastError.allocationFailed("--what-if \(part)") }
+            switch pair[0] {
+            case "glass": whatIf.glass = glasses[pair[1]]
+            case "walls": whatIf.walls = kinds[pair[1]]
+            case "roof": whatIf.roof = kinds[pair[1]]
+            default: throw BlastError.allocationFailed("--what-if \(part)")
+            }
+        }
+        return whatIf
+    }
+
     static func run(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
         guard let out = value("out") else { throw BlastError.allocationFailed("--out folder") }
-        let reference = try SurrogateBench.Reference(args)
-        let scene = reference.scene
-        let dx = reference.cellSize
+        let (scene, dx) = try district(args)
+        let district = value("district") ?? "district"
         let frames = value("frames").flatMap(Int.init) ?? 200
         let first = value("first").flatMap(Int.init) ?? 0
         let draws = value("draws").flatMap(Int.init) ?? 64
         let within = value("within").flatMap(Float.init) ?? 1500
         let keep = value("keep").flatMap(Double.init) ?? 0.1
         let seed = value("seed").flatMap(UInt64.init) ?? 1
+        // `--as-built`: every building as its map makes it, not drawn (the first networks' data).
+        let asBuilt = args.contains("--as-built")
         let terms = try SurrogateBench.termSet(args)
         let coefficients = terms.coefficients
         let roofCoefficients = FacadeLoadSurrogate.Coefficients.roofs
-        let prepared = FacadeLoadSurrogate.Prepared(
+        let laidOut = FacadeLoadSurrogate.Prepared(
             scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
         let objects = scene.envelopeObjects
-        let constructions = Dictionary(
+        let mapped = Dictionary(
             uniqueKeysWithValues: objects.map { ($0.id, scene.envelopeConstruction(for: $0.id)) })
-        // What the networks will know: the district's constructions and glazing mixes.
-        let signatureOf = constructions.mapValues { LiveResponse.signature($0) }
-        let signatures = Array(Set(signatureOf.values)).sorted()
-        let signatureIndex = Dictionary(uniqueKeysWithValues: signatures.enumerated().map { ($1, $0) })
-        let mixOf = constructions.compactMapValues { $0.glazing.map { LiveResponse.signature($0) } }
-        let mixes = Array(Set(mixOf.values)).sorted()
-        let mixIndex = Dictionary(uniqueKeysWithValues: mixes.enumerated().map { ($1, $0) })
         print(
-            "Prepared \(objects.count) buildings, \(prepared.componentCount) components; "
-                + "\(signatures.count) constructions, \(mixes.count) glazing mixes")
-        for (n, s) in signatures.enumerated() {
-            print("  construction \(n): \(signatureOf.values.filter { $0 == s }.count) buildings")
-        }
+            "Prepared \(objects.count) buildings of \(district), \(laidOut.componentCount) components, "
+                + "\(Set(mapped.values.map { LiveResponse.constructionFeatures($0) ?? [] }).count) constructions as built"
+        )
         let folder = URL(filePath: out)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         func handle(_ name: String) throws -> FileHandle {
@@ -96,13 +135,13 @@ enum ResponseData {
         var meta =
             (try? JSONDecoder().decode(Meta.self, from: Data(contentsOf: metaURL)))
             ?? Meta(
-                signatures: signatures, mixes: mixes, componentWidth: 0, sideWidth: 0, buildingWidth: 0,
+                district: district, componentWidth: 0, sideWidth: 0, buildingWidth: 0,
                 componentOutputs: ["level", "glassBroken"],
                 sideOutputs: [
                     "someBroken", "blownOut", "fractionBroken", "thrownPast3b", "openingsBlownOut",
                 ],
                 buildingOutputs: ["wallsModerate", "wallsHeavy", "roofModerate"], draws: draws, cellSize: dx)
-        guard meta.signatures == signatures, meta.mixes == mixes else {
+        guard meta.district == district else {
             throw BlastError.allocationFailed("a folder of another district's data: \(out)")
         }
 
@@ -122,11 +161,32 @@ enum ResponseData {
         var memo = SDOFResponseMemo()
         var responses = FacadeLoadSurrogate.GlassResponses()
         for frame in first..<(first + frames) {
-            if (frame - first) % 10 == 0 {
+            if (frame - first) % 1 == 0 {
                 memo = SDOFResponseMemo()
                 responses = FacadeLoadSurrogate.GlassResponses()
             }
             let clock = ContinuousClock.now
+            // Each building built as drawn for this frame (`LiveResponse.drawn`), unless as built.
+            // `--recipes`: the ways of building each frame draws, every building one of them (a fifth
+            // as built).
+            var built = scene
+            var constructions = mapped
+            if !asBuilt {
+                let count = value("recipes").flatMap(Int.init) ?? 4
+                let recipes = (0..<count).map { r in
+                    LiveResponse.recipe { uniform(frame, 1000 + 20 * UInt64(r) + $0) }
+                }
+                for object in objects {
+                    let pick = uniform(frame, 900, object.drawKey)
+                    guard pick >= 0.2 else { continue }
+                    let recipe = recipes[min(Int((pick - 0.2) / 0.8 * Double(count)), count - 1)]
+                    var c = recipe.applied(to: mapped[object.id]!)
+                    c.objectID = object.id
+                    constructions[object.id] = c
+                }
+                built.envelopeConstructions = objects.map { constructions[$0.id]! }
+            }
+            let prepared = laidOut.withConstructions(of: built)
             // A charge on the open ground, away from the places the preview is judged at.
             var charge = home
             var tries: UInt64 = 0
@@ -140,7 +200,7 @@ enum ResponseData {
             } while tries < 1000
                 && (prepared.raster.isSolid(charge)
                     || judged.contains { simd_distance($0, SIMD2(charge.x, charge.y)) < 100 })
-            let mass = exp(log(5e3) + uniform(frame, 3) * (log(2e6) - log(5e3)))
+            let mass = exp(log(100.0) + uniform(frame, 3) * (log(5e6) - log(100.0)))
             let factor = withins[min(Int(uniform(frame, 4) * 5), 4)]
             var uncertainty = FacadeLoadSurrogate.Uncertainty(
                 yieldLogSD: log(factor) / 1.645, loadScatter: terms.loadScatter, samples: draws,
@@ -178,9 +238,13 @@ enum ResponseData {
             ])
             let batch = LiveResponse.batch(
                 estimate: estimate, sides: sides, mass: mass, cellSize: dx, coefficients: coefficients,
-                roofCoefficients: roofCoefficients, uncertainty: uncertainty, signatures: signatures.count,
-                mixes: mixes.count, signature: { signatureOf[$0].flatMap { signatureIndex[$0] } },
-                mix: { side in mixOf[side.owner].flatMap { mixIndex[$0] } })
+                roofCoefficients: roofCoefficients, uncertainty: uncertainty,
+                construction: { constructions[$0].flatMap(LiveResponse.constructionFeatures) },
+                glazing: { LiveResponse.glazingFeatures($0.mix) })
+            guard batch.unknown == 0 else {
+                print("Frame \(frame): \(batch.unknown) buildings or sides the networks cannot read; skipped")
+                continue
+            }
             meta.componentWidth = batch.componentWidth
             meta.sideWidth = batch.sideWidth
             meta.buildingWidth = batch.buildingWidth
@@ -225,9 +289,16 @@ enum ResponseData {
             }
             let damageS = DistrictBenchmark.seconds(clock) - inputsS
 
-            let (glass, _) = FacadeLoadSurrogate.glassProbabilities(
-                sides: sides, mass: mass, cellSize: dx, uncertainty: uncertainty, coefficients: coefficients,
-                responses: responses)
+            // `--no-glass`: the components' and the walls' answers alone, the glass's draws (most of a frame's
+            // time) left out.
+            let withGlass = !args.contains("--no-glass")
+            let glass =
+                withGlass
+                ? FacadeLoadSurrogate.glassProbabilities(
+                    sides: sides, mass: mass, cellSize: dx, uncertainty: uncertainty,
+                    coefficients: coefficients,
+                    responses: responses
+                ).sides : []
             let glassS = DistrictBenchmark.seconds(clock) - inputsS - damageS
             let ((structure, _), _) = SDOFResponseMemo.remembering(in: memo) {
                 FacadeLoadSurrogate.structureProbabilities(
@@ -323,7 +394,7 @@ enum ResponseData {
                 y += answers.map(Float.init)
                 w.append(weight)
             }
-            write("side", x, y, w, frame: frame)
+            if withGlass { write("side", x, y, w, frame: frame) }
             let sideRows = w.count
             (x, y, w) = ([], [], [])
             let chances = Dictionary(uniqueKeysWithValues: structure.map { ($0.owner, $0) })
