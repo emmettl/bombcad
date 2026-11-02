@@ -68,12 +68,13 @@ each place keeps the colour of its peak, so the shadows behind buildings stay. W
 on, drag the charge and the wave follows it in tens of milliseconds, on cells twice as large while
 you drag a large district. It is illustrative: on Beirut, 91% of cells in sight and 68% behind
 buildings came within ×1.25 of the runs' peaks, and arrivals beyond 200 m came within 0.4–5% on
-average ([the live wave](live-wave.md)). **Learned Refinement** in the bar, off by default,
-corrects the wave with a network trained on BombCAD's made-up district runs. Behind buildings within
-100 m it brings the peaks from ×1.7 high to about right, and in sight 94% of cells come within
-×1.25. It also gives truer arrivals and pulses, at about 20 ms more a drag step. Its weights,
-15.7 MB, are downloaded once you agree
-([the learned refinement](live-wave.md#the-learned-refinement-2-november-2026)).
+average ([the live wave](live-wave.md)). **Learned Refinement** in the bar, on by default
+within about 1 km of the charge, corrects the wave with a network trained on BombCAD's made-up
+district runs. Behind buildings within
+100 m it brings the peaks from ×1.7 high to about right, and in sight 96% of cells come within
+×1.25. It also gives truer arrivals and pulses, at about 20 ms more a drag step. Until its weights,
+15.7 MB, are on this Mac the wave is the plain one, and **Download Refinement…** in the bar fetches
+them once you agree ([adopted as the default](live-wave.md#adopted-as-the-default-2-november-2026)).
 
 With **Refine close calls with the solver** on (Envelope building damage, on by default), once the
 full estimate is in the app runs the air on the nearest buildings whose chances lie between 0.2 and

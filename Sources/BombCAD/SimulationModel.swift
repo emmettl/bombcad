@@ -989,10 +989,13 @@ final class SimulationModel {
     /// Counts the fields shown, so that the view hands each new one to the renderer once.
     @ObservationIgnored var liveWaveVersion = 0
     /// Whether the live wave takes the learned refinement (`LiveWave.Refinement`,
-    /// emmettl/bombcad-work#115; SimulationModel+LiveWaveLearned.swift): off unless chosen, and
-    /// remembered; turned on through `setLiveWaveLearned`, which offers to download its weights
-    /// when they are not there.
-    var liveWaveLearned = UserDefaults.standard.bool(forKey: SimulationModel.liveWaveLearnedKey) {
+    /// emmettl/bombcad-work#115; SimulationModel+LiveWaveLearned.swift): on by default since the
+    /// user's decision of 2 November 2026, within about 1 km of the charge
+    /// (`LiveWave.Refinement.defaultBlend`), and remembered. Until its weights are on this Mac the
+    /// wave is the plain one and the bar offers the download; nothing is fetched without a click.
+    var liveWaveLearned =
+        UserDefaults.standard.object(forKey: SimulationModel.liveWaveLearnedKey) as? Bool ?? true
+    {
         didSet {
             learnedDefaults.set(liveWaveLearned, forKey: Self.liveWaveLearnedKey)
             if liveWaveShown { requestLiveWave() }

@@ -91,26 +91,27 @@ extension ValidationTables {
             id: "liveWaveArrivalShielded", low: 0.013, high: 0.054,
             document: "live-wave.md#judged-against-the-solver-1-november-2026",
             quote: "×0.998, 1.3% (×1.010, 1.9%)", "×0.954, 5.4% (×0.985, 5.9%)"),
-        // The live wave's learned refinement against the same Beirut runs, never trained on
-        // (`LiveWave.Refinement.standing`; emmettl/bombcad-work#115): peaks within ×1.25 in sight
-        // and shielded, shielded within 100 m without it and with it, and the shielded arrivals'
-        // mean error beyond 200 m.
+        // The live wave's learned refinement as adopted, blended to the plain wave from 700 m to
+        // 1,200 m, against Beirut's runs, never trained on (`LiveWave.Refinement.standing`;
+        // emmettl/bombcad-work#115; the blend was chosen on them): peaks within ×1.25 in sight and
+        // shielded, shielded within 100 m without it and with it, and the shielded arrivals' mean
+        // error beyond 200 m.
         Figure(
-            id: "liveWaveLearnedPeakSight", low: 0.94, high: 0.94,
-            document: "live-wave.md#the-learned-refinement-2-november-2026",
-            quote: "×0.92, 94%, 99% within ×1.5"),
+            id: "liveWaveLearnedPeakSight", low: 0.96, high: 0.96,
+            document: "live-wave.md#adopted-as-the-default-2-november-2026",
+            quote: "×0.97, 96%, 99% within ×1.5"),
         Figure(
-            id: "liveWaveLearnedPeakShielded", low: 0.67, high: 0.67,
-            document: "live-wave.md#the-learned-refinement-2-november-2026",
-            quote: "×1.00, 67%, 91% within ×1.5"),
+            id: "liveWaveLearnedPeakShielded", low: 0.70, high: 0.70,
+            document: "live-wave.md#adopted-as-the-default-2-november-2026",
+            quote: "×1.00, 70%, 91% within ×1.5"),
         Figure(
             id: "liveWaveLearnedNearShielded", low: 0.23, high: 0.38,
-            document: "live-wave.md#the-learned-refinement-2-november-2026",
+            document: "live-wave.md#adopted-as-the-default-2-november-2026",
             quote: "×1.71, 23%, 36% → ×1.02, 38%, 59%"),
         Figure(
-            id: "liveWaveLearnedArrivalShielded", low: 0.008, high: 0.042,
-            document: "live-wave.md#the-learned-refinement-2-november-2026",
-            quote: "6.4% → 4.2%", "0.9% → 0.8%"),
+            id: "liveWaveLearnedArrivalShielded", low: 0.009, high: 0.042,
+            document: "live-wave.md#adopted-as-the-default-2-november-2026",
+            quote: "6.4% → 4.2%", "0.9% → 0.9%"),
         // The drag preview, each side's glass a strip for each way its outline faces it since 29
         // October 2026 (emmettl/bombcad-work#110; 82–93% with one strip for the side).
         Figure(

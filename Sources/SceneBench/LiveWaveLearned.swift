@@ -18,7 +18,22 @@ enum LiveWaveLearned {
             throw BlastError.allocationFailed(
                 "--learned weights.bcfw (Scripts/ml/export_live_wave_weights.py)")
         }
-        return try LiveWave.Refinement(network: LearnedFieldNetwork(contentsOf: URL(filePath: path)))
+        // `--blend 700,1200`: whole within the first distance, m, eased to the plain wave at the
+        // second; `--blend default` the app's; without it, everywhere.
+        var blend: ClosedRange<Float>?
+        if let text = SurrogateBench.value(args, "blend") {
+            if text == "default" {
+                blend = LiveWave.Refinement.defaultBlend
+            } else {
+                let ends = text.split(separator: ",").compactMap { Float($0) }
+                guard ends.count == 2, ends[0] >= 0, ends[1] > ends[0] else {
+                    throw BlastError.allocationFailed("--blend near,far in metres, or default")
+                }
+                blend = ends[0]...ends[1]
+            }
+        }
+        return try LiveWave.Refinement(
+            network: LearnedFieldNetwork(contentsOf: URL(filePath: path)), blend: blend)
     }
 
     static func judge(_ args: [String]) throws {

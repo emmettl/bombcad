@@ -46,8 +46,8 @@ struct LiveWaveControls: View {
             .checkboxToggleStyle()
             .disabled(model.liveWaveLearnedDownloadInFlight)
             .help(
-                "Corrects the wave's peak, arrival and pulse with a network trained on BombCAD's own district runs "
-                    + "(illustrative; off by default)."
+                "Corrects the wave's peak, arrival and pulse within about 1 km of the charge with a network trained "
+                    + "on BombCAD's own district runs (illustrative; on by default)."
             )
             .confirmationDialog(
                 "Download the live wave's learned refinement?",
@@ -67,6 +67,11 @@ struct LiveWaveControls: View {
             }
             if model.liveWaveLearnedDownloadInFlight {
                 Button("Cancel Download") { model.cancelLiveWaveLearnedDownload() }
+            } else if model.liveWaveLearnedWeightsMissing,
+                model.liveWaveLearnedWeightsURL == model.liveWaveLearnedHome
+            {
+                Button("Download Refinement…") { model.offerLiveWaveLearnedDownload() }
+                    .help(LiveWave.Refinement.Release.offer)
             }
             Text(liveWaveCaption)
                 .font(.caption).foregroundStyle(.secondary).lineLimit(2)

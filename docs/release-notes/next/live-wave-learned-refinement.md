@@ -1,19 +1,21 @@
 kind: added
 
-**Refine the live blast wave with a learned model.** **Learned Refinement**, in the live wave's bar,
-corrects the wave cell by cell with a network trained on BombCAD's own district runs. It is off by
-default. On Beirut's runs, which it never saw:
+**The live blast wave is refined by a learned model.** **Learned Refinement**, on by default in the
+live wave's bar, corrects the wave cell by cell within about 1 km of the charge. It uses a network
+trained on BombCAD's own district runs, and eases to the plain wave by 1.2 km. On Beirut's runs,
+which it was never trained on:
 
 - close in behind buildings, its peaks go from ×1.7 high to about right;
-- in sight, 94% of cells come within ×1.25 of the runs' peaks, against 91%;
+- 96% of cells in sight and 70% behind buildings come within ×1.25 of the runs' peaks, against 91%
+  and 68%;
 - arrivals come out closer;
 - the pulse carries the runs' impulse.
 
-Behind buildings over the whole plan it is no better, and beyond 1 km it reads a little low. It
-adds about 20 ms to a drag step on Beirut, so it runs while you drag. Its weights, 15.7 MB, are
-downloaded the first time it is turned on, only once you agree. It is illustrative
-([the learned refinement](../../live-wave.md#the-learned-refinement-2-november-2026)).
+It adds about 20 ms to a drag step on Beirut, so it runs while you drag. Until its weights (15.7 MB,
+the `live-wave-model-1` release) are on your Mac, the wave is the plain one. **Download
+Refinement…** in the bar fetches them, only once you agree. Turn the checkbox off to go back to the
+plain wave. It is illustrative ([the learned refinement](../../live-wave.md#adopted-as-the-default-2-november-2026)).
 
 Headless, `blastmodel live-wave-features` writes its training pairs, and `scenebench
-live-wave-judge --learned` judges it. `scenebench field-export --arrival` has now been run over all
-200 runs of the learned field's list.
+live-wave-judge --learned [--blend near,far]` judges it. `scenebench field-export --arrival` has now
+been run over all 200 runs of the learned field's list.

@@ -12,7 +12,8 @@ extension LiveWave {
     /// as it was. The impulse is carried by the Friedlander decay, the positive phase kept, or the
     /// phase stretched where a pulse of no decay is still too small.
     ///
-    /// Off by default; run by BlastCore's `LearnedFieldNetwork` on the GPU from a `.bcfw` file of
+    /// The app's default since 2 November 2026, within about 1 km of the charge (`defaultBlend`);
+    /// run by BlastCore's `LearnedFieldNetwork` on the GPU from a `.bcfw` file of
     /// its weights, with no group norms, so that a cell gets the same whatever the plan's size.
     public struct Refinement: Sendable {
         /// The inputs it was trained on, in order, as `features` lays them out.
@@ -28,6 +29,23 @@ extension LiveWave {
         public static let limits: [Float] = [1.5, 0.5, 1.5]
 
         public let network: any LearnedField.Network
+        /// Where it is taken, by straight-line distance from the charge, m: whole within the lower
+        /// end, eased to nothing at the upper; everywhere with nil.
+        public var blend: ClosedRange<Float>?
+
+        /// The app's blend, adopted on 2 November 2026 (docs/live-wave.md, "Adopted as the
+        /// default"): whole within 700 m, the plain wave from 1,200 m. Beyond about 1 km the network
+        /// reads Beirut's shielded peaks low, as the made-up districts' runs do there.
+        public static let defaultBlend: ClosedRange<Float> = 700...1200
+
+        /// How much of the correction a cell `distance` m from the charge takes under `blend`.
+        static func weight(at distance: Float, blend: ClosedRange<Float>?) -> Float {
+            guard let blend else { return 1 }
+            if distance <= blend.lowerBound { return 1 }
+            if distance >= blend.upperBound { return 0 }
+            let t = (distance - blend.lowerBound) / (blend.upperBound - blend.lowerBound)
+            return 1 - t * t * (3 - 2 * t)
+        }
 
         /// Its standing, worded from the standing table's figures (docs/live-wave.md, "The learned
         /// refinement").
@@ -38,25 +56,28 @@ extension LiveWave {
             let arrival = ValidationTables.figure("liveWaveLearnedArrivalShielded")
             return [
                 "\(EvidenceLevel.illustrative.title). An estimate, not a run: the live wave corrected cell by cell by a "
-                    + "network trained on BombCAD's own 4 m runs of made-up districts.",
+                    + "network trained on BombCAD's own 4 m runs of made-up districts, whole within 700 m of the charge "
+                    + "and eased to the plain wave by 1,200 m.",
                 String(
                     format:
-                        "Against Beirut's 4 m runs it never saw, 2 m over the ground: peaks within ×1.25 on %.0f%% of cells "
+                        "Against Beirut's 4 m runs it was never trained on, 2 m over the ground: peaks within ×1.25 on %.0f%% of cells "
                         + "in sight and %.0f%% behind buildings, %.0f%% of those within 100 m (%.0f%% without it); "
                         + "arrivals beyond 200 m %.1f–%.1f%% out on average behind buildings.",
                     100 * sight.low, 100 * shielded.low, 100 * near.high, 100 * near.low, 100 * arrival.low,
                     100 * arrival.high),
-                "Its pulse carries the runs' positive impulse. Beyond 1 km it reads a little low, as the made-up "
-                    + "districts' runs do there. It is the 4 m runs' wave, as the live wave is.",
+                "Its pulse carries the runs' positive impulse where it is taken. Beyond 1 km, where it would read low "
+                    + "as the made-up districts' runs do, it gives way to the plain wave. It is the 4 m runs' wave, as "
+                    + "the live wave is.",
             ]
         }()
 
-        public init(network: any LearnedField.Network) throws {
+        public init(network: any LearnedField.Network, blend: ClosedRange<Float>? = nil) throws {
             guard network.header.isLiveWave, network.header.headCount == Self.outputs.count else {
                 throw LearnedFieldError.badWeights(
                     "not the live wave's refinement: inputs \(network.header.inputs)")
             }
             self.network = network
+            self.blend = blend
         }
 
         /// `field`, worked out on `plan` for a charge of `mass` kg at `charge`, refined: its peak,
@@ -72,7 +93,7 @@ extension LiveWave {
             guard outs.count == Self.outputs.count, outs.allSatisfy({ $0.count == rows * columns }) else {
                 throw LearnedFieldError.network("\(outs.map(\.count)) outputs for 3 of \(rows) × \(columns)")
             }
-            var refined = LiveWave.corrected(field, by: outs, columns: columns)
+            var refined = LiveWave.corrected(field, by: outs, columns: columns, blend: blend)
             let took = (ContinuousClock.now - start) / .seconds(1)
             refined.refinementSeconds = took
             refined.seconds = field.seconds + took
@@ -168,9 +189,16 @@ extension LiveWave {
     /// `columns` wide, padded) taken, each held within `Refinement.limits`: the peak and arrival
     /// scaled; the impulse by the Friedlander decay at the same positive phase, or, where even no
     /// decay gives too little, by a longer phase with none.
-    static func corrected(_ field: Field, by outs: [[Float]], columns: Int) -> Field {
+    ///
+    /// With `blend`, each correction is taken whole within its lower end of straight-line distance
+    /// from the charge, m, and eased to nothing at its upper end (a smoothstep), the plain wave
+    /// beyond.
+    static func corrected(
+        _ field: Field, by outs: [[Float]], columns: Int, blend: ClosedRange<Float>? = nil
+    ) -> Field {
         var refined = field
         let limits = Refinement.limits
+        let straight = field.straight
         let decay = DecayTable.shared
         refined.arrival.withUnsafeMutableBufferPointer { arrival in
             refined.peak.withUnsafeMutableBufferPointer { peak in
@@ -181,9 +209,11 @@ extension LiveWave {
                                 let n = i + field.columns * j
                                 guard arrival[n].isFinite, duration[n] > 0 else { continue }
                                 let m = i + columns * j
-                                let dp = min(max(outs[0][m], -limits[0]), limits[0])
-                                let da = min(max(outs[1][m], -limits[1]), limits[1])
-                                let di = min(max(outs[2][m], -limits[2]), limits[2])
+                                let w = Refinement.weight(at: straight[n], blend: blend)
+                                guard w > 0 else { continue }
+                                let dp = w * min(max(outs[0][m], -limits[0]), limits[0])
+                                let da = w * min(max(outs[1][m], -limits[1]), limits[1])
+                                let di = w * min(max(outs[2][m], -limits[2]), limits[2])
                                 peak[n] *= exp(dp)
                                 arrival[n] *= exp(da)
                                 // The pulse kept where the impulse moves with the peak.

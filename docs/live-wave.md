@@ -18,8 +18,10 @@ first": the solver's runs are the referee and the data, not the experience. Like
   Its arrivals there run up to 10% early.
 
 The full tables are [below](#judged-against-the-solver-1-november-2026). An optional learned
-refinement, off by default, corrects it towards the runs: close in behind buildings and in sight,
-and in its arrivals and pulse ([below](#the-learned-refinement-2-november-2026)).
+refinement, on by default since 2 November within about 1 km of the charge, corrects it towards
+the runs: close in behind buildings and in sight, and in its arrivals and pulse
+([below](#the-learned-refinement-2-november-2026),
+[adopted](#adopted-as-the-default-2-november-2026)).
 
 ![The live wave over Beirut at 0.5 kt, a third of the way through: the front a bright line, each
 place keeping the colour of its peak, the front lagging into the city behind the port's
@@ -201,7 +203,9 @@ emmettl/bombcad-work#115, stage 2 of the [next steps](#next) below. On 1 Novembe
 to keep the live wave illustrative, to leave large districts on 8 m cells while dragging, and to
 build the learned version. This is that version: a network that corrects the live wave cell by
 cell, towards BombCAD's own 4 m runs. It is an option, **Learned Refinement** in the wave's bar,
-**off by default**. Off, nothing changes. Its standing is **illustrative**.
+**off by default**. Off, nothing changes. Its standing is **illustrative**. (On 2 November it was
+made the default within about 1 km of the charge:
+[adopted as the default](#adopted-as-the-default-2-november-2026).)
 
 On Beirut's 50 runs, which it never saw, the refinement:
 
@@ -367,7 +371,8 @@ loaded Studio.
 
 ### In the app
 
-**Learned Refinement**, the checkbox in the live wave's bar, is off by default and remembered
+**Learned Refinement**, the checkbox in the live wave's bar, was off by default at first (on since
+the [adoption](#adopted-as-the-default-2-november-2026)) and is remembered
 (`liveWave.learnedRefinement`). It reads the weights from:
 
 1. `BOMBCAD_LIVE_WAVE_MODEL`;
@@ -419,6 +424,60 @@ gh release create live-wave-model-1 --repo emmettl/bombcad --target main --lates
   districts within about 1 km of the charge, or wait for training runs over more kinds of place.
 - **Its standing** stays illustrative, as asked.
 
+## Adopted as the default (2 November 2026)
+
+On 2 November the user decided to publish the weights and make the refinement the default, applied
+within about 1 km of the charge and blended to the plain live wave beyond. The release
+`live-wave-model-1` was published that morning, kept off "latest". `curl` of its asset gave
+15,702,546 bytes with the pinned SHA-256. The app's own download (`LearnedFieldDownload.install`
+with `LiveWave.Refinement.Release.asset`) fetched it, checked it and read it as the refinement's
+weights (`LiveWaveLearnedTests`, run against the release with `BOMBCAD_REAL_DOWNLOAD`).
+
+**The blend.** Each correction is taken whole within a first distance from the charge and eased to
+nothing at a second, by a smoothstep on the straight-line distance (`LiveWave.Refinement.blend`).
+Three blends were judged on Beirut's 50 runs, `scenebench live-wave-judge --learned … --blend
+near,far`. Each cell gives peaks within ×1.25 in sight and shielded, the shielded arrivals' mean
+error, and impulse within ×1.25 shielded:
+
+| Blend | 4 m cells | 8 m cells (while dragging) |
+|---|---|---|
+| None (the live wave alone) | 91%, 68%, 3.1%, 26% | 91%, 67%, 3.1%, 26% |
+| 500 → 1,000 m | 96%, 70%, 2.4%, 47% | 95%, 70%, 2.8%, 46% |
+| **700 → 1,200 m (adopted)** | **96%, 70%, 2.3%, 59%** | **96%, 71%, 2.7%, 58%** |
+| 1,000 → 1,500 m | 96%, 68%, 2.2%, 76% | 96%, 69%, 2.6%, 74% |
+| Everywhere | 94%, 67%, 2.2%, 77% | 95%, 68%, 2.5%, 76% |
+
+700 → 1,200 m was adopted: it gives the most shielded peaks within ×1.25. A wider blend keeps
+more of the pulse's gain, but gives back shielded peaks beyond 1 km. The choice was made on
+Beirut's runs, so on these figures Beirut is no longer wholly held out. The network itself was
+still trained and chosen on made-up districts alone.
+
+With the blend adopted, on Beirut's runs at 4 m, the live wave alone to the left of each arrow:
+
+| Distance | In sight | Shielded | Shielded arrivals' mean error |
+|---|---|---|---|
+| 0–100 m | ×0.91, 60%, 77% → ×1.01, 71%, 85% | ×1.71, 23%, 36% → ×1.02, 38%, 59% | 21.1% → 16.0% |
+| 100–200 m | ×0.88, 75%, 91% → ×1.01, 90%, 97% | ×1.25, 37%, 61% → ×1.07, 49%, 74% | 11.4% → 9.1% |
+| 200–400 m | ×1.00, 93%, 99% → ×0.97, 98%, 100% | ×1.16, 51%, 76% → ×1.08, 62%, 84% | 6.4% → 4.2% |
+| 400–700 m | ×1.04, 91%, 98% → ×0.93, 96%, 99% | ×1.10, 60%, 85% → ×1.06, 65%, 87% | 3.2% → 1.9% |
+| 700–1,000 m | ×1.05, 97%, 100% → ×0.94, 100%, 100% | ×1.04, 69%, 92% → ×1.03, 70%, 92% | 1.8% → 1.5% |
+| 1,000–1,500 m | ×1.01, 100%, 100% → ×1.00, 100%, 100% | ×0.96, 75%, 94% → ×0.96, 76%, 95% | 1.9% → 1.8% |
+| 1,500–2,000 m | the live wave's | the live wave's | 0.9% → 0.9% |
+| All | ×1.02, 91%, 97% → ×0.97, 96%, 99% within ×1.5 | ×1.02, 68%, 90% → ×1.00, 70%, 91% within ×1.5 | 3.1% → 2.3% |
+
+A recompute on the judged plans took 65 ms median at 4 m and 19 ms at 8 m, against 67 ms and 24 ms
+unblended. The blend adds nothing measurable to the network's 21–22 ms on Beirut's 8 m drag plan.
+
+**In the app.** Learned Refinement is now on unless the user has turned it off; a choice made
+before is remembered. Until the weights are on this Mac the wave is the plain one. The bar says
+"The live wave is shown without its learned refinement until its weights, 15.7 MB, are
+downloaded", with a **Download Refinement…** button. That button asks first, with the file's size
+and URL, and nothing is fetched without the click. Declining turns the option off, and that is
+remembered. A failed download leaves it off, saying why. A path set by hand that holds nothing is
+reported and never filled.
+
+Its standing stays illustrative (`LiveWave.Refinement.standing`, worded from the figures here).
+
 ## Using it
 
 - **In the app:** Simulation ▸ Show Live Blast Wave (⌥⌘B), before a run. A bar under the view has:
@@ -429,8 +488,9 @@ gh release create live-wave-model-1 --repo emmettl/bombcad --target main --lates
   - the colour key;
   - Done.
 
-  - **Learned Refinement**, off by default
-    ([the learned refinement](#the-learned-refinement-2-november-2026)).
+  - **Learned Refinement**, on by default within about 1 km of the charge, with **Download
+    Refinement…** until its weights are on this Mac
+    ([adopted as the default](#adopted-as-the-default-2-november-2026)).
 
   It opens at the end of the wave, with every peak and shadow shown. With Place Charge on, drag the
   charge and the wave follows it. It stays on screen with the quick estimate's colours and the

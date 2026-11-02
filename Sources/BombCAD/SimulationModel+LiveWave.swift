@@ -109,9 +109,15 @@ extension SimulationModel {
         let cell = Self.liveWaveCell(for: layout, dragging: request.coarse)
         let known = liveWavePlans[cell].flatMap { $0.version == request.sceneVersion ? $0.plan : nil }
         // The learned refinement, while dragging only where it keeps up (`liveWaveRefinesWhileDragging`).
-        let refines = request.learned && (!request.coarse || Self.liveWaveRefinesWhileDragging)
         let weights = liveWaveLearnedWeightsURL
+        // On, but its weights not here yet: the plain wave, and the bar says so and offers them.
         let loaded = liveWaveRefinement.flatMap { $0.url == weights ? $0.refinement : nil }
+        let weightsHere = loaded != nil || FileManager.default.fileExists(atPath: weights.path)
+        let refines =
+            request.learned && weightsHere && (!request.coarse || Self.liveWaveRefinesWhileDragging)
+        if request.learned && !weightsHere && !liveWaveLearnedDownloadInFlight {
+            liveWaveLearnedStatus = liveWaveLearnedMissingStatus
+        }
         liveWaveInFlight = true
         Task { [weak self] in
             let (plan, field, planSeconds, refinement, failure) = await Task.detached(

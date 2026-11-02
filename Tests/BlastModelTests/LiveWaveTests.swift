@@ -315,6 +315,35 @@ struct LiveWaveRefinementTests {
         #expect(coarse.features[8 * 37 * 37 + n] == 8)
     }
 
+    @Test("The blend takes the correction whole near the charge and eases it to nothing far out")
+    func blend() throws {
+        let blend: ClosedRange<Float> = 700...1200
+        #expect(LiveWave.Refinement.weight(at: 100, blend: blend) == 1)
+        #expect(LiveWave.Refinement.weight(at: 700, blend: blend) == 1)
+        #expect(abs(LiveWave.Refinement.weight(at: 950, blend: blend) - 0.5) < 1e-6)
+        #expect(LiveWave.Refinement.weight(at: 1200, blend: blend) == 0)
+        #expect(LiveWave.Refinement.weight(at: 5000, blend: nil) == 1)
+        // On a plan 300 m across, a blend from 100 m to 200 m: whole near, none beyond.
+        let field = LiveWave.field(plan: Self.plan, charge: Self.charge, mass: 1000)
+        let refined = try LiveWave.Refinement(network: Constant([log(2), 0, 0]), blend: 100...200).refined(
+            field, plan: Self.plan, charge: Self.charge, mass: 1000)
+        var near = 0
+        var far = 0
+        for n in field.peak.indices where field.arrival[n].isFinite {
+            let ratio = refined.peak[n] / field.peak[n]
+            if field.straight[n] <= 100 {
+                #expect(abs(ratio - 2) < 1e-4)
+                near += 1
+            } else if field.straight[n] >= 200 {
+                #expect(ratio == 1 && refined.decay[n] == field.decay[n])
+                far += 1
+            } else {
+                #expect(ratio > 1 && ratio < 2)
+            }
+        }
+        #expect(near > 100 && far > 100)
+    }
+
     @Test("A refinement's weights file reads back, without group norms")
     func weightsFile() throws {
         let shapes = LearnedField.Weights.tensorShapes(

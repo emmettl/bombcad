@@ -5,9 +5,10 @@ import Testing
 
 @testable import BombCAD
 
-/// The live wave's learned refinement in the app (emmettl/bombcad-work#115): off by default and
-/// then the wave as it was; on without its weights, it offers the download and stays off until
-/// the file is in and checked; on with them, the wave is refined on the GPU. The weights here are a
+/// The live wave's learned refinement in the app (emmettl/bombcad-work#115): on by default since
+/// 2 November 2026; off, the wave as it was; on without its weights, the plain wave and the
+/// download offered, nothing fetched until the user agrees and the file is checked; on with them,
+/// the wave is refined on the GPU. The weights here are a
 /// tiny well-formed network whose corrections are its head's biases; nothing is fetched.
 @MainActor
 @Suite("The live wave's learned refinement in the app", .serialized, .hangLimit)
@@ -64,7 +65,7 @@ struct LiveWaveLearnedTests {
         }
     }
 
-    @Test("Off by default; without weights, turning it on asks, and declining leaves it off")
+    @Test("Off, then turned on without weights, it asks, and declining leaves it off")
     func offersAndDeclines() async throws {
         let temporary = try TemporaryDefaults()
         defer { temporary.remove() }
@@ -107,6 +108,49 @@ struct LiveWaveLearnedTests {
         #expect(temporary.defaults.bool(forKey: SimulationModel.liveWaveLearnedKey))
         model.setLiveWaveLearned(false)
         #expect(!model.liveWaveLearned)
+    }
+
+    @Test("On by default without its weights: the plain wave, and the bar says why and offers them")
+    func missingWeights() async throws {
+        let temporary = try TemporaryDefaults()
+        defer { temporary.remove() }
+        let model = try await model(temporary)
+        model.liveWaveLearned = true
+        #expect(model.liveWaveLearnedWeightsMissing)
+        model.liveWaveShown = true
+        try await waitForWave(model, learned: true)
+        #expect(model.liveWave?.refined == false)
+        #expect(model.liveWaveLearnedStatus.contains("until its weights"))
+        #expect(!model.offersLiveWaveLearnedDownload)
+        model.offerLiveWaveLearnedDownload()
+        #expect(model.offersLiveWaveLearnedDownload)
+        model.declineLiveWaveLearnedDownload()
+        #expect(
+            !model.liveWaveLearned
+                && temporary.defaults.object(forKey: SimulationModel.liveWaveLearnedKey) as? Bool == false)
+        model.liveWaveShown = false
+    }
+
+    /// Against the real release, only with `BOMBCAD_REAL_DOWNLOAD` set: fetched, checked against
+    /// the pin and read as weights.
+    @Test(
+        "The release's file downloads, matches its pin and reads as the refinement",
+        .enabled(if: ProcessInfo.processInfo.environment["BOMBCAD_REAL_DOWNLOAD"] != nil))
+    func realDownload() async throws {
+        let temporary = try TemporaryDefaults()
+        defer { temporary.remove() }
+        let destination = temporary.folder.appending(path: "LearnedModels/live-wave-unet-1.bcfw")
+        let item = LearnedFieldDownload.Item(LiveWave.Refinement.Release.asset, to: destination)
+        #expect(
+            item.source.absoluteString
+                == "https://github.com/emmettl/bombcad/releases/download/live-wave-model-1/live-wave-unet-1.bcfw"
+        )
+        try await LearnedFieldDownload.install([item])
+        #expect(item.isInPlace)
+        let weights = try LearnedField.Weights(contentsOf: destination)
+        #expect(weights.header.isLiveWave && weights.header.width == 32)
+        let size = try FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? Int
+        #expect(size == LiveWave.Refinement.Release.asset.bytes)
     }
 
     @Test("On, the wave is refined on the GPU; off, it is the wave as it was")
