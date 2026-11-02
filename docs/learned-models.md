@@ -3140,8 +3140,231 @@ the CPU's preview on the square while losing no more than about a point on Beiru
 district. Round 6 does, as above, and is built in (`LiveResponse+Embedded.swift`). Nothing else
 changes: the CPU's preview stays by name, and the full estimate follows when the charge is let go.
 
+## Choosing the next runs where the models are least sure (2 November 2026)
+
+emmettl/bombcad-work#118, stage 1. The live response's 2 m gap
+([small cells](#small-cells-and-close-charges-2-november-2026)) was found by a user's scene, not by
+the models. This stage builds a tool that finds such gaps first. It scores candidate runs by how
+far their inputs lie from the training's, and by how far an ensemble's answers spread on them.
+Then it picks the runs worth most per hour of compute. It is tried on the live response, whose
+data cost CPU time only, and whose gap is known.
+
+### The tool: `Scripts/ml/corpus.py`
+
+`$PY Scripts/ml/corpus.py pool | probe | select | check | round | pack | judge | audit | needs`,
+where `$PY` is the ML venv's Python (`$BOMBCAD_DATA/ml/venv/bin/python -I`). It needs NumPy alone
+and reads the float32 `.bclr` weights itself. The steps:
+
+- **`pool`** makes the candidates. Each is one piece of `scenebench response-data`: a made-up
+  district from `make_district.py` (perimeter, grid, towers, industrial or square, each with its own
+  seed and terrain), one of four kinds of run, and 30 frames on 32 draws. The four kinds are 4 m
+  cells over 1.1 km with 100 kg to 5 kt; 4 m within 300 m with 50 kg to 5 t; 2 m within 300 m with
+  50 kg to 5 t; and 2 m within 300 m with 1 to 100 t. With two seeds of each that is 40 candidates
+  of 20 kinds. The mixed style stays out of the pool: its seed 7 is round 4's held-out district.
+  The explorer's square and street, and mixed seed 7 on 4 m and 2 m cells, are the held-out
+  scenes. They are probed and judged, and never taken.
+- **`probe`** runs each candidate for 8 frames on 2 draws, under `gpu-slot`. The inputs are as a
+  full piece's would be; only the chances are rough. The 44 probes took 0.33 CPU hours.
+- **`select`** scores each probe's rows against the training, for each of the three networks:
+  - **novelty** is a row's distance, in the network's standardised inputs, to the nearest of
+    40,000 training rows drawn by weight. It is given over the 90th percentile of the same distance
+    for the training's own held-out frames. `select` also reports how far each input lies beyond
+    the training's 0.1–99.9% range, and names the inputs furthest out;
+  - **scatter** is the largest spread, over the ensemble, of a row's answers. It is given over its
+    90th percentile on the held-out frames. The ensemble is the model itself (`live-response-4`)
+    and three more trained from seeds 2–4 (`train_response.py --seed`, jobs `corpus-ens-2` to
+    `-4`, 4.4 minutes each on bombcad-pc).
+
+  A row is worth what each score exceeds 1 by, each held to 10. A candidate is worth its rows' sum,
+  scaled to a full piece's frames, with each network's rows counted against the training's rows a
+  frame. Candidates are taken by worth over estimated cost until the budget is spent. The cost is
+  the probe's CPU time times the label-to-probe ratio measured on rounds 4 and 6: 4.7 over 1.1 km,
+  6.5 within 300 m, good to about 40%. After each take, rows within the held-out distance of the
+  taken probe's rows count as seen, so a second candidate like the first is worth less. Candidates
+  already in the training are left out. `select` also writes a fixed list for the same budget,
+  chosen without the models: one candidate of each kind in a seeded order, then the next of each.
+- **`check`** scores the held-out scenes, or any probe, in the same way, without taking them.
+- **`round`** labels the lists, cheapest first. **`pack`** joins the base's pack (as hard links)
+  and the pieces (gzipped) into one dataset to send. `train_response.py --only` then trains each
+  round on its own folders of it, so one dataset sent once serves every round.
+- **`judge`** measures each model against the CPU's answers on the held-out scenes. **`audit`**
+  asks whether the scores found the base model's errors on the labelled candidates.
+
+`Scripts/ml/test-corpus.py` tests the weights reader, the distances, the greedy choice and the
+fixed list. It runs in `make ci-test`. The data are on StudioData, in `scratch/ref-corpus`.
+
+### Would it have flagged the 2 m cells?
+
+Yes. The base is round 4's networks as they were built in at 87de5211 (`live-response-4`).
+Against them, every one of the 20 candidates on 2 m cells ranks above all 20 on 4 m. The 2 m
+candidates score 170–383 a CPU hour, the 4 m ones 4–12. On every 2 m candidate, all of the walls
+network's rows are novel, and the input furthest out is the roof slot's panel height, 85 of the
+training's deviations beyond its range: the cause found by hand on 2 November. The ensemble's scatter
+on those rows is 11–31 times the held-out level. `check` reports the same of the held-out scenes
+before any of them is run in full:
+
+| Held-out scene | Walls rows novel | Out of range | Scatter (walls network) | Input furthest out |
+|---|---|---|---|---|
+| Explorer's square, 2 m | 100% | 100% | 18× | roof panel height, 85 deviations |
+| Explorer's street, 2 m | 100% | 100% | 19× | roof panel height, 85 deviations |
+| Mixed seed 7, 2 m | 100% | 100% | 15× | roof panel height, 85; wall spans 11 |
+| Mixed seed 7, 4 m (round 4's held-out) | 17% | 0% | 0.5× | none |
+
+On the 2 m scenes, a third to three-fifths of the component rows are also beyond the range, in the
+façade pane's height. The component network's damaged rows were exact on only 80–92% of them (97–98% at 4 m).
+
+### Did the scores find the errors?
+
+Once the whole pool was labelled (5.55 CPU hours, done for this check alone), the base model's
+error on each candidate was measured. It is the mean, over the walls' three chances and the glass
+blown out, of the share of rows not within 0.1, with the damaged components' levels not exact. It
+was 0.08–0.34 on the 2 m candidates and 0.010–0.023 on the 4 m ones. Spearman's rank correlation
+over the 40, with the error:
+
+| Score | All 40 | The 20 on 4 m (seen) | The 20 on 2 m (unseen) |
+|---|---|---|---|
+| Novelty | 0.87 | **0.81** | 0.15 |
+| Scatter | 0.87 | 0.18 | **0.76** |
+| Worth (rows' sum) | 0.52 | −0.56 | 0.15 |
+
+- **Each score ranks the error where the other cannot.** Among the 4 m candidates, which the model
+  has seen, novelty ranks the error and scatter barely does. Among the 2 m candidates, novelty is
+  at its cap on every one, and scatter ranks the error: charges of 1–100 t are worse than 50 kg to
+  5 t (0.24–0.34 against 0.08–0.17). So both are needed, as the issue supposed. The ensemble's
+  disagreement does not, on these networks, find the 4 m candidates that are seen but wrong.
+- **Worth is not error.** It sums the rows, so a large 4 m district is worth more than a small
+  one at the same error. It is meant to be read per CPU hour, as `select` reads it.
+
+### Active against fixed, at the same cost
+
+Two budgets. The 0.5 CPU-hour active list took 8 pieces (0.56 CPU hours as run), all on 2 m:
+squares and perimeter blocks first, and one industrial piece once the rest were seen. With its
+probes, the round cost 0.89 CPU hours. The fixed list at that cost (`fixedp`) took a 4 m grid over
+1.1 km (0.77 hours) and three 2 m pieces. The fixed list at the picks' cost alone (`fixed05`, 12
+pieces, 0.58 hours) is shown as well. The 1.5-hour active list took all 20 pieces on 2 m and 8 on
+4 m (1.70 CPU hours as run, 2.03 with its probes). Its fixed list at 2.03 hours took 19 pieces.
+Each round was trained as round 4 was, on round 4's data and the round's pieces: 40 epochs, on
+bombcad-pc, about 4 minutes each. Each round was trained twice, from seeds 1 and 2.
+
+Within 0.1 of the CPU's own answers (32 draws, which is what the networks learn), or exact, on the
+held-out scenes. Seeds 1 / 2:
+
+| Held-out scene | Measure | Base | Round 6 (5.26 h of squares) | Active, 0.89 h | Fixed, 0.89 h | Active, 2.03 h | Fixed, 2.03 h | Whole pool, 5.55 h |
+|---|---|---|---|---|---|---|---|---|
+| Square | Walls moderate+ | 79.5% | 98.5% | **97.1 / 97.2%** | 94.8 / 95.5% | 97.4 / 97.2% | 96.8 / 96.9% | 97.5% |
+| | Roof moderate+ | 93.7% | 99.3% | 98.9 / 99.0% | 98.7 / 98.7% | 99.2 / 99.1% | 98.9 / 99.0% | 99.1% |
+| | Glass blown out | 95.2% | 99.2% | 97.4 / 97.7% | 96.1 / 96.0% | 97.6 / 97.6% | 97.2 / 97.3% | 98.7% |
+| | Component level, damaged | 91.9% | 99.0% | 98.4 / 98.3% | 97.5 / 97.8% | 98.4 / 98.6% | 98.0 / 98.5% | 98.7% |
+| Street | Walls moderate+ | 73.4% | 97.7% | 96.1 / 96.8% | 94.2 / 96.7% | 96.8 / 96.9% | 95.8 / 97.2% | 96.9% |
+| | Roof moderate+ | 86.5% | 98.8% | 98.4 / 98.3% | 97.8 / 97.6% | 98.6 / 98.6% | 98.3 / 98.2% | 98.7% |
+| | Component level, damaged | 90.8% | 98.6% | 98.0 / 98.1% | 97.2 / 97.7% | 98.2 / 98.1% | 98.1 / 98.1% | 98.2% |
+| Mixed, 2 m | Walls moderate+ | 77.6% | 91.3% | **96.9 / 96.7%** | 96.5 / 96.2% | 97.7 / 97.6% | 97.3 / 97.2% | 97.7% |
+| | Roof moderate+ | 81.8% | 98.6% | 98.3 / 98.2% | 97.5 / 97.6% | 98.9 / 98.7% | 98.5 / 98.6% | 98.8% |
+| | Component level, damaged | 80.4% | 98.0% | **97.5 / 97.5%** | 94.9 / 96.1% | 97.6 / 98.0% | 97.5 / 97.7% | 97.9% |
+
+The fixed list at the picks' cost alone (0.58 hours) read 96.6% on the square's walls, 94.5% on
+the street's and 96.4% on the mixed district's. Heavy+ follows moderate+ within 0.4 points
+everywhere. On 4 m cells (mixed seed 7, Beirut's held-out frames, and the four made-up districts'
+held-out frames) every round is within 0.7 points of the base on every measure, and no measure
+falls by more than 0.11.
+
+- **At 0.89 CPU hours the active round is ahead of the fixed one on every 2 m scene,** by 1.6–2.4
+  points on the square's walls, 0.2–0.7 on the mixed district's, and 0.5–2.6 on the components'
+  levels.
+  On the street, the fixed round's second seed is level with it (96.7% against 96.1–96.8%), so
+  there the gap is within the seeds' spread. At 2.03 hours both rounds have most of the 2 m pieces,
+  and active leads by 0.3–0.6 points, except on the street's walls, where the fixed round's second
+  seed is 0.3 ahead.
+- **At 0.89 CPU hours, a sixth of round 6's cost, the active round comes within 0.9–1.6 points of
+  round 6 on the square's and street's walls, and is 5.6 points ahead on the mixed district at 2 m**
+  (96.9% against 91.3%), a style no round trained on. Round 6's squares alone do not carry to
+  other streets at 2 m. The pool's mix of styles does.
+- **Nothing on 4 m cells moved**, Beirut included, by more than 0.7 points, for any round.
+
+### Against the full estimate
+
+`drag-time --live --agreement --reference-draws 100` on the explorer's square and street, as
+[small cells](#against-the-full-estimate-2) judged rounds 4–6, at the same two places each. Each
+round's seed-1 weights, with the pane threshold at −1. The base's figures reproduce that section's
+"learned before" column exactly. Within 0.1 of the full estimate, the two places:
+
+| Scene | Measure | Base | Round 6 | Active, 0.89 h | Fixed, 0.89 h | Active, 2.03 h | Fixed, 2.03 h | Whole pool |
+|---|---|---|---|---|---|---|---|---|
+| Square, 5 t | Walls moderate+ | 57.8–62.8% | 81.7–83.7% | 80.9–83.7% | 83.4–84.4% | 81.2–84.2% | 81.7–84.4% | 81.2–83.9% |
+| | Roof moderate+ | 57.3–68.1% | 98.7–99.5% | 98.0–99.2% | 97.2–98.2% | 98.7–99.2% | 98.0–99.5% | 98.5–99.5% |
+| | Glass blown out | 76.0–78.4% | 83.0–84.3% | 72.9–76.2% | 74.3–77.3% | 73.9–77.3% | 73.2–75.8% | 80.2–81.5% |
+| Square, 500 kg | Walls moderate+ | 71.1–76.9% | 83.9–89.2% | 83.9–89.2% | 85.2–89.4% | 84.2–89.2% | 84.4–89.2% | 83.9–89.2% |
+| Street, 5 t | Walls moderate+ | 44.6–45.1% | 98.1–98.2% | 95.8–98.3% | 94.6–98.7% | 97.4–98.2% | 97.2–98.3% | 97.7–98.3% |
+| | Roof moderate+ | 46.9–47.8% | 98.3–98.5% | 95.9–96.4% | 98.8–99.1% | 96.2–96.3% | 97.7% | 96.3% |
+| Street, 500 kg | Walls moderate+ | 44.0–53.3% | 93.7–94.5% | 92.1–93.2% | 94.8–94.9% | 93.7–94.6% | 93.0–93.9% | 93.9–94.9% |
+| Either, either | Damage colour | 88.7–99.2% | 89.2–99.6% | 89.4–99.1% | 89.4–99.6% | 89.4–99.6% | 89.7–99.6% | 89.4–99.6% |
+
+Every round that took 2 m pieces closes the gap as round 6 did. Against the full estimate they
+differ by 2 points or less, either way. This referee cannot tell the rounds apart. Beyond the
+networks' own error, the preview's approximation sets the agreement: each side is judged by its
+nearest strip, and the CPU preview itself reads 81–88% on these walls. The whole pool's glass on
+the square at 5 t (80–82%) is the one figure near round 6's (83–84%). There, 1–3 t charges in
+small squares matter, and round 6 had 2,400 frames of them.
+
+### After the round
+
+`select` again, with the 2.03-hour active round's networks (seeds 1 and 2 as the ensemble) and its
+data as the training. No candidate is out of range any more. The best left is worth 18 a CPU hour,
+against 383 before, and the 2 m candidates the round took are excluded as trained. So when a model
+changes or a new kind of scene appears, the same commands say whether more runs would pay, and
+which.
+
+### What each model needs from a run
+
+`corpus.py needs` prints the following, so that one run can be planned to feed several models:
+
+| Model | Its data come from | What it needs of a run |
+|---|---|---|
+| Field model (field model 2, the U-Net family) | solver runs: `field-export`, or `district-compare --export-field` | peak overpressure and positive impulse on the plan 2 m over the ground; the same at more heights for the levels networks (`--levels`); the first phase's impulse (`--first-phase`); arrival (`--arrival`); roofs (`--roof`); and the plan's inputs |
+| Live wave refinement (`live-wave-unet-1`) | the same solver runs, through `blastmodel live-wave-features` | peak, arrival and positive impulse on the plan, on 4 m cells and coarsened twice |
+| Live response | the CPU alone: `scenebench response-data` | component loads and shapes, glazed sides' strips, buildings' walls and roofs, and the CPU's answers (`EnvelopeDamageAssessment`, `glassProbabilities`, `structureProbabilities`) |
+| Charge from damage | the CPU alone: `blastmodel charge-from-damage table` | each chosen building's chances of glass broken and walls moderate or heavy, by place and yield |
+
+So one field run with `--levels --first-phase --arrival --roof` serves the field models and the
+live wave at once. The live response and the charge network need no solver run. A run's façade
+loads (`district-compare --save-loads`) would let the live response learn from the solver's loads
+rather than the surrogate's: that is where building responses from runs would come from.
+
+### Compute
+
+| Where | What | Time |
+|---|---|---|
+| Studio CPU, under `gpu-slot` (at most 6.0 GB a piece) | probes 0.33 CPU h; the whole pool labelled 5.55 CPU h (for the audit; the rounds used 0.56–1.70); held-out scenes 1.21 CPU h | about 7.1 CPU hours, 80 minutes of wall time beside other sessions |
+| bombcad-pc (RTX 3080 Ti) | 3 ensemble members and 11 round models | 65 minutes of GPU |
+| Studio GPU | 28 referee runs (`drag-time --agreement`), mostly the full estimate on the CPU | under half an hour |
+
+That is about 1.1 GPU hours, against the stage's 6. No solver run was needed.
+
+### What it says, and the proposals (for the user to decide)
+
+- **The selector would have caught the 2 m gap before a user met it.** It found every 2 m
+  candidate and named the input at fault: the roof's panel height, 85 deviations out. Run on a new
+  built-in scene's probe (`corpus.py check`, seconds of CPU), it flags the scene before the scene
+  ships. The proposal is to make that check part of adding a built-in scene or a district type.
+- **Active learning pays most when the gap is new and the budget is small.** At 0.89 CPU hours the
+  active round leads the fixed one by up to 2.4 points on the networks' own error. At 2 hours the
+  two converge. Against the full estimate the rounds cannot be told apart.
+- **For the field models, novelty is the score to trust on seen ground, scatter on new.** The
+  audit says each finds what the other misses. A field-model run costs GPU minutes and has no cheap
+  probe, so there the selector would score candidates by their input planes alone. The next step is
+  a field-model adapter, on the same commands.
+- **No weights are proposed for adoption yet.** The best candidate is round 6's data with the
+  pool's 2 m pieces of every style added. The 2.03-hour active round has those pieces, but not
+  round 6's squares. On the networks' own error it is 1–1.3 points behind round 6 on the square's
+  and street's walls, and 6.3 points ahead on the mixed district at 2 m (97.7% against 91.3%).
+  Against the full estimate it is level. Training round 6's data plus those pieces would take one
+  4-minute job, judged as here. The built-in weights are unchanged.
+
 ## Not done yet
 
+- **The selector for the field models** ([choosing the next runs](#choosing-the-next-runs-where-the-models-are-least-sure-2-november-2026)):
+  candidates scored by their input planes' novelty and the ensemble's scatter, without a probe run,
+  on `corpus.py`'s commands.
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
 - **One levels network for every storey.** Round 5 did not match field model 2

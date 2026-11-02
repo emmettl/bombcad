@@ -117,6 +117,7 @@ ci-test:
 	python3 -I Scripts/ml/test-remote-train.py
 	python3 -I Scripts/ml/test-field-runs.py
 	python3 Scripts/ml/test-field-model.py
+	python3 Scripts/ml/test-corpus.py
 	python3 Scripts/check-doc-links.py
 	python3 Scripts/check-shader-mirrors.py
 	python3 Scripts/check-test-deadlines.py

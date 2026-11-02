@@ -19,6 +19,7 @@ to `<out>/live-response.bclr` (`LiveResponse.Weights`), with `report.json`.
 """
 
 import argparse
+import fnmatch
 import gzip
 import json
 import math
@@ -197,6 +198,9 @@ def main():
     parser.add_argument("--units", default="component,side,building")
     parser.add_argument("--dtype", default="float16", choices=["float16", "float32"])
     parser.add_argument("--keep", help="an earlier round's nets.pt, whose networks not trained now are kept")
+    parser.add_argument("--seed", type=int, default=1, help="the networks' starting weights and order (an ensemble's members)")
+    parser.add_argument("--only", help="train on these districts' folders alone, comma-separated (fnmatch patterns), "
+                        "so that one dataset sent once serves several rounds (Scripts/ml/corpus.py)")
     args = parser.parse_args()
     data = Path(args.data)
     out = Path(args.out)
@@ -211,6 +215,10 @@ def main():
 
     # One district's data, or a folder of districts', each its own folder with its meta.json.
     folders = [data] if (data / "meta.json").exists() else sorted(p for p in data.iterdir() if (p / "meta.json").exists())
+    if args.only:
+        patterns = args.only.split(",")
+        folders = [f for f in folders if any(fnmatch.fnmatch(f.name, p) for p in patterns)]
+        assert folders, f"no district's folder matches --only {args.only}"
     metas = [json.loads((f / "meta.json").read_text()) for f in folders]
     meta = metas[0]
     for other in metas[1:]:
@@ -222,7 +230,7 @@ def main():
     names = {"component": ["none", "moderate", "heavy", "hazardous", "failed", "glassBroken"],
              "side": meta["sideOutputs"], "building": meta["buildingOutputs"]}
     answers = {"component": 2, "side": len(meta["sideOutputs"]), "building": len(meta["buildingOutputs"])}
-    torch.manual_seed(1)
+    torch.manual_seed(args.seed)
     nets = {}
     report = {"device": device, "units": {}}
     for unit in args.units.split(","):
@@ -253,7 +261,7 @@ def main():
             report["units"][unit] = {"kept": args.keep}
     districts = ", ".join(f"{m['district']} ({len(m['frames'])} frames)" for m in metas)
     meta["trained"] = {"trainedOn": f"{data.name}: {districts}",
-                       "epochs": args.epochs, "heldOut": "frames 9 modulo 10"}
+                       "epochs": args.epochs, "heldOut": "frames 9 modulo 10", "seed": args.seed}
     torch.save({k: (m.state_dict(), [l.in_features for l in m.layers] + [m.layers[-1].out_features], mean, std, o)
                 for k, (m, mean, std, o) in nets.items()}, out / "nets.pt")
     export(out / "live-response.bclr", meta, nets, args.dtype)
