@@ -30,6 +30,9 @@ def main():
                         help="the component network's glass-broken logit threshold, set in the header")
     parser.add_argument("--out", help="the weights, so set, written here too")
     parser.add_argument("--add", help="another .bclr whose networks the weights lack are added")
+    parser.add_argument("--extra", help="write the weights as a further built-in file, "
+                        "Sources/BlastModel/LiveResponse+<Extra>.swift, its networks added to the main ones' at load "
+                        "(`LiveResponse.Weights.builtIn`): the main file left as it is")
     args = parser.parse_args()
     source = Path(args.weights)
     data = source.read_bytes()
@@ -72,6 +75,23 @@ def main():
     text = base64.b64encode(data).decode()
     lines = [text[i:i + 100] for i in range(0, len(text), 100)]
     body = "\n".join(lines)
+    if args.extra:
+        name = args.extra[0].upper() + args.extra[1:]
+        target = ROOT / "Sources" / "BlastModel" / f"LiveResponse+{name}.swift"
+        target.write_text(
+            f"// The live drag's learned response's {args.extra} network, built in beside the main weights\n"
+            "// (`LiveResponse+Embedded.swift`; emmettl/bombcad-work#117): written by Scripts/ml/embed_response.py\n"
+            f"// --extra {args.extra} from `train_response.py`'s live-response.bclr, base64.\n"
+            f"// {header.get('trainedOn', '')}; {len(data):,} bytes, SHA-256 {digest}.\n"
+            "// swift-format-ignore-file\n"
+            "extension LiveResponse.Weights {\n"
+            f"    static let embedded{name}SHA256 = \"{digest}\"\n"
+            f"    static let embedded{name}Weights: String? = \"\"\"\n"
+            f"{body}\n"
+            "\"\"\"\n"
+            "}\n")
+        print(f"{target.relative_to(ROOT)}: {len(data):,} bytes, {digest}")
+        return
     TARGET.write_text(
         "// The live drag's learned response's weights, built in (emmettl/bombcad-work#112): written by\n"
         "// Scripts/ml/embed_response.py from `train_response.py`'s live-response.bclr, base64.\n"

@@ -114,6 +114,23 @@ struct ProtectionLiveTests {
         #expect(people(plain, a, .thrownGlass).glassFellBack == 0)
     }
 
+    @Test("The built-in weights take the glass thrown's network beside the three, theirs as they were")
+    func builtInThrown() throws {
+        let merged = try #require(LiveResponse.Weights.builtIn)
+        let main = try LiveResponse.Weights(
+            data: try #require(
+                LiveResponse.Weights.embeddedWeights.flatMap {
+                    Data(base64Encoded: $0, options: .ignoreUnknownCharacters)
+                }))
+        #expect(merged.header.networks["thrown"]?.layers.last?.outputs == 2)
+        #expect(Array(merged.values.prefix(main.values.count)) == main.values)
+        for name in ["component", "side", "building"] {
+            #expect(merged.header.networks[name]?.layers == main.header.networks[name]?.layers)
+        }
+        // Its rows are the glass network's.
+        #expect(merged.header.networks["thrown"]?.inputs == merged.header.networks["side"]?.inputs)
+    }
+
     @Test("Without the glass thrown on its sides, a building keeps Kummer's, and says so")
     func fallsBack() throws {
         let scene = try block()

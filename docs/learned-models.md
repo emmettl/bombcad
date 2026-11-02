@@ -3367,9 +3367,11 @@ emmettl/bombcad-work#117. The people's second glass model, the glass thrown into
 `thrownHurt` and `thrownSevere`, which the full estimate and the CPU's preview work out pane by pane.
 For a drag a fourth network gives them, **thrown** (59 → 128, 128, 64 → 2). It reads the glass
 network's own inputs and gives the two shares, sigmoid outputs, the severe held at most the hurt.
-The three networks before are as they were, to the byte. `embed_response.py --add` puts the new one
-beside them in the built-in weights, now 635,257 bytes (SHA-256 `81a463b0…a956dafe51`,
-`ml/thrown-studio-1/app/live-response.bclr`). The preview runs it only where the weights have it.
+The three networks before are as they were, to the byte, in their own file. The new one is built in
+beside them, as a file of its own (`LiveResponse+Thrown.swift`, written by
+`embed_response.py --extra thrown`; 68,350 bytes, SHA-256 `a00a0862…9c682d74bd`, from
+`ml/thrown-studio-1/out/live-response.bclr`). `Weights.builtIn` adds its network to the others' when
+it loads them. The preview runs it only where the weights have it.
 
 **The data.** `scenebench response-data --thrown-only` is round 6's sides alone, with the two
 answers (`thrown-*` files, on 32 draws spread evenly). It was run over:

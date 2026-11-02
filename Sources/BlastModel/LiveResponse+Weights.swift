@@ -44,7 +44,10 @@ extension LiveResponse {
         /// Every tensor, one after another, as the layers' offsets index them.
         public var values: [Float]
 
-        public init(data: Data) throws {
+        public init(data: Data) throws { try self.init(data: data, requiring: ["component", "side", "building"]) }
+
+        /// The weights in `data`, each of the networks `requiring` there in full.
+        init(data: Data, requiring: [String]) throws {
             func fail(_ why: String) -> Error { LearnedFieldError.badWeights(why) }
             guard data.count >= 12, data.prefix(4) == Data("BCLR".utf8) else {
                 throw fail("not a .bclr file")
@@ -85,7 +88,7 @@ extension LiveResponse {
                 header.constructionWidth == LiveResponse.constructionWidth,
                 header.glazingWidth == LiveResponse.glazingWidth
             else { throw fail("weights for other inputs") }
-            for name in ["component", "side", "building"] {
+            for name in requiring {
                 guard let network = header.networks[name], let last = network.layers.last,
                     network.mean.count == network.inputs, network.std.count == network.inputs,
                     last.offset + last.inputs * last.outputs + last.outputs <= values.count
@@ -95,10 +98,34 @@ extension LiveResponse {
 
         public init(contentsOf url: URL) throws { try self.init(data: Data(contentsOf: url)) }
 
-        /// The weights built into the app (`LiveResponse.embedded`), nil if there are none.
+        /// The weights built into the app (`LiveResponse.embedded`), nil if there are none; with the
+        /// glass thrown's network beside them (`LiveResponse+Thrown.swift`; emmettl/bombcad-work#117)
+        /// where it reads.
         public static let builtIn: Weights? = embeddedWeights.flatMap {
             Data(base64Encoded: $0, options: .ignoreUnknownCharacters)
-        }.flatMap { try? Weights(data: $0) }
+        }.flatMap { try? Weights(data: $0) }.map { main in
+            embeddedThrownWeights.flatMap { Data(base64Encoded: $0, options: .ignoreUnknownCharacters) }
+                .flatMap { try? Weights(data: $0, requiring: ["thrown"]) }
+                .map { main.adding($0) } ?? main
+        }
+
+        /// These weights with `other`'s networks that they lack, `other`'s tensors after their own:
+        /// their own networks as they were.
+        public func adding(_ other: Weights) -> Weights {
+            var merged = self
+            for (name, network) in other.header.networks where merged.header.networks[name] == nil {
+                guard let first = network.layers.map(\.offset).min(),
+                    let end = network.layers.map({ $0.offset + $0.inputs * $0.outputs + $0.outputs }).max(),
+                    end <= other.values.count
+                else { continue }
+                var moved = network
+                let at = merged.values.count
+                for k in moved.layers.indices { moved.layers[k].offset += at - first }
+                merged.values += other.values[first..<end]
+                merged.header.networks[name] = moved
+            }
+            return merged
+        }
 
         /// Each network's rows run on the CPU: standardised, then each layer, SiLU between.
         public func run(_ name: String, rows: [Float], count: Int) -> [Float] {
