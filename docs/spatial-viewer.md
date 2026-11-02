@@ -256,18 +256,33 @@ measures:
 | Mac, by index | 56 to 368 ms (6.6×) | 1.57× | 6 to 10 ms (1.6×) | 1.02× |
 | iPad, by index | 56 to 478 ms (8.6×) | 1.52× | 6 to 13 ms (2.1×) | 1.20× |
 | By time, 60 Hz, both | 86 to 154 ms (1.8×) | 1.07× | 6 to 9 ms (1.5×) | 1.05× |
+| By time, measured on the iPad Pro | 108 ms median (2.25×) | 1.12× | 8 ms median (1.54×) | 1.07× |
 
 The viewer's auto measure now also plays each run through once from the start, as the view draws
-it, and reports both measures from the refreshes it drew, with the refreshes it missed. On the
-iPad itself that waits for the device to be unlocked: it was locked when the new build was
-installed.
+it, and reports both measures from the refreshes it drew (the last row above), with the
+refreshes it missed. Re-measured on the iPad Pro on the morning of 2 November with the new build:
+
+| | District | Street |
+|---|---|---|
+| Fetched whole over Wi-Fi | 7.9 s, 31.9 MB/s | 2.92 s, 20.9 MB/s |
+| First frame shown | 0.45 s | 0.18 s |
+| A frame shown: median, 95%, largest | 5.9, 16.2, 18.2 ms | 5.5, 15.1, 18.1 ms |
+| The GPU's time a view: median, 95% | 11.8, 14.4 ms | 10.8, 15.2 ms |
+| A frame scrubbed to before it came: median, largest | 210, 354 ms (26 frames) | 166, 455 ms (9) |
+| Memory in use, at most | 473 MB | 171 MB |
+| Played through, against its pace | 9.67 s, 9.67 s | 5.42 s, 5.42 s |
+| Refreshes missed while playing, at 60 Hz | 0 of 581 | 0 of 326 |
+
+Nothing regressed. The fetches moved with the Wi-Fi: the district faster than on 1 November, the
+street slower. On the device a frame by itself varies a little more than worked out from the times
+(the street 2.25× against 1.8×), from the refreshes' own timing. The windows are within 12%.
 
 What is left: a frame closer to the next than a refresh's worth of simulated time is passed over,
 and the rest are held a whole number of refreshes. So a frame by itself still varies by 1.8 times
 on the street, where blending neighbouring frames would make it even. The upload (read, decode,
 upload: 15 to 17 ms at the 95th percentile) still runs on the main thread in the draw, so it can
 cost a refresh. And the iPad's view draws 30 times a second even when nothing changes (11 ms of
-GPU each). The steps are on emmettl/bombcad-work#94.
+GPU each). These are left for emmettl/bombcad-work#43.
 
 ## What blocks the Vision Pro step
 
