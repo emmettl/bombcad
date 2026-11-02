@@ -75,12 +75,16 @@ extension SimulationModel {
         let preview = fireAdjusting || (envelopeDamageIsEstimate && envelopeEstimateIsPreview)
         let members = preview ? Self.fireDraws.preview : Self.fireDraws.full
         let (scenario, settings, thermal) = (self.settings.scenario, fireSettings, fireThermal)
+        // The estimate's what-if builds the fire's buildings too (their cladding and roofs), on a
+        // copy as the estimate's; a run's damage is the project's own.
+        let whatIf = envelopeDamageIsEstimate ? quickEstimateWhatIf : LiveResponse.WhatIf()
         let generation = fireGeneration
         let weak = FireWeakModel(self)
         fireProgress = FireProgress(done: 0, of: members)
         fireTask = Task.detached(priority: .userInitiated) {
             let layer = FireSpread.layer(
-                scene: scenario, source: source, thermal: thermal, settings: settings, members: members,
+                scene: Self.fireCache.scene(scenario, as: whatIf), source: source, thermal: thermal,
+                settings: settings, members: members,
                 preview: preview, cache: Self.fireCache, stop: { Task.isCancelled },
                 progress: { done in
                     Task { @MainActor in

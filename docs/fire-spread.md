@@ -700,6 +700,14 @@ order, each frame's fire behind the next frame's estimate):
 - With the Studio heavily shared (load 35–45), the estimate itself takes 57–69 ms, and a frame with
   the fire behind it takes 62 ms with the cache, 74 ms without.
 
+**The quick estimate's what-if** (later on 2 November). The fire used the project's own buildings,
+so a what-if's timber walls or roofs re-coloured the damage but not the fire. Now a what-if builds
+the fire's buildings as it builds the estimate's: their cladding, roofs and windows, on a copy, the
+project unchanged. The cache keeps the copy (`LayerCache.scene(_:as:)`), so a drag with a what-if on
+lays nothing out again, and picking or clearing one lays the buildings out again. A run's damage
+keeps the project's own buildings. `FireSpreadCacheTests` checks that the fire with a what-if is the
+fire on a scene built that way, building by building, to the bit.
+
 **Checks.** `FireSpreadCacheTests`; `FireSpreadTests` unchanged; the app holds one
 `LayerCache` for every layer (`SimulationModel.fireCache`), so `FireAfterBlastTests` draws through it.
 

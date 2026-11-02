@@ -3021,6 +3021,10 @@ frames
 So the wind holds well over 30 frames a second. A drag with the fire shown holds 30 as the app
 draws it, where the next frame's estimate hides the fire's 8 ms.
 
+Later that day, a what-if builds the fire's buildings as well as the estimate's: timber walls and
+roofs picked here burn in the fire. The project is still unchanged, and the cache keeps the
+what-if's copy, so a drag lays nothing out again.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up

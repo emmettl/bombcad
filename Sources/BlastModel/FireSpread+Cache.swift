@@ -33,6 +33,12 @@ extension FireSpread {
         /// The neighbours within `built`, the most any wind reaches, and those within the last reach.
         private var neighbours: (built: Double, all: [[Exposure]], reach: Double, within: [[Exposure]])?
         private var stages: (parameters: Parameters, stages: [Stages])?
+        /// The last scene a what-if was laid on, and the constructions it gave.
+        private var whatIf:
+            (
+                objects: [SceneObject], constructions: [EnvelopeConstruction]?, whatIf: LiveResponse.WhatIf,
+                built: [EnvelopeConstruction]?
+            )?
         private let lock = NSLock()
         /// What the last layer through the cache laid out again: its buildings, neighbours, stages.
         public private(set) var rebuilt: (buildings: Bool, neighbours: Bool, stages: Bool) = (
@@ -40,6 +46,28 @@ extension FireSpread {
         )
 
         public init() {}
+
+        /// `whatIf.applied(to: scene)`, the quick estimate's what-if laid on the fire's buildings as on
+        /// the estimate's, the project unchanged: laid on again only when the scene's buildings, their
+        /// constructions or the what-if change, so that a drag keeps the buildings' fixed parts and a
+        /// what-if picked or cleared lays them out again.
+        public func scene(_ scene: Scenario, as whatIf: LiveResponse.WhatIf) -> Scenario {
+            guard !whatIf.isEmpty else { return scene }
+            return lock.withLock {
+                if let kept = self.whatIf, kept.whatIf == whatIf, kept.objects == scene.objects,
+                    kept.constructions == scene.envelopeConstructions
+                {
+                    var copy = scene
+                    copy.envelopeConstructions = kept.built
+                    return copy
+                }
+                let built = whatIf.applied(to: scene)
+                self.whatIf = (
+                    scene.objects, scene.envelopeConstructions, whatIf, built.envelopeConstructions
+                )
+                return built
+            }
+        }
 
         /// `District(buildings: buildings(scene:glass:structure:untaggedUse:cladding:), wind:,
         /// parameters:)`, its fixed parts kept: under one lock, so that a layer cancelled while the

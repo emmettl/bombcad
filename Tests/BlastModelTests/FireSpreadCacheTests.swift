@@ -159,4 +159,59 @@ struct FireSpreadCacheTests {
                     cache: cache)))
         #expect(cache.rebuilt.stages && !cache.rebuilt.buildings)
     }
+
+    @Test("A what-if builds the fire's buildings as a scene built that way, laid out when picked or cleared")
+    func whatIf() throws {
+        let (scene, ids) = try Self.district()
+        let cache = F.LayerCache()
+        var settings = F.LayerSettings()
+        settings.randomCount = 4
+        settings.picked = [ids[1]]
+        settings.hours = 6
+        settings.wind = F.Wind(speedMS: 5, fromDegrees: 240)
+        let source = Self.source(ids, frame: 0)
+        func layer(_ scene: Scenario, cache: F.LayerCache? = nil) -> F.Layer? {
+            F.layer(
+                scene: scene, source: source, settings: settings, members: 40, preview: true, cache: cache)
+        }
+        // Every building's walls and roof timber, set one by one as the inspector sets them.
+        var timber = scene
+        for id in ids {
+            var c = scene.envelopeConstruction(for: id)
+            c.walls = .crossLaminatedTimber
+            c.wallThicknessM = EnvelopeConstruction.defaultThickness(.crossLaminatedTimber)
+            c.roof = .crossLaminatedTimber
+            c.roofThicknessM = 0.14
+            timber.setEnvelopeConstruction(c)
+        }
+        let picked = LiveResponse.WhatIf(walls: .crossLaminatedTimber, roof: .crossLaminatedTimber)
+        // As built, then the what-if picked: the buildings laid out again, the fire the timber scene's.
+        #expect(
+            try Self.same(layer(cache.scene(scene, as: LiveResponse.WhatIf()), cache: cache), layer(scene)))
+        #expect(try Self.same(layer(cache.scene(scene, as: picked), cache: cache), layer(timber)))
+        #expect(cache.rebuilt.buildings)
+        let asBuilt = try #require(layer(scene))
+        let asTimber = try #require(layer(timber))
+        #expect(asTimber.combustible == ids.count && asBuilt.combustible < ids.count)
+        // Dragged with the what-if kept: nothing laid out again.
+        var dragged = scene
+        dragged.charge.position.x += 20
+        var timberDragged = timber
+        timberDragged.charge.position.x += 20
+        #expect(
+            try Self.same(layer(cache.scene(dragged, as: picked), cache: cache), layer(timberDragged)))
+        #expect(cache.rebuilt == (false, false, false))
+        // Cleared: as built again.
+        #expect(
+            try Self.same(
+                layer(cache.scene(dragged, as: LiveResponse.WhatIf()), cache: cache), layer(dragged)))
+        #expect(cache.rebuilt.buildings)
+        // The glass what-if too, which changes the windows' share of each façade.
+        let glass = LiveResponse.WhatIf(glass: .laminated(.facade))
+        var laminated = scene
+        for id in ids {
+            laminated.setEnvelopeConstruction(glass.applied(to: scene.envelopeConstruction(for: id)))
+        }
+        #expect(try Self.same(layer(cache.scene(scene, as: glass), cache: cache), layer(laminated)))
+    }
 }
