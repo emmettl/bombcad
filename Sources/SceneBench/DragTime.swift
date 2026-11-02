@@ -152,6 +152,31 @@ enum DragTime {
                     "  live damage colour against the CPU preview's: \(differ.values.reduce(0, +)) of \(look.damage.count) differ "
                         + differ.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(
                             separator: ", "))
+                // `--against-preview`: the live chances against the CPU preview's own (what the
+                // networks were trained to give, at `--preview-draws`), apart from the preview's own
+                // approximation.
+                if args.contains("--against-preview") {
+                    let cpuSides = Dictionary(
+                        glass.map { ("\($0.owner) \($0.axis) \($0.outward)", $0) },
+                        uniquingKeysWith: { a, _ in a })
+                    let sidePairs = look.glass.compactMap { g in
+                        cpuSides["\(g.owner) \(g.axis) \(g.outward)"].map { (g, $0) }
+                    }
+                    let cpuChances = Dictionary(uniqueKeysWithValues: structure.map { ($0.owner, $0) })
+                    let buildingPairs = look.structure.compactMap { c in cpuChances[c.owner].map { (c, $0) } }
+                    print(
+                        "  live against the CPU preview: glass blown out "
+                            + stats(sidePairs.map { ($0.0.blownOut, $0.1.blownOut) }))
+                    print(
+                        "  live against the CPU preview: walls moderate+ "
+                            + stats(buildingPairs.map { ($0.0.wallsModerate, $0.1.wallsModerate) }))
+                    print(
+                        "  live against the CPU preview: walls heavy+ "
+                            + stats(buildingPairs.map { ($0.0.wallsHeavy, $0.1.wallsHeavy) }))
+                    print(
+                        "  live against the CPU preview: roof moderate+ "
+                            + stats(buildingPairs.map { ($0.0.roofModerate, $0.1.roofModerate) }))
+                }
                 damage = look.damage
                 glass = look.glass
                 structure = look.structure

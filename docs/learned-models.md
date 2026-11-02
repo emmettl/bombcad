@@ -3025,6 +3025,121 @@ Later that day, a what-if builds the fire's buildings as well as the estimate's:
 roofs picked here burn in the fire. The project is still unchanged, and the cache keeps the
 what-if's copy, so a drag lays nothing out again.
 
+## Small cells and close charges (2 November 2026)
+
+emmettl/bombcad-work#113. The explorer's built-in square ([explorer](explorer.md), 398 made-up
+buildings on 2 m cells, charges of 50 kg to 500 t, often close in) showed the learned response
+weaker than the CPU's preview there, above all on the walls and roofs. The cause was the cell size,
+not the scaled distance, and the response is now trained on small scenes too.
+
+### The cause
+
+Every row of the training data was laid out on 4 m cells. A roof's or slab's component is one cell
+thick, so its panel height, an input of the component and walls networks (`LiveResponse.shape`),
+was 4 m in every training row. On the square's 2 m cells the roof's is
+2 m: all of the square's buildings put the roof slot outside the training's range, 77 of the
+training's deviations away, and 30% of its components their panel height. The networks
+had never seen that input move, and read it as they liked. The scaled distance was not the cause:
+the square's charges at 500 kg to 5 t put its buildings at 2.5–40 m/kg^(1/3) (1% and 99%), inside
+the training's 1.9–460 (the made-up districts' 1% at 1.9, 2% under 3).
+
+It was the networks, not the preview's approximation: on the square the old networks gave the
+walls within 0.1 of the CPU preview's own chances (what they were trained to give) for only 61–76%
+of buildings at 5 t, and the roofs 57–68%. The new ones give 96–98%.
+
+### The data and the training
+
+`make_district.py --style square` draws squares like the explorer's from a seed: blocks of 72–100 m
+on a 5 × 5 grid round an open square, an office, a terrace of brick houses, shops and concrete flats
+facing it in an order of the seed's, flats of 7–21 m elsewhere (a fifth to three-fifths brick), each
+building tagged with its kind and material. Seeds 1–24 (280–509 buildings each) on 2 m cells within
+300 m, 100 frames each (`scenebench response-data … --dx 2 --radius 300 --within 250 --clear 0
+--masses 50,5000 --draws 32`, `--masses` and `--clear` new): a charge anywhere within 250 m, 50 kg
+to 5 t evenly in the log, the constructions drawn as before. 2.4 million component rows, 0.50
+million sides, 0.34 million buildings, 2–4 minutes and 0.2–0.4 GB a square, four at a time on the
+Studio. The explorer's own square (seed 114 in `ExplorerScene`) and its street were never drawn.
+
+Training was as round 4's (`live-response-4`): the same three networks and widths, 40 epochs, frames
+9 modulo 10 held out, on round 4's data with the 24 squares added (pack-d,
+`$BOMBCAD_DATA/scratch/preview-small-cells`). bombcad-pc was offline (Tailscale: last seen 5 hours
+before), so it ran on the Studio's GPU (MPS, `$BOMBCAD_DATA/ml/venv`) under `gpu-slot`: 635 s
+(the component network 574 s), 16.7 GB at its peak (job `live-response-6`). A first round with 12
+squares (`live-response-5`, 614 s) was a point or so behind on the square's walls at 5 t; a third
+with a wider walls network (512, 256, 128; 80 epochs, `live-response-7`) gained 0–2 points on the
+walls but made the weights 0.99 MB, and was not taken. On held-out frames round 6 reads as round 4:
+component level exact 99.75% (98.3% of the damaged), glass broken exact 99.91%; glass some broken
+within 0.1 on 99.92% of sides, blown out 99.34%; walls moderate+ 99.24%, heavy+ 99.31%, roof 99.19%.
+The pane's threshold stays −1. The weights are 567,114 bytes of float16 (SHA-256
+`fdbbe59e…df89b6d4d`, `ml/live-response-6/app/live-response.bclr`), built in as before.
+
+### Against the full estimate
+
+`drag-time --live --agreement --reference-draws 100`, yield within ×1.5. The square and the street
+are the explorer's own scenes (`--osm $BOMBCAD_DATA/explorer/<scene>/district.osm --centre 0,0 --dx 2
+--radius 300`), never trained on: the square with the charge in its middle and in the street behind
+the terrace, the street in its middle and at the side street's corner. Beirut (whole district, 4 m,
+0.5 kt) and the held-out mixed district as in [instant what-ifs](#against-the-full-estimate-1), their
+CPU preview on 10 draws. Within 0.1 of the full estimate, the two places:
+
+| Scene | Measure | CPU preview (20 draws) | Learned before | Learned now |
+|---|---|---|---|---|
+| Square, 500 kg | Glass some broken | 77.0–80.2% | 83.7–87.7% | 77.6–81.8% |
+| | Glass blown out | 71.4–76.2% | 81.5–82.9% | 71.8–76.5% |
+| | Walls moderate+ | 81.4–88.4% | 71.1–76.9% | **83.9–89.2%** |
+| | Walls heavy+ | 81.7–88.4% | 74.1–84.4% | **83.9–89.2%** |
+| | Roof moderate+ | 98.7–99.5% | 92.2–97.5% | **100%** |
+| | Damage colour | 93.2–95.2% | 93.5–94.7% | 93.0–95.2% |
+| Square, 5 t | Glass blown out | 81.8–82.1% | 76.0–78.4% | **83.0–84.3%** |
+| | Walls moderate+ | 81.4–85.2% | 57.8–62.8% | **81.7–83.7%** |
+| | Walls heavy+ | 81.7–86.7% | 65.6–68.3% | **81.7–84.7%** |
+| | Roof moderate+ | 95.7–96.2% | 57.3–68.1% | **98.7–99.5%** |
+| | Damage colour | 89.4–98.2% | 88.7–94.7% | 89.2–98.2% |
+| Street, 500 kg | Glass some broken | 89.4–90.5% | 97.0–97.4% | 93.5–94.1% |
+| | Glass blown out | 88.2–88.7% | 91.3–91.6% | 89.1–90.0% |
+| | Walls moderate+ | 89.8–90.9% | 44.0–53.3% | **93.7–94.5%** |
+| | Walls heavy+ | 89.8–90.9% | 47.2–48.7% | **93.7–94.5%** |
+| | Roof moderate+ | 98.6–98.7% | 92.8–93.5% | **99.9%** |
+| | Damage colour | 98.7–99.1% | 98.2–98.8% | 97.2–98.2% |
+| Street, 5 t | Glass blown out | 85.5–86.1% | 96.8–97.2% | 97.8–97.9% |
+| | Walls moderate+ / heavy+ | 96.4–97.6% | 33.8–45.1% | **98.0–98.2%** |
+| | Roof moderate+ | 94.5–95.3% | 46.9–47.8% | **98.3–98.5%** |
+| | Damage colour | 99.6% | 98.5–99.2% | 99.6% |
+| Beirut, 0.5 kt | Glass blown out | 85.7–85.8% (10) | 96.8–96.9% | 96.7–96.8% |
+| | Glass some broken | 94.5–94.6% (10) | 99.1% | 99.3% |
+| | Walls moderate+ / heavy+, roof | 98.6–99.9% (10) | 98.9–100.0% | 98.9–100.0% |
+| | Damage colour | 99.5% | 99.5% | 99.5% |
+| Held-out district | Glass blown out | 81.0–81.9% (10) | 95.8–96.5% | 95.7–96.4% |
+| | Walls moderate+ / heavy+, roof | 97.7–99.0% (10) | 99.2–99.9% | 99.0–99.9% |
+| | Damage colour | 99.6–99.7% (10) | 98.3–98.4% | 98.4–98.5% |
+
+- **On the square and the street the learned response now matches the CPU's preview or beats it**
+  on every chance, by up to 5 points on the street's walls and 3 on the square's roofs at 5 t. The
+  one place short is the square's middle at 5 t: walls moderate+ 83.7% against 85.2%, heavy+ 84.7%
+  against 86.7%, 6–8 of 398 buildings, while behind the terrace it is level or ahead. The CPU's
+  preview on 32 draws, the networks' target, gives 84.4% and 86.2% there, so that is about as far as
+  the preview's own draws move it.
+- **The glass on the square is now the CPU preview's, not better.** At 500 kg the old networks read
+  the square's glass 7–10 points closer to the full estimate than the CPU's preview did, by an error of
+  their own (−0.02 to −0.03 against the preview) that offset the preview's (+0.05 to +0.08: each
+  side judged by its nearest strip). The new ones give the preview's chances (95–96% of sides within
+  0.1 of them) and its bias with them. On the street they stay ahead of the CPU's, by 0.4–4.7 points at
+  500 kg and 12 at 5 t.
+- **Beirut and the held-out district are unchanged** within 0.3 points on every measure.
+- **The damage colour on the street** at 500 kg is 1 point under the CPU preview's (97.2–98.2%
+  against 98.7–99.1%), as on the held-out district: glass broken where the CPU's preview finds none,
+  by the pane's threshold.
+
+The drag's frames cost what they did, the networks being the same size: on the square, 2.0–2.5 ms
+headless a frame (`drag-time --live --no-let-go --drag 0,5,…,100`, the networks 0.8–1.0 ms), with the
+old weights and the new.
+
+### Adopted (2 November 2026)
+
+The user approved, on 2 November 2026, replacing the built-in weights if new ones matched or beat
+the CPU's preview on the square while losing no more than about a point on Beirut or the held-out
+district. Round 6 does, as above, and is built in (`LiveResponse+Embedded.swift`). Nothing else
+changes: the CPU's preview stays by name, and the full estimate follows when the charge is let go.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up

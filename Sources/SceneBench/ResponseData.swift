@@ -4,7 +4,7 @@ import simd
 
 /// `scenebench response-data <district-scene's inputs> [--loads folder] --out folder --district name
 /// [--radius 2500] [--frames 200] [--first 0] [--draws 64] [--within 1500] [--keep 0.1] [--seed 1]
-/// [--as-built]`: training data for the live drag's learned response (emmettl/bombcad-work#112,
+/// [--as-built] [--masses 100,5e6] [--clear 100]`: training data for the live drag's learned response (emmettl/bombcad-work#112,
 /// #113): the district laid out once (`FacadeLoadSurrogate.Prepared`; with `--loads` Beirut's, as a
 /// run saved it, else from its map alone, as `make_district.py`'s made-up districts), then for each
 /// frame each building built as drawn (`LiveResponse.drawn`: its walls, roof, glazing and glass, a
@@ -20,8 +20,9 @@ import simd
 /// Rows whose answers are all none (or certain) are kept one in 1/`--keep`, with that weight. Each
 /// frame's rows go to `component`, `side` and `building` files of float32 (`*-x.f32` inputs,
 /// `*-y.f32` answers, `*-w.f32` weights, `*-frame.i32` the frame), with `meta.json` naming the
-/// widths and the district. Charges within 100 m of the scene's own place or 60 m east of it, where
-/// `drag-time --agreement` judges the preview, are not drawn.
+/// widths and the district. Charges within `--clear` m (100) of the scene's own place or 60 m east of
+/// it, where `drag-time --agreement` judges the preview, are not drawn; `--masses lo,hi` (kg) sets the
+/// charges' range, 100 kg to 5 kt unless given (the explorer's small scenes: 50 kg to 5 t).
 enum ResponseData {
     struct Meta: Codable {
         var district: String
@@ -94,6 +95,11 @@ enum ResponseData {
         let within = value("within").flatMap(Float.init) ?? 1500
         let keep = value("keep").flatMap(Double.init) ?? 0.1
         let seed = value("seed").flatMap(UInt64.init) ?? 1
+        let masses = (value("masses") ?? "100,5e6").split(separator: ",").compactMap { Double($0) }
+        guard masses.count == 2, masses[0] > 0, masses[1] >= masses[0] else {
+            throw BlastError.allocationFailed("--masses lo,hi in kg")
+        }
+        let clear = value("clear").flatMap(Float.init) ?? 100
         // `--as-built`: every building as its map makes it, not drawn (the first networks' data).
         let asBuilt = args.contains("--as-built")
         let terms = try SurrogateBench.termSet(args)
@@ -199,8 +205,8 @@ enum ResponseData {
                 tries += 1
             } while tries < 1000
                 && (prepared.raster.isSolid(charge)
-                    || judged.contains { simd_distance($0, SIMD2(charge.x, charge.y)) < 100 })
-            let mass = exp(log(100.0) + uniform(frame, 3) * (log(5e6) - log(100.0)))
+                    || judged.contains { simd_distance($0, SIMD2(charge.x, charge.y)) < clear })
+            let mass = exp(log(masses[0]) + uniform(frame, 3) * (log(masses[1]) - log(masses[0])))
             let factor = withins[min(Int(uniform(frame, 4) * 5), 4)]
             var uncertainty = FacadeLoadSurrogate.Uncertainty(
                 yieldLogSD: log(factor) / 1.645, loadScatter: terms.loadScatter, samples: draws,

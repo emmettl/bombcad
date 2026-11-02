@@ -10,7 +10,10 @@ JSON. The same arguments always give the same files.
 
 Styles: perimeter (terraced blocks round courtyards, like the surrogate's fitting district),
 grid (detached houses on a street grid), towers (tall blocks in plazas), industrial (large low
-sheds, wide yards), mixed (each block one of the others, a quarter of the district turned).
+sheds, wide yards), mixed (each block one of the others, a quarter of the district turned), square
+(a town square ringed by blocks of flats, an office, a terrace and shops facing it, about 500 m
+across, as the explorer's built-in square but drawn from the seed; buildings tagged with their kind
+and material; emmettl/bombcad-work#113, for the live response's small scenes on 2 m cells).
 """
 import argparse
 import json
@@ -20,7 +23,7 @@ import random
 import sys
 
 M = 6_371_008.8 * math.pi / 180  # metres per degree, as ElevationGrid.metresPerDegree
-STYLES = ("perimeter", "grid", "towers", "industrial", "mixed")
+STYLES = ("perimeter", "grid", "towers", "industrial", "mixed", "square")
 TERRAINS = ("flat", "slope", "hill", "valley")
 
 
@@ -33,7 +36,7 @@ class Writer:
         self.nodes, self.ways = [], []
         self.next_node, self.next_way = 1, 100
 
-    def polygon(self, points, height):
+    def polygon(self, points, height, kind="yes", material=None):
         ids = []
         for x, y in points:
             lon, lat = lonlat(x, y)
@@ -42,7 +45,9 @@ class Writer:
             self.next_node += 1
         ids.append(ids[0])
         body = "".join('<nd ref="%d"/>' % r for r in ids)
-        body += '<tag k="building" v="yes"/><tag k="height" v="%.1f"/>' % height
+        body += '<tag k="building" v="%s"/><tag k="height" v="%.1f"/>' % (kind, height)
+        if material:
+            body += '<tag k="building:material" v="%s"/>' % material
         self.ways.append('  <way id="%d">%s</way>' % (self.next_way, body))
         self.next_way += 1
 
@@ -101,6 +106,75 @@ def block_buildings(style, rng, x, y, bw, bh):
         for n in range(lots):
             w, h = rng.uniform(0.5, 0.85) * lot, rng.uniform(0.4, 0.8) * bh
             out.append((x + n * lot + rng.uniform(0, lot - w), y + rng.uniform(0, bh - h), w, h, rng.uniform(6, 14)))
+    return out
+
+
+def square(seed, extent):
+    """A town square ringed by blocks, about the centre, as the explorer's (`ExplorerScene.square`)
+    but each seed its own: blocks of `pitch` m on a 5 × 5 grid, streets of 10-20 m, the middle block
+    left open; the four facing the square an office, a terrace of brick houses, shops and concrete
+    flats, in an order of the seed's, and the rest flats, some of brick. [(points, height, kind,
+    material)]."""
+    rng = random.Random("square-%d" % seed)
+    centre = extent / 2
+    pitch = rng.uniform(72, 100)
+    block = pitch - rng.uniform(10, 20)
+    brick = rng.uniform(0.2, 0.6)
+    out = []
+
+    def row(along_x, start, length, offset, depth, width, make):
+        p = 0.0
+        while p < length - 4:
+            f = min(rng.uniform(*width), length - p)
+            height, kind, material = make()
+            x, y, w, h = (start + p, offset, f, depth) if along_x else (offset, start + p, depth, f)
+            out.append((rectangle(x, y, w, h), height, kind, material))
+            p += f
+
+    def ring(x0, y0, depth, width, make):
+        row(True, x0, block, y0, depth, width, make)
+        row(True, x0, block, y0 + block - depth, depth, width, make)
+        row(False, y0 + depth, block - 2 * depth, x0, depth, width, make)
+        row(False, y0 + depth, block - 2 * depth, x0 + block - depth, depth, width, make)
+
+    def flats():
+        return rng.uniform(7, 21), "apartments", "brick" if rng.random() < brick else None
+
+    facing = [(0, 1), (1, 0), (-1, 0), (0, -1)]
+    kinds = ["office", "terrace", "retail", "concrete"]
+    rng.shuffle(kinds)
+    special = dict(zip(facing, kinds))
+    for i in range(-2, 3):
+        for j in range(-2, 3):
+            if i == 0 and j == 0:
+                continue
+            x0 = centre + i * pitch - block / 2
+            y0 = centre + j * pitch - block / 2
+            kind = special.get((i, j)) or (rng.choice(kinds) if rng.random() < 0.15 else "flats")
+            if kind == "office":
+                # An office's whole side facing the square (or the block's south side), flats behind.
+                depth = rng.uniform(16, 26)
+                tall = rng.uniform(20, 45)
+                if (i, j) in facing and i != 0:
+                    xo = x0 if i > 0 else x0 + block - depth
+                    out.append((rectangle(xo, y0, depth, block), tall, "office", "concrete"))
+                    xb = x0 + block - 12 if i > 0 else x0
+                    row(False, y0, block, xb, 12, (12, 20), flats)
+                else:
+                    yo = y0 if j >= 0 else y0 + block - depth
+                    out.append((rectangle(x0, yo, block, depth), tall, "office", "concrete"))
+                    yb = y0 + block - 12 if j >= 0 else y0
+                    row(True, x0, block, yb, 12, (12, 20), flats)
+            elif kind == "terrace":
+                tall = rng.uniform(7, 11)
+                ring(x0, y0, rng.uniform(8, 12), (5, 8), lambda: (tall, "terrace", "brick"))
+            elif kind == "retail":
+                material = "brick" if rng.random() < 0.7 else "concrete"
+                ring(x0, y0, rng.uniform(10, 14), (8, 14), lambda: (rng.uniform(6, 13), "retail", material))
+            elif kind == "concrete":
+                ring(x0, y0, rng.uniform(12, 16), (14, 26), lambda: (rng.uniform(12, 21), "apartments", "concrete"))
+            else:
+                ring(x0, y0, rng.uniform(10, 14), (10, 22), flats)
     return out
 
 
@@ -167,8 +241,12 @@ def write(out, style, seed, extent, terrain, density=1.0, turn=0.0):
         raise ValueError("style %s / terrain %s" % (style, terrain))
     os.makedirs(out, exist_ok=True)
     writer = Writer()
-    for points, height in district(style, seed, extent, density, turn):
-        writer.polygon(points, height)
+    if style == "square":
+        for points, height, kind, material in square(seed, extent):
+            writer.polygon(points, height, kind, material)
+    else:
+        for points, height in district(style, seed, extent, density, turn):
+            writer.polygon(points, height)
     lo_lon, lo_lat = lonlat(0, 0)
     hi_lon, hi_lat = lonlat(extent, extent)
     with open(os.path.join(out, "district.osm"), "w") as handle:
