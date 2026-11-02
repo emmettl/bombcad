@@ -159,9 +159,16 @@
                         + (settings.showGroundPoints ? model.groundShockDots() : []))
                 // A replay of a recording that keeps the paint and the cloud draws them as they were then.
                 let replayed = model.playback?.recordsLayers == true
-                let paint = settings.thermal.flatMap { quantity in
+                var paint = settings.thermal.flatMap { quantity in
                     remote.map { model.remoteThermalPaint($0, quantity) }
                         ?? (replayed ? model.replayedThermalPaint(quantity) : model.thermalPaint(quantity))
+                }
+                // The charge read back from marked damage, while its panel is open, in the paint's place.
+                let marking = model.showsChargeMarking ? model.chargeMarking : nil
+                if let marked = marking?.paint {
+                    paint = marked
+                    settings.thermal = nil
+                    settings.showsPaint = true
                 }
                 // The cloud's outlines are its silhouettes from the eye, so they follow the camera.
                 let lines =
@@ -170,6 +177,7 @@
                     + (settings.showHazard ? model.hazardLines() : [])
                     + (settings.showBlastHazards ? model.blastHazardLines() : [])
                     + model.refinedOutlines() + model.fireSeedOutlines() + model.explorerLines
+                    + (marking?.lines ?? [])
                 return Frame(
                     settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
                     freestanding: replay.map { $0.1?.freestanding ?? [] }

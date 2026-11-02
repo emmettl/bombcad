@@ -220,4 +220,17 @@ struct AccessibilityLabelTests {
             AccessibilityTree.bareSliders([element("AXSlider", "TNT", value: "1.69", described: "50 kg")])
                 .isEmpty)
     }
+
+    @Test("The Charge from the Damage panel names its controls, its chart and its key, and the menu opens it")
+    func chargeMarkingLabels() throws {
+        let panel = try Self.source("ChargeMarkingView.swift")
+        for wanted in [
+            ".accessibilityLabel(\"Close the Charge from the Damage panel\")",
+            "Picker(\"Mark a building as\"", ".accessibilityLabel(\"Yield chart\")",
+            ".accessibilityLabel(\"Colour key: the charge's place\")", ".accessibilityLabel(\"Result: ",
+        ] {
+            #expect(panel.contains(wanted), "\(wanted)")
+        }
+        #expect(try Self.source("ProjectEditor.swift").contains("\"Read the Charge from the Damage…\""))
+    }
 }

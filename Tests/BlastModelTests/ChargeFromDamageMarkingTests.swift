@@ -1,0 +1,158 @@
+import Foundation
+import Testing
+import simd
+
+@testable import BlastModel
+
+/// Marking buildings one at a time (`ChargeFromDamage.Marking`, emmettl/bombcad-work#116 stage 2):
+/// the summed likelihood kept mark by mark gives the posterior the whole set gives, and what the
+/// app draws and says of it.
+@Suite("The charge from marked damage, marked one at a time")
+struct ChargeFromDamageMarkingTests {
+    /// Marks drawn from the made-up table's chances for a charge of 2 t at (120, −80) about the
+    /// reference (300, 200), their buildings put in the scene's metres.
+    static func marks(count: Int) -> [(id: UUID, mark: ChargeFromDamage.Mark)] {
+        let table = ChargeFromDamageTests.table()
+        var random = ChargeFromDamage.SplitMix(seed: 11)
+        let place = SIMD2(120.0, -80.0)
+        let logMass = log(2000.0)
+        return (0..<count).map { k in
+            let b = (k * 37) % table.buildingCount
+            var building = table.header.buildings[b]
+            building.east += 300
+            building.north += 200
+            let glass = ChargeFromDamage.glassClasses(
+                broken: table.chance(building: b, channel: 0, place: place, logMass: logMass))
+            let walls = ChargeFromDamage.wallsClasses(
+                moderate: table.chance(building: b, channel: 1, place: place, logMass: logMass),
+                heavy: table.chance(building: b, channel: 2, place: place, logMass: logMass))
+            let v = random.uniform()
+            return (
+                UUID(),
+                ChargeFromDamage.Mark(
+                    building: building, glass: random.uniform() < glass.whole ? .whole : .broken,
+                    walls: k % 3 == 0
+                        ? (v < walls.undamaged
+                            ? .undamaged : v < walls.undamaged + walls.damaged ? .damaged : .heavy)
+                        : nil)
+            )
+        }
+    }
+
+    static func close(_ a: ChargeFromDamage.Posterior?, _ b: ChargeFromDamage.Posterior) -> Double {
+        guard let a else { return .infinity }
+        var worst = 0.0
+        for c in a.cellProbabilities.indices {
+            worst = max(worst, abs(a.cellProbabilities[c] - b.cellProbabilities[c]))
+        }
+        for k in a.yieldProbabilities.indices {
+            worst = max(worst, abs(a.yieldProbabilities[k] - b.yieldProbabilities[k]))
+        }
+        return worst
+    }
+
+    @Test("Marks added, changed and cleared one at a time give the posterior the whole set gives")
+    func incremental() throws {
+        let network = try #require(ChargeFromDamage.Network.builtIn)
+        let reference = SIMD2(300.0, 200.0)
+        var marking = ChargeFromDamage.Marking(network: network, reference: reference)
+        #expect(marking.incremental)
+        #expect(marking.posterior == nil)
+        let list = Self.marks(count: 30)
+        for (n, item) in list.enumerated() {
+            marking.set(item.mark, for: item.id)
+            if [0, 2, 9, 29].contains(n) {
+                let whole = network.posterior(marks: list.prefix(n + 1).map(\.mark), reference: reference)
+                #expect(Self.close(marking.posterior, whole) < 1e-4, "after \(n + 1) marks")
+            }
+        }
+        // One changed, one cleared, then one cleared by marking nothing seen.
+        var expected = list.map(\.mark)
+        var changed = list[4].mark
+        changed.glass = changed.glass == .broken ? .whole : .broken
+        marking.set(changed, for: list[4].id)
+        expected[4] = changed
+        marking.set(nil, for: list[7].id)
+        marking.set(ChargeFromDamage.Mark(building: list[8].mark.building), for: list[8].id)
+        expected.remove(at: 8)
+        expected.remove(at: 7)
+        #expect(marking.marks.count == 28)
+        #expect(marking.orderedMarks == expected)
+        let whole = network.posterior(marks: expected, reference: reference)
+        #expect(Self.close(marking.posterior, whole) < 1e-4)
+        // The same mark again changes nothing.
+        let before = marking.posterior?.cellProbabilities
+        marking.set(changed, for: list[4].id)
+        #expect(marking.posterior?.cellProbabilities == before)
+        // Searched about another place, as the set weighed there.
+        let moved = reference + SIMD2(150, -100)
+        marking.recentre(on: moved)
+        #expect(Self.close(marking.posterior, network.posterior(marks: expected, reference: moved)) < 1e-4)
+        // All at once, and all cleared.
+        var again = ChargeFromDamage.Marking(network: network, reference: reference)
+        again.replaceAll(list)
+        #expect(
+            Self.close(again.posterior, network.posterior(marks: list.map(\.mark), reference: reference))
+                < 1e-4)
+        for item in list { again.set(nil, for: item.id) }
+        #expect(again.posterior == nil)
+        #expect(again.marks.isEmpty)
+        again.set(list[0].mark, for: list[0].id)
+        #expect(
+            Self.close(again.posterior, network.posterior(marks: [list[0].mark], reference: reference)) < 1e-6
+        )
+    }
+
+    @Test("A mark is weighed in well under a frame")
+    func timing() throws {
+        let network = try #require(ChargeFromDamage.Network.builtIn)
+        var marking = ChargeFromDamage.Marking(network: network, reference: SIMD2(300, 200))
+        var times: [Double] = []
+        for item in Self.marks(count: 60) {
+            marking.set(item.mark, for: item.id)
+            times.append(marking.lastSeconds)
+        }
+        times.sort()
+        print(
+            String(
+                format: "A mark weighed into 1–60 others: %.2f ms median, %.2f ms at most", 1000 * times[30],
+                1000 * times[59]))
+        // A frame is 33 ms. Unoptimised builds are hundreds of times slower than the app's, and
+        // timed only as they are.
+        #if !DEBUG
+            #expect(times[30] < 0.033)
+        #endif
+    }
+
+    @Test("The shades, the regions' outlines and the words drawn from a posterior")
+    func drawn() throws {
+        // Four cells of 100 m about (1000, 2000): most in the north-east, some in the north-west.
+        let p = ChargeFromDamage.Posterior(
+            grid: 2, halfWidthM: 100, reference: SIMD2(1000, 2000),
+            cellProbabilities: [0, 0.001, 0.299, 0.7],
+            logYields: [log(400.0), log(600.0)], yieldProbabilities: [0.5, 0.5])
+        let shades = p.shades()
+        #expect(shades[0] == 0)
+        #expect(shades[3] == 1)
+        #expect(abs(Double(shades[2]) - (1 + log10(0.299 / 0.7) / 2)) < 1e-6)
+        #expect(shades[1] == 0)
+        // Half: the north-east cell alone, its four sides; nine in ten: the north row, six edges.
+        #expect(p.outline(0.5).count == 4)
+        let ninety = p.outline(0.9)
+        #expect(ninety.count == 6)
+        // Closed: each corner meets two edges.
+        var ends: [SIMD2<Double>: Int] = [:]
+        for (a, b) in ninety {
+            ends[a, default: 0] += 1
+            ends[b, default: 0] += 1
+        }
+        #expect(ends.values.allSatisfy { $0 % 2 == 0 })
+        #expect(ninety.allSatisfy { max($0.0.y, $0.1.y) <= 2100 && min($0.0.y, $0.1.y) >= 2000 })
+        let words = p.spoken(about: SIMD2(1000, 2000), aboutName: "the scene's charge")
+        #expect(
+            words.hasPrefix("Most likely 70 m north-east of the scene's charge; half the chance within 50 m"))
+        #expect(words.contains("Yield about 490 kg; nine in ten between"))
+        #expect(ChargeFromDamage.Posterior.compass(SIMD2(0, -1)) == "south")
+        #expect(ChargeFromDamage.Posterior.compass(SIMD2(-1, 0.1)) == "west")
+    }
+}

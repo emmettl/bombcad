@@ -418,6 +418,10 @@ final class SimulationModel {
     /// Saved states the run takes, automatically: one every `duration / automaticCheckpoints`.
     static let automaticCheckpoints = 8
     let chargeInference = ChargeInferenceModel()
+    /// The Charge from the Damage panel beside the view, and its marks and posterior, kept while the
+    /// window is open (emmettl/bombcad-work#116): while shown, a click on a building marks it.
+    var showsChargeMarking = false
+    let chargeMarking = ChargeMarkingModel()
     /// Asked of the views that own them from the menus, and cleared there: choosing a model to
     /// import, naming the run to keep, and saving the results as CSV.
     var requestsModelImport = false

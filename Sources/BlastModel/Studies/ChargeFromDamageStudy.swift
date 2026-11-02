@@ -13,7 +13,7 @@ import simd
 /// charge-from-damage merge --out table.bcct part.bcct…
 /// charge-from-damage merge-masonry --table t.bcct --masonry m.bcct --out u.bcct
 /// charge-from-damage judge --tables a.bcct,b.bcct [--weights net.bccd] [--cases 300] [--counts 1,3,10,30]
-///     [--seed 7] [--out judge.json]
+///     [--seed 7] [--about-damage] [--out judge.json]
 /// charge-from-damage infer [--weights net.bccd] --marks marks.csv [--table table.bcct] [--subsets 1,3,10,30]
 ///     [--hold]
 /// ```
@@ -491,6 +491,10 @@ package enum ChargeFromDamageStudy {
         var placeOff = 0.0
         var yieldWidth90 = 0.0
         var placeRadius90 = 0.0
+        /// From the likeliest cell's middle to the truth, m, and the yield's median against the
+        /// truth as a factor (at least 1, either way).
+        var likeliestOff = 0.0
+        var yieldFactor = 1.0
 
         init(_ p: ChargeFromDamage.Posterior, place: SIMD2<Double>, logMass: Double) {
             placeIn50 = p.regionHolds(place, mass: 0.5)
@@ -502,6 +506,8 @@ package enum ChargeFromDamageStudy {
             placeOff = simd_distance(p.meanPlace, place)
             yieldWidth90 = p.yieldQuantile(0.95) / p.yieldQuantile(0.05)
             placeRadius90 = p.regionRadius(0.9)
+            likeliestOff = simd_distance(p.mostProbablePlace, place)
+            yieldFactor = exp(abs(log(yieldRatio)))
         }
     }
 
@@ -525,6 +531,9 @@ package enum ChargeFromDamageStudy {
         let counts: [Int?] =
             [nil] + (value(args, "counts") ?? "1,3,10,30").split(separator: ",").compactMap { Int($0) }
         let seed = value(args, "seed").flatMap(UInt64.init) ?? 7
+        // `--about-damage`: the marks chosen as a user at the panel would, from where the damage is.
+        let aboutDamage = args.contains("--about-damage")
+        if aboutDamage { print("Marks chosen about the damage, as a user marks them") }
         print(
             "Network \(h.name): trained on \(h.trainedOn.joined(separator: ", ")), \(h.grid)² cells of \(String(format: "%.1f", 2 * h.halfWidthM / Double(h.grid))) m"
         )
@@ -571,7 +580,7 @@ package enum ChargeFromDamageStudy {
                 let drawn = (0..<cases).map { _ in
                     table.drawCase(
                         &random, grid: h.grid, halfWidthM: h.halfWidthM, placeRadiusM: h.placeRadiusM,
-                        markCount: count)
+                        markCount: count, aboutDamage: aboutDamage)
                 }
                 var learned: [Judged] = []
                 var full: [Judged] = []
@@ -606,6 +615,8 @@ package enum ChargeFromDamageStudy {
                     ("learned", learned, learnedSeconds), ("full", full, fullSeconds),
                 ] {
                     let ratios = judged.map(\.yieldRatio).sorted()
+                    let offs = judged.map(\.likeliestOff).sorted()
+                    let factors = judged.map(\.yieldFactor).sorted()
                     print(
                         String(
                             format:
@@ -617,6 +628,12 @@ package enum ChargeFromDamageStudy {
                             median(judged.map(\.placeOff)),
                             median(judged.map(\.yieldWidth90)), median(judged.map(\.placeRadius90)),
                             1000 * median(seconds)))
+                    print(
+                        String(
+                            format:
+                                "                 likeliest place off the truth %.0f m (median), %.0f m (90th); yield off by a factor %.2f (median), %.2f (90th)",
+                            median(offs), offs[offs.count * 9 / 10], median(factors),
+                            factors[factors.count * 9 / 10]))
                     report.append([
                         "district": name, "marks": count ?? -1, "model": label, "cases": judged.count,
                         "placeIn50": share(judged.map(\.placeIn50)),
@@ -629,6 +646,10 @@ package enum ChargeFromDamageStudy {
                         "medianYieldWidth90": median(judged.map(\.yieldWidth90)),
                         "medianPlaceRadius90M": median(judged.map(\.placeRadius90)),
                         "medianSeconds": median(seconds), "heldOutDistrict": held,
+                        "medianLikeliestOffM": median(offs), "likeliestOff90M": offs[offs.count * 9 / 10],
+                        "medianYieldFactor": median(factors),
+                        "yieldFactor90": factors[factors.count * 9 / 10],
+                        "aboutDamage": aboutDamage,
                     ])
                 }
                 if !addedSeconds.isEmpty {

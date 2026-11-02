@@ -97,6 +97,10 @@
                     GaugeChartView(model: model)
                         .frame(height: 230)
                 }
+                if model.showsChargeMarking {
+                    Divider()
+                    ChargeMarkingView(model: model, marking: model.chargeMarking).frame(width: 300)
+                }
             }
             .toolbar {
                 ToolbarItemGroup(placement: .navigation) {

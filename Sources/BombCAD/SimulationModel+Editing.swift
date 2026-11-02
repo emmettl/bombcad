@@ -813,8 +813,16 @@ extension SimulationModel {
     func click(ndc: SIMD2<Float>, aspectRatio: Float) {
         guard !sweep.isActive else { return }
         if !isPlacingCharge {
-            guard !isRunning, !isPreparingImports else { return }
             let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
+            // Marking what was seen of a building, while the Charge from the Damage panel is open.
+            if showsChargeMarking,
+                let id = ScenePicking.envelope(
+                    in: settings.scenario, origin: ray.origin, direction: ray.direction)
+            {
+                chargeMarking.apply(to: id, self)
+                return
+            }
+            guard !isRunning, !isPreparingImports else { return }
             if time == 0,
                 let id = ScenePicking.importedModel(
                     in: settings.scenario, origin: ray.origin, direction: ray.direction)

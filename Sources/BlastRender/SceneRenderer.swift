@@ -106,6 +106,20 @@ public struct SurfacePaint: Sendable, Equatable {
         public var ground: Bool
         /// Where its values start in `values`, row by row.
         public var first: Int
+
+        public init(
+            origin: SIMD3<Float>, u: SIMD3<Float>, v: SIMD3<Float>, normal: SIMD3<Float>, columns: Int,
+            rows: Int, ground: Bool, first: Int
+        ) {
+            self.origin = origin
+            self.u = u
+            self.v = v
+            self.normal = normal
+            self.columns = columns
+            self.rows = rows
+            self.ground = ground
+            self.first = first
+        }
     }
 
     public var patches: [Patch] = []
@@ -154,6 +168,11 @@ public struct RenderSettings: Sendable, Hashable {
     /// The thermal radiation painted onto the surfaces in place of `mode`'s field, when a run
     /// reckons it; nil for the blast's.
     public var thermal: ThermalQuantity?
+    /// Draws the paint handed over (`setSurfacePaint`) with `thermal` nil too: the chance of where
+    /// a charge was, read back from marked damage (emmettl/bombcad-work#116), on the ground.
+    public var showsPaint = false
+    /// Whether the paint is drawn.
+    var paintShown: Bool { thermal != nil || showsPaint }
     /// Their dots' diameter on screen, in points, whatever their true size.
     public var dotSize: Float = 5
     /// Where the fireball's cloud went, when a run follows it.
@@ -812,8 +831,8 @@ public final class SceneRenderer {
                 lattice: .zero, dims: .zero, sun: sun)
             // Tinted by the blast's field, or, while the thermal radiation is shown, painted with the
             // ground's receivers' values (`dims.w` one more than their patch).
-            terrain.dims.z = settings.thermal == nil ? 1 : 0
-            let groundPaint = settings.thermal != nil && paintCount > 0 ? paintGround : nil
+            terrain.dims.z = settings.paintShown ? 0 : 1
+            let groundPaint = settings.paintShown && paintCount > 0 ? paintGround : nil
             terrain.dims.w = groundPaint.map { UInt32($0 + 1) } ?? 0
             sceneEncoder.setRenderPipelineState(terrainPipeline)
             sceneEncoder.setDepthStencilState(meshDepthState)
@@ -923,7 +942,7 @@ public final class SceneRenderer {
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: freestandingCount)
         }
-        if settings.thermal != nil, paintCount > 0, let paintPatches, let paintValues {
+        if settings.paintShown, paintCount > 0, let paintPatches, let paintValues {
             // Over a terrain that covers the floor, the terrain wears the ground's paint (above).
             let groundOnTerrain: Float = terrainMesh != nil && terrainCoversFloor ? 1 : 0
             var mesh = MeshUniforms(

@@ -325,9 +325,14 @@ extension ChargeFromDamage {
         /// walls alone (0.25), its walls alone if it has no glazing; its walls taken as masonry with
         /// chance 0.3 where they are concrete, if the table judged them so (`judgesMasonry`); and what was seen drawn from its chances
         /// (`glassClasses`, `wallsClasses`).
+        ///
+        /// `aboutDamage` draws the marks as a user at the app's panel would mark them, starting
+        /// where they see damage (stage 2's judgement): the focus a building drawn with weight its
+        /// chance of broken glass and of damaged walls, the length e^U(ln 100, ln 500) m; else as
+        /// training draws them, to the bit.
         public func drawCase(
             _ random: inout SplitMix, grid: Int, halfWidthM: Double, placeRadiusM: Double, markCount: Int?,
-            focusRadiusM: Double = 1000
+            focusRadiusM: Double = 1000, aboutDamage: Bool = false
         ) -> Case {
             let size = 2 * halfWidthM / Double(grid)
             let disc = (0..<(grid * grid)).filter {
@@ -343,8 +348,26 @@ extension ChargeFromDamage {
             // The focus.
             let angle = 2 * Double.pi * random.uniform()
             let radius = focusRadiusM * random.uniform().squareRoot()
-            let focus = radius * SIMD2(cos(angle), sin(angle))
-            let length = exp(log(100.0) + random.uniform() * (log(1500.0) - log(100.0)))
+            var focus = radius * SIMD2(cos(angle), sin(angle))
+            var length = exp(log(100.0) + random.uniform() * (log(1500.0) - log(100.0)))
+            if aboutDamage {
+                let weights = header.buildings.indices.map { b in
+                    chance(building: b, channel: 0, place: place, logMass: logMass)
+                        + chance(building: b, channel: 1, place: place, logMass: logMass)
+                }
+                let total = weights.reduce(0, +)
+                if total > 0 {
+                    var u = random.uniform() * total
+                    for (b, w) in weights.enumerated() {
+                        u -= w
+                        if u <= 0 || b == weights.count - 1 {
+                            focus = SIMD2(header.buildings[b].east, header.buildings[b].north)
+                            break
+                        }
+                    }
+                }
+                length = exp(log(100.0) + random.uniform() * (log(500.0) - log(100.0)))
+            }
             // Without replacement, by exponential keys (Efraimidis and Spirakis).
             let keys = header.buildings.indices.map { b -> (Double, Int) in
                 let d = simd_distance(SIMD2(header.buildings[b].east, header.buildings[b].north), focus)

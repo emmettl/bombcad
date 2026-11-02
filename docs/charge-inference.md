@@ -672,7 +672,8 @@ What it does not do:
 - **Marks taken as independent given the charge,** as the full inference takes them: a survey's
   neighbours, which err together, make it too sure (1,351 glass marks give a 90% interval of a
   factor 1.3).
-- **In the app** it is not yet: the panel to mark buildings is planned (emmettl/bombcad-work#116).
+- **In the app** since 2 November 2026: Simulation ▸ Read the Charge from the Damage…
+  ([below](#marking-the-damage-in-the-app-2-november-2026)).
 
 **The weights are built in** (the user's decision, 2 November 2026), as the live drag's are:
 `Scripts/ml/embed_charge.py` writes `charge-net-2`'s `charge-net.bccd` (188,960 bytes with its four
@@ -682,6 +683,105 @@ reference cases, SHA-256 c016fc77…) as base64 into Sources/BlastModel/ChargeFr
 
 The tables, sweeps and judgements are in `$BOMBCAD_DATA/scratch/issue116`; the networks in
 `$BOMBCAD_DATA/ml/charge-net-2` and `ml/charge-net-made`.
+
+### Marking the damage in the app (2 November 2026)
+
+emmettl/bombcad-work#116, stage 2. **Simulation ▸ Read the Charge from the Damage…** opens a panel
+beside the view on any scene with envelope buildings. While it is open, a click on a building marks
+it with the brush chosen in the panel: glass broken or whole, walls undamaged, damaged or heavily
+damaged, or the mark cleared; the same brush again takes that part of the mark away. With each mark:
+
+- **The chance of the charge's place is painted on the ground** over the network's 32 × 32 cells
+  of 31 m, the likeliest cell pale yellow and a hundredth of it dark red, less left bare; a thick
+  white line round the likeliest half of the chance and a thin one round nine tenths.
+- **Each marked building is outlined over its roof:** glass broken crimson, whole cyan; walls
+  undamaged blue, damaged amber, heavily damaged dark red.
+- **The yield** is drawn as the posterior's 32 bins on a logarithmic axis, the 90% interval shaded
+  and the median marked.
+- **In words**, which VoiceOver reads as the result: "Most likely 40 m south of the scene's charge;
+  half the chance within 60 m of there, nine in ten within 130 m. Yield about 11.5 t; nine in ten
+  between 2.9 t and 76.5 t." The distances are true radii about the likeliest cell, not equivalent
+  areas. The standing follows.
+- **Mark from the Damage Shown** marks every building the quick estimate or the last run judged,
+  as its damage would be marked (`ChargeFromDamage.seen`): glass broken where some pane broke (for
+  a glazing mix, where some pane more likely broke than not), walls by their worst level with
+  simply supported edges, as the network's training chances counted them. That is the solver or
+  the full estimate as referee: run a scene or estimate it, mark from it, and see where the network
+  puts the charge you placed.
+- **Move the Charge There** puts the scene's charge at the likeliest place, at the yield's median;
+  **Search About the Likeliest Place** moves the 500 m disc searched there (the marks weighed again),
+  and **Search About the Charge** brings it back.
+
+The search starts about the scene's charge, so the words say how far the reading is from it. Marks
+are kept by building while the window is open, through edits to the scene. The code is
+`ChargeFromDamage.Marking` (BlastModel, tested on Linux), which keeps the marks' summed log
+likelihood and adds or takes out one mark's alone, and `ChargeMarkingModel`/`ChargeMarkingView` in
+the app. The view draws the paint through the thermal paint's path (`RenderSettings.showsPaint`)
+and the outlines as the hazards' lines are drawn, so no shader changed.
+
+**Frame times** (release build, offscreen, `InterfaceReviewChargeMarkingTests`, on the Studio
+lightly loaded; the made-up mixed district, which the network never saw, 858 buildings within
+600 m, its terrain): 60 buildings marked one at a time, nearest the middle first.
+
+| Step | Median | Most |
+|---|---|---|
+| A mark weighed into the others, to the posterior | 0.81 ms | 0.95 ms |
+| The paint, outlines and words laid out | 0.36 ms | 0.60 ms |
+| A frame at 1800 × 1200 with the paint and outlines, GPU | 7.0 ms | 12.9 ms |
+| Click to frame drawn and read back | 19.5 ms | 94.7 ms (a frame written to disk) |
+
+So each mark shows within a frame at 30 fps, and well within 60 fps but for the read-back the
+offscreen test adds. In BlastModel's test, a mark into 1–60 others took 0.32 ms (0.35 at most).
+Marking from the damage shown on that district (852 buildings at once) weighs in parallel; the
+quick estimate before it took most of the time.
+
+**Judged on charges it never saw.** Two ways, the error given as the likeliest cell's distance from
+the true charge and the yield's median as a factor off the true yield (either way).
+
+*Through the app's own path*, on the held-out mixed district: twelve charges drawn over the inner
+350 m of the disc and from 200 kg to 1 kt, each estimated (the quick estimate, the full look) and
+marked from its damage, then 3, 10 and 30 of those marks at random and all of them, the search
+about the district's middle:
+
+| Marks | Place off, median | 90th | Yield off, median | 90th |
+|---|---|---|---|---|
+| 3 | 262 m | 472 m | ×3.4 | ×14 |
+| 10 | 194 m | 476 m | ×1.9 | ×4.5 |
+| 30 | 88 m | 196 m | ×1.9 | ×3.7 |
+| all (852) | 31 m | 49 m | ×1.4 | ×2.0 |
+
+With every building marked the place comes within about 30 m and the yield within a factor 1.4,
+but its 90% intervals are then far too narrow (a factor 1.3–1.8 wide; they missed the true yield
+on eight charges of twelve, six of them high): the marks are taken as independent, and neighbours
+judged by the same estimate are not, and marks read from the estimate's median loads are not the
+drawn chances the network learned from.
+
+*On the tables* (`charge-from-damage judge --seed 21`, 300 cases each, learned and full on the
+same chances; `--about-damage` chooses the marks as a user does, about a building drawn by its
+chance of damage, 100–500 m round it):
+
+| District | Marks chosen | Marks | Learned: place off (median, 90th) | yield off | Full: place off | yield off |
+|---|---|---|---|---|---|---|
+| made-mixed-s7 (never trained on) | about a focus | 3 | 429 m, 800 m | ×2.8, ×13 | 417 m, 776 m | ×2.6, ×12 |
+| | | 10 | 309 m, 720 m | ×2.0, ×5.4 | 299 m, 717 m | ×1.9, ×4.9 |
+| | | 30 | 158 m, 514 m | ×1.5, ×2.9 | 165 m, 531 m | ×1.5, ×2.9 |
+| | about the damage | 10 | 233 m, 758 m | ×2.1, ×6.5 | 248 m, 691 m | ×1.9, ×5.7 |
+| | | 30 | 121 m, 505 m | ×1.5, ×2.9 | 114 m, 496 m | ×1.5, ×3.0 |
+| beirut | about a focus | 30 | 345 m, 728 m | ×1.7, ×3.5 | 326 m, 700 m | ×1.6, ×3.3 |
+| | about the damage | 30 | 434 m, 801 m | ×1.9, ×4.8 | 435 m, 788 m | ×1.7, ×4.4 |
+
+The learned reading is as good as the full posterior on the same chances at every count, here as
+in stage 1 (calibrated: the truth in its 90% regions and intervals 0.83–0.92 of the time). A few marks say little: the likeliest cell is a poor
+point when the 90% region is still 400 m across, and the paint shows that spread rather than a
+pin. Thirty marks bring the place to 100–160 m and the yield to a factor 1.5 on the made-up
+district. On Beirut, its buildings few near the port and its charges drawn anywhere on the disc,
+thirty marks leave the place 350–430 m off.
+
+**Not done:** the far field's buildings (New District's near and far) cannot be marked, only the
+scene's; a survey file cannot be loaded into the panel (`blastmodel charge-from-damage infer`
+takes one); the marks are not saved with the project.
+
+The judgements are in `$BOMBCAD_DATA/scratch/issue116/stage2`.
 
 ## What it cannot do
 

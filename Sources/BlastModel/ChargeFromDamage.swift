@@ -501,9 +501,9 @@ public enum ChargeFromDamage {
         }
 
         /// A mark's log likelihood (`kind` "distance") over the cells, bin by bin within each
-        /// cell, added to `joint`: its network at each of the distances tabulated, read linearly in
-        /// ln r for each cell's distance from it.
-        func addDistance(_ mark: Mark, reference: SIMD2<Double>, to joint: inout [Float]) {
+        /// cell, added to `joint` (times `weight`: −1 takes a mark out again, `Marking`): its network
+        /// at each of the distances tabulated, read linearly in ln r for each cell's distance from it.
+        func addDistance(_ mark: Mark, reference: SIMD2<Double>, to joint: inout [Float], weight: Float = 1) {
             let cells = header.grid * header.grid
             let bins = header.yieldBins ?? 1
             let nodes = header.distanceNodes ?? 2
@@ -546,7 +546,8 @@ public enum ChargeFromDamage {
                             for k in 0..<bins {
                                 let s1 = Self.tabulatedSigmoid(v[0] + v[1] * t[k], sigmoid)
                                 let s2 = Self.tabulatedSigmoid(v[2] + v[3] * t[k], sigmoid)
-                                j[c * bins + k] += Self.tabulatedLog(floor + (1 - floor) * s1 * s2, logs)
+                                j[c * bins + k] +=
+                                    weight * Self.tabulatedLog(floor + (1 - floor) * s1 * s2, logs)
                             }
                         }
                     }
