@@ -409,8 +409,9 @@ that is not yet on this Mac. Each file is checked against its pinned SHA-256 bef
   (166 × 138 cells). It was made by `scenebench explorer-beirut` from Beirut's inputs. It is pinned
   in `ExplorerScene.Beirut.Release` (tag `explorer-beirut-1`) and is kept at
   `$BOMBCAD_DATA/explorer/beirut-asset/` with its notes and licences: OSM under ODbL 1.0, GHSL under
-  CC BY 4.0, and Copernicus GLO-30. **It is not yet published.** Until it is, Beirut's download
-  fails and says why. `BOMBCAD_EXPLORER_BEIRUT` points the app at a copy.
+  CC BY 4.0, and Copernicus GLO-30. It was published on 2 November 2026 as the release
+  `explorer-beirut-1`, and the copy downloaded back matched its pin. `BOMBCAD_EXPLORER_BEIRUT`
+  points the app at a copy.
 - **Its opening line,** first in its sidebar, in the prompt, and announced to VoiceOver: "On
   4 August 2020, ammonium nitrate stored at Beirut's port exploded. 218 people died and about 6,500
   were hurt. What follows is a model's estimate, not a record of that day."
