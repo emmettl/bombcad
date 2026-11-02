@@ -5,8 +5,9 @@ detailed list; this one puts them in order across the whole project.
 
 The [long-term vision](long-term-vision.md) describes the broader ambition of exploring
 “all explosions great and small”, with detail and physical scope appropriate to each scale.
-It is a product direction rather than a delivery commitment; the validation priorities here
-remain the immediate focus.
+It is a product direction rather than a delivery commitment. Since 1 November 2026 the immediate
+focus is the app that answers live, with the validated solver as its referee
+([the plan](#the-plan)).
 
 The [multiple-object scene architecture](multiple-object-scene.md) defines the first scene
 requirements and minimum candidate ContinuumKit contracts supporting that vision. It keeps
@@ -52,77 +53,149 @@ On the last point, see the [native interface review](native-interface-review.md#
 
 ## The plan
 
-The aim is the best fidelity given the constraints of compute and available empirical data:
-spend computation where the [error bands](standing.md#error-bands) say it buys accuracy, and seek
-data where they say the model cannot be judged. Each stage ends with something a user gets, or
-with a recorded stop. The plan as it stood item by item before 11 October 2026, with the account
-of each step, is in the [roadmap history](roadmap-history.md). This page was last refreshed on
-24 October 2026, after releases 0.7.0 and 0.7.1 ([0.7.0's notes](release-notes/0.7.0.md),
-[0.7.1's](release-notes/0.7.1.md)).
+Since 1 November 2026 the app comes first: someone new to blast should get a feel for what a
+blast does by playing with it. The experience is built from what answers live (surrogates, learned
+models and drawing on the GPU), each at about 30 frames a second or more and with its standing
+shown. The solver stays the referee and the source of the learned models' training data: a fast
+model is judged against it, or against the full estimate, before it becomes a default, and the
+default is the user's decision. The numerical models are finished where a live layer needs them,
+and otherwise held. Each stage ends with something a user gets, or with a recorded stop. The plan
+as it stood item by item before 11 October 2026, with the account of each step, is in the
+[roadmap history](roadmap-history.md). This page was last refreshed on 2 November 2026, after
+releases 0.7.2 to 0.7.5 and 0.8.0 ([0.7.2's notes](release-notes/0.7.2.md),
+[0.7.3's](release-notes/0.7.3.md), [0.7.4's](release-notes/0.7.4.md),
+[0.7.5's](release-notes/0.7.5.md), [0.8.0's](release-notes/0.8.0.md)).
 
 ### At a glance
 
 *Waits on the user* marks a step that needs the user's decision, hands or data.
 
+**Landed since 24 October**
+- **The explorer, for someone new to blast** ([the explorer](explorer.md)): a new window opens on a
+  simpler mode (View ▸ Explore). A charge is put in a made-up town square of 398 buildings
+  ([`ca050462`](https://github.com/emmettl/bombcad/commit/ca050462)), a made-up high street of 781,
+  or Beirut's port within 1.5 km as a download
+  ([`3c38a5a2`](https://github.com/emmettl/bombcad/commit/3c38a5a2)). The wave plays with captions,
+  and the glass, the walls, people and fire are told in plain words with how sure each is; one
+  change is tried against a pinned picture. Its polish keeps Beirut's drag at 20–22 ms a step and
+  colours every chance on a warm scale with a plain legend
+  ([`23d7f047`](https://github.com/emmettl/bombcad/commit/23d7f047)). It began as a design note
+  ([`6fd9d7e1`](https://github.com/emmettl/bombcad/commit/6fd9d7e1)) and shipped in 0.8.0.
+- **The blast wave, live** ([the live wave](live-wave.md)): its front, strength and the shadows
+  behind buildings drawn over a district before any run, and dragged with the charge
+  ([`ff228494`](https://github.com/emmettl/bombcad/commit/ff228494)). A learned refinement corrects
+  its peak, arrival and pulse towards BombCAD's runs
+  ([`1ad5a9a2`](https://github.com/emmettl/bombcad/commit/1ad5a9a2)), and has been the default
+  within about 1 km of the charge since the user's decision of 2 November 2026
+  ([`ebf23558`](https://github.com/emmettl/bombcad/commit/ebf23558),
+  [adopted](live-wave.md#adopted-as-the-default-2-november-2026)). Illustrative.
+- **The live drag and instant what-ifs**
+  ([learned models](learned-models.md#the-live-drags-learned-response-1-november-2026)): a learned
+  response on the GPU judges the drag preview in 20–25 ms a Beirut frame, where the CPU took
+  0.6–0.8 s, and agrees with the full estimate as closely
+  ([`b01c1d40`](https://github.com/emmettl/bombcad/commit/b01c1d40)); it has been the default since
+  the user's decision of 1 November 2026
+  ([`da1e750b`](https://github.com/emmettl/bombcad/commit/da1e750b)). The charge's size and every
+  building's glass, walls and roof re-colour the city as a control moves
+  ([`87de5211`](https://github.com/emmettl/bombcad/commit/87de5211),
+  [instant what-ifs](learned-models.md#instant-what-ifs-2-november-2026)). Retrained on small
+  scenes on 2 m cells, it colours the explorer's square and street as closely as the CPU's preview
+  or more ([`d653a88e`](https://github.com/emmettl/bombcad/commit/d653a88e),
+  [small cells](learned-models.md#small-cells-and-close-charges-2-november-2026)).
+- **Fire after the blast** ([fire after the blast](fire-spread.md)): each building's chance of
+  catching from its neighbours over the hours after a blast, headless
+  ([`d9681364`](https://github.com/emmettl/bombcad/commit/d9681364)) and as a layer in the app
+  ([`b24fa41c`](https://github.com/emmettl/bombcad/commit/b24fa41c)). Its fast path keeps the
+  district between layers, so a frame of its wind sliders takes 8 ms on Beirut, from 45
+  ([`0032d946`](https://github.com/emmettl/bombcad/commit/0032d946),
+  [a fast path](fire-spread.md#a-fast-path-for-the-preview-2-november-2026)). Illustrative.
+- **The charge read back from the damage** ([charge inference](charge-inference.md)): a network
+  weighs each mark of glass or walls in under a millisecond, as well as the full reckoning on the
+  same chances ([`fc8d73c7`](https://github.com/emmettl/bombcad/commit/fc8d73c7)). In the app,
+  Simulation ▸ Read the Charge from the Damage… paints the chance of the charge's place on the
+  ground as the user marks buildings; on a made-up district it never saw, 30 marks put the charge
+  88 m off and its yield within a factor 1.9 (median)
+  ([`b71d9ec6`](https://github.com/emmettl/bombcad/commit/b71d9ec6),
+  [marking the damage](charge-inference.md#marking-the-damage-in-the-app-2-november-2026)).
+- **The iPad viewer and replay pacing** ([the spatial viewer](spatial-viewer.md)): built, signed and
+  measured on the user's iPad Pro, where it draws a view in 11–12 ms with under a tenth of its
+  memory ([`7244965a`](https://github.com/emmettl/bombcad/commit/7244965a),
+  [measured](spatial-viewer.md#on-the-ipad-pro-measured-2-november-2026)). Replays, on the iPad and
+  on the Mac, now play at the pace of the run's own time on the display's refreshes
+  ([`bacf3604`](https://github.com/emmettl/bombcad/commit/bacf3604)). The iPad mini is not yet
+  measured.
+- **In 0.7.2 to 0.7.5:** a run on a Mac nearby draws what a run here draws
+  ([`c8c7157e`](https://github.com/emmettl/bombcad/commit/c8c7157e)); the quick estimate's façades
+  refitted on runs whose top clears the hills
+  ([`775d0426`](https://github.com/emmettl/bombcad/commit/775d0426)), with far terms past 2 km of
+  city ([`ee7ca954`](https://github.com/emmettl/bombcad/commit/ee7ca954)) and facing as their map
+  outlines, so it no longer depends on how the city lies on the grid
+  ([`940ba3b2`](https://github.com/emmettl/bombcad/commit/940ba3b2),
+  [adopted](surrogate-first-look.md#façade-incidence-from-map-outlines-28-october-2026)); the
+  protection planner's margin for the scatter between sides
+  ([`fc1f26f4`](https://github.com/emmettl/bombcad/commit/fc1f26f4)); stone walls' chances
+  calibrated ([`cf885575`](https://github.com/emmettl/bombcad/commit/cf885575)); structures on
+  their own 7–8% faster, on the user's decision to let results move at the rounding level
+  ([`bb11edf5`](https://github.com/emmettl/bombcad/commit/bb11edf5)); every control named for
+  VoiceOver and the 3D view moved from the keyboard
+  ([`13072f65`](https://github.com/emmettl/bombcad/commit/13072f65)); corrupt GeoTIFF and IFC files
+  refused with a message ([`b6e019b1`](https://github.com/emmettl/bombcad/commit/b6e019b1)). The
+  hybrid far field's over-read beyond 1.5 km was the reference run's low top, not the surrogate
+  ([`44936c46`](https://github.com/emmettl/bombcad/commit/44936c46),
+  [the full run's top](hybrid-far-field.md#the-full-runs-top-drains-its-far-loads-25-october-2026)).
+
 **Now**
-- **Whole-event simulation** ([whole-event simulation](whole-event.md)), a big bet taken up: the
-  large-panel block carried past its collapse with rubble now reaches 3.5 s with its energy budget
-  closing. Its second step fixed what gave out: elements distorted past the step's reach removed
-  ([`86c1240e`](https://github.com/emmettl/bombcad/commit/86c1240e)), compaction counted from the
-  confined volume ([`93a2968f`](https://github.com/emmettl/bombcad/commit/93a2968f)), rubble that
-  crushes rather than springs ([`2f9ab009`](https://github.com/emmettl/bombcad/commit/2f9ab009)),
-  the work trace at the mean of each step's stresses
-  ([`e0d9c631`](https://github.com/emmettl/bombcad/commit/e0d9c631)), and broken bars that take
-  their steel with their rubble ([`aa758eb6`](https://github.com/emmettl/bombcad/commit/aa758eb6)).
-  Hourglass control does 58–76% of the elements' work, so the collapse stays illustrative and is
-  not offered in the app. Next, the 10 s run in pieces.
-- **The thin client: view on a laptop, solve on the Studio.** Frames on a sealed socket of their
-  own, 40–45 MB/s over Wi-Fi; pause, resume and rerun with edits
-  ([`fb237073`](https://github.com/emmettl/bombcad/commit/fb237073)); the fragments, thermal
-  radiation, ground points and cloud run there, and since 24 October are drawn live and kept in the
-  recording ([`c8c7157e`](https://github.com/emmettl/bombcad/commit/c8c7157e),
-  [what is drawn](distributed-computing.md#what-is-drawn-over-the-scene-24-october-2026)). The run
-  on the MacBook *waits on the user*.
-- **The iPad viewer** ([the spatial viewer](spatial-viewer.md)): it replays the runs a Mac nearby
-  keeps ([`0ee7260e`](https://github.com/emmettl/bombcad/commit/0ee7260e)), is signed for a real
-  iPad, keeps its pairings in the Keychain and picks a building by touch
-  ([`b704059b`](https://github.com/emmettl/bombcad/commit/b704059b)). Tried in the Simulator; the
-  runs on the iPads *wait on the user* (from 27 October).
-- **Structure step speed** ([structure step cost](performance.md#structure-step-cost)): 12% faster
-  alone, the same to the bit ([`da4cf57d`](https://github.com/emmettl/bombcad/commit/da4cf57d)),
-  and a tracked performance series (`make perf`,
-  [`a9536ead`](https://github.com/emmettl/bombcad/commit/a9536ead)). Up to 44% more is there, but
-  only from specialised kernels that move results at the rounding level: *the user's decision*.
-- **The learned field model** ([learned models](learned-models.md#field-model-2-in-the-app-23-october-2026)):
-  field model 2, an option, off, gives the peak at every storey's façades
-  ([`038da0a3`](https://github.com/emmettl/bombcad/commit/038da0a3)); on Beirut's 2 m near boxes its
-  glass blown out scores Brier skill 0.69 against field model 1's 0.43, and its walls pass the
-  calibration test. A single network for every storey did not match it
-  ([`a980d177`](https://github.com/emmettl/bombcad/commit/a980d177)). Whether it becomes the
-  default *waits on the user*.
+- **Interactive first.** The explorer's polish is in, and stopped for review. Next, the live models
+  take over what still waits on the CPU.
+- **Protective design you can push around:** the hazard to people from thrown glass, then a
+  barrier, film or laminated glass and the stand-off dragged on the live model, judged against the
+  full estimate ([protective design](protective-design.md)). Running now.
+- **The reference corpus by active learning:** the solver chooses its next runs where the networks
+  are least sure, judged against a fixed round of the same cost on held-out scenes, the explorer's
+  square and street among them. Running now.
+- **The thin client: view on a laptop, solve on the Studio** ([what is
+  drawn](distributed-computing.md#what-is-drawn-over-the-scene-24-october-2026)). A run that ended
+  while its link was down now hands over its setup and result
+  ([`fd0d7f55`](https://github.com/emmettl/bombcad/commit/fd0d7f55)). The run on the MacBook
+  *waits on the user*.
 
 **Next**
-- **Charges of other shapes than a sphere** (a disc or a cylinder): the prerequisite for a crater
-  coupled to the blast, whose first rung stopped because Clarke's plate saw a disc's flat face
-  ([`5d0a04bc`](https://github.com/emmettl/bombcad/commit/5d0a04bc)). Taking it up is *the user's
-  decision*.
-- **The hybrid far field beyond 1.5 km**, since the façade refit 1.12–1.19 times the full run's
-  peaks at 1.1 kt, on the safe side
-  ([on the refitted surrogate](hybrid-far-field.md#on-the-refitted-surrogate-23-october-2026)): a
-  trend fitted per yield, or the surrogate's distance terms refitted at low scaled distances.
-- **Full Keyboard Access and VoiceOver on a real screen.** *Waits on the user* for a screen session.
+- **The iPad as a live estimator on its own**, with the live models on the device.
+- **The charge from the damage, further:** the far field's buildings marked, a survey loaded into
+  the panel, and the marks saved with the project.
+- **The learned field model** ([learned models](learned-models.md#field-model-2-in-the-app-23-october-2026)):
+  field model 2, an option, off, gives the peak at every storey's façades
+  ([`038da0a3`](https://github.com/emmettl/bombcad/commit/038da0a3)). Whether it becomes the
+  default *waits on the user*. Training on the PCs carries on as the learned models' common ground.
+- **VoiceOver on a real screen:** the offscreen pass is done; the walk-through on a real screen
+  ([its checklist](native-interface-review.md#voiceover-on-a-real-screen)) *waits on the user*.
 
 **Later**
+- **A spread of outcomes, shown:** several plausible results at once.
+- **Whole-event simulation** ([whole-event simulation](whole-event.md)): the large-panel block's
+  collapse is quoted as a range ([`0dfb4f57`](https://github.com/emmettl/bombcad/commit/0dfb4f57)),
+  on a ground with friction ([`bf8b15bc`](https://github.com/emmettl/bombcad/commit/bf8b15bc)) and
+  in live air ([`b48386cd`](https://github.com/emmettl/bombcad/commit/b48386cd)); its debris comes
+  to rest with its displacements kept precisely
+  ([`24d87c28`](https://github.com/emmettl/bombcad/commit/24d87c28)), and it carries its dust
+  ([`8676ecea`](https://github.com/emmettl/bombcad/commit/8676ecea)). The collapse stays
+  illustrative and is not offered in the app; the dust's second stage waits until it can be done
+  cheaply.
 - The fireball's radiation (*the user chooses the route*, or leaves it paused); cladding torn off
   a purlin that deforms (stopped for the test rig's dimensions); soil with a fast elastic front; the
-  ground-shock half-space in three dimensions; a steel column's web breached close in; the
-  importers' fuzzing leftovers.
+  ground-shock half-space in three dimensions; charges of other shapes than a sphere, for a crater
+  coupled to the blast.
+- A steel column's web breached close in and its frame under a blast, against their tests' paper
+  ([`c2b7c28f`](https://github.com/emmettl/bombcad/commit/c2b7c28f),
+  [`9b099071`](https://github.com/emmettl/bombcad/commit/9b099071)): recorded and stopped, with
+  fillets in the shells' junction proposed.
 - People in the scene's next stage, injuries by place, once AZF's zone tables or Oklahoma City's
   block can judge it ([future work](people-in-the-scene.md#future-work)).
 - The CUDA follow-ups, parked at their cap ([below](#distributed-computing)).
 - Sources to obtain for validation: *the user obtains them* ([data wanted](data-wanted.md)).
 
-**Big bets**, apart, each with a cheap first step: [below](#big-bets).
+**Big bets**, apart, each with a cheap first step: [below](#big-bets). Since 1 November one more
+is among them: whether a building stands, learned by a network over its members.
 
 ### Validation
 
@@ -404,8 +477,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   ([since 0.6.0](native-interface-review.md#since-060-23-october-2026),
   [`f2754b91`](https://github.com/emmettl/bombcad/commit/f2754b91)); a first iPad viewer, from the
   source, that replays a Mac's kept runs ([the spatial viewer](spatial-viewer.md)).
-- **Waits on the user:** the iPad viewer on the two iPads (Developer Mode, a USB trust and the
-  local network allowed on each), to measure its Wi-Fi, drawing and memory.
+- **Done, 2 November 2026:** the iPad viewer measured on the iPad Pro, and replays paced by the
+  run's own time ([measured](spatial-viewer.md#on-the-ipad-pro-measured-2-november-2026)). The
+  iPad mini is still to be measured.
 - **Next, waits on the user:** Full Keyboard Access and VoiceOver on a real screen
   ([remaining checks](native-interface-review.md#remaining-checks)).
 
@@ -487,14 +561,17 @@ Apart from the main line, each with a cheap first step and a stated way to fail:
 - **Run the solver on other GPUs: a portable compute backend.** The CUDA work under
   [distributed computing](#distributed-computing) was its first step; it is parked at the user's
   cap, and nothing in the product waits on it.
-- **Whole-event simulation:** blast, collapse, debris and dust in one run. Taken up, in Now: a
-  collapse carried to 3.5 s with its energy budget closing
+- **Whole-event simulation:** blast, collapse, debris and dust in one run. Taken up, and now in
+  Later: a collapse carried to 10 s, quoted as a range, its debris at rest and its dust carried
   ([whole-event simulation](whole-event.md)). Collapse stays unearned until limitation 1 improves,
   since hourglass control, not the concrete, does most of the work of the hinges the floors fold
-  along. Dust is sketched, not built.
+  along.
 - **Blasts near and under water**, for ports, quays and ships. First, a one-dimensional underwater
   burst against Cole's similitude.
-- **Fire after the blast**, from the ignitions to spread across a district.
+- **Fire after the blast**, from the ignitions to spread across a district. Its first step is in
+  the app since 0.7.5, illustrative ([fire after the blast](fire-spread.md)).
+- **Whether a building stands, learned:** a network over its members, trained on the solver's
+  runs.
 - **Forensics from photographs:** damage read from images into the charge inference.
 - **A district's result walked at full scale** on a Vision Pro or iPad, from a kept timeline. The
   iPad viewer's first step, replaying a Mac's kept runs, is under [usability](#usability-in-parallel);
