@@ -40,10 +40,10 @@ extension SimulationModel {
 
     /// The cells the wave over `scene` is worked out on: `LiveWave.Plan.cellSize`'s, twice as large
     /// while the charge is dragged where that plan has more than `liveWaveDragCells`.
-    static func liveWaveCell(for scene: Scenario, dragging: Bool) -> Float {
+    static func liveWaveCell(for scene: Scenario, dragging: Bool, coarsening: Float = 2) -> Float {
         let fine = LiveWave.Plan.cellSize(for: scene)
         let cells = Double(scene.domainSize.x / fine) * Double(scene.domainSize.y / fine)
-        return dragging && cells > Double(liveWaveDragCells) ? 2 * fine : fine
+        return dragging && cells > Double(liveWaveDragCells) ? coarsening * fine : fine
     }
 
     func liveWaveShownChanged() {
@@ -106,7 +106,8 @@ extension SimulationModel {
         liveWaveWaiting = nil
         // The scene as loaded: while the charge is dragged it is not loaded again until let go.
         let layout = scenario
-        let cell = Self.liveWaveCell(for: layout, dragging: request.coarse)
+        let cell = Self.liveWaveCell(
+            for: layout, dragging: request.coarse, coarsening: liveWaveDragCoarsening)
         let known = liveWavePlans[cell].flatMap { $0.version == request.sceneVersion ? $0.plan : nil }
         // The learned refinement, while dragging only where it keeps up (`liveWaveRefinesWhileDragging`).
         let weights = liveWaveLearnedWeightsURL
@@ -114,7 +115,8 @@ extension SimulationModel {
         let loaded = liveWaveRefinement.flatMap { $0.url == weights ? $0.refinement : nil }
         let weightsHere = loaded != nil || FileManager.default.fileExists(atPath: weights.path)
         let refines =
-            request.learned && weightsHere && (!request.coarse || Self.liveWaveRefinesWhileDragging)
+            request.learned && weightsHere
+            && (!request.coarse || (Self.liveWaveRefinesWhileDragging && liveWaveDragRefines))
         if request.learned && !weightsHere && !liveWaveLearnedDownloadInFlight {
             liveWaveLearnedStatus = liveWaveLearnedMissingStatus
         }

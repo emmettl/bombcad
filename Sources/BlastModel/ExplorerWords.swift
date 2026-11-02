@@ -318,6 +318,23 @@ public enum ExplorerColours {
     public static let sameColour = SIMD3<Float>(0.600, 0.580, 0.540)
     public static var worseColour: SIMD3<Float> { EnvelopeDoubtColour.palette[1] }
 
+    /// The explorer's scale for chances, from a pale neutral for none to a loud red for the most, so
+    /// that the worst reads as the worst; the workbench's ramp ends dark (`EnvelopeChanceColour.ramp`),
+    /// which someone new reads as nothing happening. Codes on it are the ramp's plus `warmOffset`
+    /// (Render.metal; a test keeps the two the same).
+    public static let warmRamp: [SIMD3<Float>] = [
+        SIMD3(0.930, 0.925, 0.900), SIMD3(0.996, 0.894, 0.596), SIMD3(0.996, 0.800, 0.400),
+        SIMD3(0.992, 0.682, 0.263), SIMD3(0.969, 0.529, 0.169), SIMD3(0.918, 0.373, 0.122),
+        SIMD3(0.812, 0.208, 0.098), SIMD3(0.659, 0.055, 0.106),
+    ]
+    public static let warmOffset = 4096
+
+    /// A chance code (`EnvelopeChanceColour.code`) on the warm scale; any other code as it is.
+    public static func warm(_ code: Int) -> Int {
+        code >= EnvelopeChanceColour.first && code < EnvelopeChanceColour.first + warmOffset
+            ? code + warmOffset : code
+    }
+
     /// A side's glass as one number: none broken 0, some broken ½, blown in 1, over the draws.
     public static func glassScore(_ side: FacadeLoadSurrogate.SideGlass) -> Double {
         0.5 * side.someBroken + 0.5 * side.blownOut

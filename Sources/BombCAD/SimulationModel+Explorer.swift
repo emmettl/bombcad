@@ -13,6 +13,17 @@ enum ExplorerColouring: Equatable {
 // What the explorer asks of the model (emmettl/bombcad-work#114; docs/explorer.md): the charge put at a
 // named place or given a size as a choice, the estimate following as a drag's does.
 extension SimulationModel {
+    /// The workbench's own colours and drag again, the explorer's settings undone.
+    func leaveExplorer() {
+        explorerColouring = nil
+        explorerHidesLiveWave = false
+        explorerLines = []
+        explorerWarmRamp = false
+        previewsWhileDragging = true
+        liveWaveDragCoarsening = 2
+        liveWaveDragRefines = true
+    }
+
     /// The quick estimate's picture as it stands, to pin or compare.
     var explorerSnapshot: ExplorerSnapshot {
         ExplorerSnapshot(

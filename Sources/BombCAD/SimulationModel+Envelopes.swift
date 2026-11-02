@@ -78,27 +78,27 @@ extension SimulationModel {
             return
         }
         if !protectionPlanChances.isEmpty {
-            renderer?.setEnvelopeDamage(protectionPlanChances.mapValues { EnvelopeChanceColour.code($0) })
+            showEnvelopeCodes(protectionPlanChances.mapValues { EnvelopeChanceColour.code($0) })
             return
         }
         guard showsEnvelopeDamage else {
-            renderer?.setEnvelopeDamage([:])
+            showEnvelopeCodes([:])
             return
         }
         // The explorer's colouring, when it has the chances it colours by.
         switch explorerColouring {
         case .glass? where !envelopeGlassChances.isEmpty:
-            renderer?.setEnvelopeDamage(ExplorerColours.glassCodes(envelopeGlassChances))
+            showEnvelopeCodes(ExplorerColours.glassCodes(envelopeGlassChances))
             return
         case .change(let pinned, let measure)? where !envelopeGlassChances.isEmpty:
-            renderer?.setEnvelopeDamage(pinned.change(to: explorerSnapshot, measure: measure).codes)
+            showEnvelopeCodes(pinned.change(to: explorerSnapshot, measure: measure).codes)
             return
         default: break
         }
         // A preview's loads are not the estimate's: judged again once the full estimate is in.
         if envelopeColouring == .couldFlip, !envelopeEstimateIsPreview {
             if let envelopeDoubt {
-                renderer?.setEnvelopeDamage(
+                showEnvelopeCodes(
                     Dictionary(
                         uniqueKeysWithValues: envelopeDoubt.buildings.map {
                             ($0.id, EnvelopeDoubtColour.code($0.verdict))
@@ -109,17 +109,17 @@ extension SimulationModel {
         }
         if envelopeColouring == .peopleHurt, peopleEstimate != nil {
             // Each building by the share of its people expected hurt: illustrative.
-            renderer?.setEnvelopeDamage(peopleCodes())
+            showEnvelopeCodes(peopleCodes())
             return
         }
         if envelopeColouring == .fire, fireLayer != nil {
             // Each building by its chance of fire at the hour shown: illustrative.
-            renderer?.setEnvelopeDamage(fireCodes())
+            showEnvelopeCodes(fireCodes())
             return
         }
         if envelopeColouring.isStructure, !envelopeStructureChances.isEmpty {
             // Each building by its walls' or roof's chance, the same on every side.
-            renderer?.setEnvelopeDamage(
+            showEnvelopeCodes(
                 Dictionary(
                     uniqueKeysWithValues: envelopeStructureChances.map { c in
                         let chance =
@@ -139,11 +139,16 @@ extension SimulationModel {
         }
         if envelopeColouring.isChance, !envelopeGlassChances.isEmpty {
             // Each side by its chance, from the quick estimate's draws.
-            renderer?.setEnvelopeDamage(chanceCodes(envelopeGlassChances))
+            showEnvelopeCodes(chanceCodes(envelopeGlassChances))
             return
         }
-        renderer?.setEnvelopeDamage(
+        showEnvelopeCodes(
             Dictionary(uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
+    }
+
+    /// The codes shown, on the explorer's warm scale when it asks (`explorerWarmRamp`).
+    private func showEnvelopeCodes(_ codes: [UUID: Int]) {
+        renderer?.setEnvelopeDamage(explorerWarmRamp ? codes.mapValues(ExplorerColours.warm) : codes)
     }
 
     /// Each building's colour code by its sides' glass chances, as the view's colouring asks.

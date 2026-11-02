@@ -687,6 +687,18 @@ final class SimulationModel {
     var explorerHidesLiveWave = false
     /// Lines the explorer lays over the view: the faint ring at a pinned picture's reach.
     var explorerLines: [SIMD4<Float>] = []
+    /// The explorer's warm scale for every chance the view is coloured by (`ExplorerColours.warmRamp`):
+    /// the worst the loudest, not the darkest; the workbench keeps its own.
+    var explorerWarmRamp = false {
+        didSet { if explorerWarmRamp != oldValue { applyEnvelopeDamageColours() } }
+    }
+    /// While the charge is dragged over a large plan, its live wave is worked out on cells this many
+    /// times its own, and refined or not; the explorer asks for coarser and unrefined, to keep up.
+    var liveWaveDragCoarsening: Float = 2
+    var liveWaveDragRefines = true
+    /// Whether a drag previews the estimate as it goes; the explorer's wave layer shows none, so asks
+    /// for none, and the estimate follows once the charge is let go.
+    var previewsWhileDragging = true
 
     /// Each building side's glass chances from the quick estimate (`FacadeLoadSurrogate`'s
     /// draws), the glass alone; empty without one.

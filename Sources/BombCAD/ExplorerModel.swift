@@ -69,10 +69,14 @@ final class ExplorerModel {
             case .glassWithFilm: "Glass with film"
             }
         }
-        var summary: String {
+        /// What it does, in `scene`: its place behind a building named.
+        func summary(in scene: ExplorerScene?) -> String {
             switch self {
             case .twiceTheCharge: "Double the charge and see how much further the windows break."
-            case .behindABuilding: "Move the charge behind the brick terrace and see the shadow it casts."
+            case .behindABuilding:
+                scene == .street
+                    ? "Move the charge into the back lane behind the shops and see the shadow they cast."
+                    : "Move the charge behind the brick terrace and see the shadow it casts."
             case .glassWithFilm:
                 "Give every window security film and see how much less glass flies into the rooms."
             }
@@ -83,6 +87,10 @@ final class ExplorerModel {
 
     /// The film the comparison gives every window: 8 mil, wet glazed into its frame.
     static let film = LiveResponse.Glass.filmed(.mils(8, anchorage: .wetGlazed))
+
+    /// How much coarser the wave's cells are while dragging over a plan of more than
+    /// `SimulationModel.liveWaveDragCells` (the workbench's is 2).
+    static let dragCoarsening: Float = 4
 
     /// The system's Reduce Motion: the wave shown whole, not played.
     @ObservationIgnored var reduceMotion = false
@@ -255,8 +263,7 @@ final class ExplorerModel {
     func close() {
         model.liveWaveShown = false
         model.explorerColouring = nil
-        model.explorerHidesLiveWave = false
-        model.explorerLines = []
+        model.leaveExplorer()
         scene = nil
         origin = nil
         pinned = nil
@@ -348,6 +355,12 @@ final class ExplorerModel {
         // The wave drawn on its own layer alone, so that its paint does not tint the others' colours.
         model.explorerHidesLiveWave = layer != .wave
         model.explorerLines = ringLines
+        model.explorerWarmRamp = true
+        // A drag keeps up: no preview where the layer shows none, and over a large plan the wave on
+        // cells four times its own, unrefined, until the charge is let go.
+        model.previewsWhileDragging = layer != .wave
+        model.liveWaveDragCoarsening = Self.dragCoarsening
+        model.liveWaveDragRefines = false
         switch layer {
         case .wave:
             model.explorerColouring = nil

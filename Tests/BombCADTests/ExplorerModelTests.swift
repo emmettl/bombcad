@@ -48,8 +48,12 @@ struct ExplorerModelTests {
         // The layers: the wave on plain buildings, the glass by the explorer's own score, the wave
         // then not drawn over it.
         #expect(!model.showsEnvelopeDamage && model.explorerColouring == nil && !model.explorerHidesLiveWave)
+        // On the wave layer no preview while dragging; the explorer's warm scale; a coarser wave to drag.
+        #expect(!model.previewsWhileDragging && model.explorerWarmRamp)
+        #expect(model.liveWaveDragCoarsening == ExplorerModel.dragCoarsening && !model.liveWaveDragRefines)
         explorer.layer = .glass
         #expect(model.showsEnvelopeDamage && model.explorerColouring == .glass && model.explorerHidesLiveWave)
+        #expect(model.previewsWhileDragging)
         #expect(explorer.finding?.hasPrefix("Windows break") == true)
         explorer.layer = .walls
         #expect(model.envelopeColouring == .wallsModerate && model.explorerColouring == nil)
@@ -99,6 +103,7 @@ struct ExplorerModelTests {
         #expect(explorer.pinned == nil && model.peopleBaseline == nil)
         explorer.close()
         #expect(explorer.scene == nil && !model.liveWaveShown)
+        #expect(!model.explorerWarmRamp && model.previewsWhileDragging && model.liveWaveDragCoarsening == 2)
     }
 
     @Test("Opens the street at its named places; Beirut asks to be downloaded first")

@@ -85,7 +85,7 @@ final class ProjectSession {
             if next == .explore, explorer == nil { explorer = ExplorerModel(model: session.model) }
             if next == .workbench {
                 // The workbench colours as its own sidebar says.
-                session.model.explorerColouring = nil
+                session.model.leaveExplorer()
                 session.model.showsEnvelopeDamage = true
             } else {
                 explorer?.applyLayer()

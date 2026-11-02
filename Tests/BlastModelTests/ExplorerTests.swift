@@ -123,6 +123,19 @@ struct ExplorerTests {
         let c = ExplorerColours.sameColour
         let text = String(format: "float3(%.3ff, %.3ff, %.3ff)", c.x, c.y, c.z)
         #expect(shader.contains("code == \(ExplorerColours.same)") && shader.contains(text))
+        // The warm scale, its codes offset as the shader reads them.
+        for c in ExplorerColours.warmRamp {
+            let text = String(format: "float3(%.3ff, %.3ff, %.3ff)", c.x, c.y, c.z)
+            #expect(shader.contains(text), "\(text) not in Render.metal")
+        }
+        #expect(shader.contains("code >= 16 + \(ExplorerColours.warmOffset)"))
+        #expect(ExplorerColours.warm(16) == 16 + 4096 && ExplorerColours.warm(16 + 4095) == 16 + 4095 + 4096)
+        #expect(
+            ExplorerColours.warm(ExplorerColours.same) == ExplorerColours.same && ExplorerColours.warm(2) == 2
+        )
+        // The loud end is the warm, dark-red one; the quiet end pale.
+        #expect(ExplorerColours.warmRamp[7].x > 3 * ExplorerColours.warmRamp[7].z)
+        #expect(ExplorerColours.warmRamp[0].x > 0.9 && ExplorerColours.warmRamp[0].z > 0.85)
     }
 
     @Test("Written as a map, it reads back as the same buildings")

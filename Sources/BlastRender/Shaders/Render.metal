@@ -395,8 +395,14 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             float3(0.992f, 0.906f, 0.145f), float3(0.627f, 0.855f, 0.224f), float3(0.290f, 0.757f, 0.427f),
             float3(0.122f, 0.631f, 0.529f), float3(0.153f, 0.498f, 0.557f), float3(0.212f, 0.361f, 0.553f),
             float3(0.275f, 0.196f, 0.494f), float3(0.267f, 0.005f, 0.329f)};
+        // The explorer's warm scale for the same chances, codes 4096 higher (ExplorerColours.warmRamp).
+        const float3 warm[8] = {
+            float3(0.930f, 0.925f, 0.900f), float3(0.996f, 0.894f, 0.596f), float3(0.996f, 0.800f, 0.400f),
+            float3(0.992f, 0.682f, 0.263f), float3(0.969f, 0.529f, 0.169f), float3(0.918f, 0.373f, 0.122f),
+            float3(0.812f, 0.208f, 0.098f), float3(0.659f, 0.055f, 0.106f)};
         if (code >= 16) {
-            int sides = code - 16;
+            bool warmScale = code >= 16 + 4096;
+            int sides = (code - 16) & 4095;
             int eighth = 0;
             if (abs(normal.x) > 0.5f) {
                 eighth = (sides >> (normal.x > 0.0f ? 3 : 0)) & 7;
@@ -405,7 +411,7 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             } else {
                 for (int side = 0; side < 4; ++side) { eighth = max(eighth, (sides >> (3 * side)) & 7); }
             }
-            colour = chance[eighth] * light;
+            colour = (warmScale ? warm[eighth] : chance[eighth]) * light;
         } else if (code >= 8 && code <= 10) {
             // Whether finer cells could flip it: settled, in doubt, likely different
             // (EnvelopeDoubtColour; a test keeps the two the same).

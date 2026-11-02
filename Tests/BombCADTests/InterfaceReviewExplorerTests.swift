@@ -192,6 +192,134 @@ struct InterfaceReviewExplorerTests {
         explorer.close()
     }
 
+    /// The view written to `polish/name.png` under the review folder.
+    private func polish(_ model: SimulationModel, camera: OrbitCamera, _ name: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: "polish/after")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let renderer = try #require(model.renderer)
+        let queue = try #require(model.commandQueue)
+        var settings = model.renderSettings
+        settings.showCharge = true
+        settings.chargeAt = model.settings.chargePosition
+        settings.liveWave =
+            model.drawsLiveWave && !model.explorerHidesLiveWave
+            ? LiveWaveDisplay(time: Float(model.liveWaveTime)) : nil
+        renderer.settings = settings
+        renderer.setLiveWave(model.liveWave)
+        renderer.setLines(model.explorerLines)
+        model.applyEnvelopeDamageColours()
+        renderer.pixelsPerPoint = 2
+        let frame = try #require(
+            renderer.snapshot(commandQueue: queue, width: 1800, height: 1200, camera: camera))
+        let rep = NSBitmapImageRep(cgImage: frame.image)
+        try #require(rep.representation(using: .png, properties: [:])).write(
+            to: folder.appending(path: "\(name).png"))
+    }
+
+    private func polishSidebar(_ explorer: ExplorerModel, _ name: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: "polish/after")
+        for (style, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            try InterfaceSnapshotTests().snapshot(
+                ExplorerSidebar(explorer: explorer, showWorkbench: {}).frame(width: 340),
+                size: CGSize(width: 340, height: 1500), appearance: appearance,
+                to: folder.appending(path: "\(name)-\(style).png"))
+        }
+    }
+
+    /// A drag of 20 steps of 5 m: each step's preview (placed to shown) and wave, in seconds, sorted.
+    private func drag(_ model: SimulationModel) async throws -> (looks: [Double], waves: [Double]) {
+        model.isDraggingCharge = true
+        model.estimateFollowsCharge = true
+        var looks: [Double] = []
+        var waves: [Double] = []
+        var moved = model.settings.chargePosition
+        for _ in 0..<20 {
+            moved.x += 5
+            let clock = ContinuousClock.now
+            model.settings.chargePosition = moved
+            if model.previewsWhileDragging {
+                model.requestLook(preview: true)
+                while model.lookInFlight || model.lookWaiting != nil {
+                    try await Task.sleep(for: .milliseconds(1))
+                }
+                looks.append(clock.duration(to: .now) / .seconds(1))
+            }
+            while model.liveWaveInFlight || model.liveWaveShownFor?.charge != moved {
+                try await Task.sleep(for: .milliseconds(1))
+            }
+            waves.append(clock.duration(to: .now) / .seconds(1))
+        }
+        model.isDraggingCharge = false
+        return (looks.sorted(), waves.sorted())
+    }
+
+    private func median(_ x: [Double]) -> String {
+        x.isEmpty
+            ? "none"
+            : String(
+                format: "%.0f ms median (%.0f–%.0f)", 1000 * x[x.count / 2], 1000 * x[0],
+                1000 * x[x.count - 1])
+    }
+
+    private var load: String {
+        var averages = [Double](repeating: 0, count: 3)
+        getloadavg(&averages, 3)
+        return String(format: "load %.0f %.0f %.0f", averages[0], averages[1], averages[2])
+    }
+
+    @Test("Capture the polish: the warm scale on each layer, and Beirut's drag before and after")
+    func polishPass() async throws {
+        let model = SimulationModel(document: ProjectDocument.newProject())
+        try await settle(model)
+        model.liveWaveLearned = ProcessInfo.processInfo.environment[LiveWave.Refinement.environmentKey] != nil
+        let explorer = ExplorerModel(model: model)
+        explorer.reduceMotion = true
+        for scene in [ExplorerScene.street, .square] {
+            await explorer.open(scene)
+            try await settle(model)
+            for layer in [ExplorerWords.Layer.glass, .walls, .people, .fire] {
+                explorer.layer = layer
+                try await settle(model)
+                try polish(model, camera: camera(model), "\(scene.rawValue)-\(layer.rawValue)")
+            }
+            explorer.layer = .glass
+            try polishSidebar(explorer, "\(scene.rawValue)-sidebar-glass")
+            explorer.close()
+        }
+        guard ProcessInfo.processInfo.environment["BOMBCAD_EXPLORER_BEIRUT"] != nil else { return }
+        await explorer.open(.beirut)
+        try await settle(model)
+        #expect(explorer.problem == nil, "\(explorer.problem ?? "")")
+        let start = model.settings.chargePosition
+        for layer in [ExplorerWords.Layer.glass, .wave] {
+            explorer.layer = layer
+            try await settle(model)
+            // Before: the workbench's drag, every step previewed, the wave on cells twice its own, refined.
+            model.previewsWhileDragging = true
+            model.liveWaveDragCoarsening = 2
+            model.liveWaveDragRefines = true
+            let before = try await drag(model)
+            let loadBefore = load
+            model.placeCharge(at: start)
+            try await settle(model)
+            // After: the explorer's.
+            explorer.applyLayer()
+            let after = try await drag(model)
+            print(
+                "Beirut drag, \(layer.title): before, preview \(median(before.looks)), wave \(median(before.waves)) "
+                    + "(\(loadBefore)); after, preview \(median(after.looks)), wave \(median(after.waves)) (\(load))"
+            )
+            model.placeCharge(at: start)
+            try await settle(model)
+        }
+        explorer.layer = .glass
+        try await settle(model)
+        try polish(model, camera: camera(model, share: 0.5), "beirut-glass")
+        explorer.close()
+    }
+
     private func settle(_ model: SimulationModel) async throws {
         while model.estimatingEnvelopeDamage || model.isLoadingInputs || model.liveWaveInFlight
             || model.envelopeEstimateIsPreview || model.fireTask != nil

@@ -447,3 +447,61 @@ scene. It shows on the wave and the glass, with a line under the comparison sayi
   - the ring at the pinned reach.
 - `InterfaceReviewExplorerTests/stage3` writes the captures to
   `$BOMBCAD_DATA/explorer/review/stage3/`.
+
+## Polish: Beirut at 30 frames a second, a warm scale, the new weights (2 November 2026)
+
+**Beirut while dragging.** Measured on Beirut's port, on the 6 m cells the scene uses, in a release
+build offscreen (`InterfaceReviewExplorerTests/polishPass`, 20 steps of 5 m along the quay). Each
+figure is the median from the charge moved to the result shown, with the range in brackets.
+
+| Layer | Before: preview | Before: wave | After: preview | After: wave | Load average |
+|---|---|---|---|---|---|
+| Glass | 19 ms (19–43) | 46 ms (43–98) | 20 ms (19–26) | 22 ms (20–26) | 10–11 |
+| Wave | 18 ms (18–26) | 48 ms (43–58) | none | 10 ms (8–11) | 14–16 |
+
+On the glass layer, the wave's time is counted from the move and includes the preview before it.
+Stage 3's figures were taken at a load of about 60 (31–41 ms and 56–59 ms), so they are not
+comparable with these. What changed, in the explorer alone, while a charge is dragged:
+
+- **The wave works on cells four times its own** over a plan of more than 500,000 cells, against
+  the workbench's two times, and **without its learned refinement**, so Beirut's plan goes from 4 m
+  to 16 m while dragging. On let-go it is worked out again on 4 m cells with the refinement, as
+  before (`SimulationModel.liveWaveDragCoarsening`, `liveWaveDragRefines`).
+- **No preview on the wave's layer,** which shows none (`previewsWhileDragging`). One preview for
+  the place let go at, and then the full estimate, follow on let-go.
+
+So both the preview and the wave are now under 33 ms on Beirut at that load. The workbench's drag
+is unchanged.
+
+**The scale.** The chances' ramp ends dark purple, which someone new reads as "nothing happened" on
+the worst-hit buildings. The explorer now draws every chance it colours by on a warm scale of its
+own (`ExplorerColours.warmRamp`), from a pale neutral for none to a loud dark red for the most. That
+covers the glass, the walls' chances, the people's shares and the fire's chances. The shader reads
+those codes 4,096 above the ramp's, and a test keeps the shader's scale and the Swift copy the
+same. The sidebar now shows the same scale as a plain row of swatches in words under each layer's
+sentence, as well as in the view's corner. The wave's own scale already runs from dark (weak) to
+bright (strong) and is left as it is; so is the workbench's.
+
+**The new weights** (d653a88e, trained on small scenes too), judged as before: held out, the full
+estimate on 100 draws, at the two places of each scene.
+
+| Within 0.1 of the full estimate | Square, 500 kg | Square, 5 t | Street, 500 kg |
+|---|---|---|---|
+| Glass, some broken | 78–82% (was 84–88%) | 100% (100%) | 94% (97%) |
+| Glass blown out | 72–77% (82–83%) | 83–84% (76–78%) | 89–90% (91–92%) |
+| Walls moderate or worse | 84–89% (71–77%) | 82–84% (58–63%) | 94–95% (44–53%) |
+| Roof moderate or worse | 100% (92–98%) | 99–100% (57–68%) | 100% (93%) |
+| Damage colour the same | 93–95% (94–95%) | 89–98% (89–95%) | 97–98% (98–99%) |
+
+The walls and roofs, stage 3's gap, are now as close to the full estimate as the CPU's preview or
+closer. The glass gives back a few points at 500 kg, and now matches the CPU's preview (77–80% and
+71–76% on the square) instead of beating it. The "How sure?" lines do not move: they quote the quick
+estimate's standing against BombCAD's own runs of Beirut (`ValidationTables`), not the preview's
+agreement with the full estimate, and the full estimate follows every change.
+
+**Also fixed:** on the street, "Behind a building" said "behind the brick terrace", which is the
+square's. It now names the back lane behind the shops.
+
+The captures are in `$BOMBCAD_DATA/explorer/review/polish/`: `before/` holds stage 3's, and `after/`
+holds each layer of the street and the square on the warm scale, the sidebar's legend in light and
+dark, and Beirut's glass.

@@ -249,6 +249,7 @@
                 }
                 .pickerStyle(.segmented)
                 Text(ExplorerWords.what(explorer.layer)).fixedSize(horizontal: false, vertical: true)
+                ExplorerLegend(explorer: explorer, plain: true)
                 if let finding = explorer.finding {
                     Text(finding).font(.body.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
                 }
@@ -299,7 +300,7 @@
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(t.title).font(.body.weight(.semibold))
-                            Text(t.summary).font(.caption).foregroundStyle(.secondary)
+                            Text(t.summary(in: explorer.scene)).font(.caption).foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -309,7 +310,7 @@
                     }
                     .buttonStyle(.plain)
                     .disabled(model.envelopeGlassChances.isEmpty)
-                    .accessibilityLabel("\(t.title): \(t.summary)")
+                    .accessibilityLabel("\(t.title): \(t.summary(in: explorer.scene))")
                 }
                 if let comparison = explorer.comparison {
                     Text(comparison).font(.callout.weight(.medium)).fixedSize(
@@ -349,24 +350,41 @@
     /// The layer's colours in words, over the view's corner.
     struct ExplorerLegend: View {
         let explorer: ExplorerModel
+        /// In the sidebar: a plain row of swatches, from the least to the most, with no card behind.
+        var plain = false
 
         var body: some View {
             let entries = self.entries
-            VStack(alignment: .leading, spacing: 4) {
-                Text(
-                    explorer.showsChange && explorer.pinned != nil
-                        ? "Against the pinned picture" : explorer.layer.title
-                )
-                .font(.caption.weight(.semibold))
-                ForEach(entries.indices, id: \.self) { n in
-                    HStack(spacing: 6) {
-                        RoundedRectangle(cornerRadius: 2).fill(entries[n].colour).frame(width: 14, height: 10)
-                        Text(entries[n].label).font(.caption)
+            Group {
+                if plain {
+                    HStack(spacing: 10) {
+                        ForEach(entries.indices, id: \.self) { n in
+                            HStack(spacing: 4) {
+                                RoundedRectangle(cornerRadius: 2).fill(entries[n].colour).frame(
+                                    width: 14, height: 10)
+                                Text(entries[n].label).font(.caption)
+                            }
+                        }
                     }
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(
+                            explorer.showsChange && explorer.pinned != nil
+                                ? "Against the pinned picture" : explorer.layer.title
+                        )
+                        .font(.caption.weight(.semibold))
+                        ForEach(entries.indices, id: \.self) { n in
+                            HStack(spacing: 6) {
+                                RoundedRectangle(cornerRadius: 2).fill(entries[n].colour).frame(
+                                    width: 14, height: 10)
+                                Text(entries[n].label).font(.caption)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(.regularMaterial, in: .rect(cornerRadius: 8))
                 }
             }
-            .padding(10)
-            .background(.regularMaterial, in: .rect(cornerRadius: 8))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
                 "Colour key: " + entries.map(\.label).joined(separator: ", "))
@@ -388,7 +406,7 @@
                 ]
             }
             let labels = ExplorerWords.legend(explorer.layer)
-            let ramp = EnvelopeChanceColour.ramp
+            let ramp = ExplorerColours.warmRamp
             switch explorer.layer {
             case .wave:
                 return [

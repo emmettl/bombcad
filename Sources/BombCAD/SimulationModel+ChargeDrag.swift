@@ -41,6 +41,8 @@ extension SimulationModel {
             guard isDraggingCharge else { return }
             isDraggingCharge = false
             // Loaded again once, now, and recorded as one edit; the preview kept on screen meanwhile.
+            // Without previews on the way, one for the place let go at, kept over the reload.
+            if estimateFollowsCharge, !previewsWhileDragging { requestLook(preview: true) }
             restoresFollowedLook = estimateFollowsCharge
             settingsChanged()
             if estimateFollowsCharge { requestLook(preview: false) }
@@ -58,7 +60,7 @@ extension SimulationModel {
         guard x != settings.chargePosition.x || y != settings.chargePosition.y else { return }
         settings.chargePosition.x = x
         settings.chargePosition.y = y
-        if estimateFollowsCharge { requestLook(preview: true) }
+        if estimateFollowsCharge, previewsWhileDragging { requestLook(preview: true) }
     }
 
     /// What a preview works out: only what the view is coloured by.
