@@ -4,7 +4,8 @@
     python3 -I Scripts/ml/field-runs.py plan       # (re)write Scripts/ml/field-runs.json
     python3 -I Scripts/ml/field-runs.py estimate [--set main]
     python3 -I Scripts/ml/field-runs.py run --set smoke --dataset /Volumes/StudioData/bombcad/ml/datasets/smoke
-        [--only id,id] [--limit N] [--scenebench .build/release/scenebench] [--on scrimply-ci-tb] [--dry-run]
+        [--only id,id] [--limit N] [--scenebench .build/release/scenebench] [--on scrimply-ci-tb [--wait 1h]]
+        [--first-phase] [--levels 6,10] [--roof] [--arrival] [--dry-run]
 
 Each run is one `scenebench field-export` (docs/learned-models.md): a district laid out about a
 charge on the ground, the air run on 4 m cells until the blast has passed the corners, and its
@@ -211,6 +212,8 @@ def extra_arguments(arguments):
         extra += ["--levels", arguments.levels]
     if getattr(arguments, "roof", False):
         extra.append("--roof")
+    if getattr(arguments, "arrival", False):
+        extra.append("--arrival")
     return extra
 
 
@@ -317,6 +320,8 @@ def run_there(data, runs, arguments):
     command = [sys.executable, "-I", os.path.join(HERE, "remote-train.py"), arguments.on, stage,
                os.path.join(HERE, "field_job.py"), "--venv", "none", "--job", job,
                "--timeout", str(int(min(MAX_SECONDS, 300 + 4 * sum(c["seconds"] for c in cases))))]
+    if arguments.wait:
+        command += ["--wait", arguments.wait]
     if arguments.dry_run:
         command.append("--dry-run")
     print(" ".join(command), flush=True)
@@ -370,6 +375,9 @@ def main(argv):
                    help="export the first positive phase's impulse as a third target (field-export --first-phase)")
     r.add_argument("--levels", help="heights over the ground, m, to export the fields at as well (field-export --levels)")
     r.add_argument("--roof", action="store_true", help="export the fields over the roofs as well (field-export --roof)")
+    r.add_argument("--arrival", action="store_true",
+                   help="export the arrival on the exposure plane as well (field-export --arrival; Metal only)")
+    r.add_argument("--wait", help="with --on, how long to wait for the host's lock (remote-train.py --wait)")
     arguments = parser.parse_args(argv)
     if arguments.command == "plan":
         cost = dict(COST)

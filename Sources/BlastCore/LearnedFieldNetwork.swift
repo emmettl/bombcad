@@ -9,7 +9,9 @@ import MetalPerformanceShadersGraph
 /// the skip, then a 1 × 1 head. Only the head's first output, the log peak's correction, is
 /// worked out (emmettl/bombcad-work#67), or with more levels each level's log peak, the head's
 /// outputs 0, 2, 4… (emmettl/bombcad-work#69). In float32, as PyTorch on the CPU, so that it matches
-/// PyTorch's prediction to float rounding (`LearnedFieldNetworkTests`).
+/// PyTorch's prediction to float rounding (`LearnedFieldNetworkTests`). The live blast wave's
+/// refinement (`LiveWave.Refinement`, emmettl/bombcad-work#115) is the same U-Net on its own
+/// inputs, without the group norms, every output of its head worked out.
 public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendable {
     public let header: LearnedField.Weights.Header
     private let device: MTLDevice
@@ -50,6 +52,13 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
         return (0..<count).map { Array(values[($0 * plan)..<(($0 + 1) * plan)]) }
     }
 
+    public func outputChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]] {
+        let count = header.headCount
+        let values = try run(inputs: inputs, rows: rows, columns: columns, heads: Array(0..<count))
+        let plan = rows * columns
+        return (0..<count).map { Array(values[($0 * plan)..<(($0 + 1) * plan)]) }
+    }
+
     /// The memory a run over `rows` × `columns` padded cells takes, bytes: MPSGraph keeps about 16
     /// of the top level's tensors at once, 1.7–1.8 KB a cell at width 32 over a fixed 0.2 GB, as
     /// `BombCAD field-model check` measured it (3.0 GB at 1,264², 1.1 GB at 688²; 23 October 2026),
@@ -74,8 +83,10 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
     /// tiles and give the same peaks.
     private func run(inputs: [Float], rows: Int, columns: Int, heads: [Int]) throws -> [Float] {
         let multiple = max(1, header.multiple)
-        guard rows % multiple == 0, columns % multiple == 0, inputs.count == 6 * rows * columns else {
-            throw LearnedFieldError.network("inputs of \(inputs.count) for 6 × \(rows) × \(columns)")
+        let channels = header.inputs.count
+        guard rows % multiple == 0, columns % multiple == 0, inputs.count == channels * rows * columns else {
+            throw LearnedFieldError.network(
+                "inputs of \(inputs.count) for \(channels) × \(rows) × \(columns)")
         }
         let needed = Self.bytesNeeded(rows: rows, columns: columns, width: header.width)
         let free = freeMemory
@@ -91,7 +102,7 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
         let key = SIMD3(rows, columns, heads.count)
         let built = graphs[key] ?? build(rows: rows, columns: columns, heads: heads)
         graphs[key] = built
-        let shape: [NSNumber] = [1, 6, rows as NSNumber, columns as NSNumber]
+        let shape: [NSNumber] = [1, channels as NSNumber, rows as NSNumber, columns as NSNumber]
         let data = inputs.withUnsafeBufferPointer { Data(buffer: $0) }
         let feed = MPSGraphTensorData(
             device: MPSGraphDevice(mtlDevice: device), data: data, shape: shape, dataType: .float32)
@@ -110,7 +121,9 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
     ) {
         let graph = MPSGraph()
         let input = graph.placeholder(
-            shape: [1, 6, rows as NSNumber, columns as NSNumber], dataType: .float32, name: "inputs")
+            shape: [1, header.inputs.count as NSNumber, rows as NSNumber, columns as NSNumber],
+            dataType: .float32,
+            name: "inputs")
         func constant(_ name: String, shape: [Int]? = nil) -> MPSGraphTensor {
             let tensor = weights[name]!
             let data = tensor.values.withUnsafeBufferPointer { Data(buffer: $0) }
@@ -131,7 +144,8 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
         let groups = header.groupNormGroups
         let epsilon = Float(header.groupNormEpsilon)
 
-        /// A 3 × 3 convolution with bias, a group norm (`gcd(8, channels)` groups) and GELU.
+        /// A 3 × 3 convolution with bias, a group norm (`gcd(8, channels)` groups; none without them)
+        /// and GELU.
         func layer(_ x: MPSGraphTensor, _ prefix: String, _ conv: Int, _ norm: Int, size: (Int, Int))
             -> MPSGraphTensor
         {
@@ -141,6 +155,15 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
                 x, weights: constant("\(prefix).body.\(conv).weight"), descriptor: convolution, name: nil)
             y = graph.addition(
                 y, constant("\(prefix).body.\(conv).bias", shape: [1, channels, 1, 1]), name: nil)
+            if groups > 0 { y = normalise(y, prefix, norm, channels: channels, size: size) }
+            return gelu(y)
+        }
+        /// Group norm: each group's mean and variance over its channels and the plan, then its scale
+        /// and shift.
+        func normalise(_ y: MPSGraphTensor, _ prefix: String, _ norm: Int, channels: Int, size: (Int, Int))
+            -> MPSGraphTensor
+        {
+            var y = y
             // Group norm: each group's mean and variance over its channels and the plan.
             let g = Self.gcd(groups, channels)
             let (h, wide) = size
@@ -155,8 +178,10 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
                 normal, shape: [1, channels as NSNumber, h as NSNumber, wide as NSNumber], name: nil)
             y = graph.multiplication(
                 y, constant("\(prefix).body.\(norm).weight", shape: [1, channels, 1, 1]), name: nil)
-            y = graph.addition(
+            return graph.addition(
                 y, constant("\(prefix).body.\(norm).bias", shape: [1, channels, 1, 1]), name: nil)
+        }
+        func gelu(_ y: MPSGraphTensor) -> MPSGraphTensor {
             // The exact GELU, x Φ(x), as PyTorch's default.
             let half = graph.constant(0.5, dataType: .float32)
             let one = graph.constant(1, dataType: .float32)

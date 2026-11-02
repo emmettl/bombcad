@@ -39,9 +39,42 @@ struct LiveWaveControls: View {
             .fixedSize()
             .help("How fast the front plays: a district's crosses it in seconds, a street's in hundredths.")
             LiveWaveKey(top: model.renderSettings.pressureScale)
+            Toggle(
+                "Learned Refinement",
+                isOn: Binding(get: { model.liveWaveLearned }, set: { model.setLiveWaveLearned($0) })
+            )
+            .checkboxToggleStyle()
+            .disabled(model.liveWaveLearnedDownloadInFlight)
+            .help(
+                "Corrects the wave's peak, arrival and pulse with a network trained on BombCAD's own district runs "
+                    + "(illustrative; off by default)."
+            )
+            .confirmationDialog(
+                "Download the live wave's learned refinement?",
+                isPresented: Binding(
+                    get: { model.offersLiveWaveLearnedDownload },
+                    set: {
+                        if !$0, model.offersLiveWaveLearnedDownload { model.declineLiveWaveLearnedDownload() }
+                    })
+            ) {
+                Button("Download " + LearnedField.Release.megabytes(LiveWave.Refinement.Release.asset.bytes))
+                {
+                    model.downloadLiveWaveLearnedWeights()
+                }
+                Button("Not Now", role: .cancel) { model.declineLiveWaveLearnedDownload() }
+            } message: {
+                Text(LiveWave.Refinement.Release.offer)
+            }
+            if model.liveWaveLearnedDownloadInFlight {
+                Button("Cancel Download") { model.cancelLiveWaveLearnedDownload() }
+            }
             Text(liveWaveCaption)
                 .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                .help(([model.liveWaveStatus] + LiveWave.standing).joined(separator: "\n\n"))
+                .help(
+                    ([model.liveWaveStatus, model.liveWaveLearnedStatus].filter { !$0.isEmpty }
+                        + (model.liveWave?.refined == true
+                            ? LiveWave.Refinement.standing : LiveWave.standing))
+                        .joined(separator: "\n\n"))
             Spacer(minLength: 0)
             Button("Done") { model.liveWaveShown = false }
                 .accessibilityLabel("Hide the live blast wave")
@@ -51,6 +84,7 @@ struct LiveWaveControls: View {
     }
 
     private var liveWaveCaption: String {
+        if !model.liveWaveLearnedStatus.isEmpty { return model.liveWaveLearnedStatus }
         if model.liveWave == nil { return "Working out the blast wave…" }
         if !model.drawsLiveWave { return "The live blast wave is shown before a run: reset to see it." }
         return model.isDraggingCharge

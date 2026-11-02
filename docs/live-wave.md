@@ -17,7 +17,9 @@ first": the solver's runs are the referee and the data, not the experience. Like
 - **Close in.** Within 200 m behind buildings it reads high, up to ×1.7, which is the safe side.
   Its arrivals there run up to 10% early.
 
-The full tables are [below](#judged-against-the-solver-1-november-2026).
+The full tables are [below](#judged-against-the-solver-1-november-2026). An optional learned
+refinement, off by default, corrects it towards the runs: close in behind buildings and in sight,
+and in its arrivals and pulse ([below](#the-learned-refinement-2-november-2026)).
 
 ![The live wave over Beirut at 0.5 kt, a third of the way through: the front a bright line, each
 place keeping the colour of its peak, the front lagging into the city behind the port's
@@ -193,6 +195,230 @@ live-drag work; the load average is given each time.
   display's rate. The frame's GPU time allows about 50 frames a second at that size on Beirut,
   most of it the scene's.
 
+## The learned refinement (2 November 2026)
+
+emmettl/bombcad-work#115, stage 2 of the [next steps](#next) below. On 1 November the user decided
+to keep the live wave illustrative, to leave large districts on 8 m cells while dragging, and to
+build the learned version. This is that version: a network that corrects the live wave cell by
+cell, towards BombCAD's own 4 m runs. It is an option, **Learned Refinement** in the wave's bar,
+**off by default**. Off, nothing changes. Its standing is **illustrative**.
+
+On Beirut's 50 runs, which it never saw, the refinement:
+
+- **close in** brings the peaks behind buildings within 100 m from ×1.7 high to about right. 38%
+  of those cells are within ×1.25 instead of 23%, and 59% are within ×1.5 instead of 36%.
+- **in sight** brings 94% of cells within ×1.25 instead of 91%.
+- **arrivals** come out a tenth to two fifths closer behind buildings beyond 200 m, and closer
+  still in sight.
+- **impulse** gives the pulse the runs' positive impulse: 77% of cells behind buildings are within
+  ×1.25 instead of 26%.
+- **shielded peaks over the whole plan** are no better: 67% within ×1.25 against 68%. It gains
+  from 100 m to 700 m and gives that back beyond 1 km, where it reads 5–15% low.
+
+### The data
+
+`scenebench field-export --arrival` was run again for the whole 200-run list
+(`Scripts/ml/field-runs.json`, the learned field's runs) into `$BOMBCAD_DATA/live-wave/dataset`.
+The 24 runs of the first stage were kept.
+
+| Where | Runs | Run time |
+|---|---|---|
+| The CI mini (`field-runs.py run --on scrimply-ci-lan --arrival`) | 67 | 2.2 h |
+| The Studio, one run at a time under gpu-slot (5–6 GB declared, 4–5 GB used) | 108 | 1.8 h |
+| The first stage's runs, on the Studio (1 November) | 25 | 0.35 h |
+
+The mini took most runs under 0.5 kt, and the eight largest, which declare 7 GB. Its
+Thunderbolt link was down, so it was reached over the local network (`scrimply-ci-lan`, a host of
+its own in remote-train.py, with the mini's same lock). The Studio crashed at 00:16 on 2 November
+when it ran out of memory. One run there was lost and done again. The mini's job in hand was hung
+up, and its 18 finished runs were copied back. `field-runs.py run` now takes `--arrival`, and
+`--wait` for a host's lock.
+
+`blastmodel live-wave-features --runs … --out pairs` makes each run's training pair. It works the
+live wave out on the run's own plan and on that plan coarsened twice (8 m, as the app works while
+dragging), and writes three things on each:
+
+- the network's inputs;
+- its targets: the logs of the run's peak, arrival and positive impulse over the wave's, NaN where
+  the run has none;
+- the cells in sight, as the judge counts them.
+
+`train_live_wave.py pack` packs the 150 made-up runs, float16 and compressed, 0.45 GB. Beirut's
+runs are left out of the pack, so they never left the Studio.
+
+### The network
+
+`LiveWave.Refinement` (Sources/BlastModel/LiveWave+Refinement.swift) is a U-Net of train_field.py's
+form without its group norms. Without them a cell's correction depends only on the plan around it,
+so crops in training and the whole plan in the app agree. It has nine inputs:
+
+- what `LearnedField.Plan` holds: the height, the footprint and the ground;
+- the live wave's own fields: ln Z of the path and of the straight line, the path's excess ln(L/R),
+  the logs of the wave's peak and scaled arrival;
+- the cell's size, 4 or 8 m.
+
+It has three outputs, each a log correction: to the peak, to the arrival and to the impulse. Each
+is held within ±1.5 (±0.5 for the arrival). The head starts at zero, so an untrained network is the
+live wave itself. The impulse goes into the Friedlander decay at the same positive phase. Where
+even a pulse with no decay would hold too little, the phase is stretched instead. A correction of
+nothing gives the wave as it was, to the bit (`LiveWaveRefinementTests`).
+
+**Training**, on bombcad-pc's RTX 3080 Ti through `Scripts/ml/remote-train.py`:
+
+- 125 made-up runs, at both cell sizes;
+- 80 epochs of 120 steps, each step 16 random crops of 192 cells, turned by the square's symmetries;
+- a Huber loss on each target's residual over its scale, with cells within 200 m weighing up to
+  four times more;
+- each made-up style's sixth layout (`made-*-s6`, 25 runs) set apart for validation. The epoch kept
+  is the one with the least validation loss, so Beirut chose nothing.
+
+Three widths were tried, and the widest was kept, on validation alone:
+
+| Width | Parameters | Validation loss | Made-up shielded peaks within ×1.25, 4 m (the wave: 69%) | Time on the PC |
+|---|---|---|---|---|
+| 16 | 1.96 M | 0.659 | 69% | 9.6 min |
+| 24 | 4.42 M | 0.420 | 82% | 11.4 min |
+| **32** | 7.85 M | **0.404** | **84%** (epoch 73) | 12.3 min |
+
+`Scripts/ml/export_live_wave_weights.py` writes the weights as the field models' `.bcfw`, float16,
+15.7 MB. BlastCore's `LearnedFieldNetwork` runs them on MPSGraph, now with any number of inputs and
+without the norms. `scenebench live-wave-predict` matches PyTorch on the CPU:
+
+- within 5.8 × 10⁻⁶ in every log correction (mean 1.4 × 10⁻⁷), on three Beirut plans and a made-up
+  one, 4 m and 8 m;
+- the float16 weights move the corrections by at most 5.6 × 10⁻³ against the checkpoint's float32.
+
+### Judged on Beirut
+
+The judge was `scenebench live-wave-judge --learned live-wave-unet-1.bcfw`, the same judge as
+`blastmodel live-wave-judge` with each run's wave refined first. It was run on Beirut's 50 runs
+(0.06–1.9 kt), all now with arrivals, on their 4 m cells. In each cell: the median of the wave over
+the run, then the share within ×1.25 and within ×1.5. The live wave alone is on the left of each
+arrow, refined on the right.
+
+**Peaks:**
+
+| Distance | In sight | Shielded |
+|---|---|---|
+| 0–100 m | ×0.91, 60%, 77% → ×1.01, 71%, 85% | ×1.71, 23%, 36% → ×1.02, 38%, 59% |
+| 100–200 m | ×0.88, 75%, 91% → ×1.01, 90%, 97% | ×1.25, 37%, 61% → ×1.07, 49%, 74% |
+| 200–400 m | ×1.00, 93%, 99% → ×0.97, 98%, 100% | ×1.16, 51%, 76% → ×1.08, 62%, 84% |
+| 400–700 m | ×1.04, 91%, 98% → ×0.93, 96%, 99% | ×1.10, 60%, 85% → ×1.06, 65%, 87% |
+| 700–1,000 m | ×1.05, 97%, 100% → ×0.90, 100%, 100% | ×1.04, 69%, 92% → ×1.03, 67%, 91% |
+| 1,000–1,500 m | ×1.01, 100%, 100% → ×0.86, 93%, 100% | ×0.96, 75%, 94% → ×0.95, 69%, 95% |
+| 1,500–2,000 m | ×0.97, 100%, 100% → ×0.81, 64%, 100% | ×0.88, 68%, 93% → ×0.85, 65%, 96% |
+| All | ×1.02, 91%, 97% within ×1.5 → ×0.92, 94%, 99% within ×1.5 | ×1.02, 68%, 90% within ×1.5 → ×1.00, 67%, 91% within ×1.5 |
+
+**Arrivals,** the mean error:
+
+| Distance | In sight | Shielded |
+|---|---|---|
+| 0–100 m | 102.5% → 58.9% | 21.1% → 16.0% |
+| 100–200 m | 4.2% → 1.6% | 11.4% → 9.1% |
+| 200–400 m | 1.7% → 1.0% | 6.4% → 4.2% |
+| 400–700 m | 1.4% → 0.8% | 3.2% → 1.9% |
+| 700–1,000 m | 1.1% → 0.6% | 1.8% → 1.5% |
+| 1,000–1,500 m | 1.0% → 0.4% | 1.9% → 1.5% |
+| 1,500–2,000 m | 0.6% → 0.3% | 0.9% → 0.8% |
+| All, within 5% | 92% → 97% | 80% → 87% |
+
+**The pulse.** The impulse is the wave's Friedlander pulse against the runs' positive impulse at
+2 m, every positive phase's. In sight 38% → 94% of cells come within ×1.25, behind buildings 26% →
+77%. Without the refinement the pulse holds ×0.71–0.77 of the runs' impulse. With it the pulse
+holds ×1.09–1.10, and up to ×1.3 beyond 1.5 km.
+
+**On 8 m cells,** as while dragging (`--coarsen 2`):
+
+- peaks: 91% → 95% in sight, 67% → 68% shielded;
+- shielded peaks within 100 m: 25% → 35% within ×1.25;
+- arrivals: 3.1% → 2.5% mean error shielded;
+- impulse: 26% → 76% shielded.
+
+**Why not the shielded peaks far out.** On the made-up runs set apart, shielded peaks went 69% →
+84% within ×1.25. On Beirut they went 68% → 67%. The gain holds to 700 m. Beyond 1 km the network
+reads low, as the made-up districts' 4 m runs do over their far streets ([the
+fit](#the-fit)): it has learned their far field, which Beirut's sea front and long city do not
+share. More kinds of real place in the training runs would be the cure. A rule for where to apply
+it, chosen on Beirut, would leave nothing held out.
+
+The tables are in `$BOMBCAD_DATA/live-wave/learned-judge/`:
+
+- `beirut-stage1-c1` and `-c2`, the live wave alone;
+- `beirut-w32-c1` and `-c2`, the refinement kept;
+- `beirut-w16-*` and `beirut-w24-*`, the narrower networks, for reference.
+
+### Time
+
+`scenebench live-wave-time --learned …` on Beirut's 5 km district at 0.5 kt (the charge moved 5 m at
+a time), interleaved with `blastmodel live-wave-time`. The Studio's load average was 5–7.
+
+| Plan | The live wave | Refined | The network's part |
+|---|---|---|---|
+| 8 m cells, 625 × 625 (0.39 M), while dragging | 60–62 ms median | 81–82 ms median (78–84) | 21–22 ms |
+| 4 m cells, 1,250 × 1,250 (1.56 M), let go | 234 ms | 325 ms (316–340) | 89 ms |
+
+The first recompute on a plan's size also builds the network's graph, 0.2–1 s, which is kept after.
+At a load average of 83, just after the crash, the 8 m recompute was 81 ms with the width-16
+network. So the refinement runs while dragging as well as on let-go
+(`SimulationModel.liveWaveRefinesWhileDragging`), and the whole recompute stays under 100 ms. The
+app's own drag was not timed offscreen this time. `InterfaceReviewLiveWaveTests` takes
+`BOMBCAD_LIVE_WAVE_MODEL` to time it, and in stage 1 the hops in the app added about 130 ms on a
+loaded Studio.
+
+### In the app
+
+**Learned Refinement**, the checkbox in the live wave's bar, is off by default and remembered
+(`liveWave.learnedRefinement`). It reads the weights from:
+
+1. `BOMBCAD_LIVE_WAVE_MODEL`;
+2. else the `liveWave.learnedRefinementWeights` setting;
+3. else `~/Library/Application Support/BombCAD/LearnedModels/live-wave-unet-1.bcfw`.
+
+Turned on without the file, it asks first, as the field model's option does. "Download the live
+wave's learned refinement?" gives the file's size and URL. Nothing is fetched until Download is
+clicked. The file is checked against its pinned SHA-256 (`LiveWave.Refinement.Release`) and read as
+weights before it is kept.
+
+Refined, the bar's help gives the refinement's standing (`LiveWave.Refinement.standing`), and the
+status says how long it took. If the network cannot run (no file, too little GPU memory), the wave
+is shown without it and the bar says why.
+
+**The weights ship as the field models' do**, as a release asset, `live-wave-model-1` on
+emmettl/bombcad. It is kept off "latest", and the user publishes it. The file is
+`live-wave-unet-1.bcfw`, 15,702,546 bytes, SHA-256
+`4041d39729910a40190ccd50408a1699cde4d08fa9c4739038f95785167e4f26`. It and `MODEL-NOTES.md` are
+in `$BOMBCAD_DATA/release-live-wave-model-1/`. The weights were trained on BombCAD's own runs of
+made-up districts alone; Beirut's runs only judged them. The command, from a checkout once this is
+on main:
+
+```bash
+gh release create live-wave-model-1 --repo emmettl/bombcad --target main --latest=false \
+    --title "Live wave learned refinement 1 (live-wave-unet-1)" \
+    --notes-file $BOMBCAD_DATA/release-live-wave-model-1/MODEL-NOTES.md \
+    $BOMBCAD_DATA/release-live-wave-model-1/live-wave-unet-1.bcfw \
+    $BOMBCAD_DATA/release-live-wave-model-1/MODEL-NOTES.md
+```
+
+### For the user to decide
+
+- **Whether to make it the default.** For it:
+  - close in it is much better: shielded peaks within 100 m ×1.7 → ×1.02, and 23% → 38% within
+    ×1.25;
+  - in sight 91% → 94%;
+  - arrivals a tenth to two fifths closer behind buildings;
+  - the pulse carries the runs' impulse;
+  - it costs about 20 ms a drag step.
+
+  Against it:
+  - shielded peaks over the whole plan are no better (68% → 67%), and it reads 5–15% low beyond
+    1 km;
+  - the weights are a 15.7 MB download until the release is published;
+  - close in it gives up reading high, which was the safe side.
+
+  The recommendation: keep it off until the release is published. Then make it the default for
+  districts within about 1 km of the charge, or wait for training runs over more kinds of place.
+- **Its standing** stays illustrative, as asked.
+
 ## Using it
 
 - **In the app:** Simulation ▸ Show Live Blast Wave (⌥⌘B), before a run. A bar under the view has:
@@ -202,6 +428,9 @@ live-drag work; the load average is given each time.
   - a speed (real time, ¼, 1/10, 1/50, 1/200);
   - the colour key;
   - Done.
+
+  - **Learned Refinement**, off by default
+    ([the learned refinement](#the-learned-refinement-2-november-2026)).
 
   It opens at the end of the wave, with every peak and shadow shown. With Place Charge on, drag the
   charge and the wave follows it. It stays on screen with the quick estimate's colours and the
@@ -213,6 +442,10 @@ live-drag work; the load average is given each time.
     judges the live wave against field-export runs.
   - `blastmodel live-wave-time <district inputs> --radius 2500 --mass kg [--cells 4,8]` times it.
   - `scenebench field-export … --arrival [--arrival-threshold 500]` records a run's arrivals.
+  - `blastmodel live-wave-features --runs dir --out pairs [--coarsen 1,2]` writes the refinement's
+    training pairs; `scenebench live-wave-judge --learned weights.bcfw …` and
+    `scenebench live-wave-time --learned weights.bcfw …` judge and time it on the GPU, and
+    `scenebench live-wave-predict` checks it against PyTorch.
 
   The runs, samples, fit and judgements are under `$BOMBCAD_DATA/live-wave`: `arrivals/`, `judge2/`
   for the fit's samples and `final/` for the tables above.
@@ -237,7 +470,9 @@ live-drag work; the load average is given each time.
 
 - **A path through the air.** A Theta*-style parent in sight, or a rise charged at less than its
   height, so that a front over a roof is a stretched string. Fit it and judge it the same way.
-- **Stage 2: a learned refinement.** The field network would give the arrival and the waveform as
+- **Stage 2: a learned refinement.** Done on 2 November 2026
+  ([above](#the-learned-refinement-2-november-2026)), as an option. What follows was the plan. The
+  field network would give the arrival and the waveform as
   well as the peak, trained on the PC.
   1. Record `--arrival` (and a decay time) for the whole 200-run list. That is 5.2 GPU hours on
      the Studio, or the mini through `field-runs.py --on`. The CUDA path has no exposure plane yet.
@@ -249,6 +484,8 @@ live-drag work; the load average is given each time.
 
   The arrival is already within 1–3% beyond 400 m, so the most to gain is in the peaks behind
   buildings (68% within ×1.25) and close in.
+- **The refinement's far field.** Training runs over more kinds of real place, so that its
+  shielded peaks beyond 1 km hold as they do on the made-up districts.
 - **Faster 4 m paths on large plans,** so the drag need not coarsen. Options are a parallel
   relaxation on the GPU, or the bucket queue run per tile.
 - **Item 3 of #112:** yield and the glass re-colouring the wave live.

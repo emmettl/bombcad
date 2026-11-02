@@ -2844,7 +2844,8 @@ follows when the charge is let go, as before.
 - **The user's decision** on making the quick estimate's learned field option the default, and
   on how its weights ship ([above](#the-decision-for-the-user)); then the same peak in the
   [hybrid far field](hybrid-far-field.md).
-- **Other learned models** on the same runner, as they come:
+- **Other learned models** on the same runner, as they come (the live blast wave's learned
+  refinement trained here on 2 November 2026: [the live wave](live-wave.md#the-learned-refinement-2-november-2026)):
   - emulators for the uncertainty work;
   - walls and roofs;
   - surrogates for the thermal and fragment hazards.

@@ -37,7 +37,8 @@ it leaves out.
 
 The [live blast wave](live-wave.md) (Simulation ▸ Show Live Blast Wave) gives its standing in its
 bar's help (`LiveWave.standing`). It is illustrative, judged against BombCAD's own 4 m district runs
-cell by cell, and it does not change a scene's standing either.
+cell by cell, and it does not change a scene's standing either. Its optional learned refinement
+gives its own (`LiveWave.Refinement.standing`), illustrative too.
 
 ## Derived from the scene
 

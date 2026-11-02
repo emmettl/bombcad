@@ -71,6 +71,10 @@ HOSTS = {
         "about": "the CI Mac mini, for testing the runner: its own python3, nothing installed",
         "venv": None, "lock": "bombcad-remote/lock", "maxHours": 1.5,
     },
+    "scrimply-ci-lan": {
+        "about": "the CI Mac mini over the local network, when its Thunderbolt link is down: the same lock",
+        "venv": None, "lock": "bombcad-remote/lock", "maxHours": 1.5,
+    },
 }
 DEFAULT_HOST = {"about": "a host not in HOSTS", "venv": "bombcad-ml/venv", "lock": "bombcad-ml/lock", "maxHours": 12}
 ROOT = "bombcad-ml"  # under the host's home

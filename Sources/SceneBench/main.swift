@@ -154,6 +154,18 @@ enum SceneBench {
             try FieldSurrogate.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "live-wave-judge" {
+            try LiveWaveLearned.judge(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "live-wave-time" {
+            try LiveWaveLearned.time(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "live-wave-predict" {
+            try LiveWaveLearned.predict(Array(args.dropFirst()))
+            return
+        }
         if args.first == "field-predict" {
             try FieldApp.predict(Array(args.dropFirst()))
             return

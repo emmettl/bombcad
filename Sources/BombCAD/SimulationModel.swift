@@ -988,6 +988,31 @@ final class SimulationModel {
     @ObservationIgnored var liveWavePlayTask: Task<Void, Never>?
     /// Counts the fields shown, so that the view hands each new one to the renderer once.
     @ObservationIgnored var liveWaveVersion = 0
+    /// Whether the live wave takes the learned refinement (`LiveWave.Refinement`,
+    /// emmettl/bombcad-work#115; SimulationModel+LiveWaveLearned.swift): off unless chosen, and
+    /// remembered; turned on through `setLiveWaveLearned`, which offers to download its weights
+    /// when they are not there.
+    var liveWaveLearned = UserDefaults.standard.bool(forKey: SimulationModel.liveWaveLearnedKey) {
+        didSet {
+            learnedDefaults.set(liveWaveLearned, forKey: Self.liveWaveLearnedKey)
+            if liveWaveShown { requestLiveWave() }
+        }
+    }
+    static let liveWaveLearnedKey = "liveWave.learnedRefinement"
+    /// A path for its weights other than the default (`LiveWave.Refinement.weightsURL`;
+    /// `BOMBCAD_LIVE_WAVE_MODEL` comes first).
+    static let liveWaveLearnedWeightsKey = "liveWave.learnedRefinementWeights"
+    /// Where its downloaded weights are kept: Application Support (a test's own folder in tests).
+    @ObservationIgnored var liveWaveLearnedHome = LiveWave.Refinement.defaultWeightsURL
+    /// While the user is asked whether to download its weights; while they download; what the
+    /// download or the refinement last said.
+    var offersLiveWaveLearnedDownload = false
+    var liveWaveLearnedDownloadInFlight = false
+    var liveWaveLearnedStatus = ""
+    @ObservationIgnored var liveWaveLearnedDownloadTask: Task<Void, Never>?
+    /// The refinement once loaded, with the file it came from: its network keeps the graph it built
+    /// for each plan's size, so a drag reuses it.
+    @ObservationIgnored var liveWaveRefinement: (url: URL, refinement: LiveWave.Refinement)?
 
     init(document: ProjectDocument? = nil, playbackSpeed: PlaybackSpeed = .x100) {
         let scenario = document?.scenario ?? SimulationSettings().scenario

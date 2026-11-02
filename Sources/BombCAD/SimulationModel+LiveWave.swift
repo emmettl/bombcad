@@ -18,13 +18,15 @@ enum LiveWaveSpeed: Double, CaseIterable, Identifiable {
     var title: String { self == .realTime ? "Real time" : "1/\(Int((1 / rawValue).rounded())) speed" }
 }
 
-/// What a live wave is worked out for: the charge, its mass, the scene loaded and whether the
-/// charge is being dragged (a large district then works on coarser cells).
+/// What a live wave is worked out for: the charge, its mass, the scene loaded, whether the
+/// charge is being dragged (a large district then works on coarser cells) and whether the learned
+/// refinement is asked for.
 struct LiveWaveRequest: Equatable {
     var charge: SIMD3<Float>
     var mass: Double
     var sceneVersion: Int
     var coarse: Bool
+    var learned = false
 }
 
 // The blast wave, live (emmettl/bombcad-work#112 item 2; docs/live-wave.md): an arrival time,
@@ -77,6 +79,7 @@ extension SimulationModel {
             _ = settings
             _ = sceneVersion
             _ = isDraggingCharge
+            _ = liveWaveLearned
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self, self.liveWaveShown else { return }
@@ -92,7 +95,7 @@ extension SimulationModel {
         guard liveWaveShown else { return }
         let request = LiveWaveRequest(
             charge: settings.chargePosition, mass: Double(settings.chargeMass), sceneVersion: sceneVersion,
-            coarse: isDraggingCharge)
+            coarse: isDraggingCharge, learned: liveWaveLearned)
         guard request != liveWaveShownFor || liveWave == nil else { return }
         liveWaveWaiting = request
         startLiveWave()
@@ -105,17 +108,40 @@ extension SimulationModel {
         let layout = scenario
         let cell = Self.liveWaveCell(for: layout, dragging: request.coarse)
         let known = liveWavePlans[cell].flatMap { $0.version == request.sceneVersion ? $0.plan : nil }
+        // The learned refinement, while dragging only where it keeps up (`liveWaveRefinesWhileDragging`).
+        let refines = request.learned && (!request.coarse || Self.liveWaveRefinesWhileDragging)
+        let weights = liveWaveLearnedWeightsURL
+        let loaded = liveWaveRefinement.flatMap { $0.url == weights ? $0.refinement : nil }
         liveWaveInFlight = true
         Task { [weak self] in
-            let (plan, field, planSeconds) = await Task.detached(priority: .userInitiated) {
+            let (plan, field, planSeconds, refinement, failure) = await Task.detached(
+                priority: .userInitiated
+            ) {
                 let start = ContinuousClock.now
                 let plan = known ?? LiveWave.Plan(scene: layout, cell: cell)
                 let planSeconds = known == nil ? (ContinuousClock.now - start) / .seconds(1) : 0
-                let field = LiveWave.field(plan: plan, charge: request.charge, mass: request.mass)
-                return (plan, field, planSeconds)
+                var field = LiveWave.field(plan: plan, charge: request.charge, mass: request.mass)
+                var refinement = loaded
+                var failure: String?
+                if refines {
+                    do {
+                        let refiner = try refinement ?? Self.loadLiveWaveRefinement(weights)
+                        refinement = refiner
+                        field = try refiner.refined(
+                            field, plan: plan, charge: request.charge, mass: request.mass)
+                    } catch {
+                        failure = "\(error)"
+                    }
+                }
+                return (plan, field, planSeconds, refinement, failure)
             }.value
             guard let self else { return }
             self.liveWaveInFlight = false
+            if let refinement { self.liveWaveRefinement = (weights, refinement) }
+            if refines {
+                self.liveWaveLearnedStatus =
+                    failure.map { "\($0) The live wave is shown without its learned refinement." } ?? ""
+            }
             if self.liveWaveShown {
                 // Plans for scenes no longer loaded are let go.
                 self.liveWavePlans = self.liveWavePlans.filter { $0.value.version == request.sceneVersion }
@@ -130,10 +156,16 @@ extension SimulationModel {
                 self.liveWaveStatus =
                     String(
                         format:
-                            "Estimate on %.0f m cells in %.0f ms%@: the front along the shortest paths round and over buildings, Kingery–Bulmash fitted to BombCAD's 4 m district runs (illustrative). Not a run.",
+                            "Estimate on %.0f m cells in %.0f ms%@: the front along the shortest paths round and over buildings, Kingery–Bulmash fitted to BombCAD's 4 m district runs%@ (illustrative). Not a run.",
                         cell, 1000 * field.seconds,
                         planSeconds > 0
-                            ? String(format: ", the plan laid out in %.0f ms", 1000 * planSeconds) : "")
+                            ? String(format: ", the plan laid out in %.0f ms", 1000 * planSeconds) : "",
+                        field.refined
+                            ? String(
+                                format: ", refined by the learned model in %.0f ms",
+                                1000 * field.refinementSeconds)
+                            : request.learned && request.coarse && !refines
+                                ? ", the learned refinement taken once the charge is let go" : "")
             }
             self.startLiveWave()
         }

@@ -122,7 +122,21 @@ public enum LearnedField {
             /// The levels whose log peak and log impulse the head gives in turn; nil for the 2 m
             /// field alone (the first model's weights).
             public var levels: [Level]?
+            /// The head's outputs by name, in order; given by the live wave's refinement
+            /// (`LiveWave.Refinement.outputs`), the field models' implied by their levels.
+            public var outputs: [String]?
             public var tensors: [Entry]
+
+            /// Whether these are the live blast wave's refinement (`LiveWave.Refinement`), not a field
+            /// model: told by the inputs it was trained on.
+            public var isLiveWave: Bool { inputs == LiveWave.Refinement.inputs }
+
+            /// Whether each convolution is followed by a group norm; the live wave's refinement has
+            /// none (`groupNormGroups` 0), so that it gives a cell the same whatever the plan's size.
+            public var normalised: Bool { groupNormGroups > 0 }
+
+            /// How many outputs the head gives.
+            public var headCount: Int { isLiveWave ? (outputs?.count ?? 0) : 2 * predicted.count }
 
             /// The levels, the 2 m field alone without any.
             public var predicted: [Level] {
@@ -164,9 +178,18 @@ public enum LearnedField {
             guard header.format == "bombcad-field-weights-1", header.model == "unet" else {
                 throw fail("format \(header.format), model \(header.model)")
             }
-            guard header.inputs == Self.inputs, header.stats.mean.count == 6, header.stats.std.count == 6
+            // A field model's six inputs, or the live wave's refinement's (emmettl/bombcad-work#115).
+            guard header.inputs == Self.inputs || header.isLiveWave,
+                header.stats.mean.count == header.inputs.count, header.stats.std.count == header.inputs.count
             else {
                 throw fail("inputs \(header.inputs)")
+            }
+            if header.isLiveWave {
+                guard header.outputs == LiveWave.Refinement.outputs, header.levels == nil,
+                    header.groupNormGroups >= 0
+                else { throw fail("outputs \(header.outputs ?? []) for the live wave's refinement") }
+            } else {
+                guard header.groupNormGroups > 0 else { throw fail("a field model without its group norms") }
             }
             guard header.stats.mean.allSatisfy(\.isFinite),
                 header.stats.std.allSatisfy({ $0.isFinite && $0 > 0 })
@@ -220,8 +243,9 @@ public enum LearnedField {
                 else { throw fail("levels \(levels.map(\.name))") }
             }
             let shapes = Self.tensorShapes(
-                width: header.width, depth: header.depth, outputs: 2 * header.predicted.count)
-            for name in Self.tensorNames(depth: header.depth) {
+                width: header.width, depth: header.depth, outputs: header.headCount,
+                inputs: header.inputs.count, normalised: header.normalised)
+            for name in Self.tensorNames(depth: header.depth, normalised: header.normalised) {
                 guard let tensor = tensors[name] else { throw fail("no tensor \(name)") }
                 guard tensor.shape == shapes[name] else {
                     throw fail("tensor \(name) of shape \(tensor.shape), not \(shapes[name] ?? [])")
@@ -241,20 +265,27 @@ public enum LearnedField {
             return count
         }
 
-        /// The shape of each tensor of train_field.py's `UNet(6, outputs, width, depth)`, by name: level
-        /// n's blocks have `width` × 2^n channels, the up blocks take the level below's joined to
-        /// the skip, and `up.0` is the deepest.
-        public static func tensorShapes(width: Int, depth: Int, outputs: Int = 2) -> [String: [Int]] {
+        /// The shape of each tensor of train_field.py's `UNet(inputs, outputs, width, depth)`, by
+        /// name: level n's blocks have `width` × 2^n channels, the up blocks take the level below's
+        /// joined to the skip, and `up.0` is the deepest. `normalised` false, no group norms'
+        /// tensors (train_live_wave.py's U-Net).
+        public static func tensorShapes(
+            width: Int, depth: Int, outputs: Int = 2, inputs: Int = Weights.inputs.count,
+            normalised: Bool = true
+        ) -> [String: [Int]] {
             let widths = (0...depth).map { width << $0 }
             var shapes: [String: [Int]] = [:]
             func block(_ prefix: String, _ input: Int, _ output: Int) {
                 shapes["\(prefix).body.0.weight"] = [output, input, 3, 3]
                 shapes["\(prefix).body.3.weight"] = [output, output, 3, 3]
-                for name in ["0.bias", "1.weight", "1.bias", "3.bias", "4.weight", "4.bias"] {
+                let names =
+                    normalised
+                    ? ["0.bias", "1.weight", "1.bias", "3.bias", "4.weight", "4.bias"] : ["0.bias", "3.bias"]
+                for name in names {
                     shapes["\(prefix).body.\(name)"] = [output]
                 }
             }
-            for n in 0...depth { block("down.\(n)", n == 0 ? inputs.count : widths[n - 1], widths[n]) }
+            for n in 0...depth { block("down.\(n)", n == 0 ? inputs : widths[n - 1], widths[n]) }
             for k in 0..<depth {
                 let n = depth - 1 - k
                 block("up.\(k)", widths[n + 1] + widths[n], widths[n])
@@ -265,11 +296,11 @@ public enum LearnedField {
         }
 
         /// The tensors a U-Net of `depth` halvings has, by name.
-        public static func tensorNames(depth: Int) -> [String] {
+        public static func tensorNames(depth: Int, normalised: Bool = true) -> [String] {
             var names: [String] = []
             for (path, levels) in [("down", depth + 1), ("up", depth)] {
                 for n in 0..<levels {
-                    for layer in [0, 1, 3, 4] {
+                    for layer in normalised ? [0, 1, 3, 4] : [0, 3] {
                         names += ["\(path).\(n).body.\(layer).weight", "\(path).\(n).body.\(layer).bias"]
                     }
                 }
@@ -307,6 +338,9 @@ public enum LearnedField {
         func peakChannel(inputs: [Float], rows: Int, columns: Int) throws -> [Float]
         /// The same for each of `header.predicted`'s levels in turn: the outputs 0, 2, 4….
         func peakChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]]
+        /// Every one of the head's outputs in turn (`header.headCount` of them), from inputs of
+        /// `header.inputs.count` channels: the live wave's refinement's corrections.
+        func outputChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]]
     }
 
     /// Which components a model with more levels gives its peak to (`PeakMap.reach`).
@@ -858,6 +892,11 @@ extension LearnedField.Network {
     public func peakChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]] {
         [try peakChannel(inputs: inputs, rows: rows, columns: columns)]
     }
+
+    /// A network that gives its peak alone.
+    public func outputChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]] {
+        throw LearnedFieldError.network("this network gives its peak alone")
+    }
 }
 
 public enum LearnedFieldError: Error, CustomStringConvertible {
@@ -893,15 +932,18 @@ extension LearnedField {
             public var file: String
             public var bytes: Int
             public var sha256: String
+            /// The release it is in: the field model's own unless said (the live wave's refinement's).
+            public var tag: String
 
-            public init(file: String, bytes: Int, sha256: String) {
+            public init(file: String, bytes: Int, sha256: String, tag: String = Release.tag) {
                 self.file = file
                 self.bytes = bytes
                 self.sha256 = sha256
+                self.tag = tag
             }
 
             public var url: URL {
-                URL(string: "https://github.com/emmettl/bombcad/releases/download/\(Release.tag)/\(file)")!
+                URL(string: "https://github.com/emmettl/bombcad/releases/download/\(tag)/\(file)")!
             }
         }
 

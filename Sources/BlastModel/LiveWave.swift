@@ -161,6 +161,10 @@ public enum LiveWave {
         /// How long the paths, and the whole field, took to work out, s.
         public var pathSeconds: Double
         public var seconds: Double
+        /// Whether the learned refinement corrected it (`Refinement`), and how long that took, s
+        /// (in `seconds` as well).
+        public var refined = false
+        public var refinementSeconds: Double = 0
 
         /// The overpressure at cell `n` at time `t`, Pa: nothing before the front, the Friedlander
         /// pulse through its positive phase, nothing after it.

@@ -12,7 +12,8 @@ import Testing
 /// 2.5 km at 0.5 kt) with `BOMBCAD_HYBRID_INPUTS` (the folder holding Beirut's OSM/, DEM/ and GHSL/
 /// files), else on the made-up New District fixture. Only with `BOMBCAD_INTERFACE_REVIEW` (the folder
 /// to write). The times it prints are this build's: an optimised one
-/// (`swift test -c release -Xswiftc -enable-testing`) is the app's.
+/// (`swift test -c release -Xswiftc -enable-testing`) is the app's. With `BOMBCAD_LIVE_WAVE_MODEL`
+/// (the learned refinement's weights, emmettl/bombcad-work#115) the wave is refined as well.
 @MainActor
 @Suite(
     "The live blast wave, offscreen", .serialized, .hangLimit,
@@ -83,6 +84,9 @@ struct InterfaceReviewLiveWaveTests {
         let model = SimulationModel(document: preview.document)
         model.refinesCloseCalls = false
         while model.isLoadingInputs { try await Task.sleep(for: .milliseconds(20)) }
+        let learned = ProcessInfo.processInfo.environment[LiveWave.Refinement.environmentKey] != nil
+        model.liveWaveLearned = learned
+        if learned { print("With the learned refinement from \(model.liveWaveLearnedWeightsURL.path)") }
         let size = model.settings.scenario.domainSize
         print("\(name): \(preview.report.placed.count) buildings on \(size.x) × \(size.y) m")
 
@@ -141,6 +145,7 @@ struct InterfaceReviewLiveWaveTests {
         model.isDraggingCharge = true
         var times: [Double] = []
         var rounds: [Double] = []
+        var refinements: [Double] = []
         var moved = charge
         for _ in 0..<20 {
             moved.x += 5
@@ -149,6 +154,7 @@ struct InterfaceReviewLiveWaveTests {
             try await waitForWave(model, charge: moved)
             rounds.append(clock.duration(to: .now) / .seconds(1))
             times.append(model.liveWave?.seconds ?? .nan)
+            refinements.append(model.liveWave?.refinementSeconds ?? .nan)
         }
         let dragCell = model.liveWave?.cell ?? 0
         model.scrubLiveWave(to: 0.15 * end)
@@ -161,6 +167,15 @@ struct InterfaceReviewLiveWaveTests {
         let letGo = clock.duration(to: .now)
         times.sort()
         rounds.sort()
+        refinements.sort()
+        if learned {
+            print(
+                String(
+                    format:
+                        "The learned refinement while dragging: %.0f ms median (%.0f–%.0f) of the field's time",
+                    1000 * refinements[10], 1000 * refinements[0], 1000 * refinements[19]))
+            print("Let go: " + model.liveWaveStatus)
+        }
         print(
             String(
                 format:

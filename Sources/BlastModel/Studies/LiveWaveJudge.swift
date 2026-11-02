@@ -21,6 +21,7 @@ package enum LiveWaveJudge {
         var charge: SIMD3<Float>
         var plan: LiveWave.Plan
         var peak: [Float]
+        var impulse: [Float]
         var mask: [Float]
         var arrival: [Float]?
     }
@@ -52,7 +53,8 @@ package enum LiveWaveJudge {
             plan: LiveWave.Plan(
                 columns: columns, rows: rows, cell: cell, height: Array(inputs[0..<plan]),
                 ground: Array(inputs[plan..<(2 * plan)])),
-            peak: Array(targets[0..<plan]), mask: mask, arrival: arrival)
+            peak: Array(targets[0..<plan]), impulse: Array(targets[plan..<(2 * plan)]), mask: mask,
+            arrival: arrival)
     }
 
     /// Whether the straight line from `charge` to `above` over cell `n`'s surface clears the plan's
@@ -143,6 +145,8 @@ package enum LiveWaveJudge {
         var baselinePeakLogs: [Double] = []
         var arrivalLogs: [Double] = []
         var baselineArrivalLogs: [Double] = []
+        var impulseLogs: [Double] = []
+        var baselineImpulseLogs: [Double] = []
 
         mutating func add(_ other: Tally) {
             cells += other.cells
@@ -150,6 +154,8 @@ package enum LiveWaveJudge {
             baselinePeakLogs += other.baselinePeakLogs
             arrivalLogs += other.arrivalLogs
             baselineArrivalLogs += other.baselineArrivalLogs
+            impulseLogs += other.impulseLogs
+            baselineImpulseLogs += other.baselineImpulseLogs
         }
     }
 
@@ -169,6 +175,12 @@ package enum LiveWaveJudge {
         var baselineArrivalMedian: Double?
         var baselineArrivalMeanError: Double?
         var arrivalCells: Int
+        /// The impulse of the wave's Friedlander pulse over the run's: the median ratio and the
+        /// share within ×1.25; Kingery–Bulmash on the straight line's beside it.
+        var impulseMedian: Double?
+        var impulseWithin125: Double?
+        var baselineImpulseMedian: Double?
+        var baselineImpulseWithin125: Double?
 
         init(_ tally: Tally) {
             func median(_ logs: [Double]) -> Double? {
@@ -194,6 +206,10 @@ package enum LiveWaveJudge {
             baselineArrivalMedian = median(tally.baselineArrivalLogs)
             baselineArrivalMeanError = meanError(tally.baselineArrivalLogs)
             arrivalCells = tally.arrivalLogs.count
+            impulseMedian = median(tally.impulseLogs)
+            impulseWithin125 = within(tally.impulseLogs, 1.25)
+            baselineImpulseMedian = median(tally.baselineImpulseLogs)
+            baselineImpulseWithin125 = within(tally.baselineImpulseLogs, 1.25)
         }
     }
 
@@ -204,9 +220,19 @@ package enum LiveWaveJudge {
         var bands: [String: [String: Summary]]
         var overall: [String: Summary]
         var recomputeSeconds: [Double]
+        /// The learned refinement's weights, when it was taken (`--learned`).
+        var refinement: String?
     }
 
-    package static func run(_ args: [String]) throws {
+    /// A refinement of the wave worked out on a plan, for a charge's place and mass: the learned
+    /// one (`LiveWave.Refinement`), from `scenebench live-wave-judge --learned`, which runs it on
+    /// the GPU.
+    package typealias Refine =
+        @Sendable (LiveWave.Field, LiveWave.Plan, SIMD3<Float>, Double) throws -> LiveWave.Field
+
+    package static func run(_ args: [String]) throws { try run(args, refine: nil) }
+
+    package static func run(_ args: [String], refine: Refine?) throws {
         let value = { (name: String) in SurrogateBench.value(args, name) }
         guard let dirs = value("runs") else {
             throw BlastError.allocationFailed("--runs folder[,folder…] of field-export runs")
@@ -253,11 +279,13 @@ package enum LiveWaveJudge {
             // district while the charge is dragged, and read back at the run's cells.
             let coarsen = value("coarsen").flatMap(Int.init) ?? 1
             let worked = coarsen > 1 ? coarsened(run.plan, by: coarsen) : run.plan
-            let coarse = LiveWave.field(
+            var coarse = LiveWave.field(
                 plan: worked, charge: run.charge, mass: run.mass, coefficients: coefficients)
-            // The same once more, timed alone (the first fills the table).
-            let timed = LiveWave.field(
+            if let refine { coarse = try refine(coarse, worked, run.charge, run.mass) }
+            // The same once more, timed alone (the first fills the table and builds the network).
+            var timed = LiveWave.field(
                 plan: worked, charge: run.charge, mass: run.mass, coefficients: coefficients)
+            if let refine { timed = try refine(timed, worked, run.charge, run.mass) }
             times.append(timed.seconds)
             let field = coarsen > 1 ? refined(coarse, to: run.plan, charge: run.charge, by: coarsen) : coarse
             judgedRuns.append(run.id)
@@ -287,6 +315,15 @@ package enum LiveWaveJudge {
                 tally.cells += 1
                 tally.peakLogs.append(log(Double(field.peak[n]) / Double(run.peak[n])))
                 tally.baselinePeakLogs.append(log(kb.peak / Double(run.peak[n])))
+                if run.impulse[n] > 0, field.duration[n] > 0 {
+                    let impulse =
+                        Double(field.peak[n]) * Double(field.duration[n])
+                        * LiveWave.DecayTable.share(Double(field.decay[n]))
+                    tally.impulseLogs.append(log(impulse / Double(run.impulse[n])))
+                    let kbImpulse =
+                        kb.peak * kb.scaledDuration * root * LiveWave.DecayTable.share(kb.decay)
+                    tally.baselineImpulseLogs.append(log(kbImpulse / Double(run.impulse[n])))
+                }
                 let runArrival = run.arrival.map { $0[n] } ?? .nan
                 if runArrival.isFinite, runArrival > 0, field.arrival[n].isFinite {
                     tally.arrivalLogs.append(log(Double(field.arrival[n]) / Double(runArrival)))
@@ -314,20 +351,21 @@ package enum LiveWaveJudge {
             print(
                 String(
                     format:
-                        "%@ (%@, %.0f t, %d × %d): peak median ×%.2f, within ×1.25 %.0f%% (straight-line KB %.0f%%); arrival median ×%.3f, mean error %.1f%% (KB %.1f%%) over %d cells; recompute %.0f ms (paths %.0f)",
+                        "%@ (%@, %.0f t, %d × %d): peak median ×%.2f, within ×1.25 %.0f%% (straight-line KB %.0f%%); arrival median ×%.3f, mean error %.1f%% (KB %.1f%%) over %d cells; impulse within ×1.25 %.0f%%; recompute %.0f ms (paths %.0f, refinement %.0f)",
                     run.id, run.layout, run.mass / 1000, run.plan.columns, run.plan.rows,
                     summary.peakMedian ?? .nan, 100 * (summary.peakWithin125 ?? .nan),
                     100 * (summary.baselinePeakWithin125 ?? .nan), summary.arrivalMedian ?? .nan,
                     100 * (summary.arrivalMeanError ?? .nan),
                     100 * (summary.baselineArrivalMeanError ?? .nan),
-                    summary.arrivalCells, 1000 * timed.seconds, 1000 * timed.pathSeconds))
+                    summary.arrivalCells, 100 * (summary.impulseWithin125 ?? .nan), 1000 * timed.seconds,
+                    1000 * timed.pathSeconds, 1000 * timed.refinementSeconds))
         }
         guard !judgedRuns.isEmpty else { throw BlastError.allocationFailed("runs to judge under \(dirs)") }
         var bandSummaries: [String: [String: Summary]] = [:]
         var overall: [String: Tally] = [:]
         print("\nBy distance and sight (live wave; Kingery–Bulmash on the straight line in brackets):")
         print(
-            "band m\tkind\tcells\tpeak ×\twithin 1.25\twithin 1.5\t(KB ×, within 1.25)\tarrival ×\tmean error\twithin 5%\t(KB ×, error)"
+            "band m\tkind\tcells\tpeak ×\twithin 1.25\twithin 1.5\t(KB ×, within 1.25)\tarrival ×\tmean error\twithin 5%\t(KB ×, error)\timpulse ×\twithin 1.25\t(KB ×, within 1.25)"
         )
         for band in bands.dropLast().map({ String(Int($0)) }) {
             for kind in ["sight", "shielded"] {
@@ -338,12 +376,14 @@ package enum LiveWaveJudge {
                 print(
                     String(
                         format:
-                            "%@\t%@\t%d\t%.2f\t%.0f%%\t%.0f%%\t(%.2f, %.0f%%)\t%.3f\t%.1f%%\t%.0f%%\t(%.3f, %.1f%%)",
+                            "%@\t%@\t%d\t%.2f\t%.0f%%\t%.0f%%\t(%.2f, %.0f%%)\t%.3f\t%.1f%%\t%.0f%%\t(%.3f, %.1f%%)\t%.2f\t%.0f%%\t(%.2f, %.0f%%)",
                         band, kind, s.cells, s.peakMedian ?? .nan, 100 * (s.peakWithin125 ?? .nan),
                         100 * (s.peakWithin150 ?? .nan), s.baselinePeakMedian ?? .nan,
                         100 * (s.baselinePeakWithin125 ?? .nan), s.arrivalMedian ?? .nan,
                         100 * (s.arrivalMeanError ?? .nan), 100 * (s.arrivalWithin5 ?? .nan),
-                        s.baselineArrivalMedian ?? .nan, 100 * (s.baselineArrivalMeanError ?? .nan)))
+                        s.baselineArrivalMedian ?? .nan, 100 * (s.baselineArrivalMeanError ?? .nan),
+                        s.impulseMedian ?? .nan, 100 * (s.impulseWithin125 ?? .nan),
+                        s.baselineImpulseMedian ?? .nan, 100 * (s.baselineImpulseWithin125 ?? .nan)))
             }
         }
         let overallSummaries = overall.mapValues(Summary.init)
@@ -351,14 +391,16 @@ package enum LiveWaveJudge {
             print(
                 String(
                     format:
-                        "all\t%@\t%d\t%.2f\t%.0f%%\t%.0f%%\t(%.2f, %.0f%%)\t%.3f\t%.1f%%\t%.0f%%\t(%.3f, %.1f%%)",
+                        "all\t%@\t%d\t%.2f\t%.0f%%\t%.0f%%\t(%.2f, %.0f%%)\t%.3f\t%.1f%%\t%.0f%%\t(%.3f, %.1f%%)\t%.2f\t%.0f%%\t(%.2f, %.0f%%)",
                     kind,
                     s.cells, s.peakMedian ?? .nan, 100 * (s.peakWithin125 ?? .nan),
                     100 * (s.peakWithin150 ?? .nan),
                     s.baselinePeakMedian ?? .nan, 100 * (s.baselinePeakWithin125 ?? .nan),
                     s.arrivalMedian ?? .nan,
                     100 * (s.arrivalMeanError ?? .nan), 100 * (s.arrivalWithin5 ?? .nan),
-                    s.baselineArrivalMedian ?? .nan, 100 * (s.baselineArrivalMeanError ?? .nan)))
+                    s.baselineArrivalMedian ?? .nan, 100 * (s.baselineArrivalMeanError ?? .nan),
+                    s.impulseMedian ?? .nan, 100 * (s.impulseWithin125 ?? .nan),
+                    s.baselineImpulseMedian ?? .nan, 100 * (s.baselineImpulseWithin125 ?? .nan)))
         }
         let sorted = times.sorted()
         print(
@@ -373,7 +415,7 @@ package enum LiveWaveJudge {
             let judged = Judged(
                 runs: judgedRuns, coefficients: coefficientName, bands: bandSummaries,
                 overall: overallSummaries,
-                recomputeSeconds: times)
+                recomputeSeconds: times, refinement: value("learned"))
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(judged).write(to: URL(filePath: path))
@@ -384,7 +426,9 @@ package enum LiveWaveJudge {
     /// [--drag 0,5,…] [--cells 4,8]`: what the live wave costs on a laid-out district, as the app
     /// works it out: the plan laid out once, then for each place of the charge moved east, the
     /// field on each of `--cells`, timed.
-    package static func time(_ args: [String]) throws {
+    package static func time(_ args: [String]) throws { try time(args, refine: nil) }
+
+    package static func time(_ args: [String], refine: Refine?) throws {
         let value = { (name: String) in SurrogateBench.value(args, name) }
         let inputs = try DistrictInputs.read(args)
         let radius = Float(value("radius").flatMap(Double.init) ?? 2500)
@@ -406,26 +450,34 @@ package enum LiveWaveJudge {
             let planS = (ContinuousClock.now - clock) / .seconds(1)
             var times: [Double] = []
             var paths: [Double] = []
+            var refinements: [Double] = []
             var last: Float = 0
             for move in moves {
                 var charge = scene.charge.position
                 charge.x += move
-                let field = LiveWave.field(plan: plan, charge: charge, mass: mass)
+                var field = LiveWave.field(plan: plan, charge: charge, mass: mass)
+                if let refine { field = try refine(field, plan, charge, mass) }
                 times.append(field.seconds)
                 paths.append(field.pathSeconds)
+                refinements.append(field.refinementSeconds)
                 last = field.lastArrival
             }
             // The first fills the table; the rest are the drag's.
             let later = Array(times.dropFirst()).sorted()
             let laterPaths = Array(paths.dropFirst()).sorted()
+            let laterRefinements = Array(refinements.dropFirst()).sorted()
             print(
                 String(
                     format:
-                        "%.0f m cells, %d × %d (%.2f M): plan %.0f ms; first field %.0f ms, later median %.0f ms (%.0f–%.0f), paths %.0f ms; last arrival %.2f s",
+                        "%.0f m cells, %d × %d (%.2f M): plan %.0f ms; first field %.0f ms, later median %.0f ms (%.0f–%.0f), paths %.0f ms, refinement %.0f ms; last arrival %.2f s",
                     cell, plan.columns, plan.rows, Double(plan.columns * plan.rows) / 1e6, 1000 * planS,
                     1000 * times[0], 1000 * (later.isEmpty ? times[0] : later[later.count / 2]),
                     1000 * (later.first ?? times[0]), 1000 * (later.last ?? times[0]),
-                    1000 * (laterPaths.isEmpty ? paths[0] : laterPaths[laterPaths.count / 2]), last))
+                    1000 * (laterPaths.isEmpty ? paths[0] : laterPaths[laterPaths.count / 2]),
+                    1000
+                        * (laterRefinements.isEmpty
+                            ? refinements[0] : laterRefinements[laterRefinements.count / 2]),
+                    last))
         }
     }
 }

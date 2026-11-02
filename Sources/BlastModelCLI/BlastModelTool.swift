@@ -27,6 +27,11 @@ enum BlastModelTool {
             "live-wave-time", "what the live blast wave costs a recompute on a laid-out district",
             LiveWaveJudge.time
         ),
+        (
+            "live-wave-features",
+            "the live blast wave's learned refinement's training pairs from district runs",
+            LiveWaveJudge.features
+        ),
         ("district-glass", "a district run's saved strips' glass, against GEER's survey", DistrictGlass.run),
         ("glass-calibrate", "the glass chances' reliability against runs and GEER", GlassCalibration.run),
         (
