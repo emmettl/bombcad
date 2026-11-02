@@ -212,7 +212,8 @@ struct ProtectionLiveTests {
         // The lowest storey behind a 3 m wall is sheltered more than the top.
         if let low, let high { #expect(low.ratio < high.ratio, "\(low) \(high)") }
         #expect(FacadeLoadSurrogate.TermSet.deepCityOutlineBarriers.coefficients.barrier == .fitted)
-        #expect(FacadeLoadSurrogate.TermSet.adopted.coefficients.barrier == nil)
+        #expect(FacadeLoadSurrogate.TermSet.adopted == .deepCityOutlineBarriers)
+        #expect(FacadeLoadSurrogate.TermSet.deepCityOutline.coefficients.barrier == nil)
     }
 
     @Test("ITU-R P.526's knife-edge loss: 6 dB at the line, nothing well below it")

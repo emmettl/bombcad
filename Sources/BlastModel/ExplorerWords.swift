@@ -71,7 +71,7 @@ public enum ExplorerWords {
         "A wall between the charge and a building takes the brunt for the façades close behind it, within "
         + "one or two of its heights. Further back, and above its top, it barely helps."
     public static let barrierDrag = "Drag the wall in the view"
-    public static let shelterToggle = "Count the shelter close behind the wall (proposed)"
+    public static let shelterToggle = "Count the shelter close behind the wall"
     public static let standOffWhat =
         "Keeping the charge back is the surest protection: the push falls quickly with distance."
 

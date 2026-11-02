@@ -728,7 +728,8 @@ public enum FacadeLoadSurrogate {
                 return Self.loss(v) * exp(-q / departure) * pow(2 / z, gamma)
             }
 
-            /// As fitted (emmettl/bombcad-work#117): proposed, not adopted.
+            /// As fitted (emmettl/bombcad-work#117): adopted by the user on 3 November 2026
+            /// (`TermSet.deepCityOutlineBarriers`, the default).
             public static let fitted = BarrierShielding(
                 peak: -0.995, impulse: -0.942, departure: 3, gamma: 1,
                 fittedTo:

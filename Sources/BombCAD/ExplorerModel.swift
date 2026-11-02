@@ -396,13 +396,14 @@ final class ExplorerModel {
     /// The wall turned a quarter.
     func turnWall() { model.quickEstimateWhatIf.barrier?.alongX.toggle() }
 
-    /// Whether the quick estimate credits the shelter close behind a wall (the proposed term).
+    /// Whether the quick estimate credits the shelter close behind a wall (the default since 3 November
+    /// 2026), rather than counting the wall as one more building in the way.
     var countsShelter: Bool {
-        get { model.quickEstimateBarrierShielding }
-        set { model.quickEstimateBarrierShielding = newValue }
+        get { !model.quickEstimateBarrierAsBuilding }
+        set { model.quickEstimateBarrierAsBuilding = !newValue }
     }
 
-    /// Whether the people are hurt by the glass thrown into their rooms (proposed), not by the panes broken.
+    /// Whether the people are hurt by the glass thrown into their rooms (an option), not by the panes broken.
     var countsThrownGlass: Bool {
         get { model.occupancy.glass == .thrownGlass }
         set { model.occupancy.glass = newValue ? .thrownGlass : .panesBroken }

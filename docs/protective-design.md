@@ -1115,10 +1115,9 @@ without; impulse within ×1.25 98%, 65%).
 - **What it costs:** over all the barrier strips its median peak moves from 5% under the runs' to 16%
   over. Strips a little behind the wall, or above its top, take a little credit that the runs do not
   show. That is the unsafe side for a plan, by about a sixth.
-- **It is a candidate, off by default:** the term set `deep-city-outline-barriers`
-  (`TermSet.deepCityOutlineBarriers`), in the workbench as Quick Estimate's **Barrier walls shelter
-  close behind (candidate)** and in the explorer as "Count the shelter close behind the wall
-  (proposed)". Without a barrier in the scene it is the adopted terms to the bit (tested). The GPU's
+- **It was built as a candidate, off by default:** the term set `deep-city-outline-barriers`
+  (`TermSet.deepCityOutlineBarriers`). Without a barrier in the scene it is `deep-city-outline` to
+  the bit (tested). It is now the default ([adopted](#adopted-3-november-2026)). The GPU's
   loads take it as the CPU's do (`LiveDragGPUTests`), so the live drag and the full estimate agree.
 - **Standing: illustrative.** One family of made-up layouts at one charge, the walls rigid. Xiao et
   al.'s wall ([stage 3](#stage-3-xiao-et-als-blast-wall)) is a measured check still to make with the
@@ -1138,6 +1137,29 @@ against ×1.8 too high now). It halves the scatter, and changes nothing in a sce
 Against it, it credits about a sixth too much shelter on the median barrier strip. Its basis is one
 family of made-up layouts, and Xiao's measured wall is still to judge with it. Until the user decides,
 it stays a candidate.
+
+### Adopted (3 November 2026)
+
+The user decided on 3 November 2026 to make the barrier's own shelter the default:
+`deep-city-outline-barriers` (`TermSet.adopted`) in place of `deep-city-outline`. The decision rests
+on the held-out figures above, the barrier strips of L4, L5 and L8 at 1 m:
+
+- the peak within ×1.5 at 98% of the strips, against 85% counted as a building crossed;
+- the impulse within ×1.25 at 98%, against 68%;
+- close behind a wall, a median of −0.01 in log, where counting the wall as a building read the
+  load about ×1.8 too high.
+
+It was adopted with two caveats:
+
+- on the median barrier strip it credits about a sixth too much shelter, the unsafe side for a plan;
+- its basis is one family of made-up layouts at one charge, on rigid walls. Xiao et al.'s measured
+  wall is still to judge with it.
+
+It moves results only where a scene has a barrier wall or another of its fixed blocks. The terms
+before stay by name: `deep-city-outline`, in the workbench as Quick Estimate's **Barrier walls as
+buildings crossed (terms of 28 October)**, and in the explorer as "Count the shelter close behind
+the wall" turned off. The protection planner keeps its own terms (`ProtectionModel.adoptedTerms`),
+as before. The people's default is unchanged: Kummer's, by the panes broken.
 
 **The budget optimiser** (the best barrier for a budget through the fast model) is not built in this
 stage. The search (`scenebench protect`, `ProtectionSearch`) would take the barrier term and the wall

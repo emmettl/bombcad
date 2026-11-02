@@ -889,27 +889,29 @@ final class SimulationModel {
     }
     /// A key of its own: "quickEstimate.clearTopTerms" chose the clear-top candidate before #99.
     static let clearTopTermsKey = "quickEstimate.clearTopTermsOf25October"
-    /// Whether a barrier wall shelters the façades close behind it by its own term
-    /// (`FacadeLoadSurrogate.TermSet.deepCityOutlineBarriers`; emmettl/bombcad-work#117), fitted on the
-    /// fine protective layouts' barrier strips: a candidate, off unless chosen, and remembered. Off, a
-    /// barrier counts as one more building crossed. The glass front and the earlier terms, where
-    /// chosen, take precedence.
-    var quickEstimateBarrierShielding = UserDefaults.standard.bool(
-        forKey: SimulationModel.barrierShieldingKey)
+    /// Whether a barrier wall counts as one more building crossed, as on the terms of 28 October to
+    /// 3 November 2026 (`FacadeLoadSurrogate.TermSet.deepCityOutline`), in place of its own shelter
+    /// close behind it, adopted on 3 November (`.deepCityOutlineBarriers`; emmettl/bombcad-work#117):
+    /// to reproduce an earlier estimate. Off unless chosen, and remembered. The glass front and the
+    /// earlier terms, where chosen, take precedence.
+    var quickEstimateBarrierAsBuilding = UserDefaults.standard.bool(
+        forKey: SimulationModel.barrierAsBuildingKey)
     {
         didSet {
-            learnedDefaults.set(quickEstimateBarrierShielding, forKey: Self.barrierShieldingKey)
+            learnedDefaults.set(quickEstimateBarrierAsBuilding, forKey: Self.barrierAsBuildingKey)
             estimateChoiceChanged()
         }
     }
-    static let barrierShieldingKey = "quickEstimate.barrierShielding"
+    /// A key of its own: "quickEstimate.barrierShielding" chose the shelter as a candidate before its
+    /// adoption, the opposite of this.
+    static let barrierAsBuildingKey = "quickEstimate.barrierAsBuildingOf3November"
     /// The façade terms and load scatter the quick estimate and the far field take.
     var surrogateTerms: FacadeLoadSurrogate.TermSet {
         if quickEstimateFirstFitTerms { return .fitted }
         if quickEstimateClearTopTerms { return quickEstimateGlassFront ? .clearTopFront : .clearTop }
         if quickEstimateCellsFacingTerms { return quickEstimateGlassFront ? .deepCityFront : .deepCity }
         if quickEstimateGlassFront { return .deepCityOutlineFront }
-        return quickEstimateBarrierShielding ? .deepCityOutlineBarriers : .adopted
+        return quickEstimateBarrierAsBuilding ? .deepCityOutline : .adopted
     }
     /// Whether the far field carries the near run's match flat, with no trend with distance: the
     /// far set's own choice (`FarFieldSet.matchFlat`, saved with the project), on for New District's

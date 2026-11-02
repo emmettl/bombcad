@@ -134,18 +134,18 @@ struct EnvelopeDamageSection: View {
                             + "(docs/glass-probability.md). A candidate, off by default."
                     )
                 Toggle(
-                    "Barrier walls shelter close behind (candidate)",
-                    isOn: $model.quickEstimateBarrierShielding
+                    "Barrier walls as buildings crossed (terms of 28 October)",
+                    isOn: $model.quickEstimateBarrierAsBuilding
                 )
                 .disabled(
                     model.quickEstimateFirstFitTerms || model.quickEstimateClearTopTerms
                         || model.quickEstimateCellsFacingTerms || model.quickEstimateGlassFront
                 )
                 .help(
-                    "For Quick Estimate: a barrier wall's own shielding, fitted on fine runs of walls in front of "
-                        + "a building, takes off the load of façades within one or two of its heights behind it. "
-                        + "Off, a barrier counts as one more building in the way (docs/protective-design.md). A "
-                        + "candidate, off by default."
+                    "For Quick Estimate: a barrier wall counted as one more building in the way, as before 3 November "
+                        + "2026, to reproduce an earlier estimate. Off, a barrier's own shelter, fitted on fine runs of "
+                        + "walls in front of a building, takes off the load of façades within one or two of its heights "
+                        + "behind it (docs/protective-design.md)."
                 )
                 Picker("Drag preview", selection: $model.dragPreviewPath) {
                     ForEach(SimulationModel.DragPreviewPath.allCases) { Text($0.label).tag($0) }

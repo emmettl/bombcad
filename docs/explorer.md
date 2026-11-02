@@ -528,9 +528,10 @@ comparisons, **Laminated glass** and **A wall in front**:
   Beirut it stands 15 m in front of the charge. With "Drag the wall in the view" on, a drag moves the wall, not the charge.
   The wall can be 2, 3 or 4 m tall, moved 5 m at a time by buttons, turned, and taken away. It is a
   what-if: drawn as an outline, laid on the estimate's copy of the scene, never on the project.
-  "Count the shelter close behind the wall (proposed)" turns on the barrier's own term
-  ([protective design](protective-design.md#a-barrier-you-can-push-around-2-november-2026)). Off, the
-  wall counts as one more building in the way, and barely shows. Its "How sure?" line gives the fine
+  "Count the shelter close behind the wall" is the barrier's own term
+  ([protective design](protective-design.md#a-barrier-you-can-push-around-2-november-2026)), on by
+  default since the user adopted it on 3 November 2026. Off, the wall counts as one more building in
+  the way, and barely shows. Its "How sure?" line gives the fine
   runs' figures for whichever is on.
 - **Every window's glass**: as built, with film, or laminated.
 - **The stand-off**: a slider that keeps the charge 3–120 m back from the glass office, or 0–150 m

@@ -36,14 +36,14 @@ extension FacadeLoadSurrogate {
         /// candidate, off by default.
         case deepCityOutlineFront = "deep-city-outline-front"
         /// `deepCityOutline` with a barrier wall's own shielding (`Coefficients.BarrierShielding.fitted`;
-        /// emmettl/bombcad-work#117): a candidate, off by default. Without a barrier in the scene it is
-        /// `deepCityOutline` to the bit.
+        /// emmettl/bombcad-work#117): the default since the user adopted it on 3 November 2026. Without a
+        /// barrier in the scene it is `deepCityOutline` to the bit.
         case deepCityOutlineBarriers = "deep-city-outline-barriers"
 
-        /// The set in use unless another is named: `deepCityOutline` since 28 October 2026
-        /// (emmettl/bombcad-work#109), `deepCity` from the evening of 25 October (#105), `clearTop`
-        /// from that morning (#99), `fitted` before.
-        public static let adopted = TermSet.deepCityOutline
+        /// The set in use unless another is named: `deepCityOutlineBarriers` since 3 November 2026
+        /// (emmettl/bombcad-work#117), `deepCityOutline` from 28 October (#109), `deepCity` from the
+        /// evening of 25 October (#105), `clearTop` from that morning (#99), `fitted` before.
+        public static let adopted = TermSet.deepCityOutlineBarriers
 
         /// The façade terms.
         public var coefficients: Coefficients {
@@ -81,8 +81,8 @@ extension FacadeLoadSurrogate.Coefficients {
         return c
     }()
 
-    /// The façade terms in use unless others are given: `TermSet.adopted`'s, `deepCityOutline` since
-    /// 28 October 2026 (emmettl/bombcad-work#109), `deepCity` from the evening of 25 October (#105),
+    /// The façade terms in use unless others are given: `TermSet.adopted`'s, `deepCityOutlineBarriers`
+    /// since 3 November 2026 (emmettl/bombcad-work#117), `deepCityOutline` from 28 October (#109), `deepCity` from the evening of 25 October (#105),
     /// `clearTop` from that morning (#99), `fitted` before.
     public static let adopted = FacadeLoadSurrogate.TermSet.adopted.coefficients
 }

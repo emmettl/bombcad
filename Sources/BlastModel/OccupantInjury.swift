@@ -161,7 +161,7 @@ public enum OccupantInjury {
         /// The use of a building whose tags say nothing (most of a map's: OSM's `building=yes`).
         public var untaggedUse: BuildingUse = .residential
         /// How the glass hurts the people indoors: by the panes broken, as since 21 October 2026, or
-        /// by the glass thrown into the rooms (proposed).
+        /// by the glass thrown into the rooms, an option.
         public var glass: GlassModel = .panesBroken
 
         public init() {}
