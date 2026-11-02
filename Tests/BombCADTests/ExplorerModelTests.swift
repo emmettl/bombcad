@@ -38,6 +38,7 @@ struct ExplorerModelTests {
         // The estimate in, and the wave with its four captions; Reduce Motion shows it whole.
         #expect(!model.envelopeGlassChances.isEmpty)
         #expect(explorer.captions.count == 4)
+        explorer.replay()
         #expect(model.liveWaveTime == model.liveWaveEnd)
         #expect(explorer.caption?.contains("crossed the whole scene") == true)
         #expect(explorer.viewSummary.hasPrefix("A square; 500 kg of TNT in the middle of the square"))
