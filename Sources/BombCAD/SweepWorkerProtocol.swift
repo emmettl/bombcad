@@ -88,6 +88,17 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     /// Why a watched job naming files sent before (`WatchJob.reused`) failed: the worker has not
     /// got them.
     static let missingFiles = "missing files sent before"
+
+    /// The run a worker's message about a watched (or other) job concerns, for those that a
+    /// session taking up a held run is handed: its setup, progress, frames, costs and end.
+    var watchedRun: UUID? {
+        switch self {
+        case .viewSetup(let id), .progress(let id, _), .view(let id, _), .viewStats(let id, _),
+            .finished(let id, _), .failed(let id, _):
+            id
+        default: nil
+        }
+    }
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {

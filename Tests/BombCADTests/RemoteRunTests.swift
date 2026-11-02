@@ -117,6 +117,42 @@ struct RemoteRunTests {
         await #expect(throws: NearbyError.self) { _ = try await pair.connect(resume: UUID()) }
     }
 
+    /// What the sharing Mac's log has said, for a test to wait on.
+    @MainActor private final class Heard { var lines: [String] = [] }
+
+    @Test("A held run that ended before it is taken up hands over its view's setup and its result")
+    func endedBeforeTheResume() async throws {
+        let pair = try Pair()
+        defer { pair.server.stop() }
+        let heard = Heard()
+        pair.server.log = { heard.lines.append($0) }
+        let document = document()
+        let inputs = try HeadlessRun.inputs(
+            for: document, options: HeadlessRun.Options(project: URL(filePath: "/dev/null")))
+        let job = try job(document, name: "Ended")
+        let first = try await pair.connect()
+        _ = try? await first.watch(job) { _, _ in first.drop() }
+        while !heard.lines.contains(where: { $0.hasPrefix("A held run ended") }) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        // The sharing Mac hands over the setup and the end as the session opens; they have all
+        // arrived before the resume is asked for, as they may on a loaded Mac, and are kept for it.
+        let second = try await pair.connect(resume: job.id)
+        func endHeld() -> Bool {
+            second.heldForResume.contains { if case .finished = $0.message { true } else { false } }
+        }
+        while !endHeld() { try await Task.sleep(for: .milliseconds(10)) }
+        var setups = 0
+        let result = try await second.resumeWatch(
+            job.id, setup: { _ in setups += 1 },
+            frame: { _, _ in Issue.record("A frame of a run that had ended.") })
+        #expect(setups == 1 && second.heldForResume.isEmpty)
+        let run = try second.checkedRun(result.archive, name: "Ended", inputs: inputs)
+        #expect(run.stepCount > 0 && !run.gauges.isEmpty)
+        second.close()
+    }
+
     @Test("A run not asked to keep going stops with its connection, as before")
     func notHeld() async throws {
         let pair = try Pair()

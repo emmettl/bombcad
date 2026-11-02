@@ -30,6 +30,13 @@ final class SweepWorkerClient {
     private var viewers: [UUID: (WatchFrame.Header, Data) -> Void] = [:]
     private var viewSetups: [UUID: (Data) -> Void] = [:]
     private var viewStats: [UUID: (ViewStats, ContinuousClock.Instant)] = [:]
+    /// The run this session was opened to take up (`NearbyWorkers.connect(resume:)`), until
+    /// `resumeWatch` asks for it, and what the sharing Mac handed over for it before then: it sends
+    /// the run's setup, progress and end (if it has ended) as soon as the session opens, and they
+    /// could otherwise come before anyone was waiting for them and be lost, the setup leaving the
+    /// view without its scene and the end leaving `resumeWatch` waiting for ever.
+    private var resuming: UUID?
+    private(set) var heldForResume: [(message: SweepWorkerMessage, payload: Data)] = []
     /// Recordings being fetched, for their files as they arrive.
     private var timelineParts: [UUID: (TimelinePart, Data) -> Void] = [:]
     private var closedError: Error?
@@ -44,9 +51,14 @@ final class SweepWorkerClient {
     /// workers in this process ask, so that a loaded Mac cannot fail them.
     var helloTimeout: Duration? = SweepWorkerClient.helloLimit
 
-    /// Talks to a worker that reads `output` and writes `input`, and waits for its greeting.
-    init(name: String, input: FileHandle, output: FileHandle, onClose: @escaping () -> Void = {}) {
+    /// Talks to a worker that reads `output` and writes `input`, and waits for its greeting. With
+    /// `resuming`, what arrives for that run is held for `resumeWatch`.
+    init(
+        name: String, input: FileHandle, output: FileHandle, resuming: UUID? = nil,
+        onClose: @escaping () -> Void = {}
+    ) {
         self.name = name
+        self.resuming = resuming
         writer = SweepWorkerWriter(output)
         self.onClose = onClose
         reader = Task { [weak self] in
@@ -244,12 +256,22 @@ final class SweepWorkerClient {
         let archive: SweepWorkerArchive = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation {
                 (continuation: CheckedContinuation<SweepWorkerArchive, Error>) in
+                waiting[id] = continuation
+                self.progress[id] = progress
+                if message == nil, resuming == id {
+                    // What came for it before it was asked for, in order: its end among it, perhaps.
+                    resuming = nil
+                    let held = heldForResume
+                    heldForResume = []
+                    for (message, payload) in held { receive(message, payload: payload) }
+                }
+                guard waiting[id] != nil else { return }
                 if let closedError {
+                    waiting[id] = nil
+                    self.progress[id] = nil
                     continuation.resume(throwing: closedError)
                     return
                 }
-                waiting[id] = continuation
-                self.progress[id] = progress
                 guard let message else { return }
                 do {
                     try writer.send(message)
@@ -384,6 +406,10 @@ final class SweepWorkerClient {
     }
 
     private func receive(_ message: SweepWorkerMessage, payload: Data) {
+        if let resuming, message.watchedRun == resuming {
+            heldForResume.append((message, payload))
+            return
+        }
         switch message {
         case .report(let id, let report, let seconds):
             reports[id]?(report, seconds)

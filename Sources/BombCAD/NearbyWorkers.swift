@@ -290,7 +290,7 @@ enum NearbyWorkers {
         let link = found.bestInterface.map(linkName) ?? "the network"
         let client = SweepWorkerClient(
             name: "\(name) over \(link)", input: fromWorker.fileHandleForReading,
-            output: toWorker.fileHandleForWriting
+            output: toWorker.fileHandleForWriting, resuming: resume
         ) {
             // What was written, `shutdown` last, goes before the connection ends: the bridge sends
             // it and then the end, and the sharing Mac closes the connection once its worker exits.
