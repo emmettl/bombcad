@@ -7005,6 +7005,21 @@ hand-over take the surrogate's.
 Standing: an approximation for the yield and the place from arrival times; illustrative for
 broken glass.
 
+### The charge from marked damage, learned
+
+A network reading the charge from marked buildings
+([charge inference](charge-inference.md#the-charge-from-marked-damage-learned-1-november-2026)),
+trained on the quick estimate's chances over Beirut and made-up districts:
+
+- **Drawn charges:** its 90% regions and intervals hold the truth 0.87–0.91 of the time, its 50% ones
+  0.45–0.52, on every district, a held-out one among them; within a factor 1.08–1.17 of the full
+  posterior's yield and 10–18 m of its place.
+- **Beirut's stone walls** (GEER, 48, D3 or worse): 0.69 kt (90%: 0.29–1.62), 141 m from Warehouse
+  12; 0.70 kt (0.49–0.89) with the place held. **Its glass** (1,351 buildings): 16–32 t, the quick
+  estimate's glass bias.
+
+Standing: illustrative.
+
 ### A house from a floor plan
 
 The [worked example](using-the-app.md#from-architectural-plans) of a house drawn as a plan, raised

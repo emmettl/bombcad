@@ -41,6 +41,10 @@ enum BlastModelTool {
         ("protect", "protective design on the surrogate, confirmed on a run's saved loads", Protect.run),
         ("infer-charge", "the charge's yield and place from arrivals (and glass)", InferCharge.run),
         (
+            "charge-from-damage", "the charge read back from marked damage by the learned network",
+            ChargeFromDamageStudy.run
+        ),
+        (
             "fire", "fire spreading over a district's buildings after the blast, for hours (illustrative)",
             FireSpreadStudy.run
         ),

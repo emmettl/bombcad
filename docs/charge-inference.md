@@ -13,7 +13,10 @@ glass.** On Beirut it finds 0.50–0.54 kt (90%: about 0.36–0.85 kt) and Wareh
 estimates. Its credible intervals hold the truth as often as they claim on synthetic charges
 (below). On charges BombCAD itself ran over a made-up district it finds the place to a metre, and
 the yield within 3% once BombCAD's own ratios correct the curves ([below](#against-charges-bombcad-ran)). The glass does not fit with any yield and is
-not used for one ([below](#broken-glass)).
+not used for one ([below](#broken-glass)). A small network reads the charge from buildings a user
+marks, in milliseconds, as the full posterior on the quick estimate's chances would
+([below](#the-charge-from-marked-damage-learned-1-november-2026)): illustrative, and on Beirut right
+from its stone walls and far too low from its glass.
 
 ```bash
 scenebench infer-charge --observers Rigby2020_ESM1_radius_time.csv --centre 35.519042,33.901425 --correction final2-200000/comparison.json,final2-500000/comparison.json,final2-1100000/comparison.json --out posterior.json --samples samples.csv
@@ -413,6 +416,269 @@ last estimate, until the yield moves under 5% (at most three runs):
   again with its ratios, as `--correction` takes them. On Beirut the ratios move the yield from
   0.54 to 0.50 kt.
 
+## The charge from marked damage, learned (1 November 2026)
+
+emmettl/bombcad-work#116. A user marks a few buildings: glass whole or broken, walls undamaged,
+damaged or heavily damaged, or either left unseen. A small network turns the marks into a
+posterior over the charge's place and yield in a few milliseconds, and each new mark adds to it in
+under half a millisecond. It is trained on the quick estimate's own chances, drawn for charges of
+many places and yields over Beirut and made-up districts. It is judged against the full posterior
+on the same chances, on charges held out, and on Beirut's surveys.
+
+**Standing: illustrative.** On charges drawn from the quick estimate's chances, its 50% and 90%
+regions and intervals hold the truth as often as they claim, and it comes within a factor of about
+1.1 of the full posterior's yield and some 10–35 m of its place. That holds on a made-up district
+it never saw too. On a real event it is exactly as good as the quick estimate's glass and walls,
+which on Beirut means the glass reads the yield far too low ([below](#on-beiruts-surveys)).
+
+```bash
+blastmodel charge-from-damage table <district's inputs> [--masonry] [--geer … --structure …] --out t.bcct
+python3 -I Scripts/ml/remote-train.py bombcad-pc <tables> Scripts/ml/train_charge.py --job charge-net-1 --args …
+blastmodel charge-from-damage judge --tables a.bcct,b.bcct --weights charge-net.bccd
+blastmodel charge-from-damage infer --weights charge-net.bccd --marks marks.csv [--table t.bcct]
+```
+
+`scenebench charge-from-damage` runs the same. The code is in BlastModel
+(`ChargeFromDamage`, `ChargeFromDamage.ChanceTable`; Sources/BlastModel/Studies/ChargeFromDamageStudy.swift),
+so it runs on Linux as well.
+
+### The data: the quick estimate's chances on a grid
+
+For each district a table holds, for chosen buildings, the quick estimate's chance of each mark:
+- the glass broken (some pane of some side, the sides' draws taken together, since a building's
+  glass strength is one draw for all its sides);
+- the walls damaged moderately or worse, and heavily or worse, built as the scene says
+  (`structureProbabilities`);
+- for Beirut, the walls again as 0.5 m unreinforced masonry, as its stone is judged
+  ([above](#beiruts-surveyed-damage-20-october-2026)), for 537 of its buildings: GEER's and one in six of
+  the rest.
+
+The chances are for charges on a grid of places 50 m apart over a square 1.1 km across about a
+reference point (the scene's charge: Warehouse 12 for Beirut). There are 16 yields from 100 kg
+doubling to 3.3 kt, each chance drawn 16 times over the load scatter and the strengths. Between
+nodes and yields a chance is read bilinearly in place and linearly in log yield.
+
+The tables take a drag's preview of each building (its nearest component of each group,
+`Prepared.preview`), which is several times quicker than the full look. On the made-up perimeter
+district at two nodes, every one of 16 yields, the preview's chances came within 0.1 of the full
+look's for 96.7% of the building-yields where either was over 0.01 for glass (mean difference
+0.016), and for all of them for concrete walls. **Not for masonry:** there the preview's chances
+came within 0.1 for only 49% (mean 0.47 against the full look's 0.68), and at 300–600 m it needed
+two to four times the yield to give the same chance. A masonry wall's resistance grows with the
+storeys over it, and the nearest strip, the preview's, is the ground floor's, the strongest.
+Beirut's masonry channels are therefore the full look's (`--masonry-only`, `merge-masonry`).
+
+| District | Buildings chosen | Of which GEER's | Masonry | Hours on bombcad-pc (16 cores) |
+|---|---|---|---|---|
+| Beirut, 2.5 km scene, 4 m cells | 2,500 | 1,440 | 537 of them, from the full look | 1.26, and 1.19 for the masonry |
+| made-up perimeter blocks (flat) | 1,000 | – | no | 0.27 |
+| made-up street grid (slope) | 1,000 | – | no | 0.32 |
+| made-up towers (hill) | 880 | – | no | 0.30 |
+| made-up industrial sheds (flat) | 535 | – | no | 0.20 |
+| made-up mixed (valley), **never trained on** | 1,000 | – | no | 0.42 |
+
+The buildings are chosen in rings 100 m wide about the reference, an even share from each ring, so
+that near buildings are not swamped by the many far ones; Beirut's include every building GEER
+surveyed. The made-up districts are `Scripts/ml/make_district.py`'s, 2.4 km across. No solver run
+is needed. The generation ran on the PC's CPU (`Scripts/remote-sweep.py`), not on the Studio.
+
+**Drawn cases.** Training draws its cases from the tables afresh at every step, so there is no
+fixed set to overfit, by rules the judge's Swift draws repeat (`ChanceTable.drawCase`):
+- the charge uniform over a disc of 500 m about the reference, and in log yield over the ladder;
+- 1–64 marks, chosen about a focus that knows nothing of the charge (anywhere within 1 km, the
+  buildings weighted e^(−distance / L), L 100–1,500 m), so that the marks cluster as a user's do;
+- each seen for both (45%), its glass alone (30%) or its walls alone (25%), and, where the table
+  has masonry, its walls taken as masonry three times in ten;
+- what was seen drawn from its chances, with a chance of misreading (4% for glass, 6% for walls,
+  spread over the classes) that keeps every likelihood at least 0.02 from 0 and 1, as the full
+  inference's floor does. A building heavily damaged is said heavy half the time and damaged
+  otherwise.
+
+### The network: each mark's likelihood by its distance, summed
+
+The task is a set of any size, each element a building's place, construction and what was seen,
+with any part unseen. Three set encoders were tried, all to the same grid over the place (32 × 32
+cells of 31 m over the 500 m disc) and the log yield:
+
+- **Pooled** (deep sets): each mark through a small network, the set's mean and maximum through a
+  second to each cell's probability and a normal for the log yield there. On the first made-up table,
+  6,000 steps, its intervals were calibrated but nearly as wide as the prior, and it barely firmed
+  up with marks: pooling has to rediscover where each mark is.
+- **Surfaces**: each mark gives its own log likelihood over the cells (a map of offsets and slopes,
+  read as log sigmoid(a + b t) at standardised log yield t), the marks' summed. The sum is right
+  (the marks are independent given the charge), but a map read straight off a mark's coordinates
+  learns slowly (loss 8.73 after 6,000 steps).
+- **Distance** (adopted): a mark's likelihood depends on the cell only through the distance r
+  between the building and the charge there. A network 64 wide, twice, of the mark's own features
+  (log height, log footprint, the share built round it, its walls, what was seen) and of r gives two
+  offsets and slopes, and the likelihood at standardised log yield t is
+  0.02 + 0.98 σ(a₁ + b₁ t) σ(a₂ + b₂ t). Two sigmoids give a bump, as "damaged but not heavily"
+  needs; the floor is the misreading's. The marks' log likelihoods are summed over the cells and 32
+  bins of log yield, and the posterior is the sum's softmax.
+
+The distance network has 5,316 weights. It reached loss 7.27 in 3,000 steps on the same table and
+came within a factor 1.1 of the full posterior's yield there. It is translation- and
+rotation-invariant: it is the same at any place, in any district, about any reference, and weighs
+any number of marks with no grouping. The cost of that: it cannot know which buildings shield which.
+The full posterior on the same chances does, and is the sharper by what shielding tells
+([below](#calibration-and-agreement-with-the-full-posterior)).
+
+In the app's code the network is evaluated at 96 distances (1 m to 8 km, even in ln r) once per
+mark and read linearly in ln r for each cell, as training reads it; sigmoids and logarithms are
+tabulated. The weights are float16 in a `.bccd` file (a JSON header, then the tensors), 10 KB of
+weights plus four cases' outputs for the test against PyTorch, which agree to 6 × 10⁻⁶ (relative).
+
+**Training.** `Scripts/ml/train_charge.py` on bombcad-pc (RTX 3080 Ti) through
+`Scripts/ml/remote-train.py`: AdamW, one-cycle at 3 × 10⁻³, batches of 96 cases each from one table
+in turn, the eight turns and flips of the square at random. The final network (`charge-net-2`)
+trained on Beirut and the four made-up districts, the mixed district held out, 10,000 steps in 19
+minutes (the PC's CPU shared with the tables' sweep). A network trained without Beirut
+(`charge-net-made`, 8,000 steps, 13 minutes) was judged on Beirut too.
+
+### Calibration and agreement with the full posterior
+
+`charge-from-damage judge`, 300 held-out cases for each number of marks on each district, drawn
+from another seed. "Full" is the exact posterior on the table's own chances, cell by cell (four
+points to a cell) and on 46 log yields: the full inference on the same marks, with every building's
+own shielding. 300 held-out cases for each number of marks on each district, drawn from another
+seed than training's; the marks 1–64 at random:
+
+| District | Learned: place in 50% / 90% | yield in 50% / 90% | Full: place | yield | Yields' medians apart (median, 90th) | Places apart (median) |
+|---|---|---|---|---|---|---|
+| beirut | 0.49 / 0.87 | 0.47 / 0.88 | 0.52 / 0.87 | 0.49 / 0.85 | ×1.17, ×1.45 | 15 m |
+| made-perimeter-s3 | 0.50 / 0.89 | 0.46 / 0.90 | 0.49 / 0.88 | 0.51 / 0.92 | ×1.13, ×1.43 | 18 m |
+| made-grid-s4 | 0.50 / 0.88 | 0.50 / 0.90 | 0.49 / 0.88 | 0.51 / 0.92 | ×1.08, ×1.23 | 11 m |
+| made-towers-s5 | 0.45 / 0.89 | 0.49 / 0.91 | 0.47 / 0.90 | 0.49 / 0.93 | ×1.09, ×1.29 | 10 m |
+| made-industrial-s6 | 0.47 / 0.89 | 0.45 / 0.89 | 0.48 / 0.88 | 0.47 / 0.90 | ×1.09, ×1.26 | 13 m |
+| made-mixed-s7 (never trained on) | 0.50 / 0.89 | 0.52 / 0.89 | 0.54 / 0.89 | 0.52 / 0.92 | ×1.12, ×1.35 | 16 m |
+
+- **Calibrated.** On every district the truth falls in the learned 50% regions and intervals
+  0.45–0.52 of the time and in the 90% ones 0.87–0.91, as often as in the full posterior's
+  (0.47–0.54 and 0.85–0.93). (With 300 cases a share of 0.9 is good to about ±0.02.) By the
+  number of marks it stays so: on Beirut 0.87–0.91 at 90% for the place and 0.87–0.91 for the yield
+  with 1, 3, 10 or 30 marks; on the mixed district, never trained on, 0.88–0.92 and 0.88–0.93.
+- **Close to the full posterior.** The two yields' medians are a factor 1.08–1.17 apart (median
+  case), at most 1.23–1.45 in nine cases of ten, and their mean places 10–18 m apart. The network
+  is barely wider: knowing which buildings shield which adds little once the marks are many and
+  scattered.
+- **The district it never saw** (made-up, mixed styles, a valley) is judged as well as those it
+  trained on.
+- **Beirut needs Beirut.** The network trained only on made-up districts, judged on Beirut's cases:
+  its 90% regions held the place 0.75 of the time with 30 marks (0.85 over all), and its yield came
+  a factor 1.36 from the full posterior's, against 1.17 once Beirut is in training. Beirut's
+  buildings are larger and taller, and its stone walls are judged as masonry.
+
+**How fast it firms up** (the median case; "high/low", the 90% interval's top over its bottom):
+
+| District | Marks | Learned: 90% yield high/low | 90% place radius | Full: 90% yield high/low | 90% place radius | Median found/true yield (learned) | Learned, ms (all marks; one added) | Full, ms |
+|---|---|---|---|---|---|---|---|---|
+| beirut | 1 | 445 | 472 m | 452 | 472 m | 1.03 (0.07–15.49) | 0.3; 0.34 | 1.1 |
+| beirut | 3 | 99 | 467 m | 101 | 466 m | 1.14 (0.16–6.73) | 0.6; 0.34 | 1.6 |
+| beirut | 10 | 32 | 448 m | 30 | 445 m | 0.97 (0.22–3.84) | 1.9; 0.35 | 2.8 |
+| beirut | 30 | 12 | 400 m | 12 | 398 m | 1.25 (0.44–2.82) | 5.7; 0.35 | 6.3 |
+| made-perimeter-s3 | 1 | 513 | 471 m | 522 | 471 m | 0.90 (0.06–11.09) | 0.3; 0.34 | 1.1 |
+| made-perimeter-s3 | 3 | 97 | 450 m | 109 | 449 m | 0.89 (0.14–4.62) | 0.6; 0.34 | 1.5 |
+| made-perimeter-s3 | 10 | 23 | 392 m | 24 | 380 m | 0.88 (0.28–3.16) | 1.9; 0.36 | 2.7 |
+| made-perimeter-s3 | 30 | 6 | 264 m | 6 | 243 m | 0.93 (0.43–2.17) | 5.8; 0.36 | 5.8 |
+| made-grid-s4 | 1 | 524 | 471 m | 480 | 470 m | 0.98 (0.07–13.28) | 0.3; 0.34 | 1.1 |
+| made-grid-s4 | 3 | 97 | 447 m | 99 | 446 m | 0.90 (0.15–6.69) | 0.6; 0.34 | 1.5 |
+| made-grid-s4 | 10 | 21 | 383 m | 21 | 380 m | 0.93 (0.30–3.11) | 1.9; 0.36 | 2.7 |
+| made-grid-s4 | 30 | 6 | 255 m | 6 | 244 m | 1.10 (0.48–2.52) | 5.8; 0.36 | 6.1 |
+| made-towers-s5 | 1 | 1278 | 470 m | 1210 | 470 m | 0.91 (0.07–25.61) | 0.3; 0.34 | 1.1 |
+| made-towers-s5 | 3 | 146 | 455 m | 130 | 455 m | 0.94 (0.11–6.94) | 0.6; 0.34 | 1.5 |
+| made-towers-s5 | 10 | 23 | 397 m | 21 | 397 m | 0.97 (0.30–4.07) | 1.9; 0.36 | 2.7 |
+| made-towers-s5 | 30 | 7 | 297 m | 7 | 285 m | 0.94 (0.48–2.15) | 5.9; 0.37 | 6.0 |
+| made-industrial-s6 | 1 | 577 | 471 m | 556 | 471 m | 1.21 (0.09–22.26) | 0.3; 0.34 | 1.1 |
+| made-industrial-s6 | 3 | 101 | 456 m | 100 | 456 m | 0.84 (0.12–6.29) | 0.6; 0.34 | 1.5 |
+| made-industrial-s6 | 10 | 24 | 399 m | 26 | 400 m | 1.08 (0.22–4.71) | 1.9; 0.36 | 2.7 |
+| made-industrial-s6 | 30 | 8 | 290 m | 8 | 282 m | 1.06 (0.48–2.27) | 5.9; 0.36 | 5.9 |
+| made-mixed-s7 | 1 | 503 | 470 m | 585 | 470 m | 0.88 (0.08–15.07) | 0.3; 0.34 | 1.1 |
+| made-mixed-s7 | 3 | 103 | 448 m | 104 | 446 m | 0.82 (0.13–5.15) | 0.6; 0.34 | 1.5 |
+| made-mixed-s7 | 10 | 23 | 391 m | 24 | 385 m | 0.85 (0.24–3.02) | 1.9; 0.36 | 2.7 |
+| made-mixed-s7 | 30 | 7 | 260 m | 7 | 247 m | 0.95 (0.44–2.11) | 5.9; 0.36 | 6.0 |
+
+
+- One mark leaves the yield open over a factor of 450–1,300 and the place nearly anywhere in the
+  disc; three marks narrow the yield to a factor of about 100, ten to 20–30, thirty to 6–12. The
+  place firms up more slowly: the 90% region's radius falls from 470 m to 250–300 m with 30 marks on
+  the made-up districts, and to 400 m on Beirut, whose buildings near the port are few. Marks drawn
+  about a focus that knows nothing of the charge are a hard case: a user who marks the damaged
+  buildings near the blast tells it more.
+- The full posterior firms up at the same pace.
+
+**Time.** In Swift on the Studio's CPU (loaded), one core: 0.3 ms for one mark, 2 ms for 10 and
+6 ms for 30, recomputed from nothing. A mark added to the others' summed likelihood costs 0.35 ms,
+which is what the app pays per click. The full posterior on the table takes 1–6 ms on the made-up
+tables' 1,000 buildings and is possible only for buildings the table holds.
+
+### On Beirut's surveys
+
+GEER's surveys put on the table's buildings (`charge-from-damage table … --geer … --structure …
+--marks-out`): 1,351 buildings' glass (broken where any of their façades was classed W1 or worse,
+657 broken) and 139 buildings' walls: concrete frames D0–D1 undamaged, D2 damaged, D3 or worse
+heavy (91), and stone bearing walls, as masonry, D3 or worse heavy, the rest undamaged (48), as the
+stone was weighed before ([above](#beiruts-surveyed-damage-20-october-2026)). A class straddling the
+line is left out. In the order of a fixed shuffle, the first 1, 3, 10, 30 and all (`infer`):
+
+| Marks | Learned: yield (90%), place free | Full: yield (90%), place free | Learned, place held at Warehouse 12 | Full, place held |
+|---|---|---|---|---|
+| Stone walls, 1 | 1.04 kt (0.01–2.95) | 0.98 kt (0.002–3.26) | 1.10 kt (0.02–2.95) | 1.05 kt (0.002–3.27) |
+| Stone walls, 3 | 1.14 kt (0.28–2.88) | 1.44 kt (0.30–3.29) | 1.23 kt (0.40–2.86) | 1.68 kt (0.45–3.34) |
+| Stone walls, 10 | 0.69 kt (0.25–1.74) | 0.85 kt (0.30–2.13) | 0.60 kt (0.34–1.16) | 0.71 kt (0.38–1.37) |
+| Stone walls, 30 | 0.64 kt (0.34–1.52) | 0.78 kt (0.39–1.69) | 0.82 kt (0.54–1.22) | 0.93 kt (0.61–1.38) |
+| **Stone walls, all 48** | **0.69 kt (0.29–1.62)**, 141 m S of the warehouse | 0.70 kt (0.33–1.62), at it | **0.70 kt (0.49–0.89)** | 0.80 kt (0.60–1.06) |
+| All walls, 139 (concrete too) | 2.69 kt (1.83–3.21) | 2.17 kt (1.87–2.81) | 2.04 kt (1.71–2.80) | 1.86 kt (1.01–2.27) |
+| Glass, 30 | 20 t (9–39) | 20 t (9–36) | 16 t (10–25) | 14 t (9–20) |
+| Glass, all 1,351 | 30 t (25–34) | 32 t (29–36) | 21 t (18–25) | 16 t (15–18) |
+| Everything, 1,435 | 30 t (25–34) | 32 t (29–36) | 21 t (18–25) | 16 t (15–18) |
+
+The accepted figures: 0.50–0.54 kt from the arrivals here (90%: 0.36–0.85), Rigby et al.'s 0.50 kt
+(1.12 upper), Stennett et al.'s 0.64 kt, Pilger et al.'s 0.13–2 kt; Warehouse 12.
+
+- **The stone finds Beirut.** From the 48 stone buildings alone the network gives 0.69 kt with the
+  place free (90%: 0.29–1.62) and its most likely cell 141 m south of the warehouse; with the place
+  held, 0.70 kt (0.49–0.89). The full posterior on the same chances gives 0.70 and 0.80 kt, and
+  `damage-yield`, weighing the same stone by the full look at the warehouse, 0.69 kt (0.54–0.88). It
+  firms up as a user would see it: a factor of 200 after one wall, 0.25–1.7 kt after ten, 0.3–1.5 kt after thirty.
+- **Read D2 as damaged and the stone reads 2.0–2.5 kt.** The model's masonry walls go from
+  undamaged to heavily damaged at once (their moderate and heavy chances are the same), so a stone
+  building GEER classed D2 is, to the model, as damaged as a D3. Against the line the stone was
+  calibrated at, D3, it is undamaged. Which a user means by "damaged" for a stone building matters
+  by a factor of three.
+- **The glass reads tens of tonnes, as the full inference's does.** 16–32 t, 15–30 times too small:
+  the quick estimate's glass breaks far more than GEER's survey counts, as the side-by-side
+  inference found (0.030–0.076 kt, [above](#on-the-clear-top-façade-terms-25-october-2026)). With
+  1,351 glass marks against 48 stone ones the glass decides any mixture. It is the quick estimate's
+  bias, which the network inherits faithfully.
+- **Concrete pushes the walls high** (1.9–2.7 kt with them), as `damage-yield` found (3–5 kt): no
+  infill walls.
+- **Learned and full agree on the real marks** as on drawn ones: within a factor 1.4 on every row.
+
+So on a real event the network is as good as the quick estimate's chances, no better: stone walls
+read at D3 give the yield and place; glass does not.
+
+### Standing and what is next
+
+**Illustrative.** Calibrated against the quick estimate's own chances, and within about 10–20% of
+the full posterior on them, on Beirut, on four made-up districts and on one it never saw; on
+Beirut's survey right from stone walls read at their calibrated line, and 15–30 times low from
+glass. The standing is the quick estimate's, carried through.
+
+What it does not do:
+- **No shielding.** A mark is known by its distance and its own building. Close in among tall
+  buildings, the full posterior is the sharper.
+- **Its reach.** Charges within 500 m of the reference, 100 kg to 3.3 kt, the yield's prior flat
+  in its logarithm and the place's flat over the disc. A charge beyond is put at the disc's edge.
+- **Marks taken as independent given the charge,** as the full inference takes them: a survey's
+  neighbours, which err together, make it too sure (1,351 glass marks give a 90% interval of a
+  factor 1.3).
+- **In the app** it is not yet: the weights are not shipped, and the panel to mark buildings is
+  planned (emmettl/bombcad-work#116).
+
+The tables, sweeps and judgements are in `$BOMBCAD_DATA/scratch/issue116`; the networks in
+`$BOMBCAD_DATA/ml/charge-net-2` and `ml/charge-net-made` (`out/charge-net.bccd`, 189 KB with its
+reference cases).
+
 ## What it cannot do
 
 - **One source, at the surface or at a slant range.** A charge above the ground is taken as a
@@ -429,6 +695,8 @@ last estimate, until the yield moves under 5% (at most three runs):
   Arrivals… weighs a survey on the scene's own buildings ([below](#in-the-app)) without a run near
   the estimate. On BombCAD's own runs, the glass alone placed the charge 20–70 m off, and a run there
   did not help it (above).
+- **The learned reading of marks** ([above](#the-charge-from-marked-damage-learned-1-november-2026))
+  is as good as the quick estimate's chances it learned, and knows no shielding.
 - **Walls as a check, and stone only.** Beirut's stone buildings say a yield consistent with the
   arrivals. Its concrete buildings say 3–5 kt, because the model has no infill walls
   ([above](#beiruts-surveyed-damage-20-october-2026)).

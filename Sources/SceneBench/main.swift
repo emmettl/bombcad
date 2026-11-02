@@ -58,6 +58,10 @@ enum SceneBench {
             try InferChargeStudy.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "charge-from-damage" {
+            try ChargeFromDamageStudy.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "infer-charge" {
             try InferCharge.run(Array(args.dropFirst()))
             return
