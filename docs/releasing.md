@@ -153,6 +153,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.7.3 (18) | `a36961f9` | `3341c693-61a6-4abc-9ead-e1dd8284a3ca` | Published as v0.7.3           |
 | 0.7.4 (19) | `56cc7a8e` | `5867f3cd-4763-4bf6-bcbb-1662511d8dca` | Published as v0.7.4           |
 | 0.7.5 (20) | `9a069d5b` | `cda8ce69-c963-4916-950c-287101cb74a7` | Published as v0.7.5           |
+| 0.8.0 (21) | `9651365d` | `8f6599b4-9d29-4b36-acb7-27ec3d29a691` | Published as v0.8.0           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -431,6 +432,23 @@ stapled ticket, passed `codesign --verify --deep --strict`, was accepted by `spc
 2026-11-01 at the user's word, with tag `v0.7.5` on `9a069d5b`, as the latest release, its notes'
 links pointing at the docs as tagged. The copy downloaded back matched the checksum. The Homebrew
 tap's cask is 0.7.5, with the release's checksum, and `brew audit --cask --strict --online` passed.
+
+Build 21 (0.8.0) was prepared on 2026-11-02 from `9651365d` on main (in the worktree
+`$BOMBCAD_DATA/release-0.8.0`), with its notes assembled from eleven fragments, the explorer first;
+the explorer's notes and the learned response's small cells, the live wave and its learned
+refinement, and the live drag, the instant what-ifs and the fire's what-if each merged into one
+entry, and landed with the version by `make ship`. `make release` ran once, from an agent's shell
+outside `gpu-slot`, with notarytool finding the profile there. It passed `make check` (483 app,
+1021 model and 672 core GPU tests, build-strict with no warnings; the log's "Full check: FAILED" is
+`test-nightly-suspects`' fixture, as before), the release smoke runs, and the app's own run and
+interface smoke from inside its bundle. Apple accepted it (submission
+`8f6599b4-9d29-4b36-acb7-27ec3d29a691`). A fresh expansion of its ZIP (44,535,908 bytes) matched
+the checksum (`981f32e8bf7124d2b8863272b3fa85e889bd16c1d9a69c288f7b7669d1ab4a18`), validated its
+stapled ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, carries its licence, and is 0.8.0, build 21. It was published on
+2026-11-02 at the user's word, with tag `v0.8.0` on `9651365d`, as the latest release, its notes'
+links pointing at the docs as tagged. The copy downloaded back matched the checksum. The Homebrew
+tap's cask is 0.8.0, with the release's checksum, and `brew audit --cask --strict --online` passed.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
