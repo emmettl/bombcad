@@ -21,6 +21,16 @@ and bundles it with the app; later builds verify and reuse the cache. When using
 run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 [Releasing](releasing.md) describes signed, notarized builds for other Macs.
 
+## The explorer and the workbench
+
+A new, blank window opens on the **explorer**, a first look for someone new to blast
+([the explorer](explorer.md)): a built-in scene, a charge put in it by a click or a named place, the
+wave played with captions, then the glass, the walls, the people and the fire in plain words, each
+with how sure the model is, and comparisons against a pinned picture. **View ▸ Workbench** (⌃⌘W, or
+the toolbar's Workbench) opens the full app in the same window, as described below, and **View ▸
+Explore** (⌃⌘E) goes back; new blank windows open as last chosen. A saved project, or one made by
+File ▸ New District or an import, opens in the workbench.
+
 ## The view and the sidebar
 
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse

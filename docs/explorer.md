@@ -164,8 +164,10 @@ Where it falls short:
 - **The wave while dragging on Beirut.** Dragging on cells twice as coarse is already the default.
   A Beirut cropped to 1.5 km has about a third of the cells, which would put a recompute near 30 ms
   (an estimate, not measured). The colours keep up in any case.
-- **The fire while anything moves.** Twenty draws would take about 21 ms. Another agent is changing
-  the fire's preview now, and the explorer should take what that lands.
+- **The fire while anything moves.** Fewer draws is not the way. Measured, 20 draws in place of 40
+  saved only about 2 ms of a frame, since about 38 ms of each is set-up, and they lost 2–4 points of
+  agreement. Another agent is building a fast path for the fire that keeps the set-up between frames,
+  aiming at 5–10 ms a frame. The explorer takes what that lands, and touches no fire code.
 - **The GPU is shared.** A colours frame's 11 ms of GPU comes on top of the scene's 19 ms, so 30 ms
   together is close to the limit at 1800 × 1200.
 - **Nothing has been measured on the M2 Air.** Stage 2 should time the square there.
@@ -214,6 +216,19 @@ This follows the [offscreen pass of 1 November](native-interface-review.md#offsc
    second on all of Beirut, or to crop the explorer's Beirut to 1.5 km. For the fire, the
    recommendation is 20 preview draws while anything moves, after the other agent's change lands.
 
+### Decided (2 November 2026)
+
+The user said yes to the five recommendations, with one change for the fire:
+
+1. An Explore mode in the same app, opened at first launch, with the workbench a menu item away.
+2. The street and the square built in. Beirut cropped to 1.5 km as a release asset, fetched under
+   one prompt with the live wave's weights, and opened with the short factual line.
+3. People shown only as where they are hurt and how much a change helps, never as counts or shares.
+4. Charge sizes in steps of 50 kg, 500 kg, 5 t and 500 t of TNT, with the slider between. No weapons
+   or vehicles named.
+5. Beirut cropped to 1.5 km, and its recompute measured. The fire is not to take 20 draws (see
+   section 5): its own fast path is another agent's work.
+
 ## 8. Proposed stage 2: the square, end to end
 
 1. **The scene.** A seeded made-up square, a new style in `Scripts/ml/make_district.py`: 80–150 buildings, blocks of four
@@ -233,3 +248,104 @@ This follows the [offscreen pass of 1 November](native-interface-review.md#offsc
    user builds there), and record them in this doc.
 7. **Release note and stop.** Add a fragment, then stop for the user's review with the captures.
    The street and Beirut follow as stage 3.
+
+## Stage 2: the square, end to end (2 November 2026)
+
+Built as section 8 proposed, the explorer opens on a new, blank window. View ▸ Explore (⌃⌘E) and
+View ▸ Workbench (⌃⌘W, or the toolbar's Workbench) switch a window between the two, and new blank
+windows open as last chosen. A saved project, or one made by New District or an import, opens in the
+workbench.
+
+![The square at 500 kg, a third of the way through the wave: the front sweeping out from the
+middle of the square, the blocks' shadows behind them](explorer/square-wave-035.png)
+
+**The scene.** `ExplorerScene.square` (BlastModel) builds 398 made-up buildings from a fixed seed,
+not from a file. They make a grid of 70 m blocks with 14 m streets and an open square at the
+middle. The block north of the square has a 32 m glass office facing it, the block east is a
+terrace of brick houses, the block west is shops, and the rest are flats of 9–18 m, two in five of
+them brick. The scene is laid out as New District lays out a map, on 2 m cells within 300 m, with
+the outlines kept, and it opens with 500 kg in the middle of the square. Four named places are for
+the keyboard and VoiceOver: the middle, outside the office, the corner, and the street behind the
+terrace. `blastmodel explorer-scene --out folder` writes the scene as an OpenStreetMap file for the
+benches.
+
+**Judged held out.** The learned response never saw the square. Each figure below is the share
+within 0.1 of the full estimate, which drew 100 times with the yield within ×1.5. The charge stood
+in the middle of the square and in the street behind the terrace (`scenebench drag-time --osm …
+--dx 2 --radius 300 --live --agreement`, under `$BOMBCAD_DATA/explorer/`). The two ranges are for
+those two places.
+
+| Within 0.1 of the full estimate | 500 kg, learned | 500 kg, CPU preview (20 draws) | 5 t, learned | 5 t, CPU preview |
+|---|---|---|---|---|
+| Glass, some broken | 84–88% | 77–80% | 100% | 99–100% |
+| Glass blown out | 82–83% | 71–76% | 76–78% | 82% |
+| Walls moderate or worse | 71–77% | 81–88% | 58–63% | 81–85% |
+| Roof moderate or worse | 92–98% | 99% | 57–68% | 96% |
+| Damage colour the same | 94–95% | 93–95% | 89–95% | 89–98% |
+
+At 500 kg the learned response matches the full estimate more closely than the CPU's preview on the
+glass, and less closely on the walls. At 5 t it falls behind the CPU on the blown-out glass, the walls
+and above all the roofs, to 57–68% within 0.1. That is further from the full estimate than on Beirut or
+on the held-out made-up district of the what-ifs. The likely reason is the square's 2 m cells and its
+small, close charges, outside what the networks were trained on; this has not been confirmed. The live
+colours and the CPU preview's own differ on only 2–3 of the 398 buildings, so the gap at 500 kg lies in
+the preview's approximation (each side judged by its nearest component), not in the networks. The
+full estimate follows each change in seconds, and the explorer says "Refining…" until it arrives.
+
+**The words and the reach.** `ExplorerWords` holds every sentence in section 3 and builds the "How
+sure?" lines from the standing table's figures. Tests on Linux check that the sentences carry those
+figures. `ExplorerReach` gives how far out the windows break from the estimate's glass chances: the
+furthest distance at which, over the sides from four-fifths of that distance out to it, a side is
+more likely than not to have some glass broken, and likewise for blown in. At 500 kg on the square,
+"Windows break out to about 210 m from the charge; most are blown in to about 95 m."
+
+**The comparisons.** Each comparison pins the picture and makes one change. The view then colours
+each building better, the same or worse, and a line says what changed:
+
+- **Twice the charge**, 500 kg to 1 t. Windows already break across the whole square at 500 kg, so
+  the line falls back to the windows blown in: "they are now blown in out to about 130 m, against
+  95 m before: about a third further, not twice as far." The cube-root rule follows. Doubling the
+  charge also gives "About 46% more people hurt than before".
+- **Behind a building**, the charge moved into the street behind the brick terrace. Windows fare
+  better at 267 buildings and worse at 77, with 63% fewer people hurt.
+- **Glass with film**, 8 mil film, wet glazed. The film cracks as plain glass does, so the glass
+  broken does not change. What changes is the glass thrown into the rooms (GSA 3b): less of it at
+  335 of the 398 buildings. **The people estimate cannot show film helping**: it counts the panes
+  broken, by Kummer's rates, not where the glass goes, and the line says so. This is a limit of the
+  people model that the explorer has brought out, not something it hides.
+
+**Frame times on the Studio** (release build, offscreen, `InterfaceReviewExplorerTests`, at a load
+average of 14–18; the wave with its learned refinement):
+
+| Step | Measured | 30 fps? |
+|---|---|---|
+| Opening the square, from the layout to the estimate and the wave | 7.1–8.4 s; the full estimate's part 1.3–2.9 s | Once |
+| A frame at 1800 × 1200, glass coloured, wave drawn | 5.2–9.6 ms GPU | Yes |
+| Dragging, the preview from charge moved to colours shown | 4–9 ms median (2–14) | Yes |
+| Dragging, the wave from charge moved to shown (4 m cells, refined) | 8–16 ms median (7–19) | Yes |
+| The first wave, refined | 65–286 ms; its network's graph is built once | Once |
+
+On the square everything keeps up while dragging: the colours and the wave together take about
+20 ms. The fire's draws were not timed separately, since the fire's fast path is another agent's work.
+Nothing was measured on the M2 Air.
+
+**Beirut cropped to 1.5 km** (the decision of section 7; `scenebench live-wave-time --radius 1500
+--mass 500000 --learned`, 4,177 buildings on a 3 km box with its faces at the buildings) is
+0.56 million cells at 4 m. That is over the drag's 500,000, so a drag works on 8 m cells: 32 ms
+median (30–33) for a recompute with the refinement, against 81–82 ms on the whole district. Let go,
+it is 118 ms on 4 m cells. A box laid out as New District lays one out, with its faces 4 m/kg^(1/3)
+clear, would hold about half as many cells again. So a cropped Beirut brings the wave close to 30
+frames a second while dragging; this was measured headless, not yet in the app.
+
+**Accessibility.** The 3D view reads the explorer's summary ("A square; 500 kg of TNT in the middle
+of the square; showing the glass; Windows break out to about 210 m…"). The wave's last caption is
+announced when it ends. With Reduce Motion the wave is shown whole rather than played. The charge can
+be put at a named place or moved 10 m at a time by buttons, and every control is named once.
+`AccessibilityTreeTests` reads the scenes, the sidebar at each layer, the sidebar with a picture
+pinned, and the window, and `AccessibilityLabelTests` passes over the new sources. VoiceOver on a
+real screen is still the user's check.
+
+**Not done in this stage.** The faint ring at the old reach, the street, and Beirut as a release
+asset (stage 3). People are coloured by the share hurt on the chances' ramp, but the legend shows no
+numbers. The explorer does not keep its settings in the project, and switching to the explorer
+leaves the project's untitled document changed to the scene.

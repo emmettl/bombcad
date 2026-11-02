@@ -101,6 +101,36 @@ struct AccessibilityTreeTests {
         #expect(chart.contains { $0.role == "AXStaticText" && $0.value == "5 m, no peak yet" })
     }
 
+    @Test("The explorer: its scenes, then the square's sidebar at each layer and with a picture pinned")
+    func explorer() async throws {
+        let model = SimulationModel(document: ProjectDocument.newProject())
+        let explorer = ExplorerModel(model: model)
+        let scenes = await expectNamed(
+            "Explorer, scenes", width: 1200, height: 800, ExplorerWindow(explorer: explorer) {})
+        #expect(scenes.contains { $0.name.hasPrefix("A square: ") })
+        explorer.reduceMotion = true
+        await explorer.open(.square)
+        while model.estimatingEnvelopeDamage || model.isLoadingInputs || model.envelopeEstimateIsPreview {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        for layer in ExplorerWords.Layer.allCases {
+            explorer.layer = layer
+            let sidebar = await expectNamed(
+                "Explorer, \(layer.title.lowercased())", width: 340, height: 1400,
+                ExplorerSidebar(explorer: explorer, showWorkbench: {}))
+            #expect(sidebar.contains { $0.name == "Charge" && $0.read.hasSuffix("kg of TNT") })
+        }
+        explorer.pin()
+        _ = await expectNamed(
+            "Explorer, pinned", width: 340, height: 1400,
+            ExplorerSidebar(explorer: explorer, showWorkbench: {}))
+        let window = await expectNamed(
+            "Explorer, the square", width: 1200, height: 800, ExplorerWindow(explorer: explorer) {})
+        let view = try #require(window.first { $0.name == "3D view" })
+        #expect(view.read.hasPrefix("A square; 500 kg of TNT"), "\(view.read)")
+        #expect(window.contains { $0.name.hasPrefix("Colour key: ") })
+    }
+
     @Test("Sheets and windows: comparison, export, sweep, import, help, settings, New District")
     func sheets() async throws {
         var document = ProjectDocument(scenario: ScenarioPreset.openGround.scenario)

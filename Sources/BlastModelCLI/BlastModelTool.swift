@@ -61,6 +61,10 @@ enum BlastModelTool {
             CraterStudies.cooper1976
         ),
         (
+            "explorer-scene", "an explorer scene written as a map, for the benches to judge",
+            ExplorerSceneStudy.run
+        ),
+        (
             "glass-sandia", "the envelope's glass against Sandia's 1998 windows and their speeds",
             SandiaGlassStudy.run
         ),

@@ -35,12 +35,23 @@ final class ProjectSession {
         /// Where the project is saved, for its kept runs' timelines; nil until it is.
         var fileURL: URL? = nil
         @State private var session: ProjectSession?
+        /// The explorer or the workbench (emmettl/bombcad-work#114): a new, blank project opens as the
+        /// user last chose, the explorer until then; a saved or made project in the workbench.
+        @State private var mode = WindowMode.workbench
+        @State private var explorer: ExplorerModel?
 
         var body: some View {
             Group {
                 if let session {
-                    ContentView(model: session.model)
-                        .focusedSceneValue(\.simulationModel, session.model)
+                    Group {
+                        if mode == .explore, let explorer {
+                            ExplorerWindow(explorer: explorer) { show(.workbench) }
+                        } else {
+                            ContentView(model: session.model)
+                        }
+                    }
+                    .focusedSceneValue(\.simulationModel, session.model)
+                    .focusedSceneValue(\.windowMode, WindowModeChoice(mode: mode, choose: show))
                 } else {
                     ProgressView("Opening project…")
                 }
@@ -48,7 +59,11 @@ final class ProjectSession {
             .frame(minWidth: 1000, minHeight: 640)
             .task {
                 // Defer expensive GPU construction until this window actually appears.
-                if session == nil { session = ProjectSession(document: document) }
+                if session == nil {
+                    let blank = fileURL == nil && document.scenario == ProjectDocument.newProject().scenario
+                    session = ProjectSession(document: document)
+                    if blank, WindowMode.remembered == .explore { show(.explore, remember: false) }
+                }
                 session?.model.packageURL = fileURL
             }
             .onChange(of: fileURL) { _, url in session?.model.packageURL = url }
@@ -58,8 +73,42 @@ final class ProjectSession {
             .onDisappear { session?.suspend() }
             .onChange(of: document) { _, incoming in session?.receive(incoming) }
         }
+
+        /// Shows the explorer or the workbench, and remembers the choice for new windows.
+        private func show(_ next: WindowMode) { show(next, remember: true) }
+
+        private func show(_ next: WindowMode, remember: Bool) {
+            guard let session else { return }
+            if next == .explore, explorer == nil { explorer = ExplorerModel(model: session.model) }
+            if next == .workbench {
+                // The workbench colours as its own sidebar says.
+                session.model.explorerColouring = nil
+                session.model.showsEnvelopeDamage = true
+            } else {
+                explorer?.applyLayer()
+            }
+            mode = next
+            if remember { WindowMode.remember(next) }
+        }
     }
 #endif
+
+/// The window's mode and how to change it, for View ▸ Explore and View ▸ Workbench.
+struct WindowModeChoice {
+    var mode: WindowMode
+    var choose: (WindowMode) -> Void
+}
+
+private struct WindowModeFocusKey: FocusedValueKey {
+    typealias Value = WindowModeChoice
+}
+
+extension FocusedValues {
+    var windowMode: WindowModeChoice? {
+        get { self[WindowModeFocusKey.self] }
+        set { self[WindowModeFocusKey.self] = newValue }
+    }
+}
 
 private struct SimulationModelFocusKey: FocusedValueKey {
     typealias Value = SimulationModel
@@ -74,8 +123,19 @@ extension FocusedValues {
 
 struct SimulationCommands: Commands {
     @FocusedValue(\.simulationModel) private var model
+    @FocusedValue(\.windowMode) private var windowMode
 
     var body: some Commands {
+        // The explorer for someone new to blast, or the full app (emmettl/bombcad-work#114).
+        CommandGroup(before: .toolbar) {
+            Button("Explore") { windowMode?.choose(.explore) }
+                .keyboardShortcut("e", modifiers: [.command, .control])
+                .disabled(windowMode == nil || windowMode?.mode == .explore)
+            Button("Workbench") { windowMode?.choose(.workbench) }
+                .keyboardShortcut("w", modifiers: [.command, .control])
+                .disabled(windowMode == nil || windowMode?.mode == .workbench)
+            Divider()
+        }
         CommandGroup(replacing: .undoRedo) {
             Button("Undo Edit") { model?.undo() }
                 .keyboardShortcut("z")

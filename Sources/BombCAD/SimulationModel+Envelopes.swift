@@ -85,6 +85,16 @@ extension SimulationModel {
             renderer?.setEnvelopeDamage([:])
             return
         }
+        // The explorer's colouring, when it has the chances it colours by.
+        switch explorerColouring {
+        case .glass? where !envelopeGlassChances.isEmpty:
+            renderer?.setEnvelopeDamage(ExplorerColours.glassCodes(envelopeGlassChances))
+            return
+        case .change(let pinned, let measure)? where !envelopeGlassChances.isEmpty:
+            renderer?.setEnvelopeDamage(pinned.change(to: explorerSnapshot, measure: measure).codes)
+            return
+        default: break
+        }
         // A preview's loads are not the estimate's: judged again once the full estimate is in.
         if envelopeColouring == .couldFlip, !envelopeEstimateIsPreview {
             if let envelopeDoubt {

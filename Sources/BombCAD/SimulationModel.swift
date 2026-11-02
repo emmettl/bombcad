@@ -676,6 +676,12 @@ final class SimulationModel {
     var envelopeColouring = EnvelopeColouring.damage {
         didSet { applyEnvelopeDamageColours() }
     }
+    /// The explorer's own colouring over the envelopes' (emmettl/bombcad-work#114;
+    /// `ExplorerModel`): each side's glass as one score, or each building better, the same or worse
+    /// than a pinned picture; nil in the workbench, where `envelopeColouring` alone decides.
+    var explorerColouring: ExplorerColouring? {
+        didSet { if explorerColouring != oldValue { applyEnvelopeDamageColours() } }
+    }
 
     /// Each building side's glass chances from the quick estimate (`FacadeLoadSurrogate`'s
     /// draws), the glass alone; empty without one.
