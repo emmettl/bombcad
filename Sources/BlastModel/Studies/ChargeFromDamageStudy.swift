@@ -12,9 +12,9 @@ import simd
 ///     [--part k/n] [--full] [--masonry-only --objects i,j,…] --out table.bcct
 /// charge-from-damage merge --out table.bcct part.bcct…
 /// charge-from-damage merge-masonry --table t.bcct --masonry m.bcct --out u.bcct
-/// charge-from-damage judge --tables a.bcct,b.bcct --weights net.bccd [--cases 300] [--counts 1,3,10,30]
+/// charge-from-damage judge --tables a.bcct,b.bcct [--weights net.bccd] [--cases 300] [--counts 1,3,10,30]
 ///     [--seed 7] [--out judge.json]
-/// charge-from-damage infer --weights net.bccd --marks marks.csv [--table table.bcct] [--subsets 1,3,10,30]
+/// charge-from-damage infer [--weights net.bccd] --marks marks.csv [--table table.bcct] [--subsets 1,3,10,30]
 ///     [--hold]
 /// ```
 ///
@@ -516,10 +516,10 @@ package enum ChargeFromDamageStudy {
 
     static func judge(_ args: [String]) throws {
         let start = ContinuousClock.now
-        guard let tables = value(args, "tables")?.split(separator: ",").map(String.init),
-            let weights = value(args, "weights")
-        else { throw BlastError.allocationFailed("--tables a.bcct,b.bcct --weights net.bccd") }
-        let network = try ChargeFromDamage.Network(contentsOf: URL(filePath: weights))
+        guard let tables = value(args, "tables")?.split(separator: ",").map(String.init) else {
+            throw BlastError.allocationFailed("--tables a.bcct,b.bcct [--weights net.bccd]")
+        }
+        let network = try ChargeFromDamage.Network.named(value(args, "weights"))
         let h = network.header
         let cases = value(args, "cases").flatMap(Int.init) ?? 300
         let counts: [Int?] =
@@ -698,10 +698,10 @@ package enum ChargeFromDamageStudy {
     }
 
     static func infer(_ args: [String]) throws {
-        guard let weights = value(args, "weights"), let path = value(args, "marks") else {
-            throw BlastError.allocationFailed("--weights net.bccd --marks marks.csv")
+        guard let path = value(args, "marks") else {
+            throw BlastError.allocationFailed("--marks marks.csv [--weights net.bccd]")
         }
-        let network = try ChargeFromDamage.Network(contentsOf: URL(filePath: weights))
+        let network = try ChargeFromDamage.Network.named(value(args, "weights"))
         let h = network.header
         let all = try readMarks(path)
         let table = try value(args, "table").map {

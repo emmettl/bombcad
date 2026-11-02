@@ -434,8 +434,8 @@ which on Beirut means the glass reads the yield far too low ([below](#on-beiruts
 ```bash
 blastmodel charge-from-damage table <district's inputs> [--masonry] [--geer … --structure …] --out t.bcct
 python3 -I Scripts/ml/remote-train.py bombcad-pc <tables> Scripts/ml/train_charge.py --job charge-net-1 --args …
-blastmodel charge-from-damage judge --tables a.bcct,b.bcct --weights charge-net.bccd
-blastmodel charge-from-damage infer --weights charge-net.bccd --marks marks.csv [--table t.bcct]
+blastmodel charge-from-damage judge --tables a.bcct,b.bcct [--weights charge-net.bccd]
+blastmodel charge-from-damage infer --marks marks.csv [--table t.bcct] [--weights charge-net.bccd]
 ```
 
 `scenebench charge-from-damage` runs the same. The code is in BlastModel
@@ -672,12 +672,16 @@ What it does not do:
 - **Marks taken as independent given the charge,** as the full inference takes them: a survey's
   neighbours, which err together, make it too sure (1,351 glass marks give a 90% interval of a
   factor 1.3).
-- **In the app** it is not yet: the weights are not shipped, and the panel to mark buildings is
-  planned (emmettl/bombcad-work#116).
+- **In the app** it is not yet: the panel to mark buildings is planned (emmettl/bombcad-work#116).
+
+**The weights are built in** (the user's decision, 2 November 2026), as the live drag's are:
+`Scripts/ml/embed_charge.py` writes `charge-net-2`'s `charge-net.bccd` (188,960 bytes with its four
+reference cases, SHA-256 c016fc77…) as base64 into Sources/BlastModel/ChargeFromDamage+Embedded.swift
+(255 KB), which `ChargeFromDamage.Network.builtIn` reads. `judge` and `infer` take it unless
+`--weights` names another file, and the test against PyTorch checks it.
 
 The tables, sweeps and judgements are in `$BOMBCAD_DATA/scratch/issue116`; the networks in
-`$BOMBCAD_DATA/ml/charge-net-2` and `ml/charge-net-made` (`out/charge-net.bccd`, 189 KB with its
-reference cases).
+`$BOMBCAD_DATA/ml/charge-net-2` and `ml/charge-net-made`.
 
 ## What it cannot do
 

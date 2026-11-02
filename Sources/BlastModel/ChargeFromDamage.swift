@@ -274,16 +274,19 @@ public enum ChargeFromDamage {
         /// Reads a `.bccd` file: the magic, a little-endian UInt32 header length, the JSON header,
         /// padding to 8 bytes, then float16 values.
         public init(contentsOf url: URL) throws {
-            let data = try Data(contentsOf: url)
+            try self.init(data: Data(contentsOf: url), name: url.lastPathComponent)
+        }
+
+        /// A `.bccd` file's bytes; `name` for its errors.
+        public init(data: Data, name: String = "network") throws {
             guard data.count > 12, String(decoding: data.prefix(8), as: UTF8.self) == Self.magic else {
-                throw BlastError.allocationFailed(
-                    "\(url.lastPathComponent): not a charge-from-damage network")
+                throw BlastError.allocationFailed("\(name): not a charge-from-damage network")
             }
             let length = data.subdata(in: 8..<12).withUnsafeBytes {
                 Int(UInt32(littleEndian: $0.loadUnaligned(as: UInt32.self)))
             }
             guard data.count >= 12 + length else {
-                throw BlastError.allocationFailed("\(url.lastPathComponent): cut short")
+                throw BlastError.allocationFailed("\(name): cut short")
             }
             let header = try JSONDecoder().decode(Header.self, from: data.subdata(in: 12..<(12 + length)))
             let start = (12 + length + 7) / 8 * 8
@@ -292,6 +295,23 @@ public enum ChargeFromDamage {
                 return halves.map { Float(Float16(bitPattern: UInt16(littleEndian: $0))) }
             }
             try self.init(header: header, values: values)
+        }
+
+        /// The network built in (`ChargeFromDamage+Embedded.swift`, written by
+        /// Scripts/ml/embed_charge.py): `charge-net-2`, trained on Beirut and four made-up
+        /// districts; nil if there is none.
+        public static let builtIn: Network? = embeddedWeights.flatMap {
+            Data(base64Encoded: $0, options: .ignoreUnknownCharacters)
+        }.flatMap { try? Network(data: $0, name: "the built-in network") }
+
+        /// The network in `path`, else the built-in one.
+        public static func named(_ path: String?) throws -> Network {
+            if let path { return try Network(contentsOf: URL(filePath: path)) }
+            guard let network = builtIn else {
+                throw BlastError.allocationFailed(
+                    "no charge-from-damage network built in: --weights net.bccd")
+            }
+            return network
         }
 
         /// From the header and its float16 values, widened.

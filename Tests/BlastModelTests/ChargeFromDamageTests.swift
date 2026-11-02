@@ -318,13 +318,18 @@ struct ChargeFromDamageTests {
         }
     }
 
-    @Test("The trained network gives PyTorch's outputs on the cases its file carries")
+    @Test("The built-in network is charge-net-2, and gives PyTorch's outputs on the cases it carries")
     func againstPyTorch() throws {
-        let path =
-            ProcessInfo.processInfo.environment["BOMBCAD_CHARGE_MODEL"]
-            ?? "/Volumes/StudioData/bombcad/ml/charge-net-2/out/charge-net.bccd"
-        guard FileManager.default.fileExists(atPath: path) else { return }
-        let network = try ChargeFromDamage.Network(contentsOf: URL(filePath: path))
+        let built = try #require(ChargeFromDamage.Network.builtIn)
+        #expect(built.header.name == "charge-net-2")
+        #expect(built.summed)
+        #expect(built.header.trainedOn.contains("beirut"))
+        #expect(!built.header.trainedOn.contains("made-mixed-s7"))
+        // `BOMBCAD_CHARGE_MODEL` names another network's file to check instead.
+        let network =
+            try ProcessInfo.processInfo.environment["BOMBCAD_CHARGE_MODEL"].map {
+                try ChargeFromDamage.Network(contentsOf: URL(filePath: $0))
+            } ?? built
         let references = try #require(network.header.references)
         #expect(!references.isEmpty)
         for r in references where network.summed {
