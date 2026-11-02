@@ -134,6 +134,62 @@ struct ExplorerModelTests {
         explorer.close()
     }
 
+    @Test("Protections: a wall put and dragged, glass and the people thrown at, the stand-off")
+    func protections() async throws {
+        let model = SimulationModel(document: ProjectDocument.newProject())
+        model.learnedDefaults = UserDefaults(suiteName: "ExplorerModelTests.protections")!
+        try await settle(model)
+        let explorer = ExplorerModel(model: model)
+        explorer.reduceMotion = true
+        await explorer.open(.square)
+        try await settle(model)
+        explorer.layer = .glass
+        // A wall between the charge and the office, drawn, and the drag taking it.
+        explorer.addWall()
+        let wall = try #require(model.quickEstimateWhatIf.barrier)
+        #expect(wall.alongX && wall.heightM == 3 && !model.barrierLines.isEmpty)
+        #expect(model.dragsBarrier && explorer.dragsWall)
+        try await settle(model)
+        #expect(!model.envelopeGlassChances.isEmpty)
+        #expect(model.preparedDistrict?.scene.boxes.count == model.settings.scenario.boxes.count + 1)
+        let before = model.settings.chargePosition
+        #expect(model.beginDrag(ndc: .zero, aspectRatio: 1, modifiers: []))
+        #expect(model.isDraggingBarrier)
+        model.drag(ndc: SIMD2(0.1, 0.1), aspectRatio: 1, modifiers: [])
+        model.endDrag()
+        #expect(!model.isDraggingBarrier && model.settings.chargePosition == before)
+        #expect(model.quickEstimateWhatIf.barrier?.centre != wall.centre)
+        explorer.nudgeWall(east: 5, north: 0)
+        try await settle(model)
+        explorer.wallHeight = 4
+        #expect(model.quickEstimateWhatIf.barrier?.heightM == 4)
+        explorer.removeWall()
+        #expect(model.quickEstimateWhatIf.barrier == nil && !model.dragsBarrier && model.barrierLines.isEmpty)
+        try await settle(model)
+
+        // Laminated glass, counting the glass thrown: fewer people hurt, said so.
+        explorer.countsThrownGlass = true
+        #expect(model.occupancy.glass == .thrownGlass)
+        try await settle(model)
+        explorer.run(.laminatedGlass)
+        #expect(explorer.glassChoice == .laminated)
+        try await settle(model)
+        let line = try #require(explorer.comparison)
+        #expect(line.contains(ExplorerWords.filmAndPeopleThrown), "\(line)")
+        #expect(line.contains("fewer people hurt"), "\(line)")
+        explorer.unpin()
+        explorer.glassChoice = .asBuilt
+        explorer.countsThrownGlass = false
+
+        // The stand-off: the charge kept 30 m south of the office's face.
+        let standOff = try #require(ExplorerScene.square.standOff)
+        explorer.setStandOff(30)
+        try await settle(model)
+        #expect(abs((explorer.standOff ?? 0) - 30) < 0.5)
+        let at = model.settings.chargePosition
+        #expect(abs(at.y - (explorer.origin!.y + standOff.from.y - 30)) < 0.5)
+    }
+
     @Test("The speed plays a wave in about five seconds")
     func speed() {
         #expect(ExplorerModel.speed(for: 0.8) == .quarter)

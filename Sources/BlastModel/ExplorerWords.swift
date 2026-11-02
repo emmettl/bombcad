@@ -51,6 +51,51 @@ public enum ExplorerWords {
         "Film cracks as plain glass does but holds the pieces together. The people estimate counts broken "
         + "panes, not where the glass goes, so it cannot show film helping the people inside."
 
+    /// With the glass thrown into the rooms counted (`OccupantInjury.GlassModel.thrownGlass`), what film
+    /// and laminated glass do for the people (emmettl/bombcad-work#117).
+    public static let filmAndPeopleThrown =
+        "Film and laminated glass crack as plain glass does but hold the pieces, so less glass flies into "
+        + "the rooms and fewer people inside are hurt by it."
+
+    /// The people's choice of how glass hurts, in plain words.
+    public static let thrownGlassToggle = "Count the glass thrown into rooms"
+    public static let thrownGlassNote =
+        "On: people are hurt by the glass that flies into their rooms, how far and how fast, so stronger glass "
+        + "shows its worth. Off: by how many windows break. At Beirut the first puts too many of the hurt far "
+        + "from the port and counts too many badly hurt, so use it to compare glass, not distances."
+
+    /// The protections (emmettl/bombcad-work#117).
+    public static let protectIntro =
+        "Try what protects the buildings: a wall in front, stronger glass, or keeping the charge further back."
+    public static let barrierWhat =
+        "A wall between the charge and a building takes the brunt for the façades close behind it, within "
+        + "one or two of its heights. Further back, and above its top, it barely helps."
+    public static let barrierDrag = "Drag the wall in the view"
+    public static let shelterToggle = "Count the shelter close behind the wall (proposed)"
+    public static let standOffWhat =
+        "Keeping the charge back is the surest protection: the push falls quickly with distance."
+
+    /// How sure the wall's shelter is, from the fine simulations it was judged on.
+    public static func barrierHowSure(shelter: Bool) -> String {
+        let now = ValidationTables.figure("barrierPeakNow")
+        let fitted = ValidationTables.figure("barrierPeakShelter")
+        let impulse = ValidationTables.figure("barrierImpulseShelter")
+        let lead = standing(.illustrative)
+        return shelter
+            ? lead
+                + " Against detailed simulations of walls in front of a building, its push behind the wall "
+                + "was within half again of theirs at \(places(fitted.high)), and within a quarter at "
+                + "\(places(fitted.low)); its push over time within a quarter at \(places(impulse.low))."
+            : lead + " Counting the wall as one more building in the way, it reads the push close behind a "
+                + "wall nearly twice too strong; within a quarter of detailed simulations at "
+                + "\(places(now.low)), and within half again at \(places(now.high))."
+    }
+
+    /// The stand-off in words: "The charge is kept 40 m from the glass office."
+    public static func standOffText(_ metres: Float, phrase: String) -> String {
+        "The charge is kept \(distanceText(Double(metres))) \(phrase)."
+    }
+
     /// A standing level in plain words.
     public static func standing(_ level: EvidenceLevel) -> String {
         switch level {

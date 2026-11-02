@@ -225,17 +225,65 @@ extension LiveResponse {
         public var glass: Glass?
         public var walls: EnvelopeConstruction.Kind?
         public var roof: EnvelopeConstruction.Kind?
+        /// A barrier wall put in the scene (emmettl/bombcad-work#117), as `Scenario.addBarrier` adds one.
+        public var barrier: Barrier?
 
         public init(
             glass: Glass? = nil, walls: EnvelopeConstruction.Kind? = nil,
-            roof: EnvelopeConstruction.Kind? = nil
+            roof: EnvelopeConstruction.Kind? = nil, barrier: Barrier? = nil
         ) {
             self.glass = glass
             self.walls = walls
             self.roof = roof
+            self.barrier = barrier
         }
 
-        public var isEmpty: Bool { glass == nil && walls == nil && roof == nil }
+        public var isEmpty: Bool { glass == nil && walls == nil && roof == nil && barrier == nil }
+
+        /// Whether it builds any building otherwise.
+        public var changesConstructions: Bool { glass != nil || walls != nil || roof != nil }
+
+        /// A straight barrier wall on the plan, along x or y about its middle.
+        public struct Barrier: Hashable, Sendable, Codable {
+            public var centre: SIMD2<Float>
+            public var lengthM: Float
+            public var heightM: Float
+            public var thicknessM: Float
+            /// Running along x (east–west), else along y.
+            public var alongX: Bool
+
+            public init(
+                centre: SIMD2<Float>, lengthM: Float, heightM: Float, thicknessM: Float = 0.3, alongX: Bool
+            ) {
+                self.centre = centre
+                self.lengthM = lengthM
+                self.heightM = heightM
+                self.thicknessM = thicknessM
+                self.alongX = alongX
+            }
+
+            /// Its ends on the plan.
+            public var ends: (SIMD2<Float>, SIMD2<Float>) {
+                let half = (alongX ? SIMD2<Float>(1, 0) : SIMD2<Float>(0, 1)) * (lengthM / 2)
+                return (centre - half, centre + half)
+            }
+
+            /// The barrier square to the line from `from` to `to` on the plan (along x or y, whichever is
+            /// nearer square to it), a share `at` of the way.
+            public static func across(
+                from: SIMD2<Float>, to: SIMD2<Float>, at share: Float = 0.5, lengthM: Float, heightM: Float
+            ) -> Barrier {
+                let d = to - from
+                return Barrier(
+                    centre: from + share * d, lengthM: lengthM, heightM: heightM, alongX: abs(d.y) >= abs(d.x)
+                )
+            }
+
+            /// In words: "a barrier 3 m tall and 20 m long".
+            public var label: String {
+                String(format: "a barrier %g m tall and %g m long", heightM, lengthM)
+            }
+        }
 
         /// The walls' and roofs' kinds a what-if offers.
         public static let wallKinds: [EnvelopeConstruction.Kind] = constructionKinds
@@ -262,11 +310,18 @@ extension LiveResponse {
         public func applied(to scene: Scenario) -> Scenario {
             guard !isEmpty else { return scene }
             var copy = scene
-            let recorded = Dictionary(
-                (scene.envelopeConstructions ?? []).map { ($0.objectID, $0) },
-                uniquingKeysWith: { _, last in last })
-            copy.envelopeConstructions = scene.envelopeObjects.map {
-                applied(to: recorded[$0.id] ?? .assumed(objectID: $0.id))
+            if changesConstructions {
+                let recorded = Dictionary(
+                    (scene.envelopeConstructions ?? []).map { ($0.objectID, $0) },
+                    uniquingKeysWith: { _, last in last })
+                copy.envelopeConstructions = scene.envelopeObjects.map {
+                    applied(to: recorded[$0.id] ?? .assumed(objectID: $0.id))
+                }
+            }
+            if let barrier {
+                let (from, to) = barrier.ends
+                _ = try? copy.addBarrier(
+                    from: from, to: to, height: barrier.heightM, thickness: barrier.thicknessM)
             }
             return copy
         }
@@ -279,7 +334,9 @@ extension LiveResponse {
             }
             if let walls { parts.append("walls of \(walls.label.lowercased())") }
             if let roof { parts.append("roofs of \(roof.label.lowercased())") }
-            return parts.isEmpty ? "as built" : "every building's " + parts.joined(separator: ", ")
+            var text = parts.isEmpty ? "" : "every building's " + parts.joined(separator: ", ")
+            if let barrier { text += (text.isEmpty ? "" : "; ") + barrier.label }
+            return text.isEmpty ? "as built" : text
         }
     }
 }

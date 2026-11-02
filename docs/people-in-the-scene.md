@@ -288,6 +288,104 @@ definition, would fix a factor and hide the over-breaking that causes it. The ne
 Until then this step stops here: the feature is in the app as illustrative and relative, and the
 counts are not for use.
 
+## Hurt by the glass thrown (2 November 2026)
+
+emmettl/bombcad-work#117. Kummer's curve takes the share of a building's panes broken. Film and
+laminated glass crack as plain glass does, so in that estimate they help no one: the explorer said
+so on screen. On 2 November the user agreed that the injury model should learn about the glass
+thrown into rooms. The second glass model, **Glass thrown into rooms (Bowen)**
+(`OccupantInjury.GlassModel.thrownGlass`, `GlassInjury`), does that. **Panes broken (Kummer)**
+stays the default, by that name, and is unchanged to the bit.
+
+**What it does.** Each side of a building, in each of the glass chances' draws:
+
+- **How far, how fast.** Each pane type that may crack ends as the envelope model ends it
+  (`GlazingMix.hazard`, the `GlazingHazard` the full estimate grades GSA's conditions by). Its speed
+  into the room is its speed on breaking plus what the load still on it adds. It flies level from the
+  pane's middle and falls without drag, so it reaches as far into the room as it lands. A pane held by
+  its frame, its interlayer or its film throws nothing.
+- **What it strikes with.** The pieces the envelope debris takes (`DebrisLaunch.piece`): annealed
+  glass in 50 mm squares, toughened in 8 mm dice. Laminated glass that tears or pulls out, and filmed
+  glass that its film lets go of, fly whole.
+- **Who is in its way.** The people in the first 6 m of the rooms behind the side (`roomDepthM`, an
+  assumption: GSA's and ASTM's tests judge to 3 m, and Bowen's missile traps stood 3 m in). A person
+  stands in some window's path as often as the façade is glazed (its mix's glazed share, 0.05–0.4), and
+  there meets that window's broken glass over a standing person's presented area, 0.58 m² (DDESB
+  TP-12's 6.2 ft²). A whole pane counts over the person's area and its own.
+- **What a strike does.** For a sharp piece, Bowen, Richmond, Wetherbe and White's glass missiles
+  fired into the abdomens of dogs (AECU-3350, 1956; 389 shots, missiles of 0.05–1.9 g):
+  - **Severely hurt.** The abdominal wall pierced, their Equation 13,
+    `log V = 2.5172 − log(log m + 2.3054) + 0.4842 P` (V in ft/s, m in g). It reproduces their
+    Table 3.1 to a root mean square of 0.076 (their own 0.0745). It counts only where the piece
+    strikes the trunk, taken as a third of the presented area (an assumption). Masses are held within
+    0.0543–10 g, the range they extrapolated to themselves.
+  - **Hurt.** The skin cut. Their skin column (Table 3.1, column F) fitted on the same form needs
+    the speed times 1.38: skin is cut at 0.72 of the body wall's speed (root mean square 0.10).
+  - **Whole panes.** These are blunt, and are judged by the fragments' energies
+    (`HazardCriteria`): 14.9 J injurious (FAA) and 79 J hazardous (DoD).
+
+  The chance at each depth is `g (1 − exp(−N p / g))` over the throws that reach it, where g is the
+  glazed share, N the pieces striking and p a piece's chance. It is averaged over the 6 m.
+  `SideGlass.thrownHurt` and `thrownSevere` carry the side's mean over the draws. The killed are a
+  tenth of the severely hurt, Kummer's own ratio. The blast's own share and the walls' are as before.
+  The assumptions' band takes the glass's ×3 as Kummer's did. Working the glass thrown out with the
+  chances costs the full estimate's glass about 6% more time (on the square at 100 draws, 0.93–0.96 s
+  against 0.89 s), and none of its other figures change.
+
+**On the square and the street** (the explorer's, 500 kg, the full estimate on 100 draws, 5 pm), the
+change against the scene as built:
+
+| Every window's glass | Panes broken (Kummer): hurt | Glass thrown (Bowen): hurt | Glass thrown: severely hurt or killed |
+|---|---|---|---|
+| Square as built | 911 (271–1,876) | 149 (47–363) | 52 |
+| Square, film, wet glazed | 0% | **−86%** (−94% to −59%) | −97% |
+| Square, film, not anchored | 0% | −86% | −97% |
+| Square, laminated | −77% | −41% | **+37%** |
+| Square, toughened | −86% | −62% | −69% |
+| Street, film, wet glazed | 0% | −54% (−72% to −21%) | −72% |
+
+So film now helps the people inside, as the glass it holds says it should. Laminated glass helps
+less than film, and raises the severely hurt. At 500 kg on the square, the laminate's panes that tear
+or pull out fly whole, at over 79 J. Kummer's estimate credits laminated and toughened glass only
+because fewer of their panes crack.
+
+**On Beirut** (the whole district, 0.5 kt at 5 pm, on today's terms; Kummer's figures are higher
+than those of 21 October above, as the terms have moved since):
+
+| | Panes broken (Kummer) | Glass thrown (Bowen) | The record |
+|---|---|---|---|
+| Hurt | 98,801 (27,260–211,219) | 72,473 (16,230–187,950) | about 6,500 injured |
+| Severely hurt or killed | 9,964 | 64,511 | |
+| Killed | 1,088 | 6,542 | 218 |
+| Share of the hurt 0.5–1.7 km out | 74% | 46% | 71% of a hospital sample |
+| With every window filmed, wet glazed | 0% | −100% | |
+
+- **Against Beirut's one record, the glass thrown does worse than Kummer's.** It counts 11 times the
+  injured, against Kummer's 15. But it gives 30 times the killed, against Kummer's 5, and nearly all
+  of its hurt are severely hurt.
+- **Its spread is wrong.** Its share hurt is nearly flat with distance: 0.23–0.24 at 0.5–1 km and 0.14 at
+  2–2.5 km, against Kummer's 0.57–0.61 and 0.08. So only 46% of its hurt are where 71% of the hospital
+  sample were.
+- **Why.** Wherever glass flies faster than about 20 m/s it cuts nearly everyone in its path. The
+  load still pushing a broken pane throws it at tens of metres a second even 2 km out. Bowen's own
+  Nevada traps saw speeds like those, 52 m/s on average at 1.9–5 psi. But those traps caught far fewer
+  pieces as the pressure fell: 101 a square foot at 5 psi, 2 at 1.9 psi. The pieces were also larger
+  further out. A fixed 50 mm piece and every broken pane thrown whole into the room cannot show that
+  fall.
+
+**The proposal.** Kummer's stays the default. Its counts and spread are the better match to Beirut,
+and they are what the planner's relative figures and the Beirut judge rest on. The glass thrown is
+offered by name in the workbench (People in the scene ▸ Hurt by glass) and in the explorer (the
+people layer's "Count the glass thrown into rooms"). Use it to compare glazing protections, film
+above all, which Kummer's cannot see. Before it could be the default it needs:
+
+- how many pieces reach the room, and their sizes, as the load falls (Bowen's field
+  distributions by range, Fletcher et al. 1980 on DTIC, ADA105824, which was not readable from here);
+- a share of people in the glass's path that is measured, not assumed.
+
+Every new figure here is relative to Kummer's, as the planner shows them, and the counts' warning
+stands.
+
 ## Limitations
 
 - The injury rates come from other hazards and events:
@@ -338,6 +436,14 @@ counts are not for use.
   2023, 791 patients from five hospitals (AUB ScholarWorks, abstract).
 - OCHA, *Lebanon: Beirut port explosions*, Situation Report No. 6, 21 August 2020; UNFPA
   Lebanon, August 2020.
+- I. G. Bowen, D. R. Richmond, M. B. Wetherbe and C. S. White, *Biological effects of blast from
+  bombs. Glass fragments as penetrating missiles and some of the biological implications of glass
+  fragmented by atomic explosions*, AECU-3350, Lovelace Foundation, 1956 (OSTI 4337336): Table 3.1 and
+  Equations 11–13; the field missiles of Chapters 5–7.
+- DDESB Technical Paper 12 (Zaker, 1975): a standing person's 6.2 ft²; DoD 6055.09-M and FAA Guide
+  437.53-1: 79 J and 14.9 J (`HazardCriteria`, [hazards](hazards.md)).
+- E. R. Fletcher, D. R. Richmond and J. T. Yelverton, *Glass fragment hazard from windows broken by
+  airblast*, DNA 5593T, Lovelace, 1980 (DTIC ADA105824): cited for what is still to fetch, not used.
 - S. Mallonee et al., Physical injuries and fatalities resulting from the Oklahoma City bombing,
   *JAMA* 276 (1996) 382–387 (abstract).
 - S. Rivière et al., *Health effects of the AZF explosion: the population of Toulouse*, Santé

@@ -106,6 +106,10 @@ enum SceneBench {
             try DragTime.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "wall-drag" {
+            try WallDrag.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "people" {
             try PeopleEstimate.run(Array(args.dropFirst()))
             return

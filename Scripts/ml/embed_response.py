@@ -5,6 +5,10 @@ bytes as base64 lines in one string literal, with the file's SHA-256 beside them
 
     python3 -I Scripts/ml/embed_response.py $BOMBCAD_DATA/ml/live-response-2/out/live-response.bclr \
         --broken-threshold -1.5 --out $BOMBCAD_DATA/ml/live-response-2/app/live-response.bclr
+
+With `--add other.bclr`, the networks of `other` that the weights lack are added to them, the
+weights' own left as they are to the byte (emmettl/bombcad-work#117: the glass thrown network,
+trained alone, beside the shipped three).
 """
 
 import argparse
@@ -25,12 +29,39 @@ def main():
     parser.add_argument("--broken-threshold", type=float,
                         help="the component network's glass-broken logit threshold, set in the header")
     parser.add_argument("--out", help="the weights, so set, written here too")
+    parser.add_argument("--add", help="another .bclr whose networks the weights lack are added")
     args = parser.parse_args()
     source = Path(args.weights)
     data = source.read_bytes()
     assert data[:4] == b"BCLR", "not a .bclr file"
     version, length = struct.unpack("<II", data[4:12])
     header = json.loads(data[12:12 + length])
+    if args.add:
+        other = Path(args.add).read_bytes()
+        assert other[:4] == b"BCLR", "not a .bclr file"
+        _, other_length = struct.unpack("<II", other[4:12])
+        other_header = json.loads(other[12:12 + other_length])
+        assert other_header.get("dtype") == header.get("dtype"), "the two weights' tensors differ in type"
+        size = 2 if header.get("dtype", "float16") == "float16" else 4
+        blob = data[12 + length:]
+        other_blob = other[12 + other_length:]
+        start = len(blob) // size
+        for name, network in other_header["networks"].items():
+            if name in header["networks"]:
+                continue
+            first = min(layer["offset"] for layer in network["layers"])
+            last = max(layer["offset"] + layer["inputs"] * layer["outputs"] + layer["outputs"]
+                       for layer in network["layers"])
+            moved = json.loads(json.dumps(network))
+            for layer in moved["layers"]:
+                layer["offset"] = layer["offset"] - first + start
+            blob += other_blob[first * size:last * size]
+            start += last - first
+            header["networks"][name] = moved
+            header.setdefault("added", []).append(f"{name} from {other_header.get('trainedOn', args.add)}")
+        text = json.dumps(header).encode()
+        data = b"BCLR" + struct.pack("<II", version, len(text)) + text + blob
+        length = len(text)
     if args.broken_threshold is not None:
         header["brokenThreshold"] = args.broken_threshold
         text = json.dumps(header).encode()

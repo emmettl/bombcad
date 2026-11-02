@@ -112,6 +112,16 @@ public enum OccupantInjury {
             + "assumptions, so what they share cancels; the look's own doubt (the yield's) does not.",
     ]
 
+    /// With the glass thrown into the rooms (`GlassModel.thrownGlass`), what its figures stand on
+    /// (docs/people-in-the-scene.md, "Hurt by the glass thrown").
+    public static let thrownStanding =
+        "Hurt by the glass thrown into the rooms: each pane's speed and reach as the envelope model ends it, "
+        + "pieces as the envelope debris takes them, Bowen et al.'s glass missiles (1956) for a cut and a "
+        + "pierced body wall, the fragments' 14.9 J and 79 J for a whole pane. At Beirut it counts 11 times "
+        + "the injured recorded (Kummer's 15), but 30 times the killed (Kummer's 5), and puts 46% of its hurt "
+        + "0.5–1.7 km out where 71% of a hospital sample were (Kummer's 74%): for comparing glass, film above "
+        + "all, which Kummer's cannot see."
+
     /// The counts' standing, shown with them.
     public static let countsStanding: [String] = [
         "Against Beirut: 12 times the injured recorded, severely hurt or killed about as many as all the injured "
@@ -121,6 +131,27 @@ public enum OccupantInjury {
             + "each drawn once for the whole district; the yield's doubt is in the chances' means, not the band.",
     ]
 
+    /// How the people indoors are hurt by the glass (emmettl/bombcad-work#117).
+    public enum GlassModel: String, Codable, Sendable, CaseIterable, Identifiable {
+        /// Kummer's injury against the share of a building's panes broken (2004): the model since
+        /// 21 October 2026. Film and laminated glass crack as plain glass does, so they change nothing.
+        case panesBroken
+        /// The glass thrown into the rooms (`GlassInjury`): how far each side's glass flies and what
+        /// its pieces strike with, by Bowen et al.'s glass missiles (1956) and the fragments'
+        /// energies; people in each side's rooms within the glass's reach. Glass held by film or an
+        /// interlayer throws nothing.
+        case thrownGlass
+
+        public var id: Self { self }
+
+        public var label: String {
+            switch self {
+            case .panesBroken: "Panes broken (Kummer)"
+            case .thrownGlass: "Glass thrown into rooms (Bowen)"
+            }
+        }
+    }
+
     /// What the figures assume. The time, the density's factor and the use of untagged buildings
     /// are the user's; the rest are the defaults docs/people-in-the-scene.md sources.
     public struct Assumptions: Sendable, Equatable, Codable {
@@ -129,8 +160,21 @@ public enum OccupantInjury {
         public var densityScale: Double = 1
         /// The use of a building whose tags say nothing (most of a map's: OSM's `building=yes`).
         public var untaggedUse: BuildingUse = .residential
+        /// How the glass hurts the people indoors: by the panes broken, as since 21 October 2026, or
+        /// by the glass thrown into the rooms (proposed).
+        public var glass: GlassModel = .panesBroken
 
         public init() {}
+
+        enum CodingKeys: String, CodingKey { case time, densityScale, untaggedUse, glass }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            time = try c.decodeIfPresent(OccupancyTime.self, forKey: .time) ?? .evening
+            densityScale = try c.decodeIfPresent(Double.self, forKey: .densityScale) ?? 1
+            untaggedUse = try c.decodeIfPresent(BuildingUse.self, forKey: .untaggedUse) ?? .residential
+            glass = try c.decodeIfPresent(GlassModel.self, forKey: .glass) ?? .panesBroken
+        }
     }
 
     /// The factors each assumption lies within nine times in ten, drawn for the band.
@@ -323,6 +367,9 @@ public enum OccupantInjury {
         public var severeTotals: [Double] = []
         /// The charge's cube root, kg^(1/3), for bands by scaled distance.
         public var scale: Double = 1
+        /// With the glass thrown asked for, the buildings whose sides did not give it (a preview
+        /// without it), which kept Kummer's.
+        public var glassFellBack = 0
 
         public static let empty = Estimate(
             buildings: [], assumptions: Assumptions(), people: 0, expected: 0, low: 0, high: 0, severe: 0,
@@ -409,91 +456,116 @@ public enum OccupantInjury {
             var people: Double
             var outdoors: Bool
             /// Glass's chance of hurting them at the model's median (Kummer's, on the building's
-            /// broken share).
+            /// broken share; or the glass thrown into their side's rooms).
             var glass: Double
+            /// With the glass thrown, its chance of hurting them severely (Kummer's is a tenth of
+            /// `glass`); nil for Kummer's.
+            var thrownSevere: Double? = nil
             /// The walls' rates, hurt and severe, at their medians.
             var structure: (hurt: Double, severe: Double)
             /// The blast's own chances.
             var blast: (hurt: Double, severe: Double)
         }
-        var people: [(building: Building, groups: [Group])] = []
-        people.reserveCapacity(scene.envelopeObjects.count)
-        for object in scene.envelopeObjects {
-            let construction = constructions[object.id] ?? .assumed(objectID: object.id)
-            let use = construction.use ?? assumptions.untaggedUse
-            let (area, footprint) = floorArea(of: object, map: mapped.contains(object.id))
-            let perPerson = floorAreaPerPerson(use)
-            let full = perPerson.isFinite && area > 0 ? area / perPerson * assumptions.densityScale : 0
-            let present = full * present(use, at: assumptions.time)
-            let outdoors = present * outdoorShare(use, at: assumptions.time)
-            let inside = present - outdoors
-            let bounds = Bounds(object)
-            var building = Building(
-                owner: object.id, use: use, useAssumed: construction.use == nil, floorAreaM2: area,
-                occupants: inside, outdoors: outdoors, expected: 0, low: 0, high: 0, severe: 0, glass: 0,
-                structure: 0, blast: 0, broken: 0)
-            building.distanceM = Double(
-                simd_length(SIMD2(bounds.centre.x - charge.x, bounds.centre.y - charge.y)))
-            guard present > 0 else {
-                people.append((building, []))
-                continue
-            }
+        // Each building on its own core (emmettl/bombcad-work#117: a drag's people follow each frame);
+        // the draws below sum them in the buildings' order, as before.
+        let objects = scene.envelopeObjects
+        var laidOut = [(building: Building, groups: [Group], fellBack: Bool)?](
+            repeating: nil, count: objects.count)
+        laidOut.withUnsafeMutableBufferPointer { out in
+            concurrently(iterations: objects.count) { index in
+                let object = objects[index]
+                var fellBack = false
+                var people: [(building: Building, groups: [Group])] = []
+                defer { out[index] = people.first.map { ($0.building, $0.groups, fellBack) } }
+                let construction = constructions[object.id] ?? .assumed(objectID: object.id)
+                let use = construction.use ?? assumptions.untaggedUse
+                let (area, footprint) = floorArea(of: object, map: mapped.contains(object.id))
+                let perPerson = floorAreaPerPerson(use)
+                let full = perPerson.isFinite && area > 0 ? area / perPerson * assumptions.densityScale : 0
+                let present = full * present(use, at: assumptions.time)
+                let outdoors = present * outdoorShare(use, at: assumptions.time)
+                let inside = present - outdoors
+                let bounds = Bounds(object)
+                var building = Building(
+                    owner: object.id, use: use, useAssumed: construction.use == nil, floorAreaM2: area,
+                    occupants: inside, outdoors: outdoors, expected: 0, low: 0, high: 0, severe: 0, glass: 0,
+                    structure: 0, blast: 0, broken: 0)
+                building.distanceM = Double(
+                    simd_length(SIMD2(bounds.centre.x - charge.x, bounds.centre.y - charge.y)))
+                guard present > 0 else {
+                    people.append((building, []))
+                    return
+                }
 
-            // The building's broken share, its sides' weighted by their length; and each side's zone.
-            let mine = (sides[object.id] ?? []).filter { $0.axis < 2 }
-            func length(_ side: FacadeLoadSurrogate.SideGlass) -> Double {
-                Double(side.axis == 0 ? bounds.size.y : bounds.size.x)
-            }
-            let lengths = mine.reduce(0) { $0 + length($1) }
-            let broken = lengths > 0 ? mine.reduce(0) { $0 + length($1) * $1.fractionBroken } / lengths : 0
-            building.broken = broken
-            let glassRate = glassHurt(broken: broken)
+                // The building's broken share, its sides' weighted by their length; and each side's zone.
+                let mine = (sides[object.id] ?? []).filter { $0.axis < 2 }
+                func length(_ side: FacadeLoadSurrogate.SideGlass) -> Double {
+                    Double(side.axis == 0 ? bounds.size.y : bounds.size.x)
+                }
+                let lengths = mine.reduce(0) { $0 + length($1) }
+                let broken =
+                    lengths > 0 ? mine.reduce(0) { $0 + length($1) * $1.fractionBroken } / lengths : 0
+                building.broken = broken
+                let glassRate = glassHurt(broken: broken)
 
-            // The walls' moderate-only and heavy chances, and the roof's on the top storey.
-            let rates = structureRates(construction.walls)
-            let walls = structures[object.id]
-            let heavy = walls.map { min(max($0.wallsHeavy, 0), 1) } ?? 0
-            let moderate =
-                (walls.map { min(max($0.wallsModerate - $0.wallsHeavy, 0), 1) } ?? 0)
-                + (walls.map { min(max($0.roofModerate, 0), 1) } ?? 0)
-                / max(1, footprint > 0 ? area / footprint : 1)
-            let structureRate = (
-                hurt: min(1, moderate * rates.moderate.hurt + heavy * rates.heavy.hurt),
-                severe: min(1, moderate * rates.moderate.severe + heavy * rates.heavy.severe)
-            )
+                // The walls' moderate-only and heavy chances, and the roof's on the top storey.
+                let rates = structureRates(construction.walls)
+                let walls = structures[object.id]
+                let heavy = walls.map { min(max($0.wallsHeavy, 0), 1) } ?? 0
+                let moderate =
+                    (walls.map { min(max($0.wallsModerate - $0.wallsHeavy, 0), 1) } ?? 0)
+                    + (walls.map { min(max($0.roofModerate, 0), 1) } ?? 0)
+                    / max(1, footprint > 0 ? area / footprint : 1)
+                let structureRate = (
+                    hurt: min(1, moderate * rates.moderate.hurt + heavy * rates.heavy.hurt),
+                    severe: min(1, moderate * rates.moderate.severe + heavy * rates.heavy.severe)
+                )
 
-            // By a blown-out window the blast reaches them as it is outside.
-            var groups: [Group] = []
-            var zone = 0.0
-            for side in mine {
-                let share = footprint > 0 ? min(1, windowZoneM * length(side) / footprint) : 0
-                let open = blastHurt(distanceM: side.distanceM, scale: scale)
+                // By a blown-out window the blast reaches them as it is outside. With the glass thrown,
+                // each side's rooms as deep as the glass is followed (`GlassInjury.roomDepthM`), the
+                // nearest 3 m of them seeing the blast; a building whose sides do not give the glass
+                // thrown (a preview without it) keeps Kummer's.
+                let thrown =
+                    assumptions.glass == .thrownGlass && !mine.isEmpty
+                    && mine.allSatisfy { $0.thrownHurt != nil }
+                if assumptions.glass == .thrownGlass, !thrown, !mine.isEmpty { fellBack = true }
+                let depth = thrown ? GlassInjury.roomDepthM : windowZoneM
+                var groups: [Group] = []
+                var zone = 0.0
+                for side in mine {
+                    let share = footprint > 0 ? min(1, depth * length(side) / footprint) : 0
+                    let open = blastHurt(distanceM: side.distanceM, scale: scale)
+                    let seen = thrown ? windowZoneM / depth : 1
+                    groups.append(
+                        Group(
+                            people: share, outdoors: false, glass: thrown ? side.thrownHurt ?? 0 : glassRate,
+                            thrownSevere: thrown ? side.thrownSevere ?? 0 : nil, structure: structureRate,
+                            blast: (seen * side.blownOut * open.hurt, seen * side.blownOut * open.severe)))
+                    zone += share
+                }
+                if zone > 1 {
+                    for g in groups.indices { groups[g].people /= zone }
+                    zone = 1
+                }
+                for g in groups.indices { groups[g].people *= inside }
                 groups.append(
                     Group(
-                        people: share, outdoors: false, glass: glassRate, structure: structureRate,
-                        blast: (side.blownOut * open.hurt, side.blownOut * open.severe)))
-                zone += share
+                        people: inside * (1 - zone), outdoors: false, glass: thrown ? 0 : glassRate,
+                        thrownSevere: thrown ? 0 : nil, structure: structureRate, blast: (0, 0)))
+                if outdoors > 0 {
+                    let nearest =
+                        mine.map(\.distanceM).min()
+                        ?? Double(simd_length(SIMD2(bounds.centre.x - charge.x, bounds.centre.y - charge.y)))
+                    groups.append(
+                        Group(
+                            people: outdoors, outdoors: true, glass: 0, structure: (0, 0),
+                            blast: blastHurt(distanceM: nearest, scale: scale)))
+                }
+                people.append((building, groups))
             }
-            if zone > 1 {
-                for g in groups.indices { groups[g].people /= zone }
-                zone = 1
-            }
-            for g in groups.indices { groups[g].people *= inside }
-            groups.append(
-                Group(
-                    people: inside * (1 - zone), outdoors: false, glass: glassRate, structure: structureRate,
-                    blast: (0, 0)))
-            if outdoors > 0 {
-                let nearest =
-                    mine.map(\.distanceM).min()
-                    ?? Double(simd_length(SIMD2(bounds.centre.x - charge.x, bounds.centre.y - charge.y)))
-                groups.append(
-                    Group(
-                        people: outdoors, outdoors: true, glass: 0, structure: (0, 0),
-                        blast: blastHurt(distanceM: nearest, scale: scale)))
-            }
-            people.append((building, groups))
         }
+        let people = laidOut.map { ($0!.building, $0!.groups) }
+        let fellBack = laidOut.filter { $0!.fellBack }.count
 
         // The draws: every assumption's factor, shared by the whole district.
         let n = max(1, draws)
@@ -539,12 +611,16 @@ public enum OccupantInjury {
                         parts.structure += count * p * walls / sum
                         parts.blast += count * p * blast / sum
                     }
+                    // Kummer's severe a tenth and killed a hundredth of the hurt; the glass thrown's
+                    // severe its own, its killed a tenth of that, as Kummer's ratio.
+                    let glassSevere = g.thrownSevere.map { min(1, $0 * f.glass) } ?? glass * 0.1
                     let s =
-                        1 - (1 - glass * 0.1) * (1 - min(1, g.structure.severe * f.structure))
+                        1 - (1 - glassSevere) * (1 - min(1, g.structure.severe * f.structure))
                         * (1 - g.blast.severe)
                     severe += count * s
                     severeTotals[d] += count * s
-                    killed += count * (1 - (1 - glass * 0.01) * (1 - g.blast.severe))
+                    let glassKilled = g.thrownSevere == nil ? glass * 0.01 : glassSevere * 0.1
+                    killed += count * (1 - (1 - glassKilled) * (1 - g.blast.severe))
                 }
                 hurtDraws[d] = hurt
                 totals[d] += hurt
@@ -564,6 +640,7 @@ public enum OccupantInjury {
             buildings.append(result)
         }
         estimate.buildings = buildings
+        estimate.glassFellBack = fellBack
         estimate.totals = totals
         estimate.severeTotals = severeTotals
         estimate.scale = scale

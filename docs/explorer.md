@@ -517,3 +517,66 @@ the Swift copy the same, and checks that the ball stays apart from every colour 
 ring at a contrast of 7 or more against it. The workbench keeps its red ball. The captures are in
 `$BOMBCAD_DATA/explorer/review/marker/`: the square and the street, over the glass and over the wave
 at 35% of its time, each whole and close.
+
+## Protect the buildings (2 November 2026)
+
+emmettl/bombcad-work#117, stage 1. A section of the sidebar, **Protect the buildings**, and two more
+comparisons, **Laminated glass** and **A wall in front**:
+
+- **A wall.** "Put a Wall in Front" stands a wall 3 m tall and 30 m long 6 m in front of the scene's
+  protected building, between it and the charge: the square's glass office, the street's bank. On
+  Beirut it stands 15 m in front of the charge. With "Drag the wall in the view" on, a drag moves the wall, not the charge.
+  The wall can be 2, 3 or 4 m tall, moved 5 m at a time by buttons, turned, and taken away. It is a
+  what-if: drawn as an outline, laid on the estimate's copy of the scene, never on the project.
+  "Count the shelter close behind the wall (proposed)" turns on the barrier's own term
+  ([protective design](protective-design.md#a-barrier-you-can-push-around-2-november-2026)). Off, the
+  wall counts as one more building in the way, and barely shows. Its "How sure?" line gives the fine
+  runs' figures for whichever is on.
+- **Every window's glass**: as built, with film, or laminated.
+- **The stand-off**: a slider that keeps the charge 3–120 m back from the glass office, or 0–150 m
+  along the high street from the bank. The stand-off line is drawn across its path. There is none on
+  Beirut.
+- **The people** layer has "Count the glass thrown into rooms"
+  ([people](people-in-the-scene.md#hurt-by-the-glass-thrown-2-november-2026)). With it on, Glass with
+  film and Laminated glass say how much fewer people are hurt. With it off, they say, as before, that
+  the estimate cannot show it.
+
+Each answers while it moves, through the learned response, and the full estimate follows on let-go.
+
+**Frame times** (headless, release build, on the Studio, the learned response on the GPU;
+`scenebench wall-drag`, logs under `$BOMBCAD_DATA/protective-live/wall/`). Each frame lays out the
+raster with the wall moved, sends it to the GPU, runs the loads and the networks, the glass thrown's
+among them, and makes the people's preview on 40 draws. Medians after the first frame, with the range:
+
+| Scene | A wall dragged a metre a frame | Load |
+|---|---|---|
+| The square, 500 kg, 398 buildings | 4.9–5.0 ms (4.3–6.4) | 40–100 |
+| The street, 500 kg, 781 buildings | 6.7–6.8 ms (6.0–8.3) | 40–100 |
+| Beirut within 1.5 km, 500 t, 6 m cells, 4,137 buildings | 24.8 ms (23.9–26.5) | about 40 |
+
+On Beirut a frame's parts are the raster 6–7 ms, the loads 3 ms, the rows and networks 3–4 ms, and
+the people 9 ms. The people took 20 ms until each building's were laid out on its own core
+(`OccupantInjury.estimate`, the same figures to the bit). So a wall keeps 30 frames a second on
+all three, the view's own drawing aside. That drawing was 5–10 ms on the square in stage 2. The
+charge's drag and the stand-off's slider cost what a drag did before, with the glass thrown's network
+added (under 1 ms). The live wave does not see the wall: it is worked out on the project's scene. In
+the app the frames were not timed.
+
+**Against the full estimate,** with the wall in place (100 draws, held out: no network was trained on
+a scene with a wall, nor on the square or the street). Within 0.1 of the full estimate:
+
+| | Square, wall 6 m in front of the office | Square, dragged 10 m towards the charge | Street, wall across it | Beirut, 6 m wall 150 m south |
+|---|---|---|---|---|
+| Glass thrown into the rooms, sides | 99.9–100% | 99.9–100% | 100% | 100% |
+| The people's share hurt (glass thrown), buildings | 100% | 100% | 100% | 100% |
+| Glass blown out, sides | 72% | 72% | 89% | 94% |
+| The wall's own effect on glass blown out, the sides it moves | 100% (32) | 97.6% (41) | 100% (73–75) | 100% (165) |
+
+The glass blown out is the preview's own approximation (each side judged by its strip nearest the
+charge), as before ([stage 2](#stage-2-the-square-end-to-end-2-november-2026)); the wall's effect on
+it, with it against without it, the preview gives as the full estimate does. **What a wall changes
+here is small.** At 500 kg on the square a 3 m wall in front of the office takes 0.3% off the people
+hurt counted as a building crossed, 1.0–1.6% with the shelter term. The office's 32 m of glass mostly
+stands above the wall, and in the square nearly every pane breaks anyway. The fine runs agree that a
+wall shelters only what is within one or two of its heights behind it.
+

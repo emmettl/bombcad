@@ -133,6 +133,20 @@ struct EnvelopeDamageSection: View {
                             + "of its peak at once, as the runs' loads do, which breaks more glass far out "
                             + "(docs/glass-probability.md). A candidate, off by default."
                     )
+                Toggle(
+                    "Barrier walls shelter close behind (candidate)",
+                    isOn: $model.quickEstimateBarrierShielding
+                )
+                .disabled(
+                    model.quickEstimateFirstFitTerms || model.quickEstimateClearTopTerms
+                        || model.quickEstimateCellsFacingTerms || model.quickEstimateGlassFront
+                )
+                .help(
+                    "For Quick Estimate: a barrier wall's own shielding, fitted on fine runs of walls in front of "
+                        + "a building, takes off the load of façades within one or two of its heights behind it. "
+                        + "Off, a barrier counts as one more building in the way (docs/protective-design.md). A "
+                        + "candidate, off by default."
+                )
                 Picker("Drag preview", selection: $model.dragPreviewPath) {
                     ForEach(SimulationModel.DragPreviewPath.allCases) { Text($0.label).tag($0) }
                 }

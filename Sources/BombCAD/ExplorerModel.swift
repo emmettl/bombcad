@@ -60,15 +60,20 @@ final class ExplorerModel {
 
     /// The comparisons offered, each a change from the pinned picture.
     enum Try: String, CaseIterable, Identifiable {
-        case twiceTheCharge, behindABuilding, glassWithFilm
+        case twiceTheCharge, behindABuilding, glassWithFilm, laminatedGlass, aWallInFront
         var id: String { rawValue }
         var title: String {
             switch self {
             case .twiceTheCharge: "Twice the charge"
             case .behindABuilding: "Behind a building"
             case .glassWithFilm: "Glass with film"
+            case .laminatedGlass: "Laminated glass"
+            case .aWallInFront: "A wall in front"
             }
         }
+
+        /// Whether it changes the glass, and so is judged by the glass thrown into the rooms.
+        var isGlass: Bool { self == .glassWithFilm || self == .laminatedGlass }
         /// What it does, in `scene`: its place behind a building named.
         func summary(in scene: ExplorerScene?) -> String {
             switch self {
@@ -79,6 +84,12 @@ final class ExplorerModel {
                     : "Move the charge behind the brick terrace and see the shadow it casts."
             case .glassWithFilm:
                 "Give every window security film and see how much less glass flies into the rooms."
+            case .laminatedGlass:
+                "Give every window laminated glass, held together by a layer of plastic."
+            case .aWallInFront:
+                scene?.standOff.map {
+                    "Put a wall 3 m tall just in front of \($0.building.prefix(1).lowercased() + $0.building.dropFirst()), then drag it."
+                } ?? "Put a wall 3 m tall in front of the charge, then drag it."
             }
         }
     }
@@ -86,7 +97,29 @@ final class ExplorerModel {
     private(set) var tried: Try?
 
     /// The film the comparison gives every window: 8 mil, wet glazed into its frame.
-    static let film = LiveResponse.Glass.filmed(.mils(8, anchorage: .wetGlazed))
+    nonisolated static let film = LiveResponse.Glass.filmed(.mils(8, anchorage: .wetGlazed))
+    /// The laminated glass it gives: the façade laminate the what-ifs offer.
+    nonisolated static let laminated = LiveResponse.Glass.laminated(.facade)
+
+    /// The glass the protections offer, in plain words.
+    enum GlassChoice: String, CaseIterable, Identifiable {
+        case asBuilt, filmed, laminated
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .asBuilt: "As built"
+            case .filmed: "With film"
+            case .laminated: "Laminated"
+            }
+        }
+        var glass: LiveResponse.Glass? {
+            switch self {
+            case .asBuilt: nil
+            case .filmed: ExplorerModel.film
+            case .laminated: ExplorerModel.laminated
+            }
+        }
+    }
 
     /// How much coarser the wave's cells are while dragging over a plan of more than
     /// `SimulationModel.liveWaveDragCells` (the workbench's is 2).
@@ -298,6 +331,116 @@ final class ExplorerModel {
     /// The charge given `kg` as a choice, its full estimate following.
     func setMass(_ kg: Float) { model.setChargeMass(kg) }
 
+    // MARK: Protections (emmettl/bombcad-work#117)
+
+    /// The wall's heights offered, m.
+    static let wallHeights: [Float] = [2, 3, 4]
+    static let wallLengthM: Float = 30
+
+    /// The every-window glass chosen.
+    var glassChoice: GlassChoice {
+        get {
+            GlassChoice.allCases.first { $0.glass == model.quickEstimateWhatIf.glass } ?? .asBuilt
+        }
+        set { model.quickEstimateWhatIf.glass = newValue.glass }
+    }
+
+    var hasWall: Bool { model.quickEstimateWhatIf.barrier != nil }
+
+    /// A wall put 6 m in front of the scene's protected building, between it and the charge (where a
+    /// wall shelters most: within one or two of its heights behind it), or 15 m in front of the charge
+    /// where the scene has none; the view's drag then moves it.
+    func addWall(height: Float = 3) {
+        let charge = SIMD2(model.settings.chargePosition.x, model.settings.chargePosition.y)
+        let target: SIMD2<Float>
+        if let origin, let standOff = scene?.standOff {
+            target = SIMD2(origin.x, origin.y) + standOff.from
+        } else if let origin {
+            target = SIMD2(origin.x, origin.y) + SIMD2(0, 30)
+        } else {
+            target = charge + SIMD2(0, 30)
+        }
+        let distance = simd_length(target - charge)
+        let share: Float =
+            scene?.standOff == nil
+            ? (distance > 1 ? min(15 / distance, 0.5) : 0.5)
+            : (distance > 12 ? (distance - 6) / distance : 0.5)
+        model.quickEstimateWhatIf.barrier = .across(
+            from: charge, to: distance > 1 ? target : charge + SIMD2(0, 30), at: share,
+            lengthM: Self.wallLengthM, heightM: height)
+        model.dragsBarrier = true
+    }
+
+    func removeWall() {
+        model.quickEstimateWhatIf.barrier = nil
+        model.dragsBarrier = false
+    }
+
+    var wallHeight: Float {
+        get { model.quickEstimateWhatIf.barrier?.heightM ?? 3 }
+        set { model.quickEstimateWhatIf.barrier?.heightM = newValue }
+    }
+
+    /// A drag in the view moves the wall, not the charge.
+    var dragsWall: Bool {
+        get { model.dragsBarrier }
+        set { model.dragsBarrier = newValue && hasWall }
+    }
+
+    /// The wall moved `east` and `north` metres, for the keyboard.
+    func nudgeWall(east: Float, north: Float) {
+        guard let barrier = model.quickEstimateWhatIf.barrier else { return }
+        model.moveBarrier(to: barrier.centre + SIMD2(east, north))
+    }
+
+    /// The wall turned a quarter.
+    func turnWall() { model.quickEstimateWhatIf.barrier?.alongX.toggle() }
+
+    /// Whether the quick estimate credits the shelter close behind a wall (the proposed term).
+    var countsShelter: Bool {
+        get { model.quickEstimateBarrierShielding }
+        set { model.quickEstimateBarrierShielding = newValue }
+    }
+
+    /// Whether the people are hurt by the glass thrown into their rooms (proposed), not by the panes broken.
+    var countsThrownGlass: Bool {
+        get { model.occupancy.glass == .thrownGlass }
+        set { model.occupancy.glass = newValue ? .thrownGlass : .panesBroken }
+    }
+
+    /// How far the charge stands from the protected building along the scene's stand-off line, m; nil
+    /// where the scene has none.
+    var standOff: Float? {
+        guard let origin, let line = scene?.standOff else { return nil }
+        let at = SIMD2(model.settings.chargePosition.x, model.settings.chargePosition.y)
+        let start = SIMD2(origin.x, origin.y) + line.from
+        return min(max(simd_dot(at - start, line.along), line.range.lowerBound), line.range.upperBound)
+    }
+
+    /// The charge put `metres` from the protected building along the stand-off line (as a slider moves
+    /// it: the preview follows, the full estimate on let-go).
+    func setStandOff(_ metres: Float) {
+        guard let origin, let line = scene?.standOff else { return }
+        let point = SIMD2(origin.x, origin.y) + line.from + metres * line.along
+        model.settings.chargePosition.x = point.x
+        model.settings.chargePosition.y = point.y
+        model.settingsChanged()
+        model.explorerLines = ringLines + standOffLines
+    }
+
+    /// The stand-off line across the charge's path, drawn while the scene has one: square to the line,
+    /// 40 m long, through the charge.
+    var standOffLines: [SIMD4<Float>] {
+        guard scene?.standOff != nil, let line = scene?.standOff, showsStandOff else { return [] }
+        let at = model.settings.chargePosition
+        let across = SIMD2(-line.along.y, line.along.x) * 20
+        let z = (model.settings.scenario.terrain?.height(at: at) ?? 0) + 0.3
+        return [SIMD4(at.x - across.x, at.y - across.y, z, 2), SIMD4(at.x + across.x, at.y + across.y, z, 0)]
+    }
+    var showsStandOff = false {
+        didSet { model.explorerLines = ringLines + standOffLines }
+    }
+
     // MARK: The wave
 
     /// The wave's captions, worked out once a field.
@@ -355,7 +498,7 @@ final class ExplorerModel {
         let change = showsChange ? pinned.map(\.snapshot) : nil
         // The wave drawn on its own layer alone, so that its paint does not tint the others' colours.
         model.explorerHidesLiveWave = layer != .wave
-        model.explorerLines = ringLines
+        model.explorerLines = ringLines + standOffLines
         model.explorerWarmRamp = true
         // A drag keeps up: no preview where the layer shows none, and over a large plan the wave on
         // cells four times its own, unrefined, until the charge is let go.
@@ -370,7 +513,7 @@ final class ExplorerModel {
             model.showsEnvelopeDamage = true
             model.envelopeColouring = .blownOut
             model.explorerColouring =
-                change.map { .change($0, tried == .glassWithFilm ? .thrown : .glass) } ?? .glass
+                change.map { .change($0, tried?.isGlass == true ? .thrown : .glass) } ?? .glass
         case .walls:
             model.showsEnvelopeDamage = true
             model.envelopeColouring = .wallsModerate
@@ -469,6 +612,10 @@ final class ExplorerModel {
             put(at: place)
         case .glassWithFilm:
             model.quickEstimateWhatIf.glass = Self.film
+        case .laminatedGlass:
+            model.quickEstimateWhatIf.glass = Self.laminated
+        case .aWallInFront:
+            addWall()
         }
         layer = .glass
         showsChange = t != .twiceTheCharge
@@ -486,6 +633,7 @@ final class ExplorerModel {
 
     private func restore(_ pinned: Pinned) {
         model.quickEstimateWhatIf = pinned.whatIf
+        if pinned.whatIf.barrier == nil { model.dragsBarrier = false }
         model.setChargeMass(pinned.mass)
         model.placeCharge(at: pinned.charge)
     }
@@ -500,10 +648,16 @@ final class ExplorerModel {
                 ExplorerReach.scaled(
                     from: pinned.snapshot.reach, to: now.reach, ratio: Double(now.massKg / pinned.mass)))
         }
-        if tried == .glassWithFilm {
+        if tried?.isGlass == true {
             lines.append(pinned.snapshot.change(to: now, measure: .thrown).sentence)
-            // Film holds the pieces; the people estimate counts the panes broken, which film does not change.
-            lines.append(ExplorerWords.filmAndPeople)
+            // Film holds the pieces. Counting the glass thrown, the people show it; counting the panes
+            // broken, which film does not change, they cannot.
+            if countsThrownGlass {
+                lines.append(ExplorerWords.filmAndPeopleThrown)
+                if let people = model.peopleComparison { lines.append(explorerPeopleChange(people)) }
+            } else {
+                lines.append(ExplorerWords.filmAndPeople)
+            }
         } else {
             if tried != .twiceTheCharge {
                 lines.append(

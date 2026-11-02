@@ -23,6 +23,10 @@ import simd
 /// widths and the district. Charges within `--clear` m (100) of the scene's own place or 60 m east of
 /// it, where `drag-time --agreement` judges the preview, are not drawn; `--masses lo,hi` (kg) sets the
 /// charges' range, 100 kg to 5 kt unless given (the explorer's small scenes: 50 kg to 5 t).
+///
+/// Each glazed side's glass thrown into its rooms (`SideGlass.thrownHurt`, `thrownSevere`;
+/// emmettl/bombcad-work#117) goes to `thrown` files beside, the side's inputs with those two answers.
+/// `--thrown-only` makes those alone: no components' or walls' answers.
 enum ResponseData {
     struct Meta: Codable {
         var district: String
@@ -32,6 +36,7 @@ enum ResponseData {
         var componentOutputs: [String]
         var sideOutputs: [String]
         var buildingOutputs: [String]
+        var thrownOutputs: [String]? = nil
         var frames: [[Double]] = []
         var draws: Int
         var cellSize: Float
@@ -126,7 +131,7 @@ enum ResponseData {
             return h
         }
         var files: [String: FileHandle] = [:]
-        for unit in ["component", "side", "building"] {
+        for unit in ["component", "side", "building", "thrown"] {
             for part in ["x", "y", "w"] { files["\(unit)-\(part)"] = try handle("\(unit)-\(part).f32") }
             files["\(unit)-frame"] = try handle("\(unit)-frame.i32")
         }
@@ -147,6 +152,8 @@ enum ResponseData {
                     "someBroken", "blownOut", "fractionBroken", "thrownPast3b", "openingsBlownOut",
                 ],
                 buildingOutputs: ["wallsModerate", "wallsHeavy", "roofModerate"], draws: draws, cellSize: dx)
+        meta.thrownOutputs = ["thrownHurt", "thrownSevere"]
+        let thrownOnly = args.contains("--thrown-only")
         guard meta.district == district else {
             throw BlastError.allocationFailed("a folder of another district's data: \(out)")
         }
@@ -269,7 +276,7 @@ enum ResponseData {
             levels.withUnsafeMutableBufferPointer { levelOut in
                 broken.withUnsafeMutableBufferPointer { brokenOut in
                     _ = SDOFResponseMemo.remembering(in: memo) {
-                        concurrently(iterations: estimate.loads.count) { k in
+                        concurrently(iterations: thrownOnly ? 0 : estimate.loads.count) { k in
                             let load = estimate.loads[k]
                             let construction = constructions[load.owner]!
                             let (top, base) = tops[load.owner]!
@@ -307,10 +314,12 @@ enum ResponseData {
                 ).sides : []
             let glassS = DistrictBenchmark.seconds(clock) - inputsS - damageS
             let ((structure, _), _) = SDOFResponseMemo.remembering(in: memo) {
-                FacadeLoadSurrogate.structureProbabilities(
-                    estimate, mass: mass, cellSize: dx, constructions: { constructions[$0]! },
-                    uncertainty: uncertainty,
-                    coefficients: coefficients)
+                thrownOnly
+                    ? ([], 0)
+                    : FacadeLoadSurrogate.structureProbabilities(
+                        estimate, mass: mass, cellSize: dx, constructions: { constructions[$0]! },
+                        uncertainty: uncertainty,
+                        coefficients: coefficients)
             }
             let structureS = DistrictBenchmark.seconds(clock) - inputsS - damageS - glassS
 
@@ -323,7 +332,7 @@ enum ResponseData {
             var y: [Float] = []
             var w: [Float] = []
             let cw = batch.componentWidth
-            for k in 0..<batch.componentCount {
+            for k in 0..<(thrownOnly ? 0 : batch.componentCount) {
                 // Dull: no damage and no glass broken.
                 let dull = levels[k] == 0 && broken[k] == 0
                 // A third of the rest kept, all those damaged.
@@ -340,7 +349,7 @@ enum ResponseData {
             var extra = [
                 (row: Int, prediction: FacadeLoadSurrogate.Prediction, load: EnvelopeComponentLoad)
             ]()
-            for k in 0..<batch.componentCount where uniform(frame, 13, UInt64(k)) < 0.5 {
+            for k in 0..<(thrownOnly ? 0 : batch.componentCount) where uniform(frame, 13, UInt64(k)) < 0.5 {
                 var p = estimate.predictions[k]
                 p.peakPa *= pow(10, 1.6 * uniform(frame, 14, UInt64(k)) - 0.8)
                 p.impulsePaS *= pow(10, 1.6 * uniform(frame, 15, UInt64(k)) - 0.8)
@@ -400,12 +409,23 @@ enum ResponseData {
                 y += answers.map(Float.init)
                 w.append(weight)
             }
-            if withGlass { write("side", x, y, w, frame: frame) }
-            let sideRows = w.count
+            if withGlass, !thrownOnly { write("side", x, y, w, frame: frame) }
+            var sideRows = w.count
+            (x, y, w) = ([], [], [])
+            // The glass thrown, each side its row: those throwing nothing thinned as the dull are.
+            for (s, side) in glass.enumerated() {
+                let answers = [side.thrownHurt ?? 0, side.thrownSevere ?? 0]
+                guard let weight = kept(answers.allSatisfy { $0 < 1e-4 }, s, 18) else { continue }
+                x += batch.sides[(s * sw)..<((s + 1) * sw)]
+                y += answers.map(Float.init)
+                w.append(weight)
+            }
+            if withGlass { write("thrown", x, y, w, frame: frame) }
+            if thrownOnly { sideRows = w.count }
             (x, y, w) = ([], [], [])
             let chances = Dictionary(uniqueKeysWithValues: structure.map { ($0.owner, $0) })
             let bw = batch.buildingWidth
-            for (b, owner) in batch.buildingOwners.enumerated() {
+            for (b, owner) in batch.buildingOwners.enumerated() where !thrownOnly {
                 let c = chances[owner] ?? FacadeLoadSurrogate.StructureChance(owner: owner)
                 let answers = [c.wallsModerate, c.wallsHeavy, c.roofModerate]
                 let dull = answers.allSatisfy { $0 < 1e-6 } || answers.allSatisfy { $0 > 1 - 1e-6 }

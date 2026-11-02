@@ -64,6 +64,15 @@ public final class LiveDragGPU: LiveResponse.Engine, @unchecked Sendable {
         } else {
             values += [Float](repeating: 0, count: 18)
         }
+        // A barrier wall's own shielding (emmettl/bombcad-work#117).
+        if let barrier = c.barrier {
+            values += [
+                1, Float(barrier.peak), Float(barrier.impulse), Float(barrier.departure),
+                Float(barrier.gamma),
+            ]
+        } else {
+            values += [0, 0, 0, 1, 0]
+        }
         return values
     }
 

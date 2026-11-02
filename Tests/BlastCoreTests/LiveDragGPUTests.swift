@@ -73,6 +73,35 @@ struct LiveDragGPUTests {
         }
     }
 
+    @Test(
+        "A barrier wall's own shelter on the GPU as on the CPU, and lower behind it", .enabled(if: available))
+    func barrierShelter() throws {
+        // The street's block in the way stands for a barrier wall: one of the scene's fixed blocks.
+        let scene = try Self.district()
+        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+        let gpu = try LiveDragGPU(weights: nil)
+        let cpu = LiveResponse.CPUEngine(weights: nil)
+        let (request, _, _) = prepared.liveRequest(
+            charge: scene.charge.position, mass: 500, coefficients: .deepCityOutlineBarriers)
+        let (plain, _, _) = prepared.liveRequest(charge: scene.charge.position, mass: 500)
+        let (a, b, open) = (try gpu.loads(request), try cpu.loads(request), try gpu.loads(plain))
+        var lowered = 0
+        for item in 0..<request.count {
+            let o = item * LiveResponse.itemWidth
+            // A line crossing one block more or fewer is let off, as in `loads`.
+            guard a[o + 2] == b[o + 2], abs(a[o + 3] - b[o + 3]) <= 1e-3 * max(1, abs(b[o + 3])) else {
+                continue
+            }
+            for k in 18..<20 {
+                #expect(
+                    abs(a[o + k] - b[o + k]) <= 1e-3 * max(1, abs(b[o + k])), "load \(k - 18), item \(item)")
+            }
+            #expect(a[o + 18] <= open[o + 18] * 1.0001)
+            if a[o + 18] < 0.999 * open[o + 18] { lowered += 1 }
+        }
+        #expect(lowered > 0)
+    }
+
     @Test("The networks' layers on the GPU as on the CPU", .enabled(if: available))
     func layers() throws {
         let scene = try Self.district()

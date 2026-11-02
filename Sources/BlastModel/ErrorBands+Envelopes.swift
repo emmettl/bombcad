@@ -7,6 +7,22 @@ import simd
 extension ValidationTables {
     /// Building envelopes' figures. Part of `figures`, in its order.
     static let envelopeFigures: [Figure] = [
+        // A barrier wall's shelter against the fine protective layouts' barrier strips, each layout left
+        // out in turn (emmettl/bombcad-work#117; `ExplorerWords.barrierHowSure`): the peak within ×1.25
+        // and ×1.5 counted as a building crossed and with the proposed term, and the impulse within
+        // ×1.25 with it.
+        Figure(
+            id: "barrierPeakNow", low: 0.55, high: 0.85,
+            document: "protective-design.md#a-barrier-you-can-push-around-2-november-2026",
+            quote: "as a building crossed, 55% and 85%"),
+        Figure(
+            id: "barrierPeakShelter", low: 0.60, high: 0.98,
+            document: "protective-design.md#a-barrier-you-can-push-around-2-november-2026",
+            quote: "with the term, 60% and 98%"),
+        Figure(
+            id: "barrierImpulseShelter", low: 0.98, high: 0.98,
+            document: "protective-design.md#a-barrier-you-can-push-around-2-november-2026",
+            quote: "impulse within ×1.25 at 98%"),
         Figure(
             id: "envelopeGlassBreak", low: 0.82, high: 1.07, document: "validation.md#window-glass",
             quote: "0.82–1.07 of the measured time"),

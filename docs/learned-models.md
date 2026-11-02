@@ -3360,6 +3360,31 @@ That is about 1.1 GPU hours, against the stage's 6. No solver run was needed.
   Against the full estimate it is level. Training round 6's data plus those pieces would take one
   4-minute job, judged as here. The built-in weights are unchanged.
 
+## The glass thrown, live (2 November 2026)
+
+emmettl/bombcad-work#117. The people's second glass model, the glass thrown into rooms
+([people](people-in-the-scene.md#hurt-by-the-glass-thrown-2-november-2026)), needs each glazed side's
+`thrownHurt` and `thrownSevere`, which the full estimate and the CPU's preview work out pane by pane.
+For a drag a fourth network gives them, **thrown** (59 → 128, 128, 64 → 2). It reads the glass
+network's own inputs and gives the two shares, sigmoid outputs, the severe held at most the hurt.
+The three networks before are as they were, to the byte. `embed_response.py --add` puts the new one
+beside them in the built-in weights, now 635,257 bytes (SHA-256 `81a463b0…a956dafe51`,
+`ml/thrown-studio-1/app/live-response.bclr`). The preview runs it only where the weights have it.
+
+**The data.** `scenebench response-data --thrown-only` is round 6's sides alone, with the two
+answers (`thrown-*` files, on 32 draws spread evenly). It was run over:
+
+- the made-up squares, seeds 1–12, 60 frames each on 2 m cells;
+- the perimeter blocks, the grid of houses, the towers and the sheds, 30 frames each on 4 m;
+- Beirut within 1.3 km, 40 frames.
+
+That gave 1.19 million rows in about 45 minutes beside other sessions (load 70–110), each piece
+under `gpu-slot` (`$BOMBCAD_DATA/protective-live/thrown-data.sh`).
+
+**Training.** The Studio's GPU (MPS) under `gpu-slot`: 40 epochs in 51 s, frames 9 modulo 10 held
+out (bombcad-pc's lock was held by another job). On held-out frames both shares were within 0.1 of
+the draws' on every side, mean error 0.0009 and 0.0007.
+
 ## Not done yet
 
 - **The selector for the field models** ([choosing the next runs](#choosing-the-next-runs-where-the-models-are-least-sure-2-november-2026)):

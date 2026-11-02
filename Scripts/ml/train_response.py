@@ -8,7 +8,10 @@ CPU code they stand in for giving the answers.
 - side: a glazed side's strips' loads, its mix and the draws' spreads -> its glass chances (some
   broken, blown out, the share broken, thrown past 3b, its openings blown out);
 - building: a building's walls' and roof's loads and construction -> its chances of walls moderate
-  or worse, heavy or worse, and roof moderate or worse.
+  or worse, heavy or worse, and roof moderate or worse;
+- thrown: a glazed side's inputs, as the side network's -> the glass thrown into its rooms, the
+  shares of their first metres within which a person is hurt and hurt severely
+  (emmettl/bombcad-work#117; `--units thrown --keep` an earlier round's nets.pt to add it alone).
 
 Each is dense layers with SiLU between, its inputs standardised. Frames whose index is 9 modulo 10
 are held out. Run as remote-train.py runs a script: `--data <folder> --out <folder>`; the weights go
@@ -194,7 +197,8 @@ def main():
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch", type=int, default=4096)
     parser.add_argument("--lr", type=float, default=2e-3)
-    parser.add_argument("--hidden", default="component:64,64,64;side:128,128,64;building:128,128,64")
+    parser.add_argument("--hidden",
+                        default="component:64,64,64;side:128,128,64;building:128,128,64;thrown:128,128,64")
     parser.add_argument("--units", default="component,side,building")
     parser.add_argument("--dtype", default="float16", choices=["float16", "float32"])
     parser.add_argument("--keep", help="an earlier round's nets.pt, whose networks not trained now are kept")
@@ -223,13 +227,17 @@ def main():
     meta = metas[0]
     for other in metas[1:]:
         for key in ("componentWidth", "sideWidth", "buildingWidth"):
-            assert other[key] == meta[key], f"{key} differs between districts"
+            assert other[key] == meta[key] or not other[key] or not meta[key], f"{key} differs between districts"
     hidden = {k: [int(v) for v in s.split(",")] for k, s in (p.split(":") for p in args.hidden.split(";"))}
-    widths = {"component": meta["componentWidth"], "side": meta["sideWidth"], "building": meta["buildingWidth"]}
-    outputs = {"component": LEVELS + 1, "side": len(meta["sideOutputs"]), "building": len(meta["buildingOutputs"])}
+    thrown = meta.get("thrownOutputs") or ["thrownHurt", "thrownSevere"]
+    widths = {"component": meta["componentWidth"], "side": meta["sideWidth"], "building": meta["buildingWidth"],
+              "thrown": meta["sideWidth"]}
+    outputs = {"component": LEVELS + 1, "side": len(meta["sideOutputs"]), "building": len(meta["buildingOutputs"]),
+               "thrown": len(thrown)}
     names = {"component": ["none", "moderate", "heavy", "hazardous", "failed", "glassBroken"],
-             "side": meta["sideOutputs"], "building": meta["buildingOutputs"]}
-    answers = {"component": 2, "side": len(meta["sideOutputs"]), "building": len(meta["buildingOutputs"])}
+             "side": meta["sideOutputs"], "building": meta["buildingOutputs"], "thrown": thrown}
+    answers = {"component": 2, "side": len(meta["sideOutputs"]), "building": len(meta["buildingOutputs"]),
+               "thrown": len(thrown)}
     torch.manual_seed(args.seed)
     nets = {}
     report = {"device": device, "units": {}}

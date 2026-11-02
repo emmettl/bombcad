@@ -3,7 +3,8 @@ import Foundation
 import simd
 
 /// `scenebench people <district-scene's inputs> [--radius 2500] [--time evening|workday|night]
-/// [--density 1] [--untagged residential] [--yield-within 1.5] [--csv out.csv]`: the people in a
+/// [--density 1] [--untagged residential] [--yield-within 1.5] [--glass panes|thrown]
+/// [--what-if glass=film-wet] [--against-what-if glass=film-wet] [--csv out.csv]`: the people in a
 /// laid-out district and those its quick estimate expects hurt (emmettl/bombcad-work#41;
 /// docs/people-in-the-scene.md): the full look, as the app's, then `OccupantInjury.estimate`,
 /// totalled by distance band and by use, with the band over the assumptions.
@@ -13,8 +14,10 @@ enum PeopleEstimate {
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
         let inputs = try DistrictInputs.read(args)
         let radius = Float(value("radius").flatMap(Double.init) ?? 2500)
-        let (scene, report) = try inputs.scene(radius: radius)
+        let (laidOut, report) = try inputs.scene(radius: radius)
         print("\(report.summary)")
+        // `--what-if`: every building built so (`LiveResponse.WhatIf`), as the app's what-ifs build it.
+        let scene = try ResponseData.whatIf(args).applied(to: laidOut)
         let dx = inputs.cellSize
         let mass = Double(scene.charge.mass)
         var clock = ContinuousClock.now
@@ -82,6 +85,42 @@ enum PeopleEstimate {
         if let time = value("time").flatMap(OccupancyTime.init(rawValue:)) { assumptions.time = time }
         if let density = value("density").flatMap(Double.init) { assumptions.densityScale = density }
         if let use = value("untagged").flatMap(BuildingUse.init(rawValue:)) { assumptions.untaggedUse = use }
+        if value("glass") == "thrown" { assumptions.glass = .thrownGlass }
+        // Both glass models on the same look, and with `--against-what-if` each one's change from
+        // this scene to the what-if's (emmettl/bombcad-work#117).
+        let within = value("yield-within").flatMap(Double.init) ?? 1.5
+        func look(_ scene: Scenario) -> FacadeLoadSurrogate.Prepared.Look {
+            let prepared = FacadeLoadSurrogate.Prepared(
+                scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
+            return prepared.look(
+                charge: scene.charge.position, mass: mass,
+                constructions: { scene.envelopeConstruction(for: $0) },
+                uncertainty: FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(within) / 1.645, samples: 100))
+        }
+        let other = try value("against-what-if").map {
+            text -> (Scenario, FacadeLoadSurrogate.Prepared.Look) in
+            let changed = try ResponseData.whatIf(text: text).applied(to: laidOut)
+            return (changed, look(changed))
+        }
+        for model in OccupantInjury.GlassModel.allCases {
+            var a = assumptions
+            a.glass = model
+            let here = OccupantInjury.estimate(
+                scene: scene, glass: glass, structure: structure, charge: scene.charge.position, mass: mass,
+                assumptions: a)
+            var line = String(
+                format: "%@: hurt %.0f (%.0f–%.0f), severely or killed %.0f, killed %.1f, by glass %.0f",
+                model.label, here.expected, here.low, here.high, here.severe, here.killed, here.glass)
+            if let (changed, changedLook) = other {
+                let there = OccupantInjury.estimate(
+                    scene: changed, glass: changedLook.glass, structure: changedLook.structure,
+                    charge: changed.charge.position, mass: mass, assumptions: a)
+                if let c = OccupantInjury.compare(there, against: here) {
+                    line += "; with \(value("against-what-if")!): " + c.summary
+                }
+            }
+            print(line)
+        }
         clock = .now
         let estimate = OccupantInjury.estimate(
             scene: scene, glass: glass, structure: structure, charge: scene.charge.position, mass: mass,

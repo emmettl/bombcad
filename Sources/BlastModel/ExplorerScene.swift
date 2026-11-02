@@ -133,6 +133,35 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
     /// The place named `name`.
     public func place(_ name: String) -> Place? { places.first { $0.name == name } }
 
+    /// The building a protection is set up for (emmettl/bombcad-work#117), and the stand-off: the
+    /// line the charge is kept back along, from `from` (metres east and north of the scene's first
+    /// charge) outward along `along`, at most `range` m; nil where the scene offers none.
+    public struct StandOff: Sendable, Equatable {
+        public var building: String
+        public var from: SIMD2<Float>
+        public var along: SIMD2<Float>
+        public var range: ClosedRange<Float>
+        /// "from the glass office".
+        public var phrase: String
+    }
+
+    public var standOff: StandOff? {
+        switch self {
+        // The office's south face, the square's north edge across its street, then out over the square.
+        case .square:
+            StandOff(
+                building: "The glass office", from: SIMD2(0, Self.pitch - Self.block / 2),
+                along: SIMD2(0, -1),
+                range: 3...120, phrase: "from the glass office")
+        // Along the high street's middle from outside the bank, east.
+        case .street:
+            StandOff(
+                building: "The bank", from: SIMD2((Self.bank.lowerBound + Self.bank.upperBound) / 2, 0),
+                along: SIMD2(1, 0), range: 0...150, phrase: "along the street from the bank")
+        case .beirut: nil
+        }
+    }
+
     /// The place behind a building from the scene's first charge, for the comparison "behind a
     /// building"; nil where the scene offers none.
     public var behindABuilding: Place? {

@@ -35,6 +35,10 @@ extension FacadeLoadSurrogate {
         /// `deepCityOutline` with the glass's front (`Coefficients.deepCityOutlineFront`): a
         /// candidate, off by default.
         case deepCityOutlineFront = "deep-city-outline-front"
+        /// `deepCityOutline` with a barrier wall's own shielding (`Coefficients.BarrierShielding.fitted`;
+        /// emmettl/bombcad-work#117): a candidate, off by default. Without a barrier in the scene it is
+        /// `deepCityOutline` to the bit.
+        case deepCityOutlineBarriers = "deep-city-outline-barriers"
 
         /// The set in use unless another is named: `deepCityOutline` since 28 October 2026
         /// (emmettl/bombcad-work#109), `deepCity` from the evening of 25 October (#105), `clearTop`
@@ -51,6 +55,7 @@ extension FacadeLoadSurrogate {
             case .deepCityFront: .deepCityFront
             case .deepCityOutline: .deepCityOutline
             case .deepCityOutlineFront: .deepCityOutlineFront
+            case .deepCityOutlineBarriers: .deepCityOutlineBarriers
             }
         }
 
@@ -59,13 +64,23 @@ extension FacadeLoadSurrogate {
             switch self {
             case .fitted: Uncertainty.leaveOneOut
             case .clearTop, .clearTopFront, .deepCity, .deepCityFront: Uncertainty.clearTopLeaveOneOut
-            case .deepCityOutline, .deepCityOutlineFront: Uncertainty.outlineLeaveOneOut
+            case .deepCityOutline, .deepCityOutlineFront, .deepCityOutlineBarriers:
+                Uncertainty.outlineLeaveOneOut
             }
         }
     }
 }
 
 extension FacadeLoadSurrogate.Coefficients {
+    /// `deepCityOutline` with a barrier wall's own shielding (`BarrierShielding.fitted`;
+    /// emmettl/bombcad-work#117): a candidate.
+    public static let deepCityOutlineBarriers: FacadeLoadSurrogate.Coefficients = {
+        var c = FacadeLoadSurrogate.Coefficients.deepCityOutline
+        c.barrier = .fitted
+        c.fittedTo += "; with a barrier wall's own shielding (" + BarrierShielding.fitted.fittedTo + ")"
+        return c
+    }()
+
     /// The façade terms in use unless others are given: `TermSet.adopted`'s, `deepCityOutline` since
     /// 28 October 2026 (emmettl/bombcad-work#109), `deepCity` from the evening of 25 October (#105),
     /// `clearTop` from that morning (#99), `fitted` before.

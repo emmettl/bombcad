@@ -63,6 +63,9 @@ public enum FacadeLoadSurrogate {
         /// the lower side's mean height over it, m; 0 with none.
         public var canyonM: Double = 0
         public var canyonHeightM: Double = 0
+        /// Whether that knife edge is a barrier wall's, one of the scene's fixed blocks
+        /// (`Raster`'s owners below −1), for `Coefficients.BarrierShielding` (emmettl/bombcad-work#117).
+        public var edgeIsBarrier = false
         /// How open the charge's surroundings are: the median, over `Raster.openRays` plan
         /// directions, of how far the air runs from the charge before another building or the
         /// ground (`Raster.openReach`), m, up to `Raster.openReachM`. The same for every component
@@ -245,9 +248,11 @@ public enum FacadeLoadSurrogate {
                 let n = c.x + columns * c.y
                 var inside: Int32 = -1
                 var top = -Float.greatestFiniteMagnitude
+                var topOwner: Int32 = -1
                 for e in Int(starts[n])..<Int(starts[n + 1]) {
                     let entry = entries[e]
                     guard Int(entry.owner) != excluding else { continue }
+                    if entry.high > top { topOwner = entry.owner }
                     top = max(top, entry.high)
                     if inside == -1, p.z >= entry.low, p.z < entry.high { inside = entry.owner }
                 }
@@ -263,6 +268,7 @@ public enum FacadeLoadSurrogate {
                         sight.edgeFromChargeM = from
                         sight.edgeToTargetM = to
                         sight.edgeTopM = Double(top - ground)
+                        sight.edgeOwner = topOwner
                         edgeAt = p
                     }
                 }
@@ -398,6 +404,8 @@ public enum FacadeLoadSurrogate {
             public var edgeWidthM = 0.0
             /// The last building in the way's top above its ground, m.
             public var lastTopM = 0.0
+            /// The owner of the knife edge's top (a scene's fixed block below −1); −1 with none.
+            public var edgeOwner: Int32 = -1
         }
 
         /// A street the line from `a` to `b` runs down: walking back from `b` toward `a` over the
@@ -605,7 +613,7 @@ public enum FacadeLoadSurrogate {
             edgeTopM: sight.edgeTopM, edgeSideM: sight.edgeSideM, edgeWidthM: sight.edgeWidthM,
             lastTopM: sight.lastTopM,
             canyonM: canyon.lengthM,
-            canyonHeightM: canyon.heightM)
+            canyonHeightM: canyon.heightM, edgeIsBarrier: sight.edgeOwner < -1)
     }
 
     /// Whether some of `component`'s cells have air beside their outer face (the recorder leaves
@@ -673,6 +681,60 @@ public enum FacadeLoadSurrogate {
         /// the cells' faces, as these terms were fitted before: a raster for these terms is made with
         /// it (`incidence`).
         public var facing: Incidence?
+        /// A barrier wall's own shielding (`BarrierShielding`; emmettl/bombcad-work#117), nil for none:
+        /// a barrier counts as one more building crossed, as the terms were fitted.
+        public var barrier: BarrierShielding?
+
+        /// Behind a barrier wall (a component whose knife edge is a barrier's, `Features.edgeIsBarrier`),
+        /// the log peak and log impulse gain `peak` and `impulse` times T = J(v) e^(−q/`departure`)
+        /// (2/Z)^`gamma`, Z held within 2–8: J ITU-R P.526's knife-edge loss (as the natural log of
+        /// amplitude) at v = over √(2 (1/a + 1/b) / λ), λ = 2 W^(1/3), over the edge's height above
+        /// the line and a and b its distances from the charge and the component; q how far behind the
+        /// obstruction the component stands over its height. Fitted on the fine protective layouts'
+        /// barrier strips (L4, L5 and L8's walls, 1 t on 1 m cells), each layout left out in turn, over
+        /// what the terms already take for a barrier crossed (`docs/protective-design.md`, "A barrier
+        /// you can push around").
+        public struct BarrierShielding: Codable, Sendable, Equatable {
+            public var peak: Double
+            public var impulse: Double
+            public var departure: Double
+            public var gamma: Double
+            public var fittedTo: String
+
+            public init(peak: Double, impulse: Double, departure: Double, gamma: Double, fittedTo: String) {
+                self.peak = peak
+                self.impulse = impulse
+                self.departure = departure
+                self.gamma = gamma
+                self.fittedTo = fittedTo
+            }
+
+            /// ITU-R P.526's knife-edge loss at `v`, as the natural log of amplitude; nothing below −0.78.
+            public static func loss(_ v: Double) -> Double {
+                guard v > -0.78 else { return 0 }
+                return (6.9 + 20 * log10(((v - 0.1) * (v - 0.1) + 1).squareRoot() + v - 0.1)) / 20 * log(10)
+            }
+
+            /// T for `f` and a charge of `mass` kg: nothing unless its edge is a barrier's.
+            public func term(_ f: Features, mass: Double) -> Double {
+                guard f.edgeIsBarrier, f.edgeM.isFinite else { return 0 }
+                let root = cbrt(mass)
+                let a = max(f.edgeFromChargeM, 1)
+                let b = max(f.edgeToTargetM, 1)
+                let v = f.edgeM * (2 / (2 * root) * (1 / a + 1 / b)).squareRoot()
+                let q =
+                    f.lastTopM > 0 ? f.shadowM / max(f.lastTopM, 0.5) : f.edgeToTargetM / max(f.edgeTopM, 0.5)
+                let z = min(max(f.distanceM / root, 2), 8)
+                return Self.loss(v) * exp(-q / departure) * pow(2 / z, gamma)
+            }
+
+            /// As fitted (emmettl/bombcad-work#117): proposed, not adopted.
+            public static let fitted = BarrierShielding(
+                peak: -0.995, impulse: -0.942, departure: 3, gamma: 1,
+                fittedTo:
+                    "the fine protective layouts' barrier strips (L4, L5 and L8's walls), 1 t on 1 m cells, each "
+                    + "layout left out in turn, over a barrier counted as a building crossed")
+        }
 
         /// The facing these terms were fitted on, for the raster their features are taken on.
         public var incidence: Incidence { facing ?? .cells }
@@ -1018,6 +1080,11 @@ public enum FacadeLoadSurrogate {
             p = (1 - w) * (branch(close.peak, coefficients.peak) + shieldPeak) + w * p
             i = (1 - w) * (branch(close.impulse, coefficients.impulse) + shieldImpulse) + w * i
             covered = min(close.heldWithin.lowerBound, covered.lowerBound)...covered.upperBound
+        }
+        if let barrier = coefficients.barrier {
+            let t = barrier.term(f, mass: mass)
+            p += barrier.peak * t
+            i += barrier.impulse * t
         }
         return Prediction(
             peakPa: peak * exp(p) * f.learnedPeakFactor, impulsePaS: impulse * exp(i),

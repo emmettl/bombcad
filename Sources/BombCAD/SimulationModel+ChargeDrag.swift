@@ -17,6 +17,15 @@ extension SimulationModel {
         /// and, if a quick estimate is on screen, so does it, as a preview; the scene is loaded again
         /// once the charge is let go.
         func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) -> Bool {
+            // With a what-if's barrier to move, the drag takes the barrier (emmettl/bombcad-work#117).
+            if dragsBarrier, quickEstimateWhatIf.barrier != nil, !isRunning, time == 0,
+                let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio)
+            {
+                isDraggingBarrier = true
+                estimateFollowsCharge = envelopeDamageIsEstimate && !envelopeDamage.isEmpty
+                barrierGrab = SIMD2(point.x, point.y) - quickEstimateWhatIf.barrier!.centre
+                return true
+            }
             guard isPlacingCharge, !sweep.isActive, !isRunning, time == 0 else { return false }
             if case .gauge = selection { return false }
             guard let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else { return false }
@@ -31,6 +40,10 @@ extension SimulationModel {
         }
 
         func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) {
+            if isDraggingBarrier, let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) {
+                moveBarrier(to: SIMD2(point.x, point.y) - barrierGrab)
+                return
+            }
             guard isDraggingCharge, let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else {
                 return
             }
@@ -38,6 +51,12 @@ extension SimulationModel {
         }
 
         func endDrag() {
+            if isDraggingBarrier {
+                isDraggingBarrier = false
+                // The full estimate for where it was let go.
+                if estimateFollowsCharge { requestLook(preview: false) }
+                return
+            }
             guard isDraggingCharge else { return }
             isDraggingCharge = false
             // Loaded again once, now, and recorded as one edit; the preview kept on screen meanwhile.
@@ -49,6 +68,24 @@ extension SimulationModel {
         }
 
     #endif
+
+    /// Moves the what-if's barrier's middle to `point` on the plan, snapped to a quarter metre: a
+    /// preview follows while it is dragged, the full estimate once it is let go (`endDrag`).
+    func moveBarrier(to point: SIMD2<Float>) {
+        guard var barrier = quickEstimateWhatIf.barrier else { return }
+        let snapped = (point * Float(4)).rounded(.toNearestOrEven) / Float(4)
+        guard snapped != barrier.centre else { return }
+        barrier.centre = snapped
+        // Set without its usual preview and estimate: a preview alone while dragged.
+        barrierMoving = true
+        quickEstimateWhatIf.barrier = barrier
+        barrierMoving = false
+        if isDraggingBarrier {
+            if estimateFollowsCharge { requestLook(preview: true) }
+        } else {
+            estimateChoiceChanged()
+        }
+    }
 
     /// Moves the charge to `point` on the ground, snapped as a click places it; a preview follows.
     private func moveDraggedCharge(to point: SIMD3<Float>) {
@@ -95,18 +132,24 @@ extension SimulationModel {
         let incidence = surrogateTerms.coefficients.incidence
         // Laid out alike whatever its charge's size and its buildings' construction: a what-if or a
         // new size takes the same layout, built anew (`withConstructions`), not laid out again.
+        // A barrier moved, or another fixed block, takes the same layout with its raster laid out
+        // again (`withBlocks`, emmettl/bombcad-work#117).
         func shape(_ scene: Scenario) -> Scenario {
             var scene = scene
             scene.envelopeConstructions = nil
             scene.charge.mass = 1
+            scene.boxes = []
             return scene
         }
         let known = preparedDistrict.flatMap { district -> FacadeLoadSurrogate.Prepared? in
             guard district.cellSize == cellSize, district.prepared.raster.incidence == incidence,
                 shape(district.scene) == shape(layout)
             else { return nil }
+            let blocked =
+                district.scene.boxes == layout.boxes
+                ? district.prepared : district.prepared.withBlocks(layout.boxes)
             return district.scene.envelopeConstructions == layout.envelopeConstructions
-                ? district.prepared : district.prepared.withConstructions(of: layout)
+                ? blocked : blocked.withConstructions(of: layout)
         }
         let parts: FacadeLoadSurrogate.Prepared.Parts = waiting.preview ? previewParts : .all
         let within = quickEstimateYieldWithin

@@ -9,7 +9,7 @@ extension FacadeLoadSurrogate {
     /// bit, without building the raster or the components again (roadmap Horizons 6, dragging
     /// the charge: emmettl/bombcad-work#34).
     public struct Prepared: Sendable {
-        public let raster: Raster
+        public private(set) var raster: Raster
         public let cellSize: Float
         let objects: [SceneObject]
         let components: [[EnvelopeComponent]]
@@ -28,6 +28,21 @@ extension FacadeLoadSurrogate {
         /// constructions' (new with each set, `withConstructions`).
         public let identity = UUID()
         public private(set) var constructionsKey = UUID()
+        /// Its raster's own identity, new with each set of fixed blocks (`withBlocks`), for the GPU's
+        /// copy of the raster.
+        public private(set) var rasterKey = UUID()
+
+        /// The same layout with the scene's fixed blocks `blocks` (barrier walls, as a barrier dragged
+        /// moves them; emmettl/bombcad-work#117): its raster laid out again, nothing else. The
+        /// buildings' components keep the faces they had on the air.
+        public func withBlocks(_ blocks: [Box]) -> Prepared {
+            var copy = self
+            copy.raster = Raster(
+                objects: objects, blocks: blocks, terrain: raster.terrain, cell: cellSize,
+                incidence: raster.incidence)
+            copy.rasterKey = UUID()
+            return copy
+        }
 
         /// The same layout with each object built as `scene` says (its geometry the same, only what
         /// its envelopes are built of changed, as a what-if changes it): nothing laid out again.

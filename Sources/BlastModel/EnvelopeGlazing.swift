@@ -190,9 +190,14 @@ public struct GlazingMix: Codable, Hashable, Sendable {
     /// draw's, or just under the stress reached where that is less, as the panes that break are the
     /// weaker). A laminated or filmed pane cracks as its glass does and is thrown only if its
     /// interlayer or film lets it go.
+    ///
+    /// With `noted`, each pane type that may crack is told of with its panes in the region, its
+    /// chance of cracking, and the strength it broke at, for what its glass does once thrown
+    /// (`GlassInjury`).
     func judged(
         areaM2: Double, strength: Double, worseThan: GlazingHazard.Condition?,
-        answer: (Pane) -> (lost: Bool, stress: Double), thrown: (Pane, Double) -> GlazingHazard.Condition
+        answer: (Pane) -> (lost: Bool, stress: Double), thrown: (Pane, Double) -> GlazingHazard.Condition,
+        noted: ((Pane, _ count: Double, _ probability: Double, _ broke: Double) -> Void)? = nil
     ) -> GlazingBreakage {
         var result = GlazingBreakage()
         if worseThan != nil { result.logNoneWorse = 0 }
@@ -215,6 +220,7 @@ public struct GlazingMix: Codable, Hashable, Sendable {
             if thrown(pane, broke) > worseThan {
                 result.logNoneWorse! += count * log(max(1 - probability, 1e-300))
             }
+            noted?(pane, count, probability, broke)
         }
         return result
     }
@@ -225,6 +231,12 @@ public struct GlazingMix: Codable, Hashable, Sendable {
     public func condition(_ pane: Pane, strength: Double, pressures: [Double], binS: Double)
         -> GlazingHazard.Condition
     {
+        hazard(pane, strength: strength, pressures: pressures, binS: binS).condition
+    }
+
+    /// The same pane's glass as it ends (`condition`), with its speed into the room and where it
+    /// lands; and whether it flies whole (laminated or filmed glass let go) rather than in pieces.
+    public func hazard(_ pane: Pane, strength: Double, pressures: [Double], binS: Double) -> GlazingHazard {
         let (a, b) = Self.sides(pane)
         let system: SDOFSystem
         if let laminate = glass?.laminate {
@@ -242,9 +254,11 @@ public struct GlazingMix: Codable, Hashable, Sendable {
         let response = system.response(pressures: pressures, step: binS)
         return GlazingHazard.broken(
             response: response, netPa: pressures, binS: binS, massPerArea: system.massPerArea,
-            paneHeight: Double(pane.heightM)
-        ).condition
+            paneHeight: Double(pane.heightM))
     }
+
+    /// Whether its panes' glass, once let go, flies whole: laminated, or held by film.
+    var throwsWhole: Bool { glass?.laminate != nil || glass?.film != nil }
 
     /// The same mix with its panes' glass `glass`.
     public func with(_ glass: Glass?) -> GlazingMix {

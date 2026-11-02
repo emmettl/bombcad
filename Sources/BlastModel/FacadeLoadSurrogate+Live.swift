@@ -311,6 +311,10 @@ extension FacadeLoadSurrogate.Prepared {
         }
         let componentOut = parts.contains(.damage) ? try run("component", componentRows, componentCount) : []
         let sideOut = parts.contains(.glass) ? try run("side", sideRows, sideCount) : []
+        // The glass thrown into the rooms, where the weights have its network (emmettl/bombcad-work#117).
+        let thrownOut =
+            parts.contains(.glass) && weights.header.networks["thrown"] != nil
+            ? try run("thrown", sideRows, sideCount) : []
         let buildingOut = parts.contains(.structure) ? try run("building", buildingRows, owners.count) : []
         stages.networks = lap()
 
@@ -374,7 +378,10 @@ extension FacadeLoadSurrogate.Prepared {
                                     someBroken: some, blownOut: min(sigmoid(sideOut[o + 1]), some),
                                     fractionBroken: sigmoid(sideOut[o + 2]),
                                     thrownPast3b: min(sigmoid(sideOut[o + 3]), some),
-                                    openingsBlownOut: sigmoid(sideOut[o + 4]))
+                                    openingsBlownOut: sigmoid(sideOut[o + 4]),
+                                    thrownHurt: thrownOut.isEmpty ? nil : sigmoid(thrownOut[2 * s]),
+                                    thrownSevere: thrownOut.isEmpty
+                                        ? nil : min(sigmoid(thrownOut[2 * s + 1]), sigmoid(thrownOut[2 * s])))
                             }
                         }
                     }
@@ -502,7 +509,7 @@ extension FacadeLoadSurrogate.Prepared {
             }
         }
         let request = LiveResponse.LoadRequest(
-            identity: identity, raster: raster,
+            identity: rasterKey, raster: raster,
             components: LiveResponse.LoadRequest.Components(district: components, items: items),
             centres: centres,
             facings: facingsOut, owners: owners, factors: [Float](repeating: 1, count: count), charge: charge,

@@ -152,6 +152,7 @@
                     chargeSection(scene)
                     layerSection
                     trySection
+                    protectSection(scene)
                     ringsSection
                 } else {
                     Section("The explorer") {
@@ -253,6 +254,11 @@
                 if let finding = explorer.finding {
                     Text(finding).font(.body.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
                 }
+                if explorer.layer == .people {
+                    Toggle(ExplorerWords.thrownGlassToggle, isOn: $explorer.countsThrownGlass)
+                    Text(ExplorerWords.thrownGlassNote).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if explorer.layer == .people, explorer.pinned == nil {
                     Text("Pin this picture, then change something, to see how much it helps.")
                         .font(.callout).foregroundStyle(.secondary).fixedSize(
@@ -280,7 +286,9 @@
             switch explorer.layer {
             case .wave: model.liveWave?.refined == true ? LiveWave.Refinement.standing : LiveWave.standing
             case .glass, .walls: FacadeLoadSurrogate.standing + LiveResponse.standing
-            case .people: OccupantInjury.standing
+            case .people:
+                OccupantInjury.standing
+                    + (model.occupancy.glass == .thrownGlass ? [OccupantInjury.thrownStanding] : [])
             case .fire: FireSpread.standing
             }
         }
@@ -333,6 +341,86 @@
                     Button("Pin This Picture") { explorer.pin() }
                         .disabled(model.envelopeGlassChances.isEmpty)
                         .help("Keep this picture, to compare the next with it")
+                }
+            }
+        }
+
+        /// The protections (emmettl/bombcad-work#117): a wall to put and drag, every window's glass, and
+        /// the stand-off; each answers as it moves, the full estimate following once let go.
+        private func protectSection(_ scene: ExplorerScene) -> some View {
+            Section("Protect the buildings") {
+                Text(ExplorerWords.protectIntro).font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if explorer.hasWall {
+                    Picker("Wall's height", selection: $explorer.wallHeight) {
+                        ForEach(ExplorerModel.wallHeights, id: \.self) { Text("\(Int($0)) m").tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    Toggle(ExplorerWords.barrierDrag, isOn: $explorer.dragsWall)
+                        .help("On, a drag in the view moves the wall; off, it moves the charge")
+                    HStack {
+                        Text("Move it 5 m")
+                        Spacer()
+                        Button("Wall 5 m west", systemImage: "arrow.left") {
+                            explorer.nudgeWall(east: -5, north: 0)
+                        }
+                        Button("Wall 5 m north", systemImage: "arrow.up") {
+                            explorer.nudgeWall(east: 0, north: 5)
+                        }
+                        Button("Wall 5 m south", systemImage: "arrow.down") {
+                            explorer.nudgeWall(east: 0, north: -5)
+                        }
+                        Button("Wall 5 m east", systemImage: "arrow.right") {
+                            explorer.nudgeWall(east: 5, north: 0)
+                        }
+                    }
+                    .labelStyle(.iconOnly)
+                    HStack {
+                        Button("Turn the Wall") { explorer.turnWall() }
+                        Button("Take the Wall Away") { explorer.removeWall() }
+                    }
+                    Text(ExplorerWords.barrierWhat).font(.caption).fixedSize(
+                        horizontal: false, vertical: true)
+                    Toggle(ExplorerWords.shelterToggle, isOn: $explorer.countsShelter)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("How sure?").font(.headline)
+                        Text(ExplorerWords.barrierHowSure(shelter: explorer.countsShelter))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                } else {
+                    Button("Put a Wall in Front") { explorer.addWall() }
+                        .disabled(model.envelopeGlassChances.isEmpty)
+                        .help(
+                            "A wall 3 m tall and 30 m long just in front of the protected building; drag it in the view"
+                        )
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Every window's glass")
+                    Picker("Every window's glass", selection: $explorer.glassChoice) {
+                        ForEach(ExplorerModel.GlassChoice.allCases) { Text($0.title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                }
+                if let line = scene.standOff, let standOff = explorer.standOff {
+                    LabeledSlider(
+                        title: "Stand-off",
+                        value: Binding(
+                            get: { Double(standOff) },
+                            set: { explorer.setStandOff(Float($0.rounded())) }),
+                        range: Double(line.range.lowerBound)...Double(line.range.upperBound),
+                        text: ExplorerWords.distanceText(Double(standOff)) + " " + line.phrase,
+                        onEditingChanged: { editing in
+                            explorer.showsStandOff = true
+                            if editing {
+                                model.beginAdjustingEstimate()
+                            } else {
+                                model.endAdjustingEstimate()
+                            }
+                        })
+                    Text(ExplorerWords.standOffWhat).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -398,7 +486,7 @@
             if explorer.showsChange, explorer.pinned != nil,
                 explorer.layer == .glass || explorer.layer == .walls
             {
-                let film = explorer.tried == .glassWithFilm && explorer.layer == .glass
+                let film = explorer.tried?.isGlass == true && explorer.layer == .glass
                 return [
                     (film ? "Less glass thrown in" : "Better", Self.colour(ExplorerColours.betterColour)),
                     ("About the same", Self.colour(ExplorerColours.sameColour)),

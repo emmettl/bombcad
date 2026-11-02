@@ -773,7 +773,44 @@ final class SimulationModel {
     /// What if every building were built otherwise, for the quick estimate and its previews alone
     /// (emmettl/bombcad-work#113; `LiveResponse.WhatIf`): the project's scene is never changed.
     var quickEstimateWhatIf = LiveResponse.WhatIf() {
-        didSet { if quickEstimateWhatIf != oldValue { estimateChoiceChanged() } }
+        didSet {
+            if quickEstimateWhatIf != oldValue, !barrierMoving { estimateChoiceChanged() }
+            if quickEstimateWhatIf.barrier != oldValue.barrier {
+                barrierLines = Self.lines(quickEstimateWhatIf.barrier, in: settings.scenario)
+            }
+        }
+    }
+    /// The what-if's barrier being dragged in the view (`dragsBarrier`: a drag takes the barrier, not
+    /// the charge), where it was grabbed from its middle, and a move that makes its own preview.
+    var dragsBarrier = false
+    var isDraggingBarrier = false
+    @ObservationIgnored var barrierGrab = SIMD2<Float>.zero
+    @ObservationIgnored var barrierMoving = false
+    /// The what-if's barrier drawn as an outline over the view (the project holds no barrier).
+    var barrierLines: [SIMD4<Float>] = []
+
+    /// `barrier`'s outline, its edges at its foot and top, as the view's lines take them.
+    static func lines(_ barrier: LiveResponse.WhatIf.Barrier?, in scene: Scenario) -> [SIMD4<Float>] {
+        guard let barrier else { return [] }
+        var copy = scene
+        copy.boxes = []
+        let (from, to) = barrier.ends
+        guard
+            (try? copy.addBarrier(from: from, to: to, height: barrier.heightM, thickness: barrier.thicknessM))
+                != nil,
+            let box = copy.boxes.last
+        else { return [] }
+        let lo = box.min
+        let hi = box.max
+        let corners = [SIMD2(lo.x, lo.y), SIMD2(hi.x, lo.y), SIMD2(hi.x, hi.y), SIMD2(lo.x, hi.y)]
+        var lines: [SIMD4<Float>] = []
+        // Kind 2, the bold line, round its foot and its top, and up its corners.
+        for n in 0..<4 {
+            let (a, b) = (corners[n], corners[(n + 1) % 4])
+            for z in [lo.z, hi.z] { lines += [SIMD4(a.x, a.y, z, 2), SIMD4(b.x, b.y, z, 0)] }
+            lines += [SIMD4(a.x, a.y, lo.z, 2), SIMD4(a.x, a.y, hi.z, 0)]
+        }
+        return lines
     }
     /// While a control the estimate follows is held (`beginAdjustingEstimate`), and whether it does.
     var isAdjustingEstimate = false
@@ -852,12 +889,27 @@ final class SimulationModel {
     }
     /// A key of its own: "quickEstimate.clearTopTerms" chose the clear-top candidate before #99.
     static let clearTopTermsKey = "quickEstimate.clearTopTermsOf25October"
+    /// Whether a barrier wall shelters the façades close behind it by its own term
+    /// (`FacadeLoadSurrogate.TermSet.deepCityOutlineBarriers`; emmettl/bombcad-work#117), fitted on the
+    /// fine protective layouts' barrier strips: a candidate, off unless chosen, and remembered. Off, a
+    /// barrier counts as one more building crossed. The glass front and the earlier terms, where
+    /// chosen, take precedence.
+    var quickEstimateBarrierShielding = UserDefaults.standard.bool(
+        forKey: SimulationModel.barrierShieldingKey)
+    {
+        didSet {
+            learnedDefaults.set(quickEstimateBarrierShielding, forKey: Self.barrierShieldingKey)
+            estimateChoiceChanged()
+        }
+    }
+    static let barrierShieldingKey = "quickEstimate.barrierShielding"
     /// The façade terms and load scatter the quick estimate and the far field take.
     var surrogateTerms: FacadeLoadSurrogate.TermSet {
         if quickEstimateFirstFitTerms { return .fitted }
         if quickEstimateClearTopTerms { return quickEstimateGlassFront ? .clearTopFront : .clearTop }
         if quickEstimateCellsFacingTerms { return quickEstimateGlassFront ? .deepCityFront : .deepCity }
-        return quickEstimateGlassFront ? .deepCityOutlineFront : .adopted
+        if quickEstimateGlassFront { return .deepCityOutlineFront }
+        return quickEstimateBarrierShielding ? .deepCityOutlineBarriers : .adopted
     }
     /// Whether the far field carries the near run's match flat, with no trend with distance: the
     /// far set's own choice (`FarFieldSet.matchFlat`, saved with the project), on for New District's

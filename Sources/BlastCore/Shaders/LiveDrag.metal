@@ -53,6 +53,12 @@ struct LiveCoefficients {
     float frontCount;
     float frontMinimumMass;
     float frontPoints[16];
+    // A barrier wall's own shielding (`Coefficients.BarrierShielding`), none where hasBarrier is 0.
+    float hasBarrier;
+    float barrierPeak;
+    float barrierImpulse;
+    float barrierDeparture;
+    float barrierGamma;
 };
 
 struct LiveEntry {
@@ -157,7 +163,7 @@ enum LiveFeature {
 // A prediction (`FacadeLoadSurrogate.predict`): peak, impulse, rise share, the walls' rise share
 // (`structureRise`), and the glass's front share (`Coefficients.GlassFront`).
 static void predictLoad(thread const float *f, float open, float mass, float cellSize, float learnedFactor,
-                        constant LiveCoefficients &c, thread float *out) {
+                        bool edgeIsBarrier, constant LiveCoefficients &c, thread float *out) {
     float root = powr(mass, 1.0f / 3.0f);
     float scaled0 = max(f[fDistance] / root, 0.2f);
     float scaledTerms = clamp(scaled0, c.scaledLow, c.scaledHigh);
@@ -208,6 +214,19 @@ static void predictLoad(thread const float *f, float open, float mass, float cel
         }
         p = (1.0f - w) * (branchPeak + shieldPeak) + w * p;
         i = (1.0f - w) * (branchImpulse + shieldImpulse) + w * i;
+    }
+    // Behind a barrier wall, its own shielding (`BarrierShielding.term`).
+    if (c.hasBarrier != 0.0f && edgeIsBarrier && isfinite(f[fEdge])) {
+        float a = max(f[fEdgeFrom], 1.0f);
+        float b = max(f[fEdgeTo], 1.0f);
+        float v = f[fEdge] * sqrt(2.0f / (2.0f * root) * (1.0f / a + 1.0f / b));
+        float loss = v > -0.78f
+            ? (6.9f + 20.0f * log10(sqrt((v - 0.1f) * (v - 0.1f) + 1.0f) + v - 0.1f)) / 20.0f * log(10.0f) : 0.0f;
+        float q = f[fLastTop] > 0.0f ? f[fShadow] / max(f[fLastTop], 0.5f) : f[fEdgeTo] / max(f[fEdgeTop], 0.5f);
+        float zb = clamp(f[fDistance] / root, 2.0f, 8.0f);
+        float t = loss * exp(-q / c.barrierDeparture) * powr(2.0f / zb, c.barrierGamma);
+        p += c.barrierPeak * t;
+        i += c.barrierImpulse * t;
     }
     float2 base = baseLoad(f[fDistance], f[fCos], mass);
     out[0] = base.x * exp(p) * learnedFactor;
@@ -294,6 +313,7 @@ kernel void liveLoads(constant LiveRaster &r [[buffer(0)]],
     float edgeM = -INFINITY, edgeFrom = 0.0f, edgeTo = 0.0f, edgeTop = 0.0f, lastTop = 0.0f;
     float3 edgeAt = float3(0.0f);
     bool hasEdge = false;
+    int edgeOwner = -1;
     for (int s = 0; s < steps; ++s) {
         float t = (float(s) + 0.5f) / float(steps);
         float3 p = a + t * (b - a);
@@ -304,9 +324,11 @@ kernel void liveLoads(constant LiveRaster &r [[buffer(0)]],
         if (!cellIndex(r, p.xy, n)) continue;
         int inside = -1;
         float top = -FLT_MAX;
+        int topOwner = -1;
         for (int e = starts[n]; e < starts[n + 1]; ++e) {
             LiveEntry entry = entries[e];
             if (entry.owner == owner) continue;
+            if (entry.high > top) topOwner = entry.owner;
             top = max(top, entry.high);
             if (inside == -1 && p.z >= entry.low && p.z < entry.high) inside = entry.owner;
         }
@@ -323,6 +345,7 @@ kernel void liveLoads(constant LiveRaster &r [[buffer(0)]],
                 edgeTop = top - ground;
                 edgeAt = p;
                 hasEdge = true;
+                edgeOwner = topOwner;
             }
         }
         if (inside != -1) {
@@ -435,8 +458,9 @@ kernel void liveLoads(constant LiveRaster &r [[buffer(0)]],
     constant LiveCoefficients &c = owners[id].y != 0 ? roofs : walls;
     float atYield[5];
     float stepped[5];
-    predictLoad(f, r.charge.w, r.masses.x, r.masses.z, factors[id], c, atYield);
-    predictLoad(f, r.charge.w, r.masses.y, r.masses.z, factors[id], c, stepped);
+    bool edgeIsBarrier = hasEdge && edgeOwner < -1;
+    predictLoad(f, r.charge.w, r.masses.x, r.masses.z, factors[id], edgeIsBarrier, c, atYield);
+    predictLoad(f, r.charge.w, r.masses.y, r.masses.z, factors[id], edgeIsBarrier, c, stepped);
     for (int k = 0; k < 5; ++k) o[liveFeatures + k] = atYield[k];
     o[liveFeatures + 5] = stepped[0];
     o[liveFeatures + 6] = stepped[1];

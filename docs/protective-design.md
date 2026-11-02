@@ -1071,6 +1071,78 @@ on the outline's terms. A plan and the quick estimate beside it now read a side'
 slightly different terms: within 0.01–0.02 in a band on Beirut as it lies, more on fronts at a
 slant to the cells.
 
+## A barrier you can push around (2 November 2026)
+
+emmettl/bombcad-work#117, stage 1: protective design on the live models. In the explorer, and in
+the workbench's What if:
+
+- **a barrier wall** to put, drag and size: a what-if, as the glass and the walls are
+  (`LiveResponse.WhatIf.barrier`), so the project is never changed. While it is dragged, each frame
+  lays out the district's raster again with the wall in it (`Prepared.withBlocks`; nothing else is
+  laid out again) and sends it to the GPU, and the learned response re-colours the glass, the walls
+  and the people. On let-go the full estimate follows with the wall in the scene;
+- **every window's glass** filmed or laminated, which the what-ifs already gave;
+- **the stand-off**, a slider that keeps the charge back from the scene's protected building, the
+  square's glass office or the street's bank, with the stand-off line drawn across its path.
+
+**The barrier's own shelter.** Until now a barrier counted as one more building crossed
+([stage 3](#changes-as-constructions-stage-3)), which takes 4–5% off a façade's peak. The fine runs
+said a wall shelters façades within one or two of its heights behind it far more than that
+([stage 1](#stage-1-shielding-as-a-factor-stopped)). A term of the barrier's own
+(`Coefficients.BarrierShielding`) now takes that off, for a component whose knife edge is a barrier's
+(one of the scene's fixed blocks, `Features.edgeIsBarrier`). It adds `b T` to the log peak and the
+log impulse, with T = J(v) e^(−q/3) (2/Z)^1 and Z held within 2–8, where J is ITU-R P.526's
+knife-edge loss and q is the departure behind the obstruction over its height. It was fitted on the
+barrier strips of the fine layouts L4, L5 and L8, 1 t on 1 m cells, each layout left out in turn,
+over what the adopted terms already take for a barrier crossed (`barrier_fit3.py` under
+`$BOMBCAD_DATA/protective-live/barrier/`): b = −0.995 for the peak and −0.942 for the impulse. The
+40 barrier strips at 1 m, each layout's held out:
+
+| Behind a barrier | Counted as a building crossed | With the term, held out |
+|---|---|---|
+| Peak within ×1.25, ×1.5 | as a building crossed, 55% and 85% | with the term, 60% and 98% |
+| Peak: log-SD, median | 0.33, +0.05 | 0.19, +0.16 |
+| Impulse within ×1.25 | 68% | impulse within ×1.25 at 98% |
+| Impulse: log-SD, median | 0.21, −0.08 | 0.12, +0.04 |
+| The 6 strips close behind (T over 0.3): median | the peak read ×1.8 too high | −0.01 |
+
+On 0.5 m cells it is the same to within a few points (peak within ×1.5 90% with the term, 85%
+without; impulse within ×1.25 98%, 65%).
+
+- **What it gains:** close behind a wall, the façade's peak and impulse come out as the fine runs
+  give them, where counting the wall as a building read them nearly twice too high. The scatter
+  between strips nearly halves.
+- **What it costs:** over all the barrier strips its median peak moves from 5% under the runs' to 16%
+  over. Strips a little behind the wall, or above its top, take a little credit that the runs do not
+  show. That is the unsafe side for a plan, by about a sixth.
+- **It is a candidate, off by default:** the term set `deep-city-outline-barriers`
+  (`TermSet.deepCityOutlineBarriers`), in the workbench as Quick Estimate's **Barrier walls shelter
+  close behind (candidate)** and in the explorer as "Count the shelter close behind the wall
+  (proposed)". Without a barrier in the scene it is the adopted terms to the bit (tested). The GPU's
+  loads take it as the CPU's do (`LiveDragGPUTests`), so the live drag and the full estimate agree.
+- **Standing: illustrative.** One family of made-up layouts at one charge, the walls rigid. Xiao et
+  al.'s wall ([stage 3](#stage-3-xiao-et-als-blast-wall)) is a measured check still to make with the
+  term on.
+
+**Live against the full estimate.** Dragged, the wall's own effect on each side's glass blown out
+(with it against without it) is the full estimate's within 0.1 on 97.6–100% of the sides it moves, on
+the square, the street and Beirut within 1.5 km. The glass thrown into the rooms and the people's
+share hurt are within 0.1 on 99.9–100%. A frame takes 5 ms on the square, 7 ms on the street and
+25 ms on Beirut within 1.5 km ([the explorer](explorer.md#protect-the-buildings-2-november-2026)
+gives the tables). In those scenes a 3 m wall moves few figures, because most of their glass breaks
+anyway or stands above the wall's top.
+
+**The proposal: make the barrier term the default** (`deep-city-outline-barriers` in place of
+`deep-city-outline`). Close behind a wall, the term brings the load to the fine runs' (median −0.01,
+against ×1.8 too high now). It halves the scatter, and changes nothing in a scene without a barrier.
+Against it, it credits about a sixth too much shelter on the median barrier strip. Its basis is one
+family of made-up layouts, and Xiao's measured wall is still to judge with it. Until the user decides,
+it stays a candidate.
+
+**The budget optimiser** (the best barrier for a budget through the fast model) is not built in this
+stage. The search (`scenebench protect`, `ProtectionSearch`) would take the barrier term and the wall
+what-if as it stands, a later stage's work.
+
 ## Open questions
 
 - **Shielding.**

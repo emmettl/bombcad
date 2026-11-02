@@ -178,6 +178,7 @@
                     + (settings.showBlastHazards ? model.blastHazardLines() : [])
                     + model.refinedOutlines() + model.fireSeedOutlines() + model.explorerLines
                     + (marking?.lines ?? [])
+                    + model.barrierLines
                 return Frame(
                     settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
                     freestanding: replay.map { $0.1?.freestanding ?? [] }

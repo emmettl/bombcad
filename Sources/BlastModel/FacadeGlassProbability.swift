@@ -183,11 +183,20 @@ extension FacadeLoadSurrogate {
         /// fragility fitted to Beirut's survey (`OpeningsFragility`): fitted, not physics. Zero in
         /// results saved before it.
         public var openingsBlownOut: Double = 0
+        /// The glass thrown into its rooms (`GlassInjury.zone`, emmettl/bombcad-work#117): over the
+        /// first `GlassInjury.roomDepthM` behind it, the share within which a person is hurt, and hurt
+        /// severely, over the draws. Nil where not worked out (results saved before it, and previews
+        /// that do not give it).
+        public var thrownHurt: Double? = nil
+        public var thrownSevere: Double? = nil
 
         public init(
             owner: UUID, axis: Int, outward: Int, distanceM: Double, someBroken: Double, blownOut: Double,
-            fractionBroken: Double, thrownPast3b: Double, openingsBlownOut: Double = 0
+            fractionBroken: Double, thrownPast3b: Double, openingsBlownOut: Double = 0,
+            thrownHurt: Double? = nil, thrownSevere: Double? = nil
         ) {
+            self.thrownHurt = thrownHurt
+            self.thrownSevere = thrownSevere
             self.owner = owner
             self.axis = axis
             self.outward = outward
@@ -201,7 +210,7 @@ extension FacadeLoadSurrogate {
 
         enum CodingKeys: String, CodingKey {
             case owner, axis, outward, distanceM, someBroken, blownOut, fractionBroken, thrownPast3b,
-                openingsBlownOut
+                openingsBlownOut, thrownHurt, thrownSevere
         }
 
         public init(from decoder: Decoder) throws {
@@ -215,6 +224,8 @@ extension FacadeLoadSurrogate {
             fractionBroken = try c.decode(Double.self, forKey: .fractionBroken)
             thrownPast3b = try c.decode(Double.self, forKey: .thrownPast3b)
             openingsBlownOut = try c.decodeIfPresent(Double.self, forKey: .openingsBlownOut) ?? 0
+            thrownHurt = try c.decodeIfPresent(Double.self, forKey: .thrownHurt)
+            thrownSevere = try c.decodeIfPresent(Double.self, forKey: .thrownSevere)
         }
     }
 
@@ -336,6 +347,8 @@ extension FacadeLoadSurrogate {
                     var thrown = 0.0
                     var mine: [GlassDraw] = []
                     var openings = 0.0
+                    var hurt = 0.0
+                    var severe = 0.0
                     let middle = side.strips.map(\.features.distanceM).sorted()[side.strips.count / 2]
                     for k in 0..<draws {
                         let mass = masses[k]
@@ -377,8 +390,12 @@ extension FacadeLoadSurrogate {
                             outcome =
                                 outcome
                                 + table.outcome(
-                                    side.mix, prediction: p, areaM2: strip.areaM2, strength: strength)
+                                    side.mix, prediction: p, areaM2: strip.areaM2, strength: strength,
+                                    injury: true)
                         }
+                        let zone = outcome.thrownZone
+                        hurt += zone.hurt
+                        severe += zone.severe
                         let glass = outcome.glass
                         some += glass.anyBroken
                         let isBlown = glass.fraction >= 0.9
@@ -395,7 +412,8 @@ extension FacadeLoadSurrogate {
                     out[s] = SideGlass(
                         owner: side.owner, axis: side.axis, outward: side.outward, distanceM: middle,
                         someBroken: some / n, blownOut: blown / n, fractionBroken: fraction / n,
-                        thrownPast3b: thrown / n, openingsBlownOut: openings / n)
+                        thrownPast3b: thrown / n, openingsBlownOut: openings / n, thrownHurt: hurt / n,
+                        thrownSevere: severe / n)
                     if keepDraws { kept[s] = mine }
                 }
             }
@@ -434,8 +452,20 @@ extension FacadeLoadSurrogate {
     public struct GlassOutcome: Sendable {
         public var glass = GlazingBreakage()
         public var logNoneWorse = 0.0
+        /// The glass thrown into the rooms behind (`GlassInjury.zone`): the share of their first
+        /// `GlassInjury.roomDepthM` within which a person is hurt and hurt severely, each times the
+        /// façade area judged, and that area, so that regions sum as their areas weigh them.
+        public var hurtM2 = 0.0
+        public var severeM2 = 0.0
+        public var zoneM2 = 0.0
 
         public init() {}
+
+        /// The share of the rooms' first metres within which a person is hurt, and severely, over
+        /// the area judged.
+        public var thrownZone: (hurt: Double, severe: Double) {
+            zoneM2 > 0 ? (hurtM2 / zoneM2, severeM2 / zoneM2) : (0, 0)
+        }
 
         init(_ glass: GlazingBreakage) {
             self.glass = glass
@@ -449,6 +479,9 @@ extension FacadeLoadSurrogate {
             var sum = a
             sum.glass = a.glass + b.glass
             sum.logNoneWorse += b.logNoneWorse
+            sum.hurtM2 += b.hurtM2
+            sum.severeM2 += b.severeM2
+            sum.zoneM2 += b.zoneM2
             return sum
         }
     }
@@ -488,6 +521,8 @@ extension FacadeLoadSurrogate {
         private final class Shard: @unchecked Sendable {
             let lock = NSLock()
             var responses: [Key: (lost: Bool, stress: Double)] = [:]
+            /// A cracked pane's end, by its strength: its condition's rank and its speed into the room.
+            var ends: [Key: (rank: Int, speed: Double)] = [:]
         }
 
         private static let shardCount = 64
@@ -550,12 +585,41 @@ extension FacadeLoadSurrogate {
 
         /// `mix`'s glass over a façade region of `areaM2` under `prediction`'s pulse, its panes'
         /// strength `strength` times their glass's (`GlazingMix.judged`), against `worseThan`.
+        ///
+        /// With `injury`, also the glass thrown into the rooms behind (`GlassOutcome.thrownZone`).
         func outcome(
             _ mix: GlazingMix, prediction: Prediction, areaM2: Double, strength: Double,
-            worseThan: GlazingHazard.Condition = .threeB
+            worseThan: GlazingHazard.Condition = .threeB, injury: Bool = false
         ) -> GlassOutcome {
             var pulse = Pulse(prediction, binS: binS, step: step)
-            return GlassOutcome(
+            func throwOf(_ pane: GlazingMix.Pane, _ broke: Double) -> (rank: Int, speed: Double) {
+                let step = Int16(max(min((log(broke) * strengthSteps).rounded(), 32_000), -32_000))
+                return lookupThrow(pulse.key(pane, glass: mix.glass, strength: step)) {
+                    let hazard = mix.hazard(
+                        pane, strength: exp(Double(step) / strengthSteps), pressures: pulse.pressures(),
+                        binS: binS)
+                    return (
+                        GlazingHazard.Condition.allCases.firstIndex(of: hazard.condition)!, hazard.speedMS
+                    )
+                }
+            }
+            var thrown: [GlassInjury.Thrown] = []
+            let noted: ((GlazingMix.Pane, Double, Double, Double) -> Void)? =
+                injury
+                ? { pane, count, probability, broke in
+                    let end = throwOf(pane, broke)
+                    // Held by its frame, its interlayer or its film, it throws nothing.
+                    guard GlazingHazard.Condition.allCases[end.rank] > .two, end.speed > 0 else { return }
+                    let whole = mix.throwsWhole
+                    let piece = GlassInjury.pieces(mix, pane, whole: whole)
+                    let height = GlazingHazard.sillM + Double(pane.heightM) / 2
+                    thrown.append(
+                        GlassInjury.Thrown(
+                            areaShare: count * probability * Double(pane.areaM2) / max(areaM2, 1e-9),
+                            speedMS: end.speed, reachM: end.speed * (2 * height / 9.81).squareRoot(),
+                            pieceKg: piece.kg, pieceM2: piece.m2, whole: whole))
+                } : nil
+            var result = GlassOutcome(
                 mix.judged(
                     areaM2: areaM2, strength: strength, worseThan: worseThan,
                     answer: { pane in
@@ -569,19 +633,15 @@ extension FacadeLoadSurrogate {
                             return (r.lostResistanceAt != nil, r.equivalentStress ?? 0)
                         }
                     },
-                    thrown: { pane, broke in
-                        let step = Int16(max(min((log(broke) * strengthSteps).rounded(), 32_000), -32_000))
-                        let rank = lookup(pulse.key(pane, glass: mix.glass, strength: step)) {
-                            let condition = mix.condition(
-                                pane, strength: exp(Double(step) / strengthSteps),
-                                pressures: pulse.pressures(),
-                                binS: binS)
-                            return (
-                                false, Double(GlazingHazard.Condition.allCases.firstIndex(of: condition)!)
-                            )
-                        }.stress
-                        return GlazingHazard.Condition.allCases[Int(rank)]
-                    }))
+                    thrown: { pane, broke in GlazingHazard.Condition.allCases[throwOf(pane, broke).rank] },
+                    noted: noted))
+            if injury {
+                let zone = GlassInjury.zone(thrown, glazed: Double(mix.glazedFraction))
+                result.hurtM2 = zone.hurt * areaM2
+                result.severeM2 = zone.severe * areaM2
+                result.zoneM2 = areaM2
+            }
+            return result
         }
 
         /// `mix`'s glass alone (`outcome`), as `GlazingMix.breakage` on the pulse.
@@ -589,6 +649,23 @@ extension FacadeLoadSurrogate {
             -> GlazingBreakage
         {
             outcome(mix, prediction: prediction, areaM2: areaM2, strength: strength).glass
+        }
+
+        private func lookupThrow(_ key: Key, _ make: () -> (rank: Int, speed: Double)) -> (
+            rank: Int, speed: Double
+        ) {
+            let shard = shards[abs(key.hashValue % Self.shardCount)]
+            shard.lock.lock()
+            if let known = shard.ends[key] {
+                shard.lock.unlock()
+                return known
+            }
+            shard.lock.unlock()
+            let made = make()
+            shard.lock.lock()
+            shard.ends[key] = made
+            shard.lock.unlock()
+            return made
         }
 
         private func lookup(_ key: Key, _ make: () -> (lost: Bool, stress: Double)) -> (

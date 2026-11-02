@@ -30,6 +30,15 @@ struct PeopleSection: View {
                 .help(
                     "The use of buildings whose map tags say none (most of a map's). Tagged buildings take their tag's."
                 )
+                Picker("Hurt by glass", selection: $model.occupancy.glass) {
+                    ForEach(OccupantInjury.GlassModel.allCases) { Text($0.label).tag($0) }
+                }
+                .help(
+                    "How glass hurts the people indoors: by the share of panes broken (Kummer, 2004), as since 21 "
+                        + "October 2026; or by the glass thrown into their rooms, how far and how fast, by Bowen et "
+                        + "al.'s glass missiles (1956), which film and laminated glass change (proposed; "
+                        + "docs/people-in-the-scene.md)."
+                )
                 Picker("Density", selection: $model.occupancy.densityScale) {
                     Text("×0.5").tag(0.5)
                     Text("×0.75").tag(0.75)
@@ -72,7 +81,11 @@ struct PeopleSection: View {
                     }
                     .font(.caption)
                 }
-                ForEach(OccupantInjury.standing, id: \.self) {
+                ForEach(
+                    OccupantInjury.standing
+                        + (model.occupancy.glass == .thrownGlass ? [OccupantInjury.thrownStanding] : []),
+                    id: \.self
+                ) {
                     Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(
                         horizontal: false, vertical: true)
                 }
