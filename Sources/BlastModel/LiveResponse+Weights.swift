@@ -44,7 +44,9 @@ extension LiveResponse {
         /// Every tensor, one after another, as the layers' offsets index them.
         public var values: [Float]
 
-        public init(data: Data) throws { try self.init(data: data, requiring: ["component", "side", "building"]) }
+        public init(data: Data) throws {
+            try self.init(data: data, requiring: ["component", "side", "building"])
+        }
 
         /// The weights in `data`, each of the networks `requiring` there in full.
         init(data: Data, requiring: [String]) throws {
