@@ -68,6 +68,9 @@ final class ProjectSession {
             }
             .onChange(of: fileURL) { _, url in session?.model.packageURL = url }
             .onChange(of: session?.snapshot) { _, snapshot in
+                // A built-in scene the explorer has open is not an edit of the project: closing the
+                // window asks nothing (emmettl/bombcad-work#114).
+                if mode == .explore, explorer?.scene != nil { return }
                 if let snapshot, snapshot != document { document = snapshot }
             }
             .onDisappear { session?.suspend() }

@@ -43,10 +43,13 @@ struct ExplorerModelTests {
         #expect(explorer.caption?.contains("crossed the whole scene") == true)
         #expect(explorer.viewSummary.hasPrefix("A square; 500 kg of TNT in the middle of the square"))
 
-        // The layers: the wave on plain buildings, the glass by the explorer's own score.
-        #expect(!model.showsEnvelopeDamage && model.explorerColouring == nil)
+        // No solver here: the air's starting ball is not drawn, and the charge's marker is large enough to see.
+        #expect(!model.renderSettings.showWave && model.renderSettings.chargeMarkerRadius > 1)
+        // The layers: the wave on plain buildings, the glass by the explorer's own score, the wave
+        // then not drawn over it.
+        #expect(!model.showsEnvelopeDamage && model.explorerColouring == nil && !model.explorerHidesLiveWave)
         explorer.layer = .glass
-        #expect(model.showsEnvelopeDamage && model.explorerColouring == .glass)
+        #expect(model.showsEnvelopeDamage && model.explorerColouring == .glass && model.explorerHidesLiveWave)
         #expect(explorer.finding?.hasPrefix("Windows break") == true)
         explorer.layer = .walls
         #expect(model.envelopeColouring == .wallsModerate && model.explorerColouring == nil)
@@ -78,6 +81,13 @@ struct ExplorerModelTests {
         #expect(model.settings.chargeMass == 1_000)
         let twice = try #require(explorer.comparison)
         #expect(twice.contains("cube root"), "\(twice)")
+        // The faint ring at the pinned picture's reach, round the pinned charge.
+        let reach = try #require(explorer.pinnedReach)
+        #expect(!model.explorerLines.isEmpty && model.explorerLines.count % 2 == 0)
+        let first = model.explorerLines[0]
+        let pinnedCharge = try #require(explorer.pinned?.charge)
+        #expect(
+            abs(simd_length(SIMD2(first.x - pinnedCharge.x, first.y - pinnedCharge.y)) - Float(reach)) < 0.5)
 
         // Behind the terrace: the charge at the named place.
         explorer.run(.behindABuilding)
@@ -89,6 +99,33 @@ struct ExplorerModelTests {
         #expect(explorer.pinned == nil && model.peopleBaseline == nil)
         explorer.close()
         #expect(explorer.scene == nil && !model.liveWaveShown)
+    }
+
+    @Test("Opens the street at its named places; Beirut asks to be downloaded first")
+    func streetAndBeirut() async throws {
+        let model = SimulationModel(document: ProjectDocument.newProject())
+        try await settle(model)
+        let explorer = ExplorerModel(model: model)
+        explorer.reduceMotion = true
+        // Beirut's file not here: one prompt, nothing opened.
+        setenv("BOMBCAD_EXPLORER_BEIRUT", "/nonexistent/explorer-beirut.json", 1)
+        defer { unsetenv("BOMBCAD_EXPLORER_BEIRUT") }
+        await explorer.open(.beirut)
+        #expect(explorer.offersBeirutDownload && explorer.scene == nil)
+        #expect(explorer.beirutOffer.hasPrefix(ExplorerScene.Beirut.Release.offer))
+        #expect(explorer.beirutDownloadTitle.hasPrefix("Download "))
+        explorer.offersBeirutDownload = false
+
+        await explorer.open(.street)
+        try await settle(model)
+        #expect(explorer.scene == .street && explorer.problem == nil)
+        #expect(model.settings.scenario.envelopeObjects.count == ExplorerScene.street.buildings().count)
+        #expect(explorer.place?.name == "In the middle of the high street")
+        explorer.put(at: try #require(ExplorerScene.street.place("Outside the bank")))
+        try await settle(model)
+        #expect(explorer.place?.name == "Outside the bank")
+        #expect(!model.envelopeGlassChances.isEmpty)
+        explorer.close()
     }
 
     @Test("The speed plays a wave in about five seconds")

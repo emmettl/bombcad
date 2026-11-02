@@ -162,6 +162,10 @@ enum SceneBench {
             try LiveWaveLearned.judge(Array(args.dropFirst()))
             return
         }
+        if args.first == "explorer-beirut" {
+            try ExplorerBeirut.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "live-wave-time" {
             try LiveWaveLearned.time(Array(args.dropFirst()))
             return

@@ -13,3 +13,11 @@ the same or worse. People are shown only as where they are hurt and how much a c
 as counts. It rests on the live models already in the app (the quick estimate, the learned
 response, the live wave, the what-ifs, the fire after the blast); their standing is unchanged, and
 the full estimate follows each change ([the explorer](../../explorer.md)).
+
+**The explorer's street, Beirut's port and the ring:** a made-up high street of 781 buildings joins
+the square, and Beirut's port within 1.5 km is offered as a download of 0.8 MB, under one prompt with
+the live wave's refinement, opening with a short factual line about 4 August 2020. A pinned picture's
+reach is drawn as a faint ring. Placing the charge by name no longer cuts off, the explorer no longer
+draws the solver's starting ball of hot gas at the charge (its marker is a small red sphere), "about
+the same" is a warm grey apart from the blue for "better", and opening a built-in scene no longer
+leaves the window's project changed ([the explorer, stage 3](../../explorer.md#stage-3-the-street-beiruts-port-and-the-ring-2-november-2026)).

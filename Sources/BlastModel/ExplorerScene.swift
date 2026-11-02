@@ -1,19 +1,28 @@
 import Foundation
 import simd
 
-/// The explorer's scenes (emmettl/bombcad-work#114; docs/explorer.md): districts built in, made up
-/// rather than taken from a map, laid out as File ▸ New District lays a map's out. Each is the same
-/// every time: its buildings come from a fixed seed, never from a file.
+/// The explorer's scenes (emmettl/bombcad-work#114; docs/explorer.md), laid out as File ▸ New District
+/// lays a map's out. The square and the street are built in, made up rather than taken from a map,
+/// the same every time from a fixed seed. Beirut's port is a real place, from map data, fetched once
+/// as a release asset (`ExplorerDistrict`, `Beirut.Release`).
 public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
     /// A town square ringed by blocks of flats, a glass office on its north side, a terrace of brick
     /// houses on its east and shops on its west; about 400 m across.
     case square
+    /// A high street of shops and flats, three to five storeys of brick and concrete, a bank on it,
+    /// a back lane behind each row and streets of terraced houses beyond.
+    case street
+    /// Beirut's port and the city round it, within 1.5 km of where the charge went off on
+    /// 4 August 2020: OpenStreetMap's buildings, GHSL's heights, Copernicus's ground.
+    case beirut
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
         case .square: "A square"
+        case .street: "A street"
+        case .beirut: "Beirut's port, 2020"
         }
     }
 
@@ -21,27 +30,74 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
     public var summary: String {
         switch self {
         case .square: "A town square ringed by flats and shops, with a glass office on one side."
+        case .street: "A high street of shops and flats, with terraced houses behind."
+        case .beirut: "The city round the port as it stood, from map data."
         }
     }
 
-    /// What the scene is, for its standing: made up, not a real place.
+    /// The scene's opening line, said before anything else: Beirut's, that it was a real disaster.
+    public var opening: String? {
+        switch self {
+        case .square, .street: nil
+        case .beirut:
+            "On 4 August 2020, ammonium nitrate stored at Beirut's port exploded. 218 people died and about "
+                + "6,500 were hurt. What follows is a model's estimate, not a record of that day."
+        }
+    }
+
+    /// What the scene is, for its standing.
     public var source: String {
         switch self {
         case .square: "A made-up town square (BombCAD's own, seeded): not a real place and not map data."
+        case .street: "A made-up high street (BombCAD's own, seeded): not a real place and not map data."
+        case .beirut: "Beirut's port within 1.5 km, from OpenStreetMap, GHSL and Copernicus GLO-30."
         }
     }
 
-    /// Where the charge goes off first, in longitude and latitude: the middle of the square.
-    public var charge: SIMD2<Double> { .zero }
+    /// Whether the scene is built into the app; Beirut's is downloaded (`Beirut.Release`).
+    public var isBuiltIn: Bool { self != .beirut }
+
+    /// Where the charge goes off first, in longitude and latitude.
+    public var charge: SIMD2<Double> {
+        switch self {
+        case .square, .street: .zero
+        case .beirut: Beirut.charge
+        }
+    }
 
     /// Buildings whose footprint's centre lies within this many metres of the charge are placed.
-    public var radiusM: Float { 300 }
+    public var radiusM: Float {
+        switch self {
+        case .square, .street: 300
+        case .beirut: Beirut.radiusM
+        }
+    }
 
-    /// The scene's cells, metres: fine enough for its streets of 14 m.
-    public var cellSizeM: Float { 2 }
+    /// The scene's cells, metres: fine enough for the made-up scenes' narrow streets; for Beirut the 6 m
+    /// File ▸ New District's advisor took for its district, which keeps the scene's memory to a few
+    /// gigabytes (nil would leave it to the advisor, who takes the finest this Mac holds).
+    public var cellSizeM: Float? {
+        switch self {
+        case .square, .street: 2
+        case .beirut: 6
+        }
+    }
 
-    /// The charge it opens with, kg of TNT.
-    public var defaultMassKg: Float { 500 }
+    /// The ground under the charge: Beirut's port was on saturated fill.
+    public var ground: GroundType {
+        switch self {
+        case .square, .street: .rigid
+        case .beirut: .saturated
+        }
+    }
+
+    /// The charge it opens with, kg of TNT: Beirut's about 0.5 kt.
+    public var defaultMassKg: Float {
+        switch self {
+        case .square, .street: 500
+        case .beirut: 500_000
+        }
+    }
 
     /// A place to put the charge, by name, for the keyboard and VoiceOver: metres east and north of
     /// the scene's first charge.
@@ -60,6 +116,17 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
                 Place(name: "At the corner of the square", offset: SIMD2(42, -42)),
                 Place(name: "In the street behind the brick terrace", offset: SIMD2(Self.pitch + 42, 0)),
             ]
+        case .street:
+            [
+                Place(name: "In the middle of the high street", offset: SIMD2(0, 0)),
+                Place(name: "Outside the bank", offset: SIMD2(Self.bank.lowerBound + 12, -4)),
+                Place(name: "At the corner of the side street", offset: SIMD2(Self.sideStreets[0], 0)),
+                Place(
+                    name: "In the back lane behind the shops", offset: SIMD2(0, Self.frontage + Self.lane / 2)
+                ),
+            ]
+        case .beirut:
+            [Place(name: "At the port, where it went off", offset: SIMD2(0, 0))]
         }
     }
 
@@ -67,8 +134,25 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
     public func place(_ name: String) -> Place? { places.first { $0.name == name } }
 
     /// The place behind a building from the scene's first charge, for the comparison "behind a
-    /// building".
-    public var behindABuilding: Place { places[3] }
+    /// building"; nil where the scene offers none.
+    public var behindABuilding: Place? {
+        switch self {
+        case .square, .street: places[3]
+        case .beirut: nil
+        }
+    }
+
+    /// The scene's buildings and ground: built in, or read from Beirut's downloaded `asset`.
+    public func district(asset: URL? = nil) throws -> (buildings: [MapBuilding], ground: ElevationGrid?) {
+        switch self {
+        case .square: return (Self.squareBuildings(), nil)
+        case .street: return (Self.streetBuildings(), nil)
+        case .beirut:
+            guard let asset else { throw ExplorerDistrict.Failure.missing }
+            let district = try ExplorerDistrict(contentsOf: asset)
+            return (district.mapBuildings(), district.groundGrid())
+        }
+    }
 
     // MARK: The square
 
@@ -77,10 +161,13 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
     static let pitch: Float = 84
     static let block: Float = 70
 
-    /// The scene's buildings, as a map's would be read (`MapBuilding.read`).
+    /// A built-in scene's buildings, as a map's would be read (`MapBuilding.read`); none for Beirut's,
+    /// which is downloaded.
     public func buildings() -> [MapBuilding] {
         switch self {
         case .square: Self.squareBuildings()
+        case .street: Self.streetBuildings()
+        case .beirut: []
         }
     }
 
@@ -104,15 +191,7 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
                 prints += blockBuildings(i: i, j: j, x0: x0, y0: y0, rng: &rng)
             }
         }
-        return prints.enumerated().map { n, p in
-            let ring = [
-                SIMD2(p.x, p.y), SIMD2(p.x + p.w, p.y), SIMD2(p.x + p.w, p.y + p.h), SIMD2(p.x, p.y + p.h),
-                SIMD2(p.x, p.y),
-            ].map(lonLat)
-            return MapBuilding(
-                id: "way/\(100 + n)", name: p.name, kind: p.kind, rings: [ring], height: p.height,
-                material: p.material)
-        }
+        return mapBuildings(prints, firstID: 100)
     }
 
     /// Metres from the square's middle to longitude and latitude about (0°, 0°), as
@@ -195,6 +274,88 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
             ring(depth: 12, width: 10...22, make: flats)
         }
         return out
+    }
+
+    // MARK: The street
+
+    /// The high street runs east–west, `street` m wide; a row of shops and flats `frontage` m deep
+    /// stands each side, a back lane `lane` m wide behind each, then streets of terraced houses.
+    static let streetWidth: Float = 18
+    static let frontage: Float = 9 + 14
+    static let lane: Float = 6
+    /// The side streets crossing it, at these metres east, 12 m wide.
+    static let sideStreets: [Float] = [60, -150]
+    /// The bank's frontage on the high street's south side, metres east.
+    static let bank: ClosedRange<Float> = -40 ... -16
+
+    static func streetBuildings() -> [MapBuilding] {
+        var rng = ExplorerRandom(seed: 115)
+        var prints: [Footprint] = []
+        let reach: Float = 270
+        // Frontages along x from -reach to reach in `width`, skipping the side streets.
+        func row(
+            y: Float, depth: Float, width: ClosedRange<Float>,
+            make: (inout ExplorerRandom) -> (Float, String, String?)
+        ) {
+            var x = -reach
+            while x < reach - 4 {
+                if let side = sideStreets.first(where: { x + 2 > $0 - 6 && x < $0 + 6 }) {
+                    x = side + 6
+                    continue
+                }
+                let f = min(rng.uniform(width), reach - x)
+                let next = sideStreets.first { $0 - 6 > x && $0 - 6 < x + f }
+                let w = next.map { $0 - 6 - x } ?? f
+                if w > 3 {
+                    let (height, kind, material) = make(&rng)
+                    prints.append(
+                        Footprint(x: x, y: y, w: w, h: depth, height: height, kind: kind, material: material))
+                }
+                x += w
+            }
+        }
+        let shops: (inout ExplorerRandom) -> (Float, String, String?) = { rng in
+            (
+                rng.uniform(9...15), rng.uniform(0...1) < 0.5 ? "retail" : "apartments",
+                rng.uniform(0...1) < 0.6 ? "brick" : "concrete"
+            )
+        }
+        let houses: (inout ExplorerRandom) -> (Float, String, String?) = { _ in (8, "terrace", "brick") }
+        for side: Float in [1, -1] {
+            // The high street's row, then a back lane, then pairs of terraces back to back across roads.
+            let near = streetWidth / 2
+            row(y: side > 0 ? near : -near - 14, depth: 14, width: 8...14, make: shops)
+            var y = near + 14 + lane
+            while y + 10 < reach * 0.4 {
+                row(y: side > 0 ? y : -y - 10, depth: 10, width: 6...6, make: houses)
+                y += 10 + 12
+                row(y: side > 0 ? y : -y - 10, depth: 10, width: 6...6, make: houses)
+                y += 10 + 20
+            }
+        }
+        // The bank: one building in its frontage on the south side, stone-faced concrete.
+        let south: Float = -streetWidth / 2 - 14
+        prints.removeAll { $0.y == south && $0.x + $0.w > bank.lowerBound && $0.x < bank.upperBound }
+        let width: Float = bank.upperBound - bank.lowerBound
+        prints.append(
+            Footprint(
+                x: bank.lowerBound, y: south, w: width, h: 14, height: 15, kind: "commercial",
+                material: "concrete",
+                name: "The bank"))
+        return mapBuildings(prints, firstID: 5_000)
+    }
+
+    /// Footprints as map buildings, numbered from `firstID`.
+    static func mapBuildings(_ prints: [Footprint], firstID: Int) -> [MapBuilding] {
+        prints.enumerated().map { n, p in
+            let ring = [
+                SIMD2(p.x, p.y), SIMD2(p.x + p.w, p.y), SIMD2(p.x + p.w, p.y + p.h), SIMD2(p.x, p.y + p.h),
+                SIMD2(p.x, p.y),
+            ].map(lonLat)
+            return MapBuilding(
+                id: "way/\(firstID + n)", name: p.name, kind: p.kind, rings: [ring], height: p.height,
+                material: p.material)
+        }
     }
 
     // MARK: Writing it as a map

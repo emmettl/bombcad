@@ -412,6 +412,10 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             const float3 doubt[3] = {
                 float3(0.780f, 0.800f, 0.820f), float3(0.929f, 0.502f, 0.098f), float3(0.533f, 0.200f, 0.600f)};
             colour = doubt[code - 8] * light;
+        } else if (code == 11) {
+            // The explorer's "about the same" against a pinned picture: a warm grey that stays apart
+            // from its blue for better (ExplorerColours.sameColour; a test keeps the two the same).
+            colour = float3(0.600f, 0.580f, 0.540f) * light;
         } else {
             colour = code >= 1 && code <= 6
                 ? damage[code - 1] * light

@@ -310,10 +310,12 @@ public struct ExplorerReach: Sendable, Equatable {
 /// renderer already draws (`EnvelopeDamageColour`'s blue, `EnvelopeDoubtColour`'s grey and orange).
 public enum ExplorerColours {
     public static let better = 2
-    public static let same = EnvelopeDoubtColour.first
+    /// A warm grey of the explorer's own (code 11 in Render.metal), apart from the blue for better in
+    /// either appearance; the doubt palette's cool grey read as lilac beside it under the wave.
+    public static let same = 11
     public static let worse = EnvelopeDoubtColour.first + 1
     public static var betterColour: SIMD3<Float> { EnvelopeDamageColour.palette[better - 1] }
-    public static var sameColour: SIMD3<Float> { EnvelopeDoubtColour.palette[0] }
+    public static let sameColour = SIMD3<Float>(0.600, 0.580, 0.540)
     public static var worseColour: SIMD3<Float> { EnvelopeDoubtColour.palette[1] }
 
     /// A side's glass as one number: none broken 0, some broken ½, blown in 1, over the draws.

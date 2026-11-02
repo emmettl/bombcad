@@ -103,7 +103,15 @@
                     .accessibilityLabel("\(scene.title): \(scene.summary)")
                     .accessibilityHint("Opens the scene")
                 }
-                Text("A street and Beirut's port follow.").font(.callout).foregroundStyle(.secondary)
+                if explorer.beirutDownloadInFlight {
+                    HStack {
+                        ProgressView().controlSize(.small)
+                        Text("Downloading Beirut's port…")
+                        Button("Cancel Download") { explorer.cancelBeirutDownload() }
+                    }
+                } else if !explorer.beirutStatus.isEmpty {
+                    Text(explorer.beirutStatus).foregroundStyle(.red)
+                }
                 if explorer.isOpening {
                     ProgressView("Laying out the scene…").controlSize(.small)
                 }
@@ -115,6 +123,17 @@
             .padding(28)
             .background(.regularMaterial, in: .rect(cornerRadius: 16))
             .padding(24)
+            .confirmationDialog(
+                "Download Beirut's port?",
+                isPresented: Binding(
+                    get: { explorer.offersBeirutDownload },
+                    set: { if !$0 { explorer.offersBeirutDownload = false } })
+            ) {
+                Button(explorer.beirutDownloadTitle) { explorer.downloadBeirut() }
+                Button("Not Now", role: .cancel) { explorer.offersBeirutDownload = false }
+            } message: {
+                Text((ExplorerScene.beirut.opening.map { $0 + "\n\n" } ?? "") + explorer.beirutOffer)
+            }
         }
     }
 
@@ -154,6 +173,9 @@
 
         private func sceneSection(_ scene: ExplorerScene) -> some View {
             Section(scene.title) {
+                if let opening = scene.opening {
+                    Text(opening).font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                }
                 Text(scene.summary).fixedSize(horizontal: false, vertical: true)
                 if explorer.isRefining {
                     HStack {
@@ -191,13 +213,21 @@
                     onEditingChanged: { editing in
                         if editing { model.beginAdjustingEstimate() } else { model.endAdjustingEstimate() }
                     })
-                Menu("Put It…") {
-                    ForEach(scene.places) { place in
-                        Button(place.name) { explorer.put(at: place) }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Where it is")
+                    Picker(
+                        "Where it is",
+                        selection: Binding(
+                            get: { explorer.place?.name ?? "" },
+                            set: { name in if let place = scene.place(name) { explorer.put(at: place) } })
+                    ) {
+                        if explorer.place == nil { Text("Where you put it").tag("") }
+                        ForEach(scene.places) { place in Text(place.name).tag(place.name) }
                     }
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .help("Put the charge at a named place")
                 }
-                .help("Put the charge at a named place")
-                LabeledContent("Where", value: explorer.place?.name ?? "Where you put it")
                 HStack {
                     Text("Move it 10 m")
                     Spacer()
@@ -254,9 +284,16 @@
             }
         }
 
+        /// The comparisons the scene offers: Beirut's has no place behind a building.
+        private var tries: [ExplorerModel.Try] {
+            ExplorerModel.Try.allCases.filter {
+                $0 != .behindABuilding || explorer.scene?.behindABuilding != nil
+            }
+        }
+
         private var trySection: some View {
             Section("Try something") {
-                ForEach(ExplorerModel.Try.allCases) { t in
+                ForEach(tries) { t in
                     Button {
                         explorer.run(t)
                     } label: {
@@ -277,6 +314,13 @@
                 if let comparison = explorer.comparison {
                     Text(comparison).font(.callout.weight(.medium)).fixedSize(
                         horizontal: false, vertical: true)
+                }
+                if let reach = explorer.pinnedReach, explorer.layer == .glass || explorer.layer == .wave {
+                    Text(
+                        "The faint ring marks how far windows broke in the pinned picture (or, where they broke "
+                            + "everywhere, were blown in): \(ExplorerWords.distanceText(reach)) from its charge."
+                    )
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 if explorer.pinned != nil {
                     Toggle("Colour by what changed", isOn: $explorer.showsChange)

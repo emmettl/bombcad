@@ -682,6 +682,11 @@ final class SimulationModel {
     var explorerColouring: ExplorerColouring? {
         didSet { if explorerColouring != oldValue { applyEnvelopeDamageColours() } }
     }
+    /// The explorer keeps the live wave worked out but not drawn while another layer is shown, so that
+    /// its paint does not tint the buildings' colours.
+    var explorerHidesLiveWave = false
+    /// Lines the explorer lays over the view: the faint ring at a pinned picture's reach.
+    var explorerLines: [SIMD4<Float>] = []
 
     /// Each building side's glass chances from the quick estimate (`FacadeLoadSurrogate`'s
     /// draws), the glass alone; empty without one.

@@ -142,6 +142,8 @@ public struct RenderSettings: Sendable, Hashable {
     public var showWave = true
     public var waveOpacity: Float = 0.3
     public var showCharge = true
+    /// The charge marker's radius, m: small in a run's scene, larger over the explorer's districts.
+    public var chargeMarkerRadius: Float = 0.45
     /// Where to draw the charge, when it is not where the loaded scene has it: being dragged.
     public var chargeAt: SIMD3<Float>?
     /// Fragments in flight and where they landed, and tracers, when a run flies them.
@@ -765,7 +767,7 @@ public final class SceneRenderer {
                 Float(settings.mode.rawValue), surfaceScale, settings.decades,
                 settings.showWave ? settings.waveOpacity : 0),
             counts: SIMD4(
-                Float(boxCount), Float(gaugeCount), settings.showCharge ? 0.45 : 0,
+                Float(boxCount), Float(gaugeCount), settings.showCharge ? settings.chargeMarkerRadius : 0,
                 settings.waveScale * kiloPascal),
             charge: SIMD4(settings.chargeAt ?? scenario.charge.position, 0),
             sun: sun,

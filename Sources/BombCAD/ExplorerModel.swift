@@ -2,6 +2,7 @@ import BlastCore
 import BlastRender
 import Foundation
 import Observation
+import SwiftUI
 import simd
 
 /// Whether a window shows the explorer or the workbench (the Run and Edit sidebar).
@@ -93,32 +94,128 @@ final class ExplorerModel {
 
     // MARK: Scenes
 
-    /// The scene laid out as a project, as File ▸ New District lays a map's out, on the scene's own cells.
-    nonisolated static func document(for scene: ExplorerScene, memory: Int) throws -> ProjectDocument {
+    /// The scene laid out as a project, as File ▸ New District lays a map's out: on the scene's own
+    /// cells, or, for Beirut's, the advisor's for this Mac, from its downloaded `asset`.
+    nonisolated static func document(for scene: ExplorerScene, memory: Int, asset: URL? = nil) throws
+        -> ProjectDocument
+    {
+        let district = try scene.district(asset: asset)
         var layout = DistrictLayout(
-            buildings: scene.buildings(), charge: scene.charge, mass: scene.defaultMassKg)
+            buildings: district.buildings, charge: scene.charge, mass: scene.defaultMassKg)
         layout.keepsOutlines = true
-        layout.attributions = [scene.source]
+        layout.ground = district.ground
+        layout.attributions =
+            scene == .beirut ? ExplorerScene.Beirut.attributions : [scene.source]
         let preview = try NewDistrictModel.preview(
-            layout, radius: scene.radiusM, clearFaces: true, cellSize: scene.cellSizeM, ground: .rigid,
+            layout, radius: scene.radiusM, clearFaces: true, cellSize: scene.cellSizeM, ground: scene.ground,
             memory: memory)
         var document = preview.document
         document.scenario.name = scene.title
         return document
     }
 
+    // MARK: Beirut's download
+
+    /// Where Beirut's file is kept: `BOMBCAD_EXPLORER_BEIRUT` if set, else Application Support.
+    static var beirutURL: URL {
+        if let path = ProcessInfo.processInfo.environment["BOMBCAD_EXPLORER_BEIRUT"] {
+            return URL(filePath: path)
+        }
+        return URL.applicationSupportDirectory.appending(
+            path: "BombCAD/Explorer/\(ExplorerScene.Beirut.fileName)")
+    }
+
+    static var beirutItem: LearnedFieldDownload.Item {
+        var item = LearnedFieldDownload.Item(ExplorerScene.Beirut.Release.asset, to: beirutURL)
+        item.readsAsWeights = false
+        return item
+    }
+
+    /// Whether Beirut's file is here, with its pinned hash; one given by `BOMBCAD_EXPLORER_BEIRUT` is
+    /// taken as it is.
+    var beirutHere: Bool {
+        ProcessInfo.processInfo.environment["BOMBCAD_EXPLORER_BEIRUT"] != nil
+            ? FileManager.default.fileExists(atPath: Self.beirutURL.path) : Self.beirutItem.isInPlace
+    }
+
+    /// The live wave's refinement, if its weights are still to be fetched: offered under the same prompt.
+    var waveWeightsWanted: LearnedFieldDownload.Item? {
+        model.liveWaveLearnedWeightsMissing && model.liveWaveLearnedWeightsURL == model.liveWaveLearnedHome
+            ? model.liveWaveLearnedReleaseItem : nil
+    }
+
+    /// Asking whether to download Beirut (and the wave's weights); the download under way; why it failed.
+    var offersBeirutDownload = false
+    private(set) var beirutDownloadInFlight = false
+    private(set) var beirutStatus = ""
+    @ObservationIgnored private var beirutTask: Task<Void, Never>?
+
+    /// The one prompt's words: what each file is, and their size together.
+    var beirutOffer: String {
+        var text = ExplorerScene.Beirut.Release.offer
+        if let weights = waveWeightsWanted {
+            text +=
+                " With it, the live wave's learned refinement, "
+                + LearnedField.Release.megabytes(weights.bytes)
+                + ", which sharpens the wave within about 1 km of the charge."
+        }
+        return text
+    }
+
+    var beirutDownloadTitle: String {
+        let bytes = ExplorerScene.Beirut.Release.asset.bytes + (waveWeightsWanted?.bytes ?? 0)
+        return "Download " + LearnedField.Release.megabytes(bytes)
+    }
+
+    /// The user clicked Download: Beirut's file and, if wanted, the wave's weights, each checked
+    /// against its pinned hash; then the scene opens.
+    func downloadBeirut() {
+        offersBeirutDownload = false
+        guard !beirutDownloadInFlight else { return }
+        let items = [Self.beirutItem] + (waveWeightsWanted.map { [$0] } ?? [])
+        beirutDownloadInFlight = true
+        beirutStatus = "Downloading Beirut's port…"
+        beirutTask = Task { [weak self] in
+            let result: Result<[URL], Error>
+            do {
+                result = .success(try await LearnedFieldDownload.install(items))
+            } catch {
+                result = .failure(error)
+            }
+            guard let self else { return }
+            self.beirutDownloadInFlight = false
+            self.beirutTask = nil
+            switch result {
+            case .success:
+                self.beirutStatus = ""
+                if items.count > 1 { self.model.setLiveWaveLearned(true) }
+                await self.open(.beirut)
+            case .failure(let error):
+                self.beirutStatus = "Beirut's port could not be downloaded: \(error)"
+            }
+        }
+    }
+
+    func cancelBeirutDownload() { beirutTask?.cancel() }
+
     /// Opens `scene`: laid out away from the main thread, then the quick estimate and the wave, which
     /// plays by itself.
     func open(_ scene: ExplorerScene) async {
         guard !isOpening else { return }
+        // Beirut's comes from a download, asked for first.
+        if !scene.isBuiltIn, !beirutHere {
+            offersBeirutDownload = true
+            return
+        }
         isOpening = true
         problem = nil
         pinned = nil
         tried = nil
         showsChange = false
         let memory = AdvisorMachine.thisMac.memory
+        let asset = scene.isBuiltIn ? nil : Self.beirutURL
         let result = await Task.detached(priority: .userInitiated) {
-            Result { try Self.document(for: scene, memory: memory) }
+            Result { try Self.document(for: scene, memory: memory, asset: asset) }
         }.value
         switch result {
         case .failure(let error):
@@ -129,6 +226,8 @@ final class ExplorerModel {
             model.open(document)
         }
         self.scene = scene
+        // Each scene starts as the flow does, with the wave.
+        layer = .wave
         // The solver is the referee, not the experience: no close calls run on it here.
         model.refinesCloseCalls = false
         model.quickEstimateWhatIf = LiveResponse.WhatIf()
@@ -137,6 +236,11 @@ final class ExplorerModel {
         let charge = model.settings.chargePosition
         origin = charge
         let size = model.settings.scenario.domainSize
+        // No solver here: the air's starting ball of hot gas is not drawn, and the charge's marker is
+        // sized to be seen over a district.
+        model.renderSettings.showWave = false
+        model.renderSettings.chargeMarkerRadius = max(1.5, 0.004 * max(size.x, size.y))
+        if let opening = scene.opening { AccessibilityNotification.Announcement(opening).post() }
         model.camera = OrbitCamera(
             target: SIMD3(charge.x, charge.y, 0), distance: 0.7 * max(size.x, size.y), azimuth: -1.9,
             elevation: 0.95)
@@ -151,6 +255,8 @@ final class ExplorerModel {
     func close() {
         model.liveWaveShown = false
         model.explorerColouring = nil
+        model.explorerHidesLiveWave = false
+        model.explorerLines = []
         scene = nil
         origin = nil
         pinned = nil
@@ -239,6 +345,9 @@ final class ExplorerModel {
     func applyLayer() {
         guard scene != nil else { return }
         let change = showsChange ? pinned.map(\.snapshot) : nil
+        // The wave drawn on its own layer alone, so that its paint does not tint the others' colours.
+        model.explorerHidesLiveWave = layer != .wave
+        model.explorerLines = ringLines
         switch layer {
         case .wave:
             model.explorerColouring = nil
@@ -286,6 +395,34 @@ final class ExplorerModel {
 
     // MARK: Pinned and compared
 
+    /// The pinned picture's reach: how far windows broke then, or were blown in where they broke right
+    /// across the scene; nil without one.
+    var pinnedReach: Double? {
+        guard let reach = pinned?.snapshot.reach else { return nil }
+        if let windows = reach.windowsBreakM, !reach.beyondScene { return windows }
+        return reach.blownInM
+    }
+
+    /// The faint ring at the pinned picture's reach, round where its charge stood.
+    var ringLines: [SIMD4<Float>] {
+        guard let pinned, let radius = pinnedReach, layer == .glass || layer == .wave else { return [] }
+        let terrain = model.settings.scenario.terrain
+        let centre = SIMD2(pinned.charge.x, pinned.charge.y)
+        let pieces = max(64, min(Int(2 * Double.pi * radius / 2), 1_024))
+        var lines: [SIMD4<Float>] = []
+        func at(_ n: Int) -> SIMD3<Float> {
+            let angle = 2 * Float.pi * Float(n) / Float(pieces)
+            let p = centre + Float(radius) * SIMD2(cos(angle), sin(angle))
+            return SIMD3(p.x, p.y, (terrain?.height(at: SIMD3(p.x, p.y, 0)) ?? 0) + 0.5)
+        }
+        // Kind 1, the pale thin line the cloud's outlines take.
+        for n in 0..<pieces {
+            let (p, q) = (at(n), at(n + 1))
+            lines += [SIMD4(p, 1), SIMD4(q, 0)]
+        }
+        return lines
+    }
+
     /// Pins the picture on screen, the people's with it.
     func pin() {
         pinned = Pinned(
@@ -314,7 +451,8 @@ final class ExplorerModel {
         case .twiceTheCharge:
             setMass(model.settings.chargeMass * 2)
         case .behindABuilding:
-            put(at: scene.behindABuilding)
+            guard let place = scene.behindABuilding else { return }
+            put(at: place)
         case .glassWithFilm:
             model.quickEstimateWhatIf.glass = Self.film
         }

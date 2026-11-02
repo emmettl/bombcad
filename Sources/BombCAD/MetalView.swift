@@ -142,7 +142,7 @@
                 settings.craters = model.shownCraters.map(CraterMark.init)
                 // The live blast wave, at the time its bar shows, before any run.
                 let wave = model.liveWave
-                if model.drawsLiveWave {
+                if model.drawsLiveWave, !model.explorerHidesLiveWave {
                     settings.liveWave = LiveWaveDisplay(time: Float(model.liveWaveTime))
                 }
                 // The ground points read the project's points and the run's estimate, both observed.
@@ -169,7 +169,7 @@
                         ? model.shownCloud.map { CloudOverlay.lines($0, eye: model.camera.eye) } ?? [] : [])
                     + (settings.showHazard ? model.hazardLines() : [])
                     + (settings.showBlastHazards ? model.blastHazardLines() : [])
-                    + model.refinedOutlines() + model.fireSeedOutlines()
+                    + model.refinedOutlines() + model.fireSeedOutlines() + model.explorerLines
                 return Frame(
                     settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
                     freestanding: replay.map { $0.1?.freestanding ?? [] }

@@ -32,9 +32,12 @@ struct InterfaceReviewExplorerTests {
         var settings = model.renderSettings
         settings.showCharge = true
         settings.chargeAt = model.settings.chargePosition
-        settings.liveWave = model.drawsLiveWave ? LiveWaveDisplay(time: Float(model.liveWaveTime)) : nil
+        settings.liveWave =
+            model.drawsLiveWave && !model.explorerHidesLiveWave
+            ? LiveWaveDisplay(time: Float(model.liveWaveTime)) : nil
         renderer.settings = settings
         renderer.setLiveWave(model.liveWave)
+        renderer.setLines(model.explorerLines)
         model.applyEnvelopeDamageColours()
         renderer.pixelsPerPoint = 2
         let frame = try #require(
@@ -45,6 +48,148 @@ struct InterfaceReviewExplorerTests {
                 to: try folder("view").appending(path: "\(name).png"))
         }
         return frame.gpuSeconds
+    }
+
+    /// The view written to `stage3/name.png` under the review folder.
+    private func stage3(_ model: SimulationModel, camera: OrbitCamera, _ name: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: "stage3")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let renderer = try #require(model.renderer)
+        let queue = try #require(model.commandQueue)
+        var settings = model.renderSettings
+        settings.showCharge = true
+        settings.chargeAt = model.settings.chargePosition
+        settings.liveWave =
+            model.drawsLiveWave && !model.explorerHidesLiveWave
+            ? LiveWaveDisplay(time: Float(model.liveWaveTime)) : nil
+        renderer.settings = settings
+        renderer.setLiveWave(model.liveWave)
+        renderer.setLines(model.explorerLines)
+        model.applyEnvelopeDamageColours()
+        renderer.pixelsPerPoint = 2
+        let frame = try #require(
+            renderer.snapshot(commandQueue: queue, width: 1800, height: 1200, camera: camera))
+        let rep = NSBitmapImageRep(cgImage: frame.image)
+        try #require(rep.representation(using: .png, properties: [:])).write(
+            to: folder.appending(path: "\(name).png"))
+    }
+
+    private func stage3Sidebar(_ explorer: ExplorerModel, _ name: String, height: CGFloat = 1500) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: "stage3")
+        for (style, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            try InterfaceSnapshotTests().snapshot(
+                ExplorerSidebar(explorer: explorer, showWorkbench: {}).frame(width: 340),
+                size: CGSize(width: 340, height: height), appearance: appearance,
+                to: folder.appending(path: "\(name)-\(style).png"))
+        }
+    }
+
+    private func camera(_ model: SimulationModel, share: Float = 0.55) -> OrbitCamera {
+        let charge = model.settings.chargePosition
+        let size = model.settings.scenario.domainSize
+        return OrbitCamera(
+            target: SIMD3(charge.x, charge.y, 0), distance: share * max(size.x, size.y), azimuth: -1.9,
+            elevation: 0.95)
+    }
+
+    @Test("Capture stage 3: the four fixes on the square, the street, and Beirut's opening")
+    func stage3() async throws {
+        let model = SimulationModel(document: ProjectDocument.newProject())
+        try await settle(model)
+        model.liveWaveLearned = ProcessInfo.processInfo.environment[LiveWave.Refinement.environmentKey] != nil
+        let explorer = ExplorerModel(model: model)
+        explorer.reduceMotion = true
+
+        // The square: the wave with no ball of hot gas, the marker; the charge's section; behind the
+        // terrace in the warm grey, the wave not drawn over it, and the ring.
+        await explorer.open(.square)
+        try await settle(model)
+        model.scrubLiveWave(to: 0.35 * model.liveWaveEnd)
+        try stage3(model, camera: camera(model), "fix2-square-wave-035")
+        try stage3(model, camera: camera(model, share: 0.12), "fix2-square-marker-close")
+        try stage3Sidebar(explorer, "fix1-sidebar")
+        explorer.run(.behindABuilding)
+        try await settle(model)
+        try stage3(model, camera: camera(model), "fix3-behind-change")
+        try stage3Sidebar(explorer, "fix3-behind-sidebar")
+        explorer.putBack()
+        try await settle(model)
+        explorer.unpin()
+        explorer.run(.twiceTheCharge)
+        try await settle(model)
+        explorer.showsChange = false
+        try stage3(model, camera: camera(model), "ring-twice-the-charge")
+        print("Twice: \(explorer.comparison ?? "")")
+        explorer.close()
+
+        // The street.
+        var clock = ContinuousClock.now
+        await explorer.open(.street)
+        try await settle(model)
+        print("Opened the street in \(clock.duration(to: .now)): \(model.envelopeDamageStatus)")
+        model.scrubLiveWave(to: 0.35 * model.liveWaveEnd)
+        try stage3(model, camera: camera(model), "street-wave-035")
+        explorer.layer = .glass
+        try await settle(model)
+        try stage3(model, camera: camera(model), "street-glass")
+        try stage3Sidebar(explorer, "street-sidebar")
+        print("Street: \(explorer.finding ?? "")")
+        explorer.run(.behindABuilding)
+        try await settle(model)
+        try stage3(model, camera: camera(model), "street-behind-change")
+        print("Street behind: \(explorer.comparison ?? "")")
+        explorer.close()
+
+        // Beirut, from its file (`BOMBCAD_EXPLORER_BEIRUT`), when given.
+        guard ProcessInfo.processInfo.environment["BOMBCAD_EXPLORER_BEIRUT"] != nil else { return }
+        clock = .now
+        await explorer.open(.beirut)
+        try await settle(model)
+        #expect(explorer.problem == nil, "\(explorer.problem ?? "")")
+        print(
+            "Opened Beirut in \(clock.duration(to: .now)): \(model.settings.scenario.envelopeObjects.count) "
+                + "buildings, \(model.settings.resolution.cellSize) m cells; \(model.envelopeDamageStatus)")
+        print("Beirut's wave: \(model.liveWaveStatus)")
+        try stage3Sidebar(explorer, "beirut-opening", height: 1600)
+        model.scrubLiveWave(to: 0.35 * model.liveWaveEnd)
+        try stage3(model, camera: camera(model, share: 0.5), "beirut-wave-035")
+        explorer.layer = .glass
+        try await settle(model)
+        try stage3(model, camera: camera(model, share: 0.5), "beirut-glass")
+        print("Beirut: \(explorer.finding ?? "")")
+        // A drag on Beirut: the preview and the wave, 5 m steps along the quay.
+        explorer.layer = .wave
+        try await settle(model)
+        model.isDraggingCharge = true
+        model.estimateFollowsCharge = true
+        var looks: [Double] = []
+        var waves: [Double] = []
+        var moved = model.settings.chargePosition
+        for _ in 0..<20 {
+            moved.x += 5
+            clock = .now
+            model.settings.chargePosition = moved
+            model.requestLook(preview: true)
+            while model.lookInFlight || model.lookWaiting != nil {
+                try await Task.sleep(for: .milliseconds(1))
+            }
+            looks.append(clock.duration(to: .now) / .seconds(1))
+            while model.liveWaveInFlight || model.liveWaveShownFor?.charge != moved {
+                try await Task.sleep(for: .milliseconds(1))
+            }
+            waves.append(clock.duration(to: .now) / .seconds(1))
+        }
+        model.isDraggingCharge = false
+        looks.sort()
+        waves.sort()
+        print(
+            String(
+                format: "Beirut drag: preview %.0f ms median (%.0f–%.0f), wave %.0f ms median (%.0f–%.0f)",
+                1000 * looks[10], 1000 * looks[0], 1000 * looks[19], 1000 * waves[10], 1000 * waves[0],
+                1000 * waves[19]))
+        explorer.close()
     }
 
     private func settle(_ model: SimulationModel) async throws {

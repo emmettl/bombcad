@@ -349,3 +349,101 @@ real screen is still the user's check.
 asset (stage 3). People are coloured by the share hurt on the chances' ramp, but the legend shows no
 numbers. The explorer does not keep its settings in the project, and switching to the explorer
 leaves the project's untitled document changed to the scene.
+
+## Stage 3: the street, Beirut's port and the ring (2 November 2026)
+
+**Four fixes from stage 2's captures.**
+
+1. The charge's place was a pop-up cut off as "Put It…". It is now a picker of the named places on
+   a row of its own under "Where it is", which reads "Where you put it" for a place clicked or
+   dragged to.
+2. The glowing ball at the charge was not the charge's marker. It was the solver's starting ball of
+   hot gas, drawn by the workbench's "Blast wave in air" volume. The explorer runs no solver, so it
+   now turns that volume off. The charge's marker, a red sphere 0.45 m across in a run's scene, is
+   drawn at 0.4% of the scene's width, at least 1.5 m (`RenderSettings.chargeMarkerRadius`), so that
+   it can be seen as a marker over a district.
+3. The "about the same" grey read as lilac beside the blue for "better". Two things caused it: the
+   doubt palette's cool grey, and the live wave's paint drawn over every layer. "About the same" now
+   has its own warm grey, (0.60, 0.58, 0.54) (code 11 in Render.metal, held to `ExplorerColours` by a
+   test). The live wave is drawn on the wave's layer alone: it is still worked out on the others,
+   for the captions and the next replay, but it does not tint their colours.
+4. Opening a built-in scene in the explorer no longer counts as an edit. The window's untitled
+   project is left as it was, so closing the window asks nothing. An edit made after switching to
+   the workbench is an edit as before.
+
+**The street.** `ExplorerScene.street` builds 781 made-up buildings from a fixed seed:
+
+- a high street 18 m wide, with a row of shops and flats 14 m deep on each side, 9–15 m high, three
+  in five of brick;
+- a 6 m back lane behind each row;
+- terraces of brick houses 6 m wide beyond, back to back across 12 m roads;
+- two side streets, and a bank on the south side.
+
+It opens with 500 kg in the middle of the street. Its named places are the middle, outside the bank,
+the corner of the side street, and the back lane behind the shops; the last is its "behind a
+building". Held out against the full estimate at 500 kg, with the charge in the middle and at the
+side street's corner:
+
+| Within 0.1 of the full estimate | Learned | CPU preview (20 draws) |
+|---|---|---|
+| Glass, some broken | 97% | 89–91% |
+| Glass blown out | 91–92% | 88–89% |
+| Walls moderate or worse | 44–53% | 90–91% |
+| Walls heavy or worse | 47–49% | 90–91% |
+| Roof moderate or worse | 93% | 99% |
+| Damage colour the same | 98–99% | 99% |
+
+The learned response's glass is closer than the CPU's preview, but its walls are much further off
+on the street's brick terraces: about half within 0.1, against nine in ten. As on the square, the
+full estimate replaces the preview within seconds of letting go. The retraining for small cells and
+close charges is another agent's, and it will say whether a fallback is needed.
+
+**Beirut's port.** A file of Beirut's port is fetched once, as a release asset. When the user
+chooses Beirut, one prompt asks to download it, together with the live wave's learned refinement if
+that is not yet on this Mac. Each file is checked against its pinned SHA-256 before it is kept.
+
+- **The file.** `explorer-beirut-port-1500m-1.json` (`ExplorerDistrict`), 837,346 bytes, SHA-256
+  `95daab79ae09ae86a4769d6f33907b563c0c174f80f6ee941beaca467283e842`. It holds the 2,887 buildings
+  within 1.5 km of the charge, their heights resolved from the tags and GHSL, and the ground opened
+  over 100 m with the sea set flat, as New District takes it, cropped to 2.1 km round the charge
+  (166 × 138 cells). It was made by `scenebench explorer-beirut` from Beirut's inputs. It is pinned
+  in `ExplorerScene.Beirut.Release` (tag `explorer-beirut-1`) and is kept at
+  `$BOMBCAD_DATA/explorer/beirut-asset/` with its notes and licences: OSM under ODbL 1.0, GHSL under
+  CC BY 4.0, and Copernicus GLO-30. **It is not yet published.** Until it is, Beirut's download
+  fails and says why. `BOMBCAD_EXPLORER_BEIRUT` points the app at a copy.
+- **Its opening line,** first in its sidebar, in the prompt, and announced to VoiceOver: "On
+  4 August 2020, ammonium nitrate stored at Beirut's port exploded. 218 people died and about 6,500
+  were hurt. What follows is a model's estimate, not a record of that day."
+- **The scene.** 500 t of TNT at the port, on saturated ground, on 6 m cells: the cells New District's
+  advisor took for Beirut's district, which keeps the scene to a few gigabytes. The building over the
+  charge is cleared, as for the real event. It offers no "behind a building". At 0.5 kt the windows
+  break across the whole 1.5 km, and are blown in to about 1.4 km.
+- **Times,** on the Studio offscreen in a release build, at a load average of about 60, shared with
+  other sessions:
+  - opening takes 43–58 s, of which the full estimate is 35–47 s;
+  - a drag's preview takes 31–41 ms median (22–176);
+  - the wave follows in 56–59 ms median (49–211), on 4 m plan cells, coarsened while dragging.
+
+  Headless at a load of 14, the wave's recompute was 32 ms on 8 m cells (stage 2). The 30 frames a
+  second of the decision is near, not met, on a loaded Studio.
+
+**The ring.** A pinned picture's reach is drawn as a faint pale ring round where its charge stood. The
+reach is how far windows broke, or how far they were blown in where they broke across the whole
+scene. It shows on the wave and the glass, with a line under the comparison saying what it marks.
+
+**Checks.**
+
+- `ExplorerTests` (Linux) cover:
+  - the street;
+  - the named places of both made-up scenes on open ground;
+  - Beirut not built in, with its line;
+  - a district file read back to its buildings and ground with their heights resolved;
+  - the shader's warm grey.
+- `ExplorerModelTests` cover:
+  - the street at its named places;
+  - Beirut's one prompt;
+  - no starting ball, and the marker;
+  - the wave not drawn on other layers;
+  - the ring at the pinned reach.
+- `InterfaceReviewExplorerTests/stage3` writes the captures to
+  `$BOMBCAD_DATA/explorer/review/stage3/`.

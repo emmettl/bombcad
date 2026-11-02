@@ -32,10 +32,10 @@ struct ExplorerTests {
         }
     }
 
-    @Test("Each named place is on open ground within the scene")
-    func places() {
-        let prints = Self.footprints(ExplorerScene.square.buildings())
-        for place in ExplorerScene.square.places {
+    @Test("Each named place is on open ground within the scene", arguments: [ExplorerScene.square, .street])
+    func places(scene: ExplorerScene) {
+        let prints = Self.footprints(scene.buildings())
+        for place in scene.places {
             let p = SIMD2<Double>(Double(place.offset.x), Double(place.offset.y))
             let inside = prints.contains {
                 p.x > $0.low.x - 1 && p.x < $0.high.x + 1 && p.y > $0.low.y - 1 && p.y < $0.high.y + 1
@@ -43,7 +43,86 @@ struct ExplorerTests {
             #expect(!inside, "\(place.name) lies in a building")
             #expect(simd_length(p) < 200)
         }
-        #expect(ExplorerScene.square.behindABuilding.name == "In the street behind the brick terrace")
+        #expect(scene.behindABuilding == scene.places[3])
+    }
+
+    @Test("The street is the same every time: shops and flats, a bank, terraces behind back lanes")
+    func street() {
+        let buildings = ExplorerScene.street.buildings()
+        #expect(buildings == ExplorerScene.street.buildings())
+        #expect(buildings.count > 300 && buildings.count < 900, "\(buildings.count)")
+        #expect(buildings.filter { $0.name == "The bank" }.count == 1)
+        #expect(buildings.contains { $0.kind == "terrace" && $0.material == "brick" })
+        #expect(buildings.contains { $0.kind == "retail" })
+        // Nothing in the high street, the back lanes or the side streets.
+        for print in Self.footprints(buildings) {
+            #expect(!(print.low.y < 9 && print.high.y > -9))
+            #expect(!(print.low.y < 29 && print.high.y > 23) && !(print.low.y < -23 && print.high.y > -29))
+            for side in [60.0, -150] { #expect(!(print.low.x < side + 5 && print.high.x > side - 5)) }
+        }
+        #expect(ExplorerScene.street.behindABuilding?.name == "In the back lane behind the shops")
+    }
+
+    @Test("Beirut's port is downloaded, not built in, and opens with its factual line")
+    func beirut() {
+        #expect(!ExplorerScene.beirut.isBuiltIn && ExplorerScene.beirut.buildings().isEmpty)
+        #expect(ExplorerScene.beirut.behindABuilding == nil)
+        #expect(ExplorerScene.beirut.opening?.contains("218 people died") == true)
+        #expect(ExplorerScene.square.opening == nil)
+        #expect(throws: ExplorerDistrict.Failure.missing) { try ExplorerScene.beirut.district() }
+        #expect(ExplorerScene.Beirut.Release.asset.sha256.count == 64)
+        #expect(
+            ExplorerScene.Beirut.Release.asset.url.absoluteString.hasSuffix(
+                "explorer-beirut-1/\(ExplorerScene.Beirut.fileName)"))
+    }
+
+    @Test("A downloaded district reads back as its buildings and ground, heights resolved")
+    func district() throws {
+        let square = ExplorerScene.square.buildings()
+        var untagged = square[0]
+        untagged.height = nil
+        let buildings = [untagged] + square[1...]
+        // A height grid of 7 m everywhere, and a ground of 1 km each way on 30 m cells.
+        let heights = ElevationGrid(
+            columns: 4, rows: 4, southWest: SIMD2(-0.01, -0.01), step: SIMD2(0.01, 0.01), units: .degrees,
+            elevations: Array(repeating: 7, count: 16))
+        let step = 30 / ElevationGrid.metresPerDegree
+        let ground = ElevationGrid(
+            columns: 67, rows: 67, southWest: SIMD2(-33 * step, -33 * step), step: SIMD2(step, step),
+            units: .degrees, elevations: (0..<67 * 67).map { Float($0 % 67) })
+        var placement = MapBuildingPlacement(origin: .zero, resolution: 1)
+        placement.heightGrid = heights
+        let district = ExplorerDistrict(
+            name: "Test", attributions: ["made up"], charge: .zero, radiusM: 300, buildings: buildings,
+            placement: placement, ground: ground, cropM: 400)
+        let url = FileManager.default.temporaryDirectory.appending(path: "explorer-district-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try district.encoded().write(to: url)
+        #expect(try district.encoded() == district.encoded())
+        let read = try ExplorerDistrict(contentsOf: url)
+        #expect(read == district)
+        let back = read.mapBuildings()
+        #expect(back.count == buildings.count)
+        #expect(back[0].height == 7)
+        #expect(
+            zip(back.dropFirst(), buildings.dropFirst()).allSatisfy {
+                $0.height == $1.height && $0.rings == $1.rings
+            })
+        // The ground cropped to 400 m each way: about 27 cells of 30 m across, and its values kept.
+        let grid = try #require(read.groundGrid())
+        #expect(grid.columns >= 27 && grid.columns <= 29 && grid.rows == grid.columns)
+        #expect(grid.elevations[0] == Float(Int(((grid.southWest.x - ground.southWest.x) / step).rounded())))
+    }
+
+    @Test("The view's shader draws the explorer's warm grey")
+    func shaderGrey() throws {
+        let shader = try String(
+            contentsOf: URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+                .deletingLastPathComponent().appending(path: "Sources/BlastRender/Shaders/Render.metal"),
+            encoding: .utf8)
+        let c = ExplorerColours.sameColour
+        let text = String(format: "float3(%.3ff, %.3ff, %.3ff)", c.x, c.y, c.z)
+        #expect(shader.contains("code == \(ExplorerColours.same)") && shader.contains(text))
     }
 
     @Test("Written as a map, it reads back as the same buildings")
@@ -166,9 +245,9 @@ struct ExplorerTests {
         var layout = DistrictLayout(
             buildings: scene.buildings(), charge: scene.charge, mass: scene.defaultMassKg)
         layout.keepsOutlines = true
-        let half = layout.halfSide(radius: scene.radiusM, cellSize: scene.cellSizeM)
-        let (made, report) = try layout.scene(
-            halfSide: half, cellSize: scene.cellSizeM, radius: scene.radiusM)
+        let cell = try #require(scene.cellSizeM)
+        let half = layout.halfSide(radius: scene.radiusM, cellSize: cell)
+        let (made, report) = try layout.scene(halfSide: half, cellSize: cell, radius: scene.radiusM)
         #expect(report.placed.count == 398)
         let plan = LiveWave.Plan(scene: made, cell: LiveWave.Plan.cellSize(for: made))
         let field = LiveWave.field(

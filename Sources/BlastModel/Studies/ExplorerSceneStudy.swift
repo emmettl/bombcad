@@ -21,7 +21,7 @@ package enum ExplorerSceneStudy {
         try scene.osm().write(to: file, atomically: true, encoding: .utf8)
         print(
             "\(scene.title): \(scene.buildings().count) buildings within \(Int(scene.radiusM)) m, centre "
-                + "\(scene.charge.x),\(scene.charge.y), \(scene.cellSizeM) m cells, \(scene.defaultMassKg) kg; "
+                + "\(scene.charge.x),\(scene.charge.y), \(scene.cellSizeM.map { "\($0) m" } ?? "the advisor's") cells, \(scene.defaultMassKg) kg; "
                 + "written to \(file.path)")
         for place in scene.places {
             print(

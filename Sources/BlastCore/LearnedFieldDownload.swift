@@ -13,12 +13,18 @@ public enum LearnedFieldDownload {
         public var destination: URL
         public var sha256: String
         public var bytes: Int
+        /// Whether it is read as weights before it is kept; a file that is not weights (the
+        /// explorer's Beirut, emmettl/bombcad-work#114) is checked by its hash alone, and by its reader.
+        public var readsAsWeights = true
 
-        public init(source: URL, destination: URL, sha256: String, bytes: Int = 0) {
+        public init(
+            source: URL, destination: URL, sha256: String, bytes: Int = 0, readsAsWeights: Bool = true
+        ) {
             self.source = source
             self.destination = destination
             self.sha256 = sha256
             self.bytes = bytes
+            self.readsAsWeights = readsAsWeights
         }
 
         /// The release's `asset`, to be kept at `destination`.
@@ -114,7 +120,7 @@ public enum LearnedFieldDownload {
         }
         // The right bytes are the right weights, but read them once so a bad pin cannot keep a file
         // the app then refuses at every estimate.
-        _ = try LearnedField.Weights(contentsOf: downloaded)
+        if item.readsAsWeights { _ = try LearnedField.Weights(contentsOf: downloaded) }
         let folder = item.destination.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let staged = folder.appending(path: ".\(item.destination.lastPathComponent).\(UUID().uuidString)")
