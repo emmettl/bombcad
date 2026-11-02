@@ -3211,7 +3211,7 @@ before any of them is run in full:
 | Mixed seed 7, 4 m (round 4's held-out) | 17% | 0% | 0.5× | none |
 
 On the 2 m scenes, a third to three-fifths of the component rows are also beyond the range, in the
-façade pane's height. The component network's damaged rows were exact on only 80–92% of them (97–98% at 4 m).
+component's own panel height. The component network's damaged rows were exact on only 80–92% of them (97–98% at 4 m).
 
 ### Did the scores find the errors?
 
@@ -3386,6 +3386,168 @@ under `gpu-slot` (`$BOMBCAD_DATA/protective-live/thrown-data.sh`).
 **Training.** The Studio's GPU (MPS) under `gpu-slot`: 40 epochs in 51 s, frames 9 modulo 10 held
 out (bombcad-pc's lock was held by another job). On held-out frames both shares were within 0.1 of
 the draws' on every side, mean error 0.0009 and 0.0007.
+
+## The built-in scenes checked, and round 6 with the pool's 2 m pieces (3 November 2026)
+
+emmettl/bombcad-work#118, stage 2. The user approved both of stage 1's proposals on 3 November
+2026: make `corpus.py check` automatic for the built-in scenes, and train candidate weights from
+round 6's data plus the pool's 2 m pieces.
+
+### The check: `LiveResponseRangeTests`
+
+`Tests/BlastModelTests/LiveResponseRangeTests.swift` reads each built-in scene's inputs to the
+live response and compares them with the ranges the built-in weights were trained on. A scene
+fails if its inputs leave those ranges, and the failure names the inputs. The scenes are:
+
+- the explorer's square and street, with the charge in the middle and behind a building, at the
+  scene's charge and ten times it;
+- Beirut's port at 0.5 kt. It is checked only where its downloaded file is found
+  (`$BOMBCAD_DATA/explorer/beirut-asset`), and is skipped elsewhere, as on Linux;
+- every preset that the live response judges, on the app's medium cells (0.25 m), at its charge
+  and four times either side of it.
+
+The check covers each network's rows: components, glazed sides, buildings, and the glass thrown's
+network (emmettl/bombcad-work#117), which reads the glazed sides' rows against ranges of its own
+training. An input counts as out of range on a row when it lies more than one of the built-in
+weights' deviations beyond the training's 0.1–99.9% points. It counts as novel for a scene when
+that is so on at least 5% of the scene's rows.
+
+The ranges live in `Tests/BlastModelTests/LiveResponseRanges.swift`, written by
+`corpus.py ranges` from the training's own rows, with the built-in weights' SHA-256 beside them.
+A test fails if the weights change and the ranges do not follow. Another fails if an explorer
+scene is added without being checked. Known gaps are listed in `known`, scene by scene. A new gap
+fails, and so does one that has closed (then take it off the list).
+
+The check is CPU only and runs in `swift test` and on the Linux lane. In a debug build, the square
+and street take 3–4 s and the presets under 1 s. Beirut takes 15–25 s, most of it laying the
+district out. `make check-affected` runs the suite whenever any of these changes:
+
+- the code it executes: the live response, the explorer's scenes, the presets;
+- the test or its ranges;
+- the paths it names in `watched`: the built-in weights, `make_district.py`, `train_response.py`,
+  `corpus.py` and `embed_response.py`.
+
+Against round 4's ranges (the weights before d653a88e), the square and the street fail. Every
+building row has the roof's panel height out of range, and a third of the components their own:
+the 2 m gap, named before a user meets it.
+
+### Adding a scene or a district type
+
+The step, for a built-in scene, a preset with buildings, or a new kind of district for New
+District:
+
+1. **Add it to `LiveResponseRangeTests`** (an explorer scene in `explorer`, a preset by
+   `ScenarioPreset.allCases`, a district type with a scene of its own) and run the suite.
+2. **If it fails, its novel inputs are named.** Either train on such scenes, or record the gap in
+   `known` with a line here, and decide whether the live response should judge it at all.
+3. **To train on it:** add a `make_district.py` style or a pool kind (`corpus.py pool`), probe it,
+   and let `corpus.py select` say what it is worth against the other candidates. Then label, train
+   and judge as in [stage 1](#choosing-the-next-runs-where-the-models-are-least-sure-2-november-2026).
+4. **When the built-in weights change, write the ranges again:**
+
+   ```bash
+   $PY Scripts/ml/corpus.py ranges --base <the weights' training folders> --weights <their .bclr> \
+       --thrown $BOMBCAD_DATA/protective-live/thrown-data \
+       --thrown-weights $BOMBCAD_DATA/ml/thrown-studio-1/out/live-response.bclr
+   ```
+
+### What it found
+
+The explorer's square and street are within the training. Four other scenes the live response
+judges are not:
+
+| Scene | Cells | Novel inputs | Furthest out |
+|---|---|---|---|
+| Beirut's port, the explorer's | 6 m | the roof's panel height (every building), the components' panel height (21%) | 2.5–3.1 deviations |
+| Office tower preset | 0.25 m | walls' and roofs' panel heights and spans, a façade as the first wall, the roof's rise: 12 inputs | 169 deviations |
+| Transport hub preset | 0.25 m | the same kinds, the roof held on an edge it never was: 12 inputs | 202 deviations |
+| Process plant preset | 0.25 m | panels, spans and the loads themselves (peaks, impulses, scaled distances): 37 inputs | 11 deviations, and an infinite scaled distance |
+
+The other presets have no buildings the live response judges, or leave them to the CPU's preview.
+None of the four is new to the app: these gaps were there before the check, and nobody saw them.
+
+- **Beirut in the explorer is on 6 m cells.** The training has 2 m and 4 m. Its roofs' panel height
+  is just outside the range; how much that costs is not measured. The 4 m figures above
+  ([instant what-ifs](#against-the-full-estimate-1)) are of Beirut's whole district on 4 m cells,
+  not the explorer's.
+- **The presets' 0.25 m cells are far outside the training**, as the square's 2 m was before round
+  6, and further. A drag over these presets is coloured by networks reading inputs they have never
+  seen. In the process plant some building rows carry an infinite scaled distance.
+- **Proposals, for the user to decide:**
+  1. The live response leaves a scene to the CPU's preview when its inputs leave the range, as it
+     already does for constructions it cannot read. The ranges would ship with the weights, about
+     12 KB, and the check is the test's own.
+  2. Train on 6 m cells for the explorer's Beirut, and on 0.25–1 m for the presets, if the presets
+     are to be dragged live.
+
+### Round 6 with the pool's 2 m pieces
+
+Round 6's data (pack-d: round 4's and the 24 squares) and stage 1's 20 pieces on 2 m cells, every
+style and both charge ranges, trained as round 6 was: 40 epochs, the same widths, on bombcad-pc,
+5.3 minutes a job, seeds 1 and 2 (`corpus-r6plus`, `-s2`). Round 6's data alone was trained there
+too (`corpus-r6pc`), to separate the data from the machine (round 6 was trained on the Studio's
+GPU). Within 0.1 of the CPU's own answers, or exact, on the held-out scenes:
+
+| Held-out scene | Measure | Round 6 (built in) | Round 6's data, PC | **Round 6 + the 2 m pieces** (seeds 1 / 2) |
+|---|---|---|---|---|
+| Square | Walls moderate+ / heavy+ | 98.5 / 98.6% | 98.4 / 98.4% | 98.5–98.6 / 98.6% |
+| | Roof moderate+ | 99.3% | 99.4% | 99.3 / 99.5% |
+| | Glass blown out | 99.2% | 99.2% | 99.2% |
+| | Component level, damaged | 99.0% | 98.8% | 99.0% |
+| Street | Walls moderate+ / heavy+ | 97.7 / 97.8% | 97.5 / 97.6% | 97.7–97.8 / 97.8–98.0% |
+| | Roof moderate+ | 98.8% | 98.9% | 99.0 / 98.9% |
+| | Component level, damaged | 98.6% | 98.8% | 98.9 / 98.8% |
+| Mixed seed 7, 2 m | Walls moderate+ | 91.3% | 91.0% | **98.1 / 98.2%** |
+| | Walls heavy+ | 92.8% | 93.3% | **98.3 / 98.4%** |
+| | Roof moderate+ | 98.6% | 98.1% | 98.9% |
+| | Component level, damaged | 98.0% | 97.9% | 98.7 / 98.5% |
+| Mixed seed 7, 4 m | Every measure | 97.7–99.9% | within 0.2 of round 6 | within 0.3 of round 6, none lower |
+| Beirut, held-out frames | Every measure | 97.7–99.9% | within 0.4 | within 0.3, none lower by more than 0.1 |
+
+So the pool's pieces add 6.8–6.9 points on the walls moderate+ of a style no round has trained on
+at 2 m, and 5.5–5.6 on heavy+. They lose nothing elsewhere. Round 6's data on the PC reads as round 6 to within 0.5 points, so
+the gain is the data's.
+
+**Against the full estimate** (`drag-time --live --agreement --reference-draws 100`, the explorer's
+square and street as in stage 1, seed 1 and seed 2's weights with the pane threshold at −1). Within
+0.1 of the full estimate, the two places:
+
+| Scene | Measure | Round 6 (built in) | Round 6 + the 2 m pieces (seed 1; seed 2) |
+|---|---|---|---|
+| Square, 5 t | Walls moderate+ | 81.7–83.7% | 81.7–83.9%; 81.9–83.9% |
+| | Roof moderate+ | 98.7–99.5% | 98.7–99.5%; 98.5–99.2% |
+| | Glass blown out | 83.0–84.3% | 83.6–85.4%; 82.2–83.6% |
+| Square, 500 kg | Walls moderate+ | 83.9–89.2% | 83.9–89.2%; 83.2–89.2% |
+| | Glass blown out | 71.8–76.5% | 71.9–76.8%; 72.6–76.8% |
+| Street, 5 t | Walls moderate+ | 98.1–98.2% | 98.0–98.2%; 98.0–98.1% |
+| | Roof moderate+ | 98.3–98.5% | 98.3–98.5%; 98.2–98.3% |
+| Street, 500 kg | Walls moderate+ | 93.7–94.5% | 94.0–94.4%; 94.4–94.9% |
+| | Glass blown out | 89.1–90.0% | 90.2–91.3%; 90.2–91.2% |
+| Either, either | Damage colour | 89.2–99.6% | 89.4–99.6%; 89.4–99.6% |
+| Beirut's whole district, 4 m, 0.5 kt | Glass blown out | 96.7–96.8% | 96.7% |
+| | Glass some broken | 99.3% | 99.2–99.3% |
+| | Walls moderate+ / heavy+, roof | 98.9–100.0% | 98.9–100.0% |
+| | Damage colour | 99.5% | 99.4% |
+| Held-out mixed district, 4 m, 100 t | Glass blown out | 95.7–96.4% | 95.5–96.2% |
+| | Walls moderate+ / heavy+, roof | 99.0–99.9% | 99.3–99.8% |
+| | Damage colour | 98.4–98.5% | 98.5% |
+
+Beirut and the mixed district were judged as in [instant what-ifs](#against-the-full-estimate-1), the
+charge where it was and 60 m east (seed 1 only). Round 6's figures reproduce that section's.
+
+### The decision for the user
+
+**Whether to build in round 6 with the pool's 2 m pieces**, in place of round 6:
+
+- **For:** it beats round 6 by 5.5–6.9 points on the walls of a held-out style at 2 m cells, and
+  matches it, within 0.3 points or better, everywhere else, against the CPU's own answers. Against
+  the full estimate it is level, on the square and the street and on Beirut's whole district and the held-out mixed district on 4 m cells, within 0.2 points either way.
+- **Against:** the gain is on a scene type the app has not shipped yet: made-up mixed districts at
+  2 m. The explorer's own scenes move by 0.0–0.3 points.
+- **It changes nothing else.** The networks and their widths are the same, at 567,812 bytes
+  (SHA-256 `0a012b68…f0dd1e6dc87`, `ml/corpus-r6plus/app/live-response.bclr`). The glass thrown's
+  network is its own file and is unaffected. The ranges would be written again
+  (`corpus.py ranges`). The built-in weights are unchanged until the user decides.
 
 ## Not done yet
 

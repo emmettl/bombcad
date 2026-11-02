@@ -11,6 +11,7 @@
     $PY Scripts/ml/corpus.py judge --model name=file.bclr … --set name=folder[,folder][@held] …
     $PY Scripts/ml/corpus.py audit DIR --members …           # did the scores find the errors?
     $PY Scripts/ml/corpus.py needs                           # what each model needs from a run
+    $PY Scripts/ml/corpus.py ranges --base FOLDERS --weights W.bclr   # LiveResponseRangeTests' ranges
 
 For the live drag's learned response (`train_response.py`'s three networks). A candidate is one
 piece of `scenebench response-data`: a made-up district (`make_district.py`, a style and a seed),
@@ -331,7 +332,8 @@ def array(folder, name, dtype, width=None):
 
 def widths(folder):
     meta = json.loads((Path(folder) / "meta.json").read_text())
-    return {"component": meta["componentWidth"], "side": meta["sideWidth"], "building": meta["buildingWidth"]}, meta
+    return {"component": meta["componentWidth"], "side": meta["sideWidth"], "building": meta["buildingWidth"],
+            "thrown": meta["sideWidth"]}, meta
 
 
 def rows(folder, unit, held=None, limit=None, rng=None):
@@ -339,7 +341,8 @@ def rows(folder, unit, held=None, limit=None, rng=None):
     modulo 10 alone, False the rest; `limit` draws that many rows in proportion to their weights
     (each then weighing the same)."""
     width, meta = widths(folder)
-    answers = {"component": 2, "side": len(meta["sideOutputs"]), "building": len(meta["buildingOutputs"])}[unit]
+    answers = {"component": 2, "side": len(meta["sideOutputs"]), "building": len(meta["buildingOutputs"]),
+               "thrown": len(meta.get("thrownOutputs", []))}[unit]
     x = array(folder, unit + "-x.f32", np.float32, width[unit])
     y = array(folder, unit + "-y.f32", np.float32, answers)
     w = array(folder, unit + "-w.f32", np.float32)
@@ -400,22 +403,26 @@ def nearest(q, ref, chunk=1024):
 
 
 def feature_names(unit, width):
-    if unit == "component":
-        names = ["log10Peak", "log10Impulse", "rise"] + SHAPE
+    if unit == "component":  # its load, its construction, then its shape (`LiveResponse.batch`)
+        names = ["log10Peak", "log10Impulse", "rise"]
+        return names + construction_names(width - len(names) - len(SHAPE)) + SHAPE
     elif unit == "building":
         names = ["%s.%s" % ("roof" if j == 8 else "wall%d" % j, f) for j in range(9) for f in SLOT] + ["yieldLogSD"]
-    else:
+    else:  # the glass's, and the thrown network's, which reads the same
         names = ["strip%d.%s" % (j, f) for j in range(4) for f in ["load%d" % k for k in range(6)] +
                  ["share", "lnDistance", "present"]] + ["log10Area", "yieldLogSD", "scatter.peak",
                                                         "scatter.impulse", "scatter.correlation"]
     left = width - len(names)
-    if unit == "side":  # `LiveResponse.glazingFeatures`: the map mix, then the glass
+    if unit in ("side", "thrown"):  # `LiveResponse.glazingFeatures`: the map mix, then the glass
         return names + ["glazing.mix%d" % k for k in range(4)] + ["glazing.glass%d" % k for k in range(left - 4)]
-    # `LiveResponse.constructionFeatures`
-    construction = (["walls.kind%d" % k for k in range(5)] + ["walls.thickness"] + ["roof.kind%d" % k for k in range(5)]
-                    + ["roof.thickness", "bars", "glass.mm", "glass.plain"] + ["glass%d" % k for k in range(left - 19)]
-                    + ["facadePane.x", "facadePane.y", "facadePane.set", "spare"])
-    return names + construction[:left]
+    return names + construction_names(left)
+
+
+def construction_names(width):
+    """`LiveResponse.constructionFeatures`' inputs."""
+    return (["walls.kind%d" % k for k in range(5)] + ["walls.thickness"] + ["roof.kind%d" % k for k in range(5)]
+            + ["roof.thickness", "bars", "glass.mm", "glass.plain"] + ["glass%d" % k for k in range(width - 19)]
+            + ["facadePane.x", "facadePane.y", "facadePane.set", "spare"])[:width]
 
 
 class Reference:
@@ -751,6 +758,58 @@ def audit(args):
         print("Spearman, the error against the %s: %.2f over %d candidates" % (name, rho, len(rows_)))
 
 
+# MARK: - The ranges the built-in scenes are checked against
+
+
+def ranges(args):
+    """Each network's inputs' 0.1% and 99.9% points over the training's rows (a weighted sample of
+    them), and their names, as a Swift file for `LiveResponseRangeTests`: the built-in scenes'
+    inputs are checked against them. Written for the weights whose SHA-256 it names; run again
+    whenever the built-in weights change."""
+    import hashlib
+    rng = np.random.default_rng(1)
+    digest = hashlib.sha256(Path(args.weights).read_bytes()).hexdigest()
+    folders = base_folders(args.base)
+    # The glass thrown's network (emmettl/bombcad-work#117) reads the glass network's inputs, trained
+    # on data of its own (`response-data --thrown-only`), and is built in as a file of its own.
+    units = [(u, folders) for u in args.units.split(",")]
+    if args.thrown:
+        units.append(("thrown", base_folders(args.thrown)))
+    lines = ["// The live response's training ranges: each input's 0.1% and 99.9% points over the rows",
+             "// the built-in weights were trained on (emmettl/bombcad-work#118). Written by",
+             "// `Scripts/ml/corpus.py ranges` from %s;" % ", ".join(sorted({f.parent.parent.name + "/" + f.parent.name for _, fs in units for f in fs})),
+             "// run it again whenever the built-in weights change. swift-format-ignore-file",
+             "extension LiveResponseRangeTests {",
+             '    static let trainedSHA256 = "%s"' % digest,
+             '    static let trainedThrownSHA256: String? = %s' % (
+                 '"%s"' % hashlib.sha256(Path(args.thrown_weights).read_bytes()).hexdigest()
+                 if args.thrown_weights else "nil"), "",
+             "    static let ranges: [String: (names: [String], low: [Float], high: [Float])] = ["]
+    for unit, folders_ in units:
+        xs, ws = [], []
+        for f in folders_:
+            x, _, w, _ = rows(f, unit)
+            if len(x):
+                xs.append(x)
+                ws.append(w)
+        x = np.concatenate(xs)
+        w = np.concatenate(ws)
+        pick = rng.choice(len(x), size=min(args.sample, len(x)), replace=False, p=w / w.sum())
+        low = np.quantile(x[pick], 0.001, axis=0)
+        high = np.quantile(x[pick], 0.999, axis=0)
+        names = feature_names(unit, x.shape[1])
+        print("%s: %d rows of %d, %d inputs" % (unit, len(pick), len(x), x.shape[1]), flush=True)
+
+        def floats(v):
+            return ", ".join("%.6g" % t for t in v)
+        lines += ['        "%s": (' % unit,
+                  "            names: [%s]," % ", ".join('"%s"' % n for n in names),
+                  "            low: [%s]," % floats(low), "            high: [%s])," % floats(high)]
+    lines += ["    ]", "}", ""]
+    Path(args.out).write_text("\n".join(lines))
+    print("wrote %s for weights %s" % (args.out, digest[:12]))
+
+
 # MARK: - What each model needs
 
 
@@ -836,9 +895,17 @@ def main(argv=None):
     p.add_argument("--tag", default="")
     p.add_argument("--members", required=True)
     sub.add_parser("needs")
+    p = sub.add_parser("ranges")
+    p.add_argument("--base", required=True, help="the built-in weights' training folders, comma-separated")
+    p.add_argument("--weights", required=True, help="the built-in weights (.bclr), whose SHA-256 the file names")
+    p.add_argument("--units", default="component,side,building")
+    p.add_argument("--thrown", help="the thrown network's training folders, comma-separated")
+    p.add_argument("--thrown-weights", help="the thrown network's built-in weights (.bclr)")
+    p.add_argument("--sample", type=int, default=400000)
+    p.add_argument("--out", default=str(REPO / "Tests" / "BlastModelTests" / "LiveResponseRanges.swift"))
     args = parser.parse_args(argv)
     {"pool": pool, "probe": probe, "select": select, "check": check, "round": round_, "pack": pack,
-     "judge": judge, "audit": audit, "needs": needs}[args.command](args)
+     "judge": judge, "audit": audit, "needs": needs, "ranges": ranges}[args.command](args)
 
 
 if __name__ == "__main__":
