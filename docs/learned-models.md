@@ -3575,6 +3575,103 @@ every input is finite and the loads and scaled distances are within the training
 gaps are its 0.25 m cells' panels and spans alone, 16 inputs (were 37), as the office tower's and
 the transport hub's.
 
+## The explorer's Beirut on 6 m cells (3 November 2026)
+
+emmettl/bombcad-work#118, stage 3. The explorer lays Beirut's port out on 6 m cells, and the
+training has 2 m and 4 m, so the roofs' panel height is 2.5–3.1 deviations out
+([what it found](#what-it-found)). This stage measures what that costs the built-in weights
+([adopted 3 November](#adopted-3-november-2026)), and trains with 6 m pieces added.
+
+### What 6 m costs
+
+`scenebench drag-time --explorer beirut [--dx 4] --moves 0,60 --no-full --live --against-preview
+--preview-draws 32 --agreement --reference-draws 100`. `--explorer` (new) lays out the explorer's
+scene as the app does, from its downloaded file, on its own cells or `--dx`'s. The scene is
+0.5 kt with the charge where it was and 60 m east, and the same district on 4 m cells beside it.
+Within 0.1, at the two places:
+
+| Against | Measure | Built in, 6 m | Built in, 4 m | CPU preview (20 draws), 6 m | CPU preview, 4 m |
+|---|---|---|---|---|---|
+| The CPU's own (32 draws) | Glass blown out | 96.4 / 96.7% | 97.4 / 97.3% | | |
+| | Walls moderate+ / heavy+ | 99.7–99.9% | 99.8–100.0% | | |
+| | Roof moderate+ | 98.9 / **97.8%** | 99.2 / 99.2% | | |
+| The full estimate (100 draws) | Glass blown out | 92.9 / **92.7%** | 93.7 / 93.9% | 82.4% | 85.7% |
+| | Glass some broken | 100.0% | 100.0% | 100.0% | 100.0% |
+| | Walls moderate+ / heavy+ | 99.8–99.9% | 99.5–99.9% | 99.5–99.8% | 98.9–99.9% |
+| | Roof moderate+ | 99.1 / 98.2% | 95.5 / 94.9% | 98.3 / 97.7% | 94.7 / 94.4% |
+| | Damage colour | 99.7 / 99.6% | 99.6 / 99.5% | 99.9 / 100.0% | 99.6 / 99.5% |
+
+So 6 m costs the networks 1.4 points on the roofs at the second place (against the CPU's own
+answers), and 0.6–1.2 points on the glass blown out (against both the CPU's answers and the
+full estimate). That is more than the 1 point allowed, so the next step was to train. The CPU's
+own preview loses 3.3 points on the glass at 6 m. Beirut on 4 m cells is in the training, so the
+4 m column has seen the district itself.
+
+### Training with 6 m pieces
+
+`corpus.py pool --configs 6m-wide --first-seed 71 --explorer beirut 6 --explorer beirut 4`
+(the kind and the options new): 10 made-up districts on 6 m cells, the five styles twice (seeds
+71–80) over 1.1 km with 100 kg to 5 kt (the squares within 300 m), and the explorer's Beirut on 6
+and 4 m as held-out scenes. The probes took 0.43 CPU hours. Every candidate puts the roof's panel
+height 2.4 deviations out.
+
+For `select`, the ensemble was the built-in weights, their seed-2 twin and round 6's data trained
+on the PC. At a 3 CPU-hour budget it took 8 pieces: both perimeters, squares, towers and
+industrial estates, and no grid. They were labelled in 2.9 CPU hours, at most 6.2 GB a piece, and
+the two Beirut scenes in 1.8. Each was trained on the built-in weights' data plus the pieces
+(pack-f), as the built-in weights were: 40 epochs, the same widths, on bombcad-pc, 6 minutes a
+seed (`corpus-6m`, `-s2`).
+
+Within 0.1 of the CPU's own answers, or exact (`corpus.py judge`):
+
+| Held-out scene | Measure | Built in | 6 m pieces, seed 1 | Seed 2 |
+|---|---|---|---|---|
+| Beirut, explorer, 6 m | Component level, damaged | 96.0% | **97.9%** | 98.1% |
+| | Walls moderate+ / heavy+ | 99.3% | 99.6% | 99.6% |
+| | Roof moderate+ | 98.5% | **99.3%** | 99.4% |
+| | Glass blown out | 99.5% | 99.5% | 99.5% |
+| Beirut, explorer, 4 m | Every measure | 98.3–99.9% | within 0.2, none lower | within 0.3, none lower |
+| Square, street | Every measure | 97.7–100.0% | −0.06 to +0.9 | −0.08 to +0.7 |
+| Mixed seed 7, 2 m | Component level, damaged | 98.7% | 98.4% (−0.27) | 98.2% (−0.48) |
+| Mixed 4 m; Beirut's and the made-up districts' held-out frames | Every measure | 98.0–99.9% | −0.0 to +0.3 | down to −0.28 |
+
+Seed 1 meets the rule on the networks' own error. It improves the explorer's Beirut on 6 m cells
+(the damaged components by 1.9 points, roofs by 0.8) and loses at most 0.27 points elsewhere. Seed
+2 loses 0.48.
+
+Against the full estimate (seed 1, the same build for both columns), the explorer's Beirut on 6 m
+moves both ways:
+- **gains:** roofs against the CPU's own answers 99.1 / 98.8% (were 98.9 / 97.8%), and against
+  the full estimate 99.4 / 99.3% (were 99.1 / 98.2%);
+- **losses:** the glass blown out 92.5 / 92.4% (were 92.9 / 92.7%), and the damage colour
+  99.3 / 99.4% (were 99.7 / 99.6%).
+
+Elsewhere the doc's other tables against the full estimate, seed 1 against built in:
+- **square, 500 kg:** walls heavy+ −1.0 and moderate+ −0.7, glass some broken −0.6 to −0.8;
+- **street, 5 t:** roofs −0.7 to −0.9, glass blown out −0.4 to −0.5;
+- **street, 500 kg:** walls +1.6 to +2.0;
+- **Beirut's whole district and the mixed district on 4 m:** within 0.1.
+
+Seeds of the same data move as far: round 6 with the 2 m pieces, seed 2 against seed 1, moved
+these referee figures by −1.8 to +0.7 points (the square's glass at 5 t most).
+
+### Stopped, and the proposal (for the user to decide)
+
+The rule was to build the weights in only if they improve the explorer's Beirut and lose no more
+than 0.3 points on any other held-out measure. They do not:
+- against the full estimate they lose up to 1.0 point (the square's walls at 500 kg);
+- on the explorer's Beirut itself they trade 0.4 points of glass and colour for 1 point of roofs.
+
+So the built-in weights are unchanged, and Beirut's 6 m gap stays in `LiveResponseRangeTests`'s
+`known`.
+- **The proposal:** judge retrained weights for adoption against the CPU's own answers (on which
+  seed 1 passes, within 0.27 points). The full-estimate referee would then be a check within the
+  seeds' own spread (about 2 points), since two seeds of the same data already differ by up to 1.8
+  there. On that rule, seed 1 (`ml/corpus-6m/app/live-response.bclr`, SHA-256 `c20f1f87…6539fc`)
+  would be built in.
+- **Or leave 6 m as it is:** it costs at most 1.4 points against the CPU's own answers, and 1.2
+  against the full estimate, where the CPU's own preview loses 3.3.
+
 ## Not done yet
 
 - **The selector for the field models** ([choosing the next runs](#choosing-the-next-runs-where-the-models-are-least-sure-2-november-2026)):
