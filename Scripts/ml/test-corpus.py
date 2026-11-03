@@ -80,6 +80,28 @@ class CorpusTests(unittest.TestCase):
         self.assertEqual(sorted(p[0] for p in picks), ["x", "y", "z"])
         self.assertTrue(all(p.endswith("0") for p in picks))
 
+    def test_thrown_measures_hold_the_severe_at_most_the_hurt(self):
+        # A thrown-only folder of two rows; a stand-in network whose raw outputs give the hurt and severe.
+        class Net:
+            def __call__(self, x):
+                return np.log(x / (1 - x))  # sigmoid's inverse: the chances are the rows themselves
+        with tempfile.TemporaryDirectory() as folder:
+            f = Path(folder)
+            (f / "meta.json").write_text(json.dumps({
+                "componentWidth": 53, "sideWidth": 2, "buildingWidth": 348, "sideOutputs": ["a"],
+                "buildingOutputs": ["b"], "thrownOutputs": ["thrownHurt", "thrownSevere"]}))
+            np.array([[0.5, 0.6], [0.2, 0.1]], np.float32).tofile(f / "thrown-x.f32")
+            np.array([[0.5, 0.5], [0.25, 0.1]], np.float32).tofile(f / "thrown-y.f32")
+            np.array([1, 1], np.float32).tofile(f / "thrown-w.f32")
+            np.array([0, 1], np.int32).tofile(f / "thrown-frame.i32")
+            m, n = self.corpus.measures("thrown", {"thrown": Net()}, f, None)
+        self.assertEqual(n, 2)
+        # Row 1's severe 0.6 is held to its hurt 0.5, exact; row 2's hurt is 0.05 off.
+        self.assertAlmostEqual(m["severeError"], 0.0, places=6)
+        self.assertAlmostEqual(m["hurtError"], 0.025, places=6)
+        self.assertEqual(m["hurtWithin01"], 1.0)
+        self.assertEqual(m["hurtWithin002"], 0.5)
+
     def test_cost_reads_time_and_stages(self):
         with tempfile.TemporaryDirectory() as folder:
             log = Path(folder) / "probe.log"

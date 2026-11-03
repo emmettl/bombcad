@@ -52,10 +52,16 @@ enum DragTime {
                 value("engine") == "cpu"
                 ? LiveResponse.CPUEngine(weights: weights) : try LiveDragGPU(weights: weights)
             // The built-in weights leave what lies outside their training to the CPU, as the app does
-            // (emmettl/bombcad-work#118), unless `--no-range-fallback`.
+            // (emmettl/bombcad-work#118), unless `--no-range-fallback`. `--ranges-without thrown`
+            // reads none of the named networks' ranges (to count what one network's ranges leave).
+            let without = Set((value("ranges-without") ?? "").split(separator: ",").map(String.init))
             let ranges =
                 value("response") == nil && !args.contains("--no-range-fallback")
-                ? LiveResponse.TrainingRanges.forBuiltInWeights : nil
+                ? LiveResponse.TrainingRanges.forBuiltInWeights.map {
+                    LiveResponse.TrainingRanges(
+                        weightsSHA256: $0.weightsSHA256, thrownSHA256: $0.thrownSHA256,
+                        networks: $0.networks.filter { !without.contains($0.key) })
+                } : nil
             live = LiveResponse.Model(weights: weights, engine: engine, ranges: ranges)
             print(
                 "Live response: \(weights.header.trainedOn ?? "?"), on the \(engine.label)"

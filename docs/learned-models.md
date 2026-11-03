@@ -3387,6 +3387,9 @@ under `gpu-slot` (`$BOMBCAD_DATA/protective-live/thrown-data.sh`).
 out (bombcad-pc's lock was held by another job). On held-out frames both shares were within 0.1 of
 the draws' on every side, mean error 0.0009 and 0.0007.
 
+Since 3 November 2026 the built-in thrown network is one trained on four times the data
+([trained wider](#the-glass-thrown-trained-wider-3-november-2026)).
+
 ## The built-in scenes checked, and round 6 with the pool's 2 m pieces (3 November 2026)
 
 emmettl/bombcad-work#118, stage 2. The user approved both of stage 1's proposals on 3 November
@@ -3675,6 +3678,10 @@ So the built-in weights are unchanged, and Beirut's 6 m gap stays in `LiveRespon
 - **Or leave 6 m as it is:** it costs at most 1.4 points against the CPU's own answers, and 1.2
   against the full estimate, where the CPU's own preview loses 3.3.
 
+**Decided, 3 November 2026:** the user chose to leave 6 m as it is. The 6 m-trained weights
+(`ml/corpus-6m`, SHA-256 `c20f1f87…6539fc`) are not built in, and Beirut's 6 m cells stay a known gap
+in `LiveResponseRangeTests`.
+
 ## What lies outside the training, on the CPU (3 November 2026)
 
 emmettl/bombcad-work#118, stage 3. The user approved stage 2's first proposal on 3 November 2026:
@@ -3785,10 +3792,109 @@ networks'; a preset outside throughout as the CPU's preview; Beirut's way, kept 
   6 m pieces were not built in ([above](#stopped-and-the-proposal-for-the-user-to-decide)), so Beirut
   stays outside; if they or others that take it in are built in, `keepsLearnedResponse` comes off,
   and the test says so (its `known` gap closes).
+  **Decided, 3 November 2026:** the user chose to keep the explorer's Beirut on the learned response
+  (`ExplorerScene.keepsLearnedResponse`), with its note, rather than the CPU's preview at about three
+  frames a second.
 - **Whether the glass thrown's network should count** for leaving a side to the CPU. Its training is
   narrower than the glass network's, and on Beirut it alone puts about 100 buildings outside. The
   choice is to train it on more of the same data, or to read only the glass network's ranges for the
   glass while the thrown's answers are shown with the glass's caveats.
+  **Decided, 3 November 2026:** the user chose to train it on more data. It was, and the new network is
+  built in ([below](#the-glass-thrown-trained-wider-3-november-2026)).
+
+## The glass thrown, trained wider (3 November 2026)
+
+emmettl/bombcad-work#117. The user decided on 3 November 2026 to retrain the glass thrown's network
+([live](#the-glass-thrown-live-2-november-2026)) on more data, so that its training covers the glazed
+sides the glass network's already does. Its inputs are the glass network's, but its ranges were
+narrower: on the glass layer of Beirut's whole district (4 m cells, 500 t) it alone left about 170
+buildings a frame to the CPU, and on the explorer's Beirut about 110. The inputs that did it were the
+shares of a side's façade taken by its third and fourth strips, and the fourth strip's distance.
+
+**The data.** `scenebench response-data --thrown-only`, 32 draws, each piece under `gpu-slot`
+(`$BOMBCAD_DATA/protective-live/thrown-retrain/data.py`). It was added to the 880 frames before
+(1.19 million rows):
+
+| Piece | Frames | Rows |
+|---|---|---|
+| Beirut's whole district (1.5 km, charges within 1.2 km), 4 m cells | 120 | 788,000 |
+| The same on 6 m cells | 80 | 474,000 |
+| The four made-up 4 m districts, new charges | 240 | 1,224,000 |
+| Squares 13–24 on 2 m cells (the glass network's 13–24) | 720 | 261,000 |
+| The reference corpus's twenty 2 m pieces, the glass network's own kinds | 600 | 253,000 |
+| The 6 m pool's eight pieces (`corpus-6m`), whose labels already held the thrown answers | 240 | 699,000 |
+
+That makes 4.89 million rows in all. It took 10.7 CPU hours, about 75 minutes on the Studio at a
+load of about 100. No piece went above 1.95 GB. Beirut's whole district on 4 m cells peaked at
+1.7 GB, since the thrown answers alone need no components. `corpus.py select` was not used. Its
+scores are for the three networks, and the thrown network's gap was already known. The gap was
+the glass network's own coverage, so the data is the glass network's kinds of piece. Mixed districts
+stay held out, as for the others.
+
+**Training.** On bombcad-pc's RTX 3080 Ti, as before: 40 epochs, 59 → 128, 128, 64 → 2, two seeds,
+about 70 s each (`ml/thrown-pc-2-s1`, `-s2`).
+
+**Against the CPU's own answers** (`corpus.py judge`, which now reads the thrown network too). The
+measures are the share of sides within 0.1 and within 0.02, and the mean error, of the shares hurt and
+hurt severely. The old data's and the new data's held-out frames (9 modulo 10), and six held-out
+scenes labelled for it, 40 frames each:
+
+| Held out | Measure | Built in before | Seed 1 | Seed 2 |
+|---|---|---|---|---|
+| The old data's frames | Hurt within 0.02 / severe within 0.02 | 98.9 / 99.2% | 99.2 / 99.5% | 99.2 / 99.5% |
+| | Hurt / severe mean error (×1000) | 1.18 / 0.93 | 0.98 / 0.78 | 0.98 / 0.77 |
+| The new data's frames | Hurt / severe within 0.02 | 98.0 / 98.5% | 98.8 / 99.1% | 98.8 / 99.1% |
+| | Mean errors | 1.89 / 1.64 | 1.45 / 1.24 | 1.45 / 1.23 |
+| The explorer's square | Within 0.02 | 99.2 / 99.5% | 99.4 / 99.7% | 99.4 / 99.7% |
+| | Mean errors | 1.12 / 0.78 | 0.97 / 0.65 | 0.97 / 0.66 |
+| The explorer's street | Within 0.02 | 98.9 / 99.4% | 99.4 / 99.7% | 99.4 / 99.7% |
+| | Mean errors | 1.82 / 1.36 | 1.48 / 1.10 | 1.47 / 1.10 |
+| Mixed seed 7, 4 m | Within 0.02 | 97.2 / 97.6% | 98.7 / 99.0% | 98.7 / 99.0% |
+| | Mean errors | 2.71 / 2.41 | 1.92 / 1.69 | 1.93 / 1.69 |
+| Mixed seed 7, 2 m | Within 0.02 | 98.8 / 99.3% | 99.3 / 99.6% | 99.3 / 99.6% |
+| | Mean errors | 1.85 / 1.36 | 1.52 / 1.13 | 1.51 / 1.13 |
+| The explorer's Beirut, 6 m | Within 0.02 | 97.2 / 97.9% | 98.5 / 98.9% | 98.5 / 98.9% |
+| | Mean errors | 2.27 / 1.86 | 1.71 / 1.40 | 1.70 / 1.40 |
+| The explorer's Beirut, 4 m | Within 0.02 | 95.5 / 96.2% | 98.0 / 98.4% | 98.0 / 98.4% |
+| | Mean errors | 3.63 / 3.34 | 2.47 / 2.25 | 2.46 / 2.24 |
+
+Within 0.1 is 100% everywhere, before and after. Every measure improves, and the two seeds agree to
+0.01 of a point. The explorer's Beirut is held out in its layout and frames, but its buildings are
+Beirut's, which the new data has on both cell sizes.
+
+**Against the full estimate**, with a wall in front (`scenebench wall-drag`, as in
+[the explorer](explorer.md#protect-the-buildings-2-november-2026), the barrier's terms). The glass
+thrown and the people's share hurt are still within 0.1 on 100% of sides and buildings, on the
+square, the street and Beirut within 1.5 km. The biases, the glass thrown's and the people's, barely move:
++0.003 / +0.001 on the square (as before), +0.002 / +0.001 on the street (+0.002 / +0.000 before),
+and +0.004 / −0.006 on Beirut (+0.003 / −0.007 before).
+
+**Buildings left to the CPU** on the glass layer (`scenebench drag-time --live --parts glass --drag
+0,20,40,60`). Each figure is summed over the four frames. `--ranges-without thrown`, new, reads every
+network's ranges but the thrown's, so the difference is what the thrown's ranges alone leave:
+
+| Scene (buildings) | Left to the CPU, before → after | For the thrown's ranges alone, before → after |
+|---|---|---|
+| Beirut's whole district, 4 m, 500 t (4,171) | 872 → 322 | 693 → 143 |
+| The explorer's Beirut, 6 m, 500 t (2,861) | 494 → 90 | 430 → 26 |
+| Mixed seed 7, 4 m, 100 t (4,095) | 14 → 6 | 12 → 4 |
+| Mixed seed 7, 2 m, 500 kg (295) | 0 → 0 | 0 → 0 |
+| The square, 500 kg and 5 t (398) | 1 and 10 → the same | 0 → 0 |
+| The street, 500 kg and 5 t (781) | 0 and 12 → the same | 0 → 0 |
+
+On Beirut's whole district the drag now leaves about 80 buildings a frame to the CPU, not 220.
+Those that remain are mostly the glass network's own (the fourth strip's share, 33). The explorer's
+Beirut, kept on the learned response, now counts about 22 a frame outside on the glass layer, not
+about 120.
+
+**Adopted.** The rule was to build the network in if the buildings left to the CPU for the thrown
+reason fall substantially, and if no held-out thrown measure gets worse by more than the two seeds'
+spread. Both hold, so seed 1 is built in (`LiveResponse+Thrown.swift`, 69,793 bytes, SHA-256
+`d5c9ad42…ed7ea7e`, from `ml/thrown-pc-2-s1/out/live-response.bclr`). The ranges were written
+again with `corpus.py ranges --thrown $BOMBCAD_DATA/protective-live/thrown-retrain/pack`. The three
+networks before, and their ranges, are unchanged to the byte. `LiveResponseRangeTests` passes as it
+was: its `known` and `leftToCPU` are still true. Its Beirut row was never short of the thrown's range
+on 5% of rows, and the square's and street's few buildings are the loads nearest a 5 t charge.
 
 ## Not done yet
 

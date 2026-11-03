@@ -689,6 +689,15 @@ def measures(unit, net, folder, held):
                 "levelExactWhereDamaged": float((exact[damaged] * w[damaged]).sum() / max(w[damaged].sum(), 1e-12)),
                 "glassExact": float((((out[:, LEVELS] > 0) == (y[:, 1] > 0.5)) * wn).sum())}, len(x)
     p = sigmoid(out)
+    if unit == "thrown":
+        # The glass thrown into the rooms (emmettl/bombcad-work#117): the shares hurt and hurt
+        # severely, the severe held at most the hurt as `LiveResponse` holds it; within 0.1 and 0.02
+        # of the CPU's own, and the mean error.
+        p[:, 1] = np.minimum(p[:, 1], p[:, 0])
+        e = np.abs(p - y)
+        return {**{"%sWithin%s" % (k, s): float(((e[:, j] <= t) * wn).sum()) for j, k in enumerate(["hurt", "severe"])
+                   for s, t in (("01", 0.1), ("002", 0.02))},
+                **{"%sError" % k: float((e[:, j] * wn).sum()) for j, k in enumerate(["hurt", "severe"])}}, len(x)
     within = np.abs(p - y) <= 0.1
     return {k: float((within[:, j] * wn).sum()) for j, k in enumerate(
         ["someBroken", "blownOut", "fractionBroken", "thrownPast3b", "openingsBlownOut"]
@@ -714,12 +723,17 @@ def judge(args):
              ("component", "glassExact", "Component glass"),
              ("side", "someBroken", "Glass some broken"), ("side", "blownOut", "Glass blown out"),
              ("building", "wallsModerate", "Walls moderate+"), ("building", "wallsHeavy", "Walls heavy+"),
-             ("building", "roofModerate", "Roof moderate+")]
+             ("building", "roofModerate", "Roof moderate+"),
+             ("thrown", "hurtWithin01", "Glass thrown, hurt within 0.1"),
+             ("thrown", "hurtWithin002", "Glass thrown, hurt within 0.02"),
+             ("thrown", "severeWithin002", "Glass thrown, severe within 0.02"),
+             ("thrown", "hurtError", "Glass thrown, hurt mean error (×1000)"),
+             ("thrown", "severeError", "Glass thrown, severe mean error (×1000)")]
     for name, (folders, held) in sets.items():
         result[name] = {}
         for m, net in nets.items():
             result[name][m] = {}
-            for unit in UNITS:
+            for unit in [u for u in UNITS + ("thrown",) if u in net]:
                 totals, n = {}, 0
                 for f in folders:
                     r, k = measures(unit, net, f, held)
@@ -733,10 +747,12 @@ def judge(args):
     print("|---|---|" + "---|" * len(models))
     for name in sets:
         for unit, key, label in shown:
-            vals = [result[name][m][unit][key] if result[name][m][unit] else None for m in models]
+            vals = [result[name][m].get(unit)[key] if result[name][m].get(unit) else None for m in models]
             if all(v is None for v in vals):
                 continue
-            print("| %s | %s | %s |" % (name, label, " | ".join("%.1f%%" % (100 * v) if v is not None else "–" for v in vals)))
+            print("| %s | %s | %s |" % (name, label, " | ".join(
+                ("%.2f" % (1000 * v) if key.endswith("Error") else "%.1f%%" % (100 * v)) if v is not None else "–"
+                for v in vals)))
     if args.out:
         Path(args.out).write_text(json.dumps(result, indent=1))
 

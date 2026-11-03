@@ -1,6 +1,6 @@
 // The live response's training ranges: each input's 0.1% and 99.9% points over the rows
 // the built-in weights were trained on (emmettl/bombcad-work#118). Written by
-// `Scripts/ml/corpus.py ranges` from protective-live/thrown-data, ref-corpus/pack-e;
+// `Scripts/ml/corpus.py ranges` from ref-corpus/pack-e, thrown-retrain/pack;
 // run it again whenever the built-in weights change. The live drag leaves to the CPU's preview
 // what lies outside them (`LiveResponse.TrainingRanges`), and LiveResponseRangeTests checks the
 // built-in scenes against them.
@@ -10,7 +10,7 @@ extension LiveResponse.TrainingRanges {
     /// The built-in weights' ranges (`forBuiltInWeights`).
     public static let builtIn = LiveResponse.TrainingRanges(
         weightsSHA256: "0a012b68ca174adeba16d5632b7ae957d01968902bce74664dab2f0dd1e6dc87",
-        thrownSHA256: "a00a08621c37ef1291d7808b3bacc8e3ef6503624dd4e06893c78e9c682d74bd",
+        thrownSHA256: "d5c9ad42195ffcaecac6309ba1a1187007ac8ca48dc74a7708058f639ed7ea7e",
         networks: [
             "component": Network(
                 names: [
@@ -192,16 +192,16 @@ extension LiveResponse.TrainingRanges {
                     "glazing.glass10", "glazing.glass11", "glazing.glass12", "glazing.glass13"
                 ],
                 low: [
-                    1.45256, 0.484657, 0, 0.29563, 0.0795503, 0, 0.333333, -0.554007, 1, 0, 0, 0, 0, 0, 0, 0,
+                    1.40369, 0.423238, 0, 0.310139, 0.099103, 0, 0.307692, -0.375544, 1, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.20412, 0, 0.19, 0.11, 0.36,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0
                 ],
                 high: [
-                    6.58714, 4.83725, 0.832309, 1.10082, 0.993972, 0, 1, 6.06735, 1, 4.77137, 3.91159,
-                    0.760072, 0.7478, 0.78082, 0, 0.5, 5.96199, 1, 4.33254, 3.6384, 0.585651, 0.649408,
-                    0.643402, 0, 0.307692, 5.57481, 1, 3.91927, 3.25855, 0.349495, 0.564285, 0.613317, 0,
-                    0.2, 4.03997, 1, 3.65128, 0.667849, 0.41, 0.26, 0.51, 1, 1, 1, 1, 1, 1, 1, 12, 1.52, 22,
-                    1, 1, 8, 1, 1, 1, 1.55, 0
+                    6.29491, 4.66764, 0.83242, 1.059, 0.988228, 0, 1, 6.16371, 1, 4.68019, 3.86211, 0.773843,
+                    0.752258, 0.851579, 0, 0.5, 6.05161, 1, 4.33364, 3.65341, 0.635589, 0.662489, 0.659861,
+                    0, 0.333333, 5.69403, 1, 3.96024, 3.32539, 0.464496, 0.584706, 0.628502, 0, 0.25,
+                    5.03237, 1, 3.74943, 0.667849, 0.41, 0.26, 0.51, 1, 1, 1, 1, 1, 1, 1, 12, 1.52, 22, 1, 1,
+                    8, 1, 1, 1, 1.55, 0
                 ]
             ),
         ])
