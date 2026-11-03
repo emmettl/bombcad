@@ -284,6 +284,93 @@ upload: 15 to 17 ms at the 95th percentile) still runs on the main thread in the
 cost a refresh. And the iPad's view draws 30 times a second even when nothing changes (11 ms of
 GPU each). These are left for emmettl/bombcad-work#43.
 
+## The iPad as a live estimator on its own: the bench, 3 November 2026
+
+emmettl/bombcad-work#119, first step: could the iPad drag a charge over Beirut and answer live on
+its own GPU, the Studio kept for referee runs? The live drag's learned response
+([learned models](learned-models.md#the-live-drags-learned-response-1-november-2026)) and the live
+wave with its refinement ([live wave](live-wave.md#the-learned-refinement-2-november-2026)) already
+compile for iPadOS: they are BlastModel and BlastCore code (MPS matrix products, MPSGraph,
+LiveDrag.metal compiled at run time), and the BombCAD target built for the iPad takes them in. What
+was missing was a way to run them there.
+
+**The bench** (`LiveBench`, Sources/BombCAD/LiveBench.swift) lays the explorer's Beirut out as the
+explorer does (`ExplorerModel.document`: the release's 2,887 buildings, 2,870 within the radius,
+6 m cells, 0.5 kt) and times, without drawing:
+
+- the drag preview by the learned response, 21 frames 5 m apart: the glass's chances (10 draws, the
+  explorer's glass layer) and the walls' and roofs' (20 draws), kept on the networks as the explorer
+  keeps Beirut;
+- the live wave as the explorer drags it (cells four times its 4 m, unrefined), as let go (4 m,
+  refined), and as the workbench drags it (8 m, refined);
+- the glass's preview and the wave together for a minute, the charge going to and fro over 100 m,
+  with the memory in use and the thermal state every 10 s;
+- once, the full estimate that follows on let-go (100 draws, on the CPU).
+
+Each line gives the median and 90th percentile of the frames after the first. The first frame's
+answers are printed as a digest (glazed sides, their mean chances, the wave's last arrival and mean
+log peak) to set one machine beside another. On a Mac it is `BombCAD live-bench --beirut <file>
+--wave-weights <file> [--sustain 60] [--out report.txt]`; on the iPad the viewer runs it when
+launched with `BOMBCAD_VIEWER_LIVE_BENCH=1`, downloading Beirut's file and the wave's weights from
+their releases and checking their pinned SHA-256 (or using copies put in its Documents), and writes
+`Documents/live-bench.txt`. `Scripts/ipad-live-bench.sh <device id> <out.txt>` installs, launches
+and fetches the report.
+
+**Measured**, the Studio (M4 Max, release build, under gpu-slot, load average 4–8) and the iPad Pro
+11-inch (M5) Simulator on the same Studio (iOS 27.0, release):
+
+| | Studio | Simulator |
+|---|---|---|
+| Drag preview, glass's chances: median, p90 (first) | 6.1, 6.6 ms (22.5) | 18.0, 18.4 ms (39.2) |
+| Its stages: choice, loads, rows, networks, answers | 1.0, 1.4, 1.1, 1.2, 0.6 ms | 1.9, 2.2, 6.2, 4.8, 1.5 ms |
+| Drag preview, walls' and roofs' | 5.4, 5.6 ms | 14.0, 14.5 ms |
+| Live wave dragging as the explorer, 16 m cells (0.05 M) | 7.6, 7.8 ms | 9.6, 9.7 ms |
+| Live wave let go, 4 m refined (0.83 M) | 160, 164 ms (the network 49) | not run |
+| Live wave as the workbench drags, 8 m refined (0.21 M) | 41.7, 45.3 ms (the network 12) | not run |
+| Preview and wave together, a minute | 14.7, 15.4 ms; thermal nominal | 27.7, 28.5 ms (10 s) |
+| The full estimate on let-go, 100 draws on the CPU | 13.5 s | 85.9 s |
+| Memory in use, at most | 1.8 GB dragging, 2.6 GB in the full estimate | 0.13 GB, 1.2 GB in the full estimate |
+
+The Simulator's first-frame digests are the Studio's to every printed digit (10,605 glazed sides,
+mean some broken 0.9959, blown out 0.7039; the wave's last arrival 6.9721 s, mean ln peak 8.7835),
+so the iPadOS build computes the same. Its times are not an iPad's: its GPU is the Studio's behind
+a translation layer, and it reports no GPU working set, so the refinement (which asks for 1.9 GB on
+the 4 m plan and 0.7 GB on 8 m) refuses to run there. The Studio's figures are the work alone; in
+the app the hops between the main actor and the workers add to them (the explorer's 20 ms preview
+and 10 ms wave on Beirut, [explorer](explorer.md#polish-beirut-at-30-frames-a-second-a-warm-scale-the-new-weights-2-november-2026)).
+The memory held while dragging is mostly the 4 m refinement's graph, kept after let-go.
+
+**The iPad itself was not measured.** The iPad Pro (M2, `00008112-000550EC3A23C01E`) was paired
+and seen by `devicectl`, but locked: "The device has not been unlocked recently", so nothing could
+be installed. With it unlocked, awake and on the Studio's network, the device build and the bench
+are:
+
+```bash
+Scripts/build-ipad-viewer.sh --device release
+Scripts/ipad-live-bench.sh 00008112-000550EC3A23C01E $BOMBCAD_DATA/ipad-standalone/ipad-pro-m2.txt
+```
+
+**What a standalone estimator would need,** on these figures:
+
+- **Data:** 17.1 MB in all, fetched once: Beirut's file 0.84 MB, the wave's weights 15.7 MB, and the
+  learned response's 0.53 MB already built in. The Simulator's download over the Studio's line took
+  2.0 s. A district other than the explorer's needs its map and heights laid out somewhere: on the
+  iPad that is New District's code, which builds for it, but its map download and terrain have not
+  been tried there.
+- **The drag** is small work: 6 ms of preview and 8 ms of wave a frame on the Studio, a third of a
+  frame at 60 Hz together. The M2's GPU has 10 cores to this M4 Max's 32, and its CPU 8 to
+  14, so the device run decides whether it holds 30 frames a second; the rows and answers are
+  CPU work and grew most in the Simulator.
+- **Let-go is the heavy part.** The 4 m refined wave is 0.16 s and 1.9 GB of GPU memory by the
+  network's own estimate; the iPad app may use about 5.4 GB in all (measured 2 November). The full
+  estimate is 13.5 s on 14 cores. On the iPad it would be the one step to leave to the Studio, or
+  to make with fewer draws or the learned response's answers kept, a choice for the user once the
+  device's figure is in.
+- **The interface:** the iPad build is still a viewer. The explorer's view and sidebar are the
+  Mac's (ExplorerView.swift and the window around it are macOS only), and the iPad's renderer draws
+  kept recordings, not an estimate's colours over a scene. That is the larger step after the
+  device's numbers.
+
 ## What blocks the Vision Pro step
 
 Walking a district at full scale is more than this viewer on a headset:

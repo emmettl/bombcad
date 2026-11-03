@@ -81,6 +81,10 @@
             browser.start()
             self.browser = browser
             refreshPaired()
+            // `BOMBCAD_VIEWER_LIVE_BENCH=1`: the explorer's Beirut timed on this iPad (`LiveBench`).
+            if ProcessInfo.processInfo.environment["BOMBCAD_VIEWER_LIVE_BENCH"] == "1" {
+                LiveBench.onDevice { [weak self] line in self?.busy = line }
+            }
             if auto, let first = paired.first {
                 Task {
                     await connect(first)
