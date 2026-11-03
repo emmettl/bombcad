@@ -976,9 +976,14 @@ final class SimulationModel {
         didSet { learnedDefaults.set(dragPreviewPath.rawValue, forKey: Self.dragPreviewKey) }
     }
     static let dragPreviewKey = "quickEstimate.dragPreview"
-    /// The learned response, once built (its weights are the app's own), and why it could not be.
+    /// The learned response, once built (its weights are the app's own), and why it could not be,
+    /// or what of the scene it left to the SDOF (`Look.untrainedNote`).
     @ObservationIgnored var liveModel: LiveResponse.Model?
     var liveModelProblem: String?
+    /// Whether the drag leaves to the SDOF the buildings whose inputs lie outside the learned
+    /// response's training (emmettl/bombcad-work#118): so everywhere but in the explorer's scenes
+    /// that keep the learned response (`ExplorerScene.keepsLearnedResponse`: Beirut, for now).
+    @ObservationIgnored var liveLeavesUntrainedToCPU = true
     /// While the charge is dragged in the view (Place Charge on): the scene is loaded again only
     /// once it is let go, and a quick estimate on screen follows it (`beginDrag`).
     var isDraggingCharge = false

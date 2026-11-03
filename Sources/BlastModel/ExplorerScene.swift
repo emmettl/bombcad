@@ -83,6 +83,14 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    /// Whether the drag keeps the scene on the learned response where its inputs lie outside the
+    /// training, rather than leave those buildings to the CPU's preview as elsewhere
+    /// (emmettl/bombcad-work#118; docs/learned-models.md, "What lies outside the training, on the
+    /// CPU"). Beirut's 6 m cells put every roof's panel height just outside it (2.5–3.1 deviations),
+    /// and on the CPU its walls' drag would take 0.2–0.4 s a frame, not 13 ms: kept, for now, until
+    /// the networks are trained on 6 m cells or the user decides otherwise.
+    public var keepsLearnedResponse: Bool { self == .beirut }
+
     /// The ground under the charge: Beirut's port was on saturated fill.
     public var ground: GroundType {
         switch self {

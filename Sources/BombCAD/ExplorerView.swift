@@ -270,6 +270,11 @@
                         ExplorerWords.howSure(explorer.layer, refinedWave: model.liveWave?.refined ?? false)
                     )
                     .fixedSize(horizontal: false, vertical: true)
+                    // What the drag's learned response left to the SDOF, or judged outside its training.
+                    if explorer.layer != .wave, let note = model.liveModelProblem {
+                        Text(note).font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .accessibilityElement(children: .combine)
                 DisclosureGroup("Why?", isExpanded: $whyShown) {

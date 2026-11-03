@@ -51,8 +51,15 @@ enum DragTime {
             let engine: LiveResponse.Engine =
                 value("engine") == "cpu"
                 ? LiveResponse.CPUEngine(weights: weights) : try LiveDragGPU(weights: weights)
-            live = LiveResponse.Model(weights: weights, engine: engine)
-            print("Live response: \(weights.header.trainedOn ?? "?"), on the \(engine.label)")
+            // The built-in weights leave what lies outside their training to the CPU, as the app does
+            // (emmettl/bombcad-work#118), unless `--no-range-fallback`.
+            let ranges =
+                value("response") == nil && !args.contains("--no-range-fallback")
+                ? LiveResponse.TrainingRanges.forBuiltInWeights : nil
+            live = LiveResponse.Model(weights: weights, engine: engine, ranges: ranges)
+            print(
+                "Live response: \(weights.header.trainedOn ?? "?"), on the \(engine.label)"
+                    + (ranges == nil ? "" : "; what lies outside its training on the CPU's preview"))
         }
         print(
             String(
@@ -183,10 +190,12 @@ enum DragTime {
                 print(
                     String(
                         format:
-                            "Live, moved %4.0f m: %d components, %d sides, %d buildings; choice %.3f, loads %.3f, inputs %.3f, networks %.3f, answers %.3f s",
+                            "Live, moved %4.0f m: %d components, %d sides, %d buildings, %d of them on the CPU; choice %.3f, loads %.3f, inputs %.3f, range %.3f, networks %.3f, answers %.3f, CPU %.3f s; %.3f s in all",
                         move, look.estimate.components.count, look.glass.count, look.structure.count,
-                        stages.choice,
-                        stages.loads, stages.inputs, stages.networks, stages.answers))
+                        look.leftToCPU, stages.choice, stages.loads, stages.inputs, stages.range,
+                        stages.networks,
+                        stages.answers, stages.cpu, look.totalSeconds))
+                if let note = look.untrainedNote { print("  \(note)") }
             }
             print(
                 String(
@@ -465,11 +474,21 @@ enum DragTime {
                     print(
                         String(
                             format:
-                                "Drag frame at %4.0f m: estimate %.2f s, damage %.2f s, glass %.2f s, walls %.2f s; %.2f s; live: district %.4f, choice %.4f, loads %.4f, inputs %.4f, networks %.4f, answers %.4f s (GPU %.4f); %.4f s in all",
+                                "Drag frame at %4.0f m: estimate %.2f s, damage %.2f s, glass %.2f s, walls %.2f s; %.2f s; live: district %.4f, choice %.4f, loads %.4f, inputs %.4f, range %.4f, networks %.4f, answers %.4f s (GPU %.4f), %d of %d buildings on the CPU %.4f s; %.4f s in all",
                             step, look.seconds.estimate, look.seconds.damage, look.seconds.glass,
                             look.seconds.structure, look.totalSeconds, stages.district, stages.choice,
                             stages.loads,
-                            stages.inputs, stages.networks, stages.answers, stages.gpu, seconds(clock)))
+                            stages.inputs, stages.range, stages.networks, stages.answers, stages.gpu,
+                            look.leftToCPU,
+                            look.liveBuildings, stages.cpu, seconds(clock)))
+                    if look.leftToCPU > 0, step == steps.first {
+                        print(
+                            "  outside the training: "
+                                + look.outsideTraining.sorted { ($0.value, $1.key) > ($1.value, $0.key) }.map
+                            {
+                                "\($0.key) \($0.value)"
+                            }.joined(separator: ", "))
+                    }
                     // `--fire`: the fire drawn on the frame's glass (`fire(on:)`), with `--wind` degrees to
                     // turn the wind frame by frame, and the frame and its fire timed together. With
                     // `--fire-overlap`, as the app draws it: the frame's fire behind the next frame's

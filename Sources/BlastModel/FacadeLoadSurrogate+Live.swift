@@ -54,16 +54,22 @@ extension LiveResponse {
         }
     }
 
-    /// The live drag's model: its weights, where it runs, and what it keeps of the district shown.
+    /// The live drag's model: its weights, where it runs, the ranges they were trained over, and
+    /// what it keeps of the district shown.
     public final class Model: @unchecked Sendable {
         public let weights: Weights
         public let engine: Engine
+        /// The weights' training ranges (`TrainingRanges.forBuiltInWeights` for the built-in ones):
+        /// with them, a building whose inputs lie outside is left to the CPU's preview
+        /// (emmettl/bombcad-work#118). Nil, every building is judged by the networks.
+        public let ranges: TrainingRanges?
         private var district: District?
         private let lock = NSLock()
 
-        public init(weights: Weights, engine: Engine) {
+        public init(weights: Weights, engine: Engine, ranges: TrainingRanges? = nil) {
             self.weights = weights
             self.engine = engine
+            self.ranges = ranges
         }
 
         func district(for prepared: FacadeLoadSurrogate.Prepared) -> District {
@@ -90,6 +96,10 @@ extension FacadeLoadSurrogate.Prepared {
         public var networks = 0.0
         public var answers = 0.0
         public var district = 0.0
+        /// The rows read against the training's ranges, and the CPU's preview of the buildings
+        /// outside them (emmettl/bombcad-work#118).
+        public var range = 0.0
+        public var cpu = 0.0
         /// Of `loads` and `networks`, the GPU's own time.
         public var gpu = 0.0
     }
@@ -102,12 +112,15 @@ extension FacadeLoadSurrogate.Prepared {
     /// Nil where the networks do not know every building's construction and glazing, or there is no
     /// charge (`LiveResponse.judges(mass:)`): the CPU path is then the preview. The learned field model's peaks are not taken: its strips draw its own
     /// scatter, which the networks were not trained on, so with that option on the preview stays the
-    /// CPU's.
+    /// CPU's. Where `model` has its weights' training ranges, a building with any of its rows outside
+    /// them (`LiveResponse.TrainingRanges.buildingsOutside`) is judged by the CPU's preview instead
+    /// (emmettl/bombcad-work#118), and the look says how many; without `leavesUntrainedToCPU`, by
+    /// the networks all the same, and the look says how many were outside.
     public func livePreview(
         charge: SIMD3<Float>, mass: Double, uncertainty: FacadeLoadSurrogate.Uncertainty, parts: Parts = .all,
         terms: FacadeLoadSurrogate.TermSet = .adopted,
         roofCoefficients: FacadeLoadSurrogate.Coefficients = .roofs,
-        model: LiveResponse.Model, keepEstimate: Bool = false
+        model: LiveResponse.Model, keepEstimate: Bool = false, leavesUntrainedToCPU: Bool = true
     ) throws -> (look: Look, stages: LiveStages)? {
         // No charge (a gas deflagration's scene): the CPU's preview, which gives it no load.
         guard LiveResponse.judges(mass: mass) else { return nil }
@@ -305,19 +318,41 @@ extension FacadeLoadSurrogate.Prepared {
         }
         stages.inputs = lap()
 
+        // What lies outside the networks' training is left to the CPU's preview, building by building.
+        var outside = [Bool](repeating: false, count: owners.count)
+        var outsideInputs: [String: Int] = [:]
+        if let ranges = model.ranges {
+            var componentOwner = [Int](repeating: -1, count: componentRows.isEmpty ? 0 : componentCount)
+            var sideOwner = [Int](repeating: -1, count: sideRows.isEmpty ? 0 : sideCount)
+            for (b, n) in owners.enumerated() {
+                if !componentOwner.isEmpty {
+                    for r in componentStart[n]..<componentStart[n + 1] { componentOwner[r] = b }
+                }
+                if !sideOwner.isEmpty { for r in sideStart[n]..<sideStart[n + 1] { sideOwner[r] = b } }
+            }
+            (outside, outsideInputs) = ranges.buildingsOutside(
+                components: componentRows, componentOwner: componentOwner, sides: sideRows,
+                sideOwner: sideOwner, buildings: buildingRows, buildingCount: owners.count, weights: weights)
+        }
+        // Kept on the networks where the caller asks (the explorer's Beirut, for now), and counted.
+        let left = leavesUntrainedToCPU ? Set(owners.indices.filter { outside[$0] }.map { owners[$0] }) : []
+        // Every building outside: the networks are not run.
+        let shown: Parts = left.count == owners.count && !owners.isEmpty ? [] : parts
+        stages.range = lap()
+
         // The networks, only for what is shown.
         func run(_ name: String, _ rows: [Float], _ count: Int) throws -> [Float] {
             let out = try model.engine.run(name, rows: rows, count: count)
             stages.gpu += model.engine.lastGPUSeconds
             return out
         }
-        let componentOut = parts.contains(.damage) ? try run("component", componentRows, componentCount) : []
-        let sideOut = parts.contains(.glass) ? try run("side", sideRows, sideCount) : []
+        let componentOut = shown.contains(.damage) ? try run("component", componentRows, componentCount) : []
+        let sideOut = shown.contains(.glass) ? try run("side", sideRows, sideCount) : []
         // The glass thrown into the rooms, where the weights have its network (emmettl/bombcad-work#117).
         let thrownOut =
-            parts.contains(.glass) && weights.header.networks["thrown"] != nil
+            shown.contains(.glass) && weights.header.networks["thrown"] != nil
             ? try run("thrown", sideRows, sideCount) : []
-        let buildingOut = parts.contains(.structure) ? try run("building", buildingRows, owners.count) : []
+        let buildingOut = shown.contains(.structure) ? try run("building", buildingRows, owners.count) : []
         stages.networks = lap()
 
         // Their answers, as the CPU path gives them; `BOMBCAD_LIVE_BROKEN_THRESHOLD` in place of the
@@ -330,7 +365,7 @@ extension FacadeLoadSurrogate.Prepared {
         var glass: [FacadeLoadSurrogate.SideGlass] = []
         var structure: [FacadeLoadSurrogate.StructureChance] = []
         values.withUnsafeBufferPointer { v in
-            if parts.contains(.damage) {
+            if shown.contains(.damage) {
                 var made = [EnvelopeBuildingDamage?](repeating: nil, count: owners.count)
                 made.withUnsafeMutableBufferPointer { out in
                     concurrently(iterations: (owners.count + 63) / 64) { chunk in
@@ -363,7 +398,7 @@ extension FacadeLoadSurrogate.Prepared {
                 }
                 damage = made.map { $0! }
             }
-            if parts.contains(.glass) {
+            if shown.contains(.glass) {
                 var made = [FacadeLoadSurrogate.SideGlass?](repeating: nil, count: sideCount)
                 made.withUnsafeMutableBufferPointer { out in
                     concurrently(iterations: (owners.count + 63) / 64) { chunk in
@@ -390,7 +425,7 @@ extension FacadeLoadSurrogate.Prepared {
                 }
                 glass = made.compactMap { $0 }
             }
-            if parts.contains(.structure) {
+            if shown.contains(.structure) {
                 structure = owners.enumerated().map { b, n in
                     let o = b * 3
                     let moderate = hasWalls[b] ? sigmoid(buildingOut[o]) : 0
@@ -421,6 +456,21 @@ extension FacadeLoadSurrogate.Prepared {
             }
         }
         stages.answers = lap()
+
+        // The buildings outside the training, by the CPU's preview in place of the networks' answers.
+        var cpu: Look?
+        if !left.isEmpty {
+            let made = self.look(
+                charge: charge, mass: mass,
+                constructions: { district.builtOf[$0] ?? .assumed(objectID: $0) },
+                uncertainty: uncertainty, preview: true, parts: parts, terms: terms, only: left)
+            let ids = Set(left.map { objects[$0].id })
+            damage = damage.filter { !ids.contains($0.id) } + made.damage
+            glass = glass.filter { !ids.contains($0.owner) } + made.glass
+            structure = structure.filter { !ids.contains($0.owner) } + made.structure
+            cpu = made
+        }
+        stages.cpu = lap()
         let took = start.duration(to: .now)
         estimate.seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
         // The networks' and their answers' time goes to the first part shown.
@@ -429,12 +479,19 @@ extension FacadeLoadSurrogate.Prepared {
             estimate: estimate, damage: damage, glass: glass, structure: structure, charge: charge,
             preview: true,
             seconds: (
-                estimate: stages.district + stages.choice + stages.loads + stages.inputs,
-                damage: parts.contains(.damage) ? judged : 0,
-                glass: parts.contains(.glass) && !parts.contains(.damage) ? judged : 0,
-                structure: parts == .structure ? judged : 0
+                estimate: stages.district + stages.choice + stages.loads + stages.inputs + stages.range
+                    + (cpu?.seconds.estimate ?? 0),
+                damage: (parts.contains(.damage) ? judged : 0) + (cpu?.seconds.damage ?? 0),
+                glass: (parts.contains(.glass) && !parts.contains(.damage) ? judged : 0)
+                    + (cpu?.seconds.glass ?? 0),
+                structure: (parts == .structure ? judged : 0) + (cpu?.seconds.structure ?? 0)
             ))
-        look.learnedResponse = model.engine.label
+        // Every building left to the CPU: the preview is the CPU's.
+        look.learnedResponse = shown.isEmpty && !parts.isEmpty ? nil : model.engine.label
+        look.leftToCPU = left.count
+        look.outsideKept = leavesUntrainedToCPU ? 0 : outside.filter { $0 }.count
+        look.liveBuildings = owners.count
+        look.outsideTraining = outsideInputs
         return (look, stages)
     }
 

@@ -3413,7 +3413,9 @@ weights' deviations beyond the training's 0.1–99.9% points. It counts as novel
 that is so on at least 5% of the scene's rows.
 
 The ranges live in `Tests/BlastModelTests/LiveResponseRanges.swift`, written by
-`corpus.py ranges` from the training's own rows, with the built-in weights' SHA-256 beside them.
+`corpus.py ranges` from the training's own rows, with the built-in weights' SHA-256 beside them
+(since 3 November in `Sources/BlastModel/LiveResponse+Ranges.swift`, which the drag reads too:
+[below](#what-lies-outside-the-training-on-the-cpu-3-november-2026)).
 A test fails if the weights change and the ranges do not follow. Another fails if an explorer
 scene is added without being checked. Known gaps are listed in `known`, scene by scene. A new gap
 fails, and so does one that has closed (then take it off the list).
@@ -3478,7 +3480,8 @@ None of the four is new to the app: these gaps were there before the check, and 
 - **Proposals, for the user to decide:**
   1. The live response leaves a scene to the CPU's preview when its inputs leave the range, as it
      already does for constructions it cannot read. The ranges would ship with the weights, about
-     12 KB, and the check is the test's own.
+     12 KB, and the check is the test's own. *Approved 3 November 2026, and built building by
+     building ([below](#what-lies-outside-the-training-on-the-cpu-3-november-2026)).*
   2. Train on 6 m cells for the explorer's Beirut, and on 0.25–1 m for the presets, if the presets
      are to be dragged live.
 
@@ -3671,6 +3674,121 @@ So the built-in weights are unchanged, and Beirut's 6 m gap stays in `LiveRespon
   would be built in.
 - **Or leave 6 m as it is:** it costs at most 1.4 points against the CPU's own answers, and 1.2
   against the full estimate, where the CPU's own preview loses 3.3.
+
+## What lies outside the training, on the CPU (3 November 2026)
+
+emmettl/bombcad-work#118, stage 3. The user approved stage 2's first proposal on 3 November 2026:
+**the live response leaves to the CPU's preview what lies outside its training**, rather than colour
+it from inputs the networks have never seen, as it already left constructions it cannot read.
+
+### What it does
+
+- **The ranges ship with the weights.** `corpus.py ranges` now writes
+  `Sources/BlastModel/LiveResponse+Ranges.swift` (`LiveResponse.TrainingRanges.builtIn`: each
+  network's inputs' names and 0.1% and 99.9% points, 17.5 KB of source, with the weights' SHA-256),
+  and `LiveResponseRangeTests` reads the same file: one command writes the ranges for both, so they
+  cannot drift. `TrainingRanges.forBuiltInWeights` gives them only while their SHA-256s are the
+  built-in weights' and the glass thrown's; the suite's first test and `make ci-test`
+  (`test-corpus.py`) fail when the weights change and the ranges do not. The test's own file of
+  ranges is gone.
+- **Building by building.** In a live look (`Prepared.livePreview`), a building is left to the CPU
+  when any of its rows lies outside: a component's, a glazed side's (read against the glass network's
+  ranges and the glass thrown's), or its own walls' row. Outside is the test's own definition: an
+  input more than one of the network's deviations beyond the training's 0.1–99.9% points, or not
+  finite (`TrainingRanges.outside`). Only the rows of the parts shown are read, so a layer is judged by
+  its own networks' ranges. The CPU's preview (`look(preview: true, only:)`) then judges those
+  buildings, as it would have without the learned response, and its answers replace the networks'.
+  Where every building is outside, the networks are not run, and the preview is the SDOF's.
+- **The app says so**, in the drag preview's status and under the learned response's choice in
+  Quick Estimate, worded as for constructions it cannot read: "130 of 2861 buildings here lie
+  outside what the learned response was trained on (their shapes, the loads on them): their preview
+  is the SDOF's", or "Every building here lies outside what the learned response was trained on
+  (their panels' sizes, their shapes): the preview is the SDOF's". The explorer says the same under
+  "How sure?" (`Look.untrainedNote`).
+- `scenebench drag-time --live` does the same with the built-in weights, and prints how many
+  buildings each frame left to the CPU and what put them there (`--no-range-fallback` for the
+  networks alone). `--explorer square|street|beirut [--asset file]` lays an explorer scene out as
+  `LiveResponseRangeTests` does.
+
+### The granularity, measured
+
+Per scene (a scene left wholly to the CPU when an input is novel on 5% of its rows) and per building
+give the same answer on the presets and Beirut. On the square and the street, per scene would leave
+everything on the networks, and per building leaves the few buildings nearest a large charge, whose
+loads lie beyond the training, at no cost a user could see. So it is per building. `scenebench
+drag-time --live --drag` over 20 steps, on the Studio at load 45–85 for the square and the street
+and 31–45 for Beirut (other agents' builds and data runs; Beirut's on the weights built in today,
+the others' on round 6's, the same networks' widths), the median frame from the charge moved to the
+answers, with the range:
+
+| Scene (buildings) | Layer | Networks alone | Outside left to the CPU | Buildings on the CPU |
+|---|---|---|---|---|
+| Square (398), 2 m | Glass | 3.1 ms (2.7–3.6) | 2.5 ms (2.0–23.5) | 0–5 |
+| | Walls | 2.1 ms (1.8–3.7) | 5.5 ms (2.7–8.8) | 0–3 |
+| | Damage | 1.9 ms (1.7–2.4) | 3.2 ms (2.9–4.4) | 0 |
+| Street (781), 2 m | Glass | 3.7 ms (3.3–4.5) | 4.8 ms (2.6–7.1) | 0–2 |
+| | Walls | 2.6 ms (2.2–3.0) | 2.6 ms (2.3–7.6) | 0–1 |
+| | Damage | 2.8 ms (2.4–3.4) | 2.6 ms (2.4–3.2) | 0 |
+| Beirut's port (2,861), 6 m | Glass | 6.3 ms (5.8–29.2) | 24.0 ms (22.6–26.2) | 121–130 |
+| | Walls | 13.9 ms (11.0–15.8) | **290 ms (271–320)** | all 2,870 |
+
+Over `LiveResponseRangeTests`' looks (the charge in the middle and behind a building, at 500 kg and
+5 t), the square leaves 6 of 1,592 buildings to the CPU and the street 12 of 3,124 (0.4%), on the
+nearest strips' and roofs' loads at 5 t. The three presets on 0.25 m cells (the office tower, the
+transport hub, the process plant) leave every building, so the live response no longer judges them
+(the process plant read under 100 kg put in place of its gas cloud, which, having no charge, is left
+to the CPU's preview anyway: [above](#the-process-plants-infinite-scaled-distance-3-november-2026)).
+
+On Beirut, every roof's panel height and every building's components' panel height lie outside (the
+6 m cells), so its walls and damage layers would be the CPU's throughout; and the glass layer leaves
+121–130 buildings, mostly on the glass thrown's narrower training (the share of a side's façade its
+third and fourth strips take). The glass would hold 30 frames a second at that load, just; the walls'
+and damage layers would not, by a factor of ten
+([explorer](explorer.md#polish-beirut-at-30-frames-a-second-a-warm-scale-the-new-weights-2-november-2026)).
+
+### Beirut kept on the learned response, for now
+
+So the explorer's Beirut keeps the learned response where it lies outside
+(`ExplorerScene.keepsLearnedResponse`, `livePreview(leavesUntrainedToCPU: false)`), and says so
+under "How sure?": "2870 of 2870 buildings here lie outside what the learned response was trained
+on (their panels' sizes, their shapes): it judges them all the same for now, to keep the drag live"
+(on the walls' layer; 130 of 2861 on the glass's). The buildings are still read against the ranges
+each frame (1–3 ms), to count them. Everywhere else, the workbench's Beirut on other cells included,
+what lies outside goes to the CPU.
+
+In the app (`InterfaceReviewExplorerTests/polishPass`, release build offscreen, 20 steps of 5 m along
+the quay, each figure from the charge moved to the result shown), at a load of 150–200 from other
+agents' data runs, so ten times the explorer polish's and its figures not comparable with those:
+
+| Layer | Kept on the learned response (shipped) | Outside left to the SDOF |
+|---|---|---|
+| Glass | 55 ms median (33–94) | 67 ms median (51–278) |
+| Walls | 20 ms median (15–110) | **310 ms median (245–518)** |
+
+The same run's glass drag before the check, as the polish left it, took 41 ms (28–98) at that load:
+the kept drag adds only the ranges' read (1–3 ms in `drag-time`), within this load's scatter. It was
+not timed again at a quiet load. Left to the SDOF, the walls' drag would be three frames a second.
+
+`LiveResponseRangeTests` now judges a scene as the drag does: a building left to the CPU is no
+longer judged, so its rows are not counted. `known` lists the gaps among the rows still judged (only
+Beirut's, kept), every judged row must lie within (the drag's check and the test's agree), and
+`leftToCPU` gives each scene's share of buildings on the CPU (the square and street up to 1%, the
+presets all). `LiveResponseFallbackTests` holds the rest: a row outside by more than one deviation,
+or not finite; the buildings outside judged as the CPU's own preview judges them and the rest as the
+networks'; a preset outside throughout as the CPU's preview; Beirut's way, kept and counted.
+
+### The decision for the user
+
+- **Beirut in the explorer: keep it on the learned response until trained on 6 m cells, or leave
+  what lies outside to the CPU now**, at about three frames a second on the walls' and damage layers
+  (the glass would keep up, at 24 ms a frame at load 31–45, 67 ms at 150–200). Weights trained with
+  6 m pieces were not built in ([above](#stopped-and-the-proposal-for-the-user-to-decide)), so Beirut
+  stays outside; if they or others that take it in are built in, `keepsLearnedResponse` comes off,
+  and the test says so (its `known` gap closes).
+- **Whether the glass thrown's network should count** for leaving a side to the CPU. Its training is
+  narrower than the glass network's, and on Beirut it alone puts about 100 buildings outside. The
+  choice is to train it on more of the same data, or to read only the glass network's ranges for the
+  glass while the thrown's answers are shown with the glass's caveats.
 
 ## Not done yet
 

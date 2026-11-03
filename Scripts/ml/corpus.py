@@ -11,7 +11,7 @@
     $PY Scripts/ml/corpus.py judge --model name=file.bclr … --set name=folder[,folder][@held] …
     $PY Scripts/ml/corpus.py audit DIR --members …           # did the scores find the errors?
     $PY Scripts/ml/corpus.py needs                           # what each model needs from a run
-    $PY Scripts/ml/corpus.py ranges --base FOLDERS --weights W.bclr   # LiveResponseRangeTests' ranges
+    $PY Scripts/ml/corpus.py ranges --base FOLDERS --weights W.bclr   # the built-in weights' ranges (the drag and its test)
 
 For the live drag's learned response (`train_response.py`'s three networks). A candidate is one
 piece of `scenebench response-data`: a made-up district (`make_district.py`, a style and a seed),
@@ -777,9 +777,10 @@ def audit(args):
 
 def ranges(args):
     """Each network's inputs' 0.1% and 99.9% points over the training's rows (a weighted sample of
-    them), and their names, as a Swift file for `LiveResponseRangeTests`: the built-in scenes'
-    inputs are checked against them. Written for the weights whose SHA-256 it names; run again
-    whenever the built-in weights change."""
+    them), and their names, as a Swift file built into BlastModel (`LiveResponse.TrainingRanges`):
+    the live drag leaves to the CPU's preview a building whose inputs lie outside them, and
+    `LiveResponseRangeTests` checks the built-in scenes against the same file. Written for the
+    weights whose SHA-256 it names; run again whenever the built-in weights change."""
     import hashlib
     rng = np.random.default_rng(1)
     digest = hashlib.sha256(Path(args.weights).read_bytes()).hexdigest()
@@ -789,16 +790,9 @@ def ranges(args):
     units = [(u, folders) for u in args.units.split(",")]
     if args.thrown:
         units.append(("thrown", base_folders(args.thrown)))
-    lines = ["// The live response's training ranges: each input's 0.1% and 99.9% points over the rows",
-             "// the built-in weights were trained on (emmettl/bombcad-work#118). Written by",
-             "// `Scripts/ml/corpus.py ranges` from %s;" % ", ".join(sorted({f.parent.parent.name + "/" + f.parent.name for _, fs in units for f in fs})),
-             "// run it again whenever the built-in weights change, then `make format`.",
-             "extension LiveResponseRangeTests {",
-             '    static let trainedSHA256 = "%s"' % digest,
-             '    static let trainedThrownSHA256: String? = %s' % (
-                 '"%s"' % hashlib.sha256(Path(args.thrown_weights).read_bytes()).hexdigest()
-                 if args.thrown_weights else "nil"), "",
-             "    static let ranges: [String: (names: [String], low: [Float], high: [Float])] = ["]
+    thrown_digest = (hashlib.sha256(Path(args.thrown_weights).read_bytes()).hexdigest()
+                     if args.thrown_weights else None)
+    nets = []
     for unit, folders_ in units:
         xs, ws = [], []
         for f in folders_:
@@ -811,17 +805,51 @@ def ranges(args):
         pick = rng.choice(len(x), size=min(args.sample, len(x)), replace=False, p=w / w.sum())
         low = np.quantile(x[pick], 0.001, axis=0)
         high = np.quantile(x[pick], 0.999, axis=0)
-        names = feature_names(unit, x.shape[1])
+        nets.append((unit, feature_names(unit, x.shape[1]), low, high))
         print("%s: %d rows of %d, %d inputs" % (unit, len(pick), len(x), x.shape[1]), flush=True)
-
-        def floats(v):
-            return ", ".join("%.6g" % t for t in v)
-        lines += ['        "%s": (' % unit,
-                  "            names: [%s]," % ", ".join('"%s"' % n for n in names),
-                  "            low: [%s]," % floats(low), "            high: [%s])," % floats(high)]
-    lines += ["    ]", "}", ""]
-    Path(args.out).write_text("\n".join(lines))
+    sources = sorted({f.parent.parent.name + "/" + f.parent.name for _, fs in units for f in fs})
+    Path(args.out).write_text(ranges_swift(digest, thrown_digest, sources, nets))
     print("wrote %s for weights %s" % (args.out, digest[:12]))
+
+
+def ranges_swift(digest, thrown_digest, sources, nets):
+    """The ranges' Swift file (`LiveResponse+Ranges.swift`): `nets` each network's (name, input
+    names, low points, high points)."""
+    lines = ["// The live response's training ranges: each input's 0.1% and 99.9% points over the rows",
+             "// the built-in weights were trained on (emmettl/bombcad-work#118). Written by",
+             "// `Scripts/ml/corpus.py ranges` from %s;" % ", ".join(sources),
+             "// run it again whenever the built-in weights change. The live drag leaves to the CPU's preview",
+             "// what lies outside them (`LiveResponse.TrainingRanges`), and LiveResponseRangeTests checks the",
+             "// built-in scenes against them.",
+             "// swift-format-ignore-file",
+             "",
+             "extension LiveResponse.TrainingRanges {",
+             "    /// The built-in weights' ranges (`forBuiltInWeights`).",
+             "    public static let builtIn = LiveResponse.TrainingRanges(",
+             '        weightsSHA256: "%s",' % digest,
+             "        thrownSHA256: %s," % ('"%s"' % thrown_digest if thrown_digest else "nil"),
+             "        networks: ["]
+
+    def wrapped(items, indent):
+        out, line = [], " " * indent
+        for n, item in enumerate(items):
+            piece = item + ("," if n < len(items) - 1 else "")
+            if len(line) + len(piece) + 1 > 110 and line.strip():
+                out.append(line.rstrip())
+                line = " " * indent
+            line += piece + " "
+        out.append(line.rstrip())
+        return out
+    for unit, names, low, high in nets:
+        lines += ['            "%s": Network(' % unit, "                names: ["]
+        lines += wrapped(['"%s"' % n for n in names], 20)
+        lines += ["                ],", "                low: ["]
+        lines += wrapped(["%.6g" % t for t in low], 20)
+        lines += ["                ],", "                high: ["]
+        lines += wrapped(["%.6g" % t for t in high], 20)
+        lines += ["                ]", "            ),"]
+    lines += ["        ])", "}", ""]
+    return "\n".join(lines)
 
 
 # MARK: - What each model needs
@@ -920,7 +948,7 @@ def main(argv=None):
     p.add_argument("--thrown", help="the thrown network's training folders, comma-separated")
     p.add_argument("--thrown-weights", help="the thrown network's built-in weights (.bclr)")
     p.add_argument("--sample", type=int, default=400000)
-    p.add_argument("--out", default=str(REPO / "Tests" / "BlastModelTests" / "LiveResponseRanges.swift"))
+    p.add_argument("--out", default=str(REPO / "Sources" / "BlastModel" / "LiveResponse+Ranges.swift"))
     args = parser.parse_args(argv)
     {"pool": pool, "probe": probe, "select": select, "check": check, "round": round_, "pack": pack,
      "judge": judge, "audit": audit, "needs": needs, "ranges": ranges}[args.command](args)

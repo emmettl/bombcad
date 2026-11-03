@@ -243,10 +243,12 @@ extension FacadeLoadSurrogate {
         /// nearest strip of each way the outline faces it standing for that facing's area
         /// (`previewGroups`; emmettl/bombcad-work#110). About a tenth of the components, so a tenth
         /// of the sight lines, damage and draws; its error against the full estimate is measured
-        /// (`scenebench drag-time`), not assumed.
+        /// (`scenebench drag-time`), not assumed. With `only`, the objects of those indices alone (the
+        /// buildings the live drag leaves to the CPU: `livePreview`).
         public func preview(
             charge: SIMD3<Float>, mass: Double, binS: Double = 0.7e-3, coefficients: Coefficients = .adopted,
-            roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil
+            roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil,
+            only: Set<Int>? = nil
         ) -> (estimate: Estimate, sides: [GlassSideStrips]) {
             let start = ContinuousClock.now
             var clock = start
@@ -270,6 +272,7 @@ extension FacadeLoadSurrogate {
             var perObject = [[Chosen]](repeating: [], count: objects.count)
             perObject.withUnsafeMutableBufferPointer { out in
                 concurrently(iterations: objects.count) { n in
+                    guard only?.contains(n) ?? true else { return }
                     out[n] = picked[n].map { choice -> Chosen in
                         let component = components[n][choice.index]
                         var f = features(component, owner: n, charge: charge, raster: raster)
@@ -287,6 +290,7 @@ extension FacadeLoadSurrogate {
             let featuresS = lap()
             perObject.withUnsafeMutableBufferPointer { out in
                 concurrently(iterations: objects.count) { n in
+                    guard only?.contains(n) ?? true else { return }
                     for (c, choice) in picked[n].enumerated() where choice.judged {
                         let component = out[n][c].component
                         let terms = component.kind == .roof ? roofCoefficients ?? coefficients : coefficients
@@ -450,6 +454,15 @@ extension FacadeLoadSurrogate {
             /// Judged by the live drag's learned response (`livePreview`), not the SDOF and draws, and
             /// where it ran ("GPU" or "CPU").
             public var learnedResponse: String?
+            /// Of a live look's buildings judged, those whose inputs lie outside the learned
+            /// response's training, left to the CPU's preview (emmettl/bombcad-work#118), and the
+            /// inputs that put them there ("network input": the buildings each did;
+            /// `LiveResponse.TrainingRanges.buildingsOutside`); those outside but kept on the networks
+            /// where the caller asked (`livePreview(leavesUntrainedToCPU: false)`).
+            public var leftToCPU = 0
+            public var outsideKept = 0
+            public var liveBuildings = 0
+            public var outsideTraining: [String: Int] = [:]
             public var totalSeconds: Double {
                 seconds.estimate + seconds.damage + seconds.glass + seconds.structure + learnedSeconds
             }
@@ -473,11 +486,11 @@ extension FacadeLoadSurrogate {
         /// estimate's damage, glass and walls (emmettl/bombcad-work#67); if it cannot be run, the
         /// look is the surrogate's alone and says why. The components take `terms`' coefficients (the
         /// adopted ones unless an option asks for others: emmettl/bombcad-work#98); the chances draw
-        /// `uncertainty`'s scatter.
+        /// `uncertainty`'s scatter. A preview with `only` looks at the objects of those indices alone.
         public func look(
             charge: SIMD3<Float>, mass: Double, constructions: (UUID) -> EnvelopeConstruction,
             uncertainty: Uncertainty, preview: Bool = false, parts: Parts = .all,
-            learned: LearnedField.Estimator? = nil, terms: TermSet = .adopted
+            learned: LearnedField.Estimator? = nil, terms: TermSet = .adopted, only: Set<Int>? = nil
         ) -> Look {
             let coefficients = terms.coefficients
             func since(_ start: ContinuousClock.Instant) -> Double {
@@ -502,7 +515,7 @@ extension FacadeLoadSurrogate {
             let sides: [GlassSideStrips]
             if preview {
                 (estimate, sides) = self.preview(
-                    charge: charge, mass: mass, coefficients: coefficients, learned: peaks)
+                    charge: charge, mass: mass, coefficients: coefficients, learned: peaks, only: only)
             } else {
                 estimate = self.estimate(
                     charge: charge, mass: mass, coefficients: coefficients, learned: peaks)

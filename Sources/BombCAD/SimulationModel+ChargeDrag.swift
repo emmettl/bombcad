@@ -172,6 +172,7 @@ extension SimulationModel {
         let liveWanted = waiting.preview && dragPreviewPath == .learned && !learnedWanted
         let knownLive = liveModel
         let liveTried = liveModelProblem != nil
+        let leavesUntrained = liveLeavesUntrainedToCPU
         lookInFlight = true
         estimatingEnvelopeDamage = true
         if !waiting.preview { envelopeDamageStatus = "Estimating…" }
@@ -230,12 +231,16 @@ extension SimulationModel {
                         liveLook = try prepared.livePreview(
                             charge: waiting.charge, mass: Double(scenario.charge.mass),
                             uncertainty: uncertainty,
-                            parts: parts, terms: terms, model: live)?.look
+                            parts: parts, terms: terms, model: live, leavesUntrainedToCPU: leavesUntrained)?
+                            .look
                         if liveLook == nil {
                             liveProblem =
                                 LiveResponse.judges(mass: Double(scenario.charge.mass))
                                 ? "The learned response was not trained on every building's construction or glazing here: the preview is the SDOF's."
                                 : "The learned response judges a charge, and there is none here: the preview is the SDOF's."
+                        } else {
+                            // What lies outside its training is left to the SDOF (emmettl/bombcad-work#118).
+                            liveProblem = liveLook?.untrainedNote
                         }
                     } catch {
                         liveProblem = "The learned response failed (\(error)): the preview is the SDOF's."
@@ -319,16 +324,22 @@ extension SimulationModel {
         requestLook(preview: false)
     }
 
-    /// The learned response for the drag preview: the app's own weights, on the GPU, else on the CPU;
-    /// or why there is none.
+    /// The learned response for the drag preview: the app's own weights, on the GPU, else on the CPU,
+    /// with the ranges they were trained over, so that what lies outside them is left to the SDOF
+    /// (emmettl/bombcad-work#118); or why there is none.
     nonisolated static func makeLiveModel() -> (LiveResponse.Model?, String?) {
         guard let weights = LiveResponse.Weights.builtIn else {
             return (nil, "This build has no learned response: the preview is the SDOF's.")
         }
+        let ranges = LiveResponse.TrainingRanges.forBuiltInWeights
         if let engine = try? LiveDragGPU(weights: weights) {
-            return (LiveResponse.Model(weights: weights, engine: engine), nil)
+            return (LiveResponse.Model(weights: weights, engine: engine, ranges: ranges), nil)
         }
-        return (LiveResponse.Model(weights: weights, engine: LiveResponse.CPUEngine(weights: weights)), nil)
+        return (
+            LiveResponse.Model(
+                weights: weights, engine: LiveResponse.CPUEngine(weights: weights), ranges: ranges),
+            nil
+        )
     }
 
     /// Shows `look`: the parts it worked out replace the estimate's; the rest stay until a full
@@ -344,6 +355,7 @@ extension SimulationModel {
                 format:
                     "Preview while dragging, %.0f ms: each building side judged by its component nearest the charge, through the learned response on the %@ (illustrative). The full estimate follows when you let go.",
                 look.totalSeconds * 1000, engine)
+            if let note = look.untrainedNote { envelopeDamageStatus += " " + note }
         } else if look.preview {
             envelopeDamageStatus = String(
                 format:
@@ -354,6 +366,7 @@ extension SimulationModel {
                     : parts == .structure
                         ? "the walls' and roofs' chances alone, \(Self.previewDraws.structure) draws"
                         : "the damage alone")
+            if let note = look.untrainedNote { envelopeDamageStatus += " " + note }
         } else {
             envelopeLoads = look.estimate.loads
             envelopeDamageStatus = String(

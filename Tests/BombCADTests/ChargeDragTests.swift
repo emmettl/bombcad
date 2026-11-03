@@ -162,14 +162,18 @@ struct ChargeDragTests {
         #expect(model.envelopeLoads.map(\.outerPa) != before)
     }
 
-    @Test("With the learned response chosen, the preview is the GPU's for map buildings, else the SDOF's")
+    @Test(
+        "With the learned response chosen, the preview is the GPU's for map buildings on cells it was trained on, else the SDOF's"
+    )
     func learnedPreview() async throws {
         // emmettl/bombcad-work#112: built as Beirut's map buildings are, the drag preview is the
-        // learned response's; built otherwise, the SDOF's, saying why.
+        // learned response's; built otherwise, the SDOF's, saying why. On cells finer than its
+        // training's (the coarse preset's 0.5 m against 2-4 m), outside its training: the SDOF's,
+        // saying so (emmettl/bombcad-work#118).
         let temporary = try TemporaryDefaults()
         defer { temporary.remove() }
         _ = try #require(LiveResponse.Weights.builtIn)
-        for mapBuilt in [true, false] {
+        for (mapBuilt, cells) in [(true, "cell:2"), (true, "coarse"), (false, "cell:2")] {
             var scene = Scenario(
                 name: "Learned drag", domainSize: SIMD3(120, 60, 20), boxes: [],
                 charge: Charge(mass: 50, position: SIMD3(20, 30, 0.5)))
@@ -186,7 +190,7 @@ struct ChargeDragTests {
                 scene.setEnvelopeConstruction(construction)
             }
             var document = ProjectDocument(scenario: scene)
-            document.runSettings?.resolution = "coarse"
+            document.runSettings?.resolution = cells
             let model = SimulationModel(document: document)
             model.learnedDefaults = temporary.defaults
             model.refinesCloseCalls = false
@@ -207,10 +211,17 @@ struct ChargeDragTests {
             model.drag(ndc: .zero, aspectRatio: 1, modifiers: [])
             try await settle()
             #expect(model.envelopeEstimateIsPreview)
-            if mapBuilt {
+            if mapBuilt, cells == "coarse" {
+                #expect(!model.envelopeDamageStatus.contains("through the learned response"))
+                #expect(
+                    model.liveModelProblem?.hasPrefix("Every building here lies outside") == true,
+                    "\(model.liveModelProblem ?? "")")
+                #expect(model.envelopeDamageStatus.contains("lies outside"), "\(model.envelopeDamageStatus)")
+                #expect(model.envelopeDamage.count == 2)
+            } else if mapBuilt {
                 #expect(
                     model.envelopeDamageStatus.contains("learned response"), "\(model.envelopeDamageStatus)")
-                #expect(model.liveModelProblem == nil)
+                #expect(model.liveModelProblem == nil, "\(model.liveModelProblem ?? "")")
                 #expect(model.envelopeDamage.count == 2)
             } else {
                 #expect(!model.envelopeDamageStatus.contains("learned response"))

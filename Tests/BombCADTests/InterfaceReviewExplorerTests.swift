@@ -301,6 +301,26 @@ struct InterfaceReviewExplorerTests {
             model.placeCharge(at: start)
             try await settle(model)
         }
+        // Beirut kept on the learned response outside its training (`keepsLearnedResponse`), against the
+        // drag leaving what lies outside to the SDOF, as elsewhere (emmettl/bombcad-work#118).
+        #expect(!model.liveLeavesUntrainedToCPU)
+        for layer in [ExplorerWords.Layer.glass, .walls] {
+            explorer.layer = layer
+            try await settle(model)
+            let kept = try await drag(model)
+            let note = model.liveModelProblem ?? "none"
+            model.placeCharge(at: start)
+            try await settle(model)
+            model.liveLeavesUntrainedToCPU = true
+            let left = try await drag(model)
+            let leftNote = model.liveModelProblem ?? "none"
+            model.liveLeavesUntrainedToCPU = false
+            print(
+                "Beirut drag, \(layer.title): kept on the learned response, preview \(median(kept.looks)) (\(note)); "
+                    + "outside left to the SDOF, preview \(median(left.looks)) (\(leftNote)) (\(load))")
+            model.placeCharge(at: start)
+            try await settle(model)
+        }
         explorer.layer = .glass
         try await settle(model)
         try polish(model, camera: camera(model, share: 0.5), "beirut-glass")

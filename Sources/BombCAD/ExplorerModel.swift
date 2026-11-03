@@ -267,6 +267,10 @@ final class ExplorerModel {
             model.open(document)
         }
         self.scene = scene
+        // What lies outside the learned response's training is left to the SDOF, but for Beirut's,
+        // kept on the networks for now to keep its drag live (emmettl/bombcad-work#118).
+        model.liveLeavesUntrainedToCPU = !scene.keepsLearnedResponse
+        model.liveModelProblem = nil
         // Each scene starts as the flow does, with the wave.
         layer = .wave
         // The solver is the referee, not the experience: no close calls run on it here.
@@ -298,6 +302,7 @@ final class ExplorerModel {
         model.liveWaveShown = false
         model.explorerColouring = nil
         model.leaveExplorer()
+        model.liveLeavesUntrainedToCPU = true
         scene = nil
         origin = nil
         pinned = nil
