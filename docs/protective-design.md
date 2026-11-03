@@ -1303,13 +1303,13 @@ against the scene as built:
 | Street, outside the bank (753) | −11.6% | −12.4% | −17.7% | stand-off alone, −11.4% |
 | Beirut, 0.5 kt (53,845) | — | — | −1.0%; at $10M −4.9% (two 3 m walls, laminated in 13) | laminated on the nearest, −1.2% at $10M |
 
-With Bowen's glass thrown:
+With Bowen's glass thrown (re-judged on the retrained glass-thrown network, b53c0027):
 
 | Scene, charge | $50,000 | $200,000 | $1,000,000 | Best baseline at $1M |
 |---|---|---|---|---|
 | Square, middle (172 as built) | −4.7% (a wall, film on 1) | −13.0% (film on 7) | −72.1% (film on 26) | film on the nearest 33, −71.0% |
-| Street, outside the bank (254) | −13.9% | −24.8% | −48.8% (film on 65, stand-off 75 m) | film on the nearest 76, −35.5% |
-| Beirut (25,180) | — | — | −2.9%; at $10M −15.8% (film on 61) | film on the nearest 120 at $10M, −7.5% |
+| Street, outside the bank (254) | −13.9% | −24.8% | −48.9% (film on 68, stand-off 75 m) | film on the nearest 76, −35.5% |
+| Beirut (25,180) | — | — | −2.9% (film on 6); at $10M −15.8% (film on 62) | film on the nearest 120 at $10M, −7.5% |
 
 The glass thrown past 3b, outside the office: −1.7%, −5.8% and −22.8%, against film on the nearest
 at −18.4%.
@@ -1338,7 +1338,7 @@ twelve site-wide plans, and the pick and baselines) that the full estimate tells
 |---|---|---|
 | Square, middle, Kummer | 100% (52, 66, 53 pairs at the three budgets) | 100%, 100%, 65% |
 | Square, outside the office | 100% (10 pairs) | 50%, 38% |
-| Square, middle, Bowen | 100%, 82%, 97% | 100%, 82%, 81% |
+| Square, middle, Bowen | 100%, 82%, 97% | 100%, 82%, 83% |
 | Street, either place, Kummer or Bowen | (too few pairs) | 99–100% (13–101 pairs) |
 | Beirut, Kummer and Bowen (no stand-off) | 100% (10–27 pairs) | — |
 
@@ -1346,8 +1346,8 @@ So the live model ranks walls and glass as the full estimate does, and the stand
 It ranks the stand-off on the square badly, which the finalists cover.
 
 **The live model's own figures** stand above the full estimate's by 19% on the square as built
-(Kummer), 3% on the street and under 1% on Beirut. With Bowen's people they are 12% above on the
-square and 10% below on the street. The changes it gives a plan are close to the full estimate's
+(Kummer), 3% on the street and under 1% on Beirut. With Bowen's people they are 11% above on the
+square and 9% below on the street. The changes it gives a plan are close to the full estimate's
 where the charge stays put: −5.4% against −5.8% at $1M on the square, and −5.0% against −4.9% on
 Beirut at $10M. The sheet shows both.
 
@@ -1379,8 +1379,39 @@ magnitude.
 - **A stand-off elsewhere than the explorer's two lines.** The workbench offers walls and glass only.
   `Scenario.standOffLines` could feed it.
 - **One charge.** The planner's several weighted threats and posterior samples are not taken.
-- **The glass thrown network is being retrained** (claude-wt/thrown-retrain). The Bowen figures above
-  are on the weights of 2 November and will move with it.
+- **The stand-off on the square,** which the live model reads badly (the preview's nearest strip,
+  above): the finalists cover it, at the cost of the full estimate's check. A fix waits for the
+  user's word.
+
+### Adopted (3 November 2026)
+
+The user approved the four proposals above on 3 November 2026, as they were built:
+
+- **The objective's default:** the people hurt, Kummer's by the panes broken, with any budget the
+  people's gain leaves spent on the glass thrown past 3b (`Objective.peopleHurt`, `restOnGlass`).
+  "Glass thrown into rooms (Bowen)" is offered by name in the sheet and the people layer.
+- **The costs:** the dollar table above, illustrative and editable in the sheet
+  (`Costs.illustrative`), not relative units.
+- **The full estimate's check on by default:** every finalist judged again, and the best by it put
+  in the scene (`ProtectionBudget.referee`).
+- **Walls no nearer the charge than Z = 2 m/kg^(1/3)** (`leastWallZ`).
+
+**The retrained glass thrown.** The glass-thrown network was retrained the same day, on four times
+the data (b53c0027). Bowen's people and the glass objective were judged again on it
+(`$BOMBCAD_DATA/protective-live/budget/retrained/`), and the tables above give the new figures.
+
+- The full estimate does not use the network, so its figures are unchanged.
+- The picks are the same, or within a building of them:
+  - on the street at $1M, film on 68 buildings and −48.9%, against 65 and −48.8%;
+  - on Beirut, film on 6 and 62 buildings, against 5 and 61, at the same −2.9% and −15.8%.
+- In all 11 Bowen and glass cases the pick is still the best of the plans beside it. The check kept
+  the live search's best in every one.
+- The live model's own figures moved a little: 11% above the full estimate's on the square as built
+  (12% before), 9% below on the street (10%).
+- Its rankings are as before: under Bowen, 100%, 82% and 97% of pairs on the square with the charge
+  where it is; 100% on the street and Beirut.
+- The glass objective is the same to the digit, as it reads the glass network's `thrownPast3b`, not
+  the glass thrown's.
 
 ## Open questions
 
