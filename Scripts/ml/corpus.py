@@ -72,7 +72,11 @@ CONFIGS = {
     "4m-small": {"dx": 4, "masses": [50, 5000], "radius": 300, "within": 250, "clear": 0, "mass": 500},
     "2m-small": {"dx": 2, "masses": [50, 5000], "radius": 300, "within": 250, "clear": 0, "mass": 500},
     "2m-mid": {"dx": 2, "masses": [1000, 100000], "radius": 300, "within": 250, "clear": 0, "mass": 10000},
+    # The explorer's Beirut is on 6 m cells (emmettl/bombcad-work#118): `pool --configs 6m-wide`.
+    "6m-wide": {"dx": 6, "masses": [100, 5e6], "radius": 1100, "within": 900, "clear": 100, "mass": 100000},
 }
+# Stage 1's pool: the kinds `pool` makes unless `--configs` names others.
+POOL_CONFIGS = "4m-wide,4m-small,2m-small,2m-mid"
 STYLES = ("perimeter", "grid", "towers", "industrial", "square")  # mixed is held out, as since round 4
 TERRAINS = ("flat", "slope", "hill", "valley")
 
@@ -86,17 +90,21 @@ def scenebench():
 
 def pool(args):
     """Every kind (style × config) `--seeds` times, each its own seed and terrain (the squares flat,
-    as the explorer's). Seeds from 31 on, clear of the training's (1-4, 7) and the squares' 1-24."""
+    as the explorer's). Seeds from `--first-seed` (31) on, clear of the training's (1-4, 7) and the
+    squares' 1-24; stage 1's pool took 31-70. `--explorer NAME DX` adds the explorer's scene on cells
+    of DX m as a held-out scene (`scenebench response-data --explorer`), charges of 100 kg to 5 kt within
+    900 m."""
     spec = importlib.util.spec_from_file_location("make_district", HERE / "make_district.py")
     make_district = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(make_district)
     root = Path(args.dir)
     candidates = []
     n = 0
+    configs = {name: CONFIGS[name] for name in args.configs.split(",")}
     for k in range(args.seeds):
-        for config, c in CONFIGS.items():
+        for config, c in configs.items():
             for s, style in enumerate(STYLES):
-                seed = 31 + n
+                seed = args.first_seed + n
                 terrain = "flat" if style == "square" else TERRAINS[n % len(TERRAINS)]
                 radius = 300 if style == "square" else c["radius"]
                 within = min(c["within"], 250) if style == "square" else c["within"]
@@ -113,6 +121,10 @@ def pool(args):
     for name, osm in (args.scene or []):
         scenes.append({"id": name, "kind": "held-out", "osm": osm, "dem": None, "centre": [0, 0], "dx": 2,
                        "radius": 300, "within": 250, "clear": 0, "masses": [50, 5000], "mass": 500,
+                       "index": 900 + len(scenes), "heldOut": True})
+    for name, dx in (args.explorer or []):
+        scenes.append({"id": "explorer-%s-%sm" % (name, dx), "kind": "held-out", "explorer": name, "dx": float(dx),
+                       "radius": 1500, "within": 900, "clear": 0, "masses": [100, 5e6], "mass": 500000,
                        "index": 900 + len(scenes), "heldOut": True})
     # The held-out made-up district of round 4 on (mixed blocks, a quarter turned, in a valley; seed
     # 7), on 4 m cells as it was judged and on 2 m cells within 300 m: a style no candidate has.
@@ -135,8 +147,10 @@ def load_pool(folder):
 
 
 def command(c, out, frames, draws, seed, keep=None):
-    cmd = [scenebench(), "response-data", "--osm", c["osm"], "--centre", "%r,%r" % tuple(c["centre"]),
-           "--dx", str(c["dx"]), "--radius", str(c["radius"]), "--mass", str(c["mass"]),
+    where = (["--explorer", c["explorer"]] if c.get("explorer")
+             else ["--osm", c["osm"], "--centre", "%r,%r" % tuple(c["centre"])])
+    cmd = [scenebench(), "response-data"] + where + [
+           "--dx", "%g" % c["dx"], "--radius", str(c["radius"]), "--mass", str(c["mass"]),
            "--district", c["id"], "--out", str(out), "--frames", str(frames), "--draws", str(draws),
            "--within", str(c["within"]), "--clear", str(c["clear"]), "--masses", "%g,%g" % tuple(c["masses"]),
            "--seed", str(seed)]
@@ -855,6 +869,10 @@ def main(argv=None):
     p = sub.add_parser("pool")
     p.add_argument("dir")
     p.add_argument("--seeds", type=int, default=2)
+    p.add_argument("--configs", default=POOL_CONFIGS, help="the kinds of run, comma-separated (CONFIGS)")
+    p.add_argument("--first-seed", type=int, default=31)
+    p.add_argument("--explorer", nargs=2, action="append", metavar=("NAME", "DX"),
+                   help="the explorer's scene on cells of DX m, held out: probed and judged, never taken")
     p.add_argument("--probe-frames", type=int, default=8)
     p.add_argument("--label-frames", type=int, default=30)
     p.add_argument("--scene", nargs=2, action="append", metavar=("NAME", "OSM"),

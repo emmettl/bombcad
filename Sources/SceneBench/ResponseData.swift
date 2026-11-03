@@ -44,7 +44,31 @@ enum ResponseData {
 
     /// A district with a run's saved loads (`--loads`, Beirut's), or one laid out from its map alone
     /// (a made-up district, `Scripts/ml/make_district.py`), on a square of half side `--radius`.
+    /// With `--explorer square|street|beirut`, the explorer's scene as the app lays it out
+    /// (`ExplorerScene`; Beirut's from `--asset file.json`, else `$BOMBCAD_DATA/explorer/beirut-asset`),
+    /// on its own cells or `--dx`'s, its charge or `--mass`'s (emmettl/bombcad-work#118).
     static func district(_ args: [String]) throws -> (Scenario, Float) {
+        if let name = SurrogateBench.value(args, "explorer") {
+            guard let scene = ExplorerScene(rawValue: name) else {
+                throw BlastError.allocationFailed("--explorer square, street or beirut")
+            }
+            let data = ProcessInfo.processInfo.environment["BOMBCAD_DATA"] ?? "/Volumes/StudioData/bombcad"
+            let asset =
+                SurrogateBench.value(args, "asset").map { URL(filePath: $0) }
+                ?? URL(filePath: data).appending(
+                    path: "explorer/beirut-asset/\(ExplorerScene.Beirut.fileName)")
+            let district = try scene.district(asset: scene == .beirut ? asset : nil)
+            let mass = SurrogateBench.value(args, "mass").flatMap(Float.init) ?? scene.defaultMassKg
+            var layout = DistrictLayout(buildings: district.buildings, charge: scene.charge, mass: mass)
+            layout.keepsOutlines = true
+            layout.ground = district.ground
+            guard let cell = SurrogateBench.value(args, "dx").flatMap(Float.init) ?? scene.cellSizeM else {
+                throw BlastError.allocationFailed("--dx m")
+            }
+            let half = layout.halfSide(radius: scene.radiusM, cellSize: cell)
+            let (made, _) = try layout.scene(halfSide: half, cellSize: cell, radius: scene.radiusM)
+            return (made, cell)
+        }
         if SurrogateBench.value(args, "loads") != nil {
             let reference = try SurrogateBench.Reference(args)
             return (reference.scene, reference.cellSize)
