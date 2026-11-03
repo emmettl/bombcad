@@ -46,7 +46,8 @@ enum BudgetPlanBench {
 
         let laying = ContinuousClock.now
         let prepared = FacadeLoadSurrogate.Prepared(
-            scene: scene, cellSize: dx, incidence: terms.coefficients.incidence)
+            scene: scene, cellSize: dx, incidence: terms.coefficients.incidence
+        ).withFacadeBands(value("bands").flatMap(Int.init) ?? FacadeLoadSurrogate.Prepared.defaultFacadeBands)
         print(
             String(
                 format:
@@ -86,6 +87,189 @@ enum BudgetPlanBench {
                     DistrictBenchmark.seconds(clock)))
         }
 
+        // `--follow east,north;…`: how closely the learned response follows its own CPU preview, side by
+        // side, and both the full estimate, with the charge at each place (the scene as built).
+        if let places = value("follow") {
+            var u = FacadeLoadSurrogate.Uncertainty(
+                yieldLogSD: log(1.5) / 1.645, loadScatter: terms.loadScatter, samples: 10)
+            u.stratified = true
+            var uf = FacadeLoadSurrogate.Uncertainty(
+                yieldLogSD: log(1.5) / 1.645, loadScatter: terms.loadScatter, samples: 100)
+            uf.stratified = false
+            struct Key: Hashable {
+                var o: UUID
+                var a: Int
+                var w: Int
+            }
+            func sides(_ g: [FacadeLoadSurrogate.SideGlass]) -> [Key: FacadeLoadSurrogate.SideGlass] {
+                Dictionary(
+                    g.map { (Key(o: $0.owner, a: $0.axis, w: $0.outward), $0) },
+                    uniquingKeysWith: { a, _ in a })
+            }
+            func within(_ pairs: [(Double, Double)]) -> String {
+                guard !pairs.isEmpty else { return "none" }
+                let n = Double(pairs.count)
+                return String(
+                    format: "%.1f%% within 0.1, mean |d| %.3f",
+                    100 * Double(pairs.filter { abs($0.0 - $0.1) <= 0.1 }.count) / n,
+                    pairs.reduce(0) { $0 + abs($1.0 - $1.1) } / n)
+            }
+            var all: [String: [(Double, Double)]] = [:]
+            for place in places.split(separator: ";") {
+                let xy = place.split(separator: ",").compactMap { Float($0) }
+                guard xy.count == 2 else { continue }
+                var c = charge
+                c.x = origin.x + xy[0]
+                c.y = origin.y + xy[1]
+                let mass = Double(scene.charge.mass)
+                let clock = ContinuousClock.now
+                guard
+                    let lv = try prepared.livePreview(
+                        charge: c, mass: mass, uncertainty: u, parts: .glass, terms: terms, model: model,
+                        leavesUntrainedToCPU: false)?.look
+                else { throw BlastError.allocationFailed("no live look") }
+                let liveS = DistrictBenchmark.seconds(clock)
+                // The app's path: what lies outside the training left to the CPU.
+                let appClock = ContinuousClock.now
+                if let app = try prepared.livePreview(
+                    charge: c, mass: mass, uncertainty: u, parts: .glass, terms: terms, model: model,
+                    leavesUntrainedToCPU: true)?.look
+                {
+                    print(
+                        String(
+                            format:
+                                "  the app's path: %d of %d buildings left to the CPU, %.1f ms; people hurt %.1f",
+                            app.leftToCPU, app.liveBuildings + app.leftToCPU,
+                            1000 * DistrictBenchmark.seconds(appClock),
+                            OccupantInjury.estimate(
+                                scene: scene, glass: app.glass, structure: [], charge: c, mass: mass,
+                                assumptions: people, preview: true, draws: 40
+                            ).expected))
+                }
+                let cpuClock = ContinuousClock.now
+                let pv = prepared.look(
+                    charge: c, mass: mass, constructions: { scene.envelopeConstruction(for: $0) },
+                    uncertainty: u,
+                    preview: true, parts: .glass, terms: terms)
+                let cpuS = DistrictBenchmark.seconds(cpuClock)
+                let fl = prepared.look(
+                    charge: c, mass: mass, constructions: { scene.envelopeConstruction(for: $0) },
+                    uncertainty: uf,
+                    parts: .glass, terms: terms)
+                let (l, p, f) = (sides(lv.glass), sides(pv.glass), sides(fl.glass))
+                for (name, get) in [
+                    ("some broken", { (x: FacadeLoadSurrogate.SideGlass) in x.someBroken }),
+                    ("blown out", { $0.blownOut }), ("fraction broken", { $0.fractionBroken }),
+                    ("thrown past 3b", { $0.thrownPast3b }), ("thrown hurt", { $0.thrownHurt ?? 0 }),
+                ] {
+                    let lp = l.compactMap { k, x in p[k].map { (get(x), get($0)) } }
+                    let pf = p.compactMap { k, x in f[k].map { (get(x), get($0)) } }
+                    let lf = l.compactMap { k, x in f[k].map { (get(x), get($0)) } }
+                    all["live/cpu " + name, default: []] += lp
+                    all["cpu/full " + name, default: []] += pf
+                    all["live/full " + name, default: []] += lf
+                    print(
+                        String(
+                            format:
+                                "At (%.0f, %.0f) %@: live against CPU preview %@; CPU preview against full %@",
+                            xy[0], xy[1], name as NSString, within(lp) as NSString, within(pf) as NSString))
+                }
+                print(
+                    String(
+                        format: "  live look %.1f ms, CPU preview %.1f ms (glass only, after the first)",
+                        1000 * liveS, 1000 * cpuS))
+                func hurt(_ g: [FacadeLoadSurrogate.SideGlass], _ preview: Bool) -> Double {
+                    OccupantInjury.estimate(
+                        scene: scene, glass: g, structure: [], charge: c, mass: mass, assumptions: people,
+                        preview: preview, draws: preview ? 40 : 200
+                    ).expected
+                }
+                print(
+                    String(
+                        format: "  people hurt: live %.1f, CPU preview %.1f, full %.1f", hurt(lv.glass, true),
+                        hurt(pv.glass, true), hurt(fl.glass, false)))
+            }
+            for key in all.keys.sorted() { print("All places, \(key): \(within(all[key]!))") }
+            return
+        }
+        // `--diagnose east,north;…`: the CPU's preview against the full estimate building by building,
+        // with the charge at each place: the people, the share of glass broken, and the worst buildings.
+        if let places = value("diagnose") {
+            var u = FacadeLoadSurrogate.Uncertainty(
+                yieldLogSD: log(1.5) / 1.645, loadScatter: terms.loadScatter, samples: 10)
+            u.stratified = true
+            var uf = FacadeLoadSurrogate.Uncertainty(
+                yieldLogSD: log(1.5) / 1.645, loadScatter: terms.loadScatter, samples: 100)
+            uf.stratified = false
+            for place in places.split(separator: ";") {
+                let xy = place.split(separator: ",").compactMap { Float($0) }
+                guard xy.count == 2 else { continue }
+                var c = charge
+                c.x = origin.x + xy[0]
+                c.y = origin.y + xy[1]
+                let pv = prepared.look(
+                    charge: c, mass: Double(scene.charge.mass),
+                    constructions: { scene.envelopeConstruction(for: $0) },
+                    uncertainty: u, preview: true, parts: .glass, terms: terms)
+                let fl = prepared.look(
+                    charge: c, mass: Double(scene.charge.mass),
+                    constructions: { scene.envelopeConstruction(for: $0) },
+                    uncertainty: uf, parts: .glass, terms: terms)
+                let pp = OccupantInjury.estimate(
+                    scene: scene, glass: pv.glass, structure: [], charge: c, mass: Double(scene.charge.mass),
+                    assumptions: people, preview: true, draws: 40)
+                let fp = OccupantInjury.estimate(
+                    scene: scene, glass: fl.glass, structure: [], charge: c, mass: Double(scene.charge.mass),
+                    assumptions: people, draws: 200)
+                let fb = Dictionary(uniqueKeysWithValues: fp.buildings.map { ($0.owner, $0) })
+                let rows = pp.buildings.compactMap { b in fb[b.owner].map { (b, $0) } }
+                let over = rows.map { $0.0.expected - $0.1.expected }
+                print(
+                    String(
+                        format:
+                            "At (%.0f, %.0f): people preview %.1f, full %.1f; broken share mean preview %.3f, full %.3f; buildings over by >1 person %d, under %d",
+                        xy[0], xy[1], pp.expected, fp.expected,
+                        rows.reduce(0) { $0 + $1.0.broken } / Double(max(rows.count, 1)),
+                        rows.reduce(0) { $0 + $1.1.broken } / Double(max(rows.count, 1)),
+                        over.filter { $0 > 1 }.count, over.filter { $0 < -1 }.count))
+                // Sides: the preview's strips against the full estimate's, by the side's distance.
+                struct Key: Hashable {
+                    var o: UUID
+                    var a: Int
+                    var w: Int
+                }
+                let fs = Dictionary(
+                    fl.glass.map { (Key(o: $0.owner, a: $0.axis, w: $0.outward), $0) },
+                    uniquingKeysWith: { a, _ in a })
+                var bands: [Int: (n: Int, p: Double, f: Double)] = [:]
+                for side in pv.glass {
+                    guard let f = fs[Key(o: side.owner, a: side.axis, w: side.outward)] else { continue }
+                    let band = min(Int(f.distanceM / 25), 12)
+                    let e = bands[band] ?? (0, 0, 0)
+                    bands[band] = (e.n + 1, e.p + side.fractionBroken, e.f + f.fractionBroken)
+                }
+                for band in bands.keys.sorted() {
+                    let e = bands[band]!
+                    print(
+                        String(
+                            format: "  sides %3d–%3d m: %4d, broken share preview %.3f, full %.3f", band * 25,
+                            band * 25 + 25, e.n, e.p / Double(e.n), e.f / Double(e.n)))
+                }
+                let worst = rows.sorted {
+                    abs($0.0.expected - $0.1.expected) > abs($1.0.expected - $1.1.expected)
+                }
+                .prefix(5)
+                for (p, f) in worst {
+                    print(
+                        String(
+                            format:
+                                "  %@ at %.0f m: preview %.1f hurt (broken %.2f), full %.1f (broken %.2f)",
+                            (names[p.owner] ?? "?") as NSString, p.distanceM, p.expected, p.broken,
+                            f.expected, f.broken))
+                }
+            }
+            return
+        }
         // `--compare-at east,north;…`: the scene as built with the charge at each place (metres from the
         // scene's first charge), by the live model, the CPU's preview and the full estimate.
         if let places = value("compare-at") {

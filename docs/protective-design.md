@@ -1413,6 +1413,87 @@ the data (b53c0027). Bowen's people and the glass objective were judged again on
 - The glass objective is the same to the digit, as it reads the glass network's `thrownPast3b`, not
   the glass thrown's.
 
+## A charge kept back, read by the preview (4 November 2026)
+
+emmettl/bombcad-work#117, approved by the user on 3–4 November 2026. The aim: make the CPU preview
+read a stand-off as the full estimate does, so that the live model ranks the square's stand-off plans
+as the full estimate does. **Stopped before landing as the default.** The fix works for the preview,
+but the networks do not follow the new preview on the square, and a retrain is the user's decision.
+The fix lands as an option, off; with it off, nothing moves.
+
+**What was wrong.** `budget-plan --diagnose`, the square at 500 kg, Kummer:
+
+- The glass office: about 540 of the preview's 1,240 hurt.
+- The preview's nearest strip stands for each whole side. For the office it stays broken as the
+  charge is kept back: 1.00, 0.98 and 0.91 broken at 59, 99 and 130 m. The full estimate's whole
+  façade goes 0.89, 0.72 and 0.54.
+- Every building is read a little high, by 0.06–0.14 of its broken share at 100–200 m.
+
+**The fix** (`Prepared.facadeBands`, `withFacadeBands`):
+
+- Each façade group's strips are split by their distance from the charge into bands of equal area.
+- The nearest strip stands for the nearest band, so the estimate's damage, and the chance that some
+  pane breaks, keep the strip they had.
+- Each further band's middle strip stands for its own band, for the glass alone.
+- One band is the preview as it was, to the bit (`choices` against `referenceChoices`, tested); the
+  area is kept and the judged strips are the same with three (tested).
+- `scenebench budget-plan --bands n` takes it. Logs are in `$BOMBCAD_DATA/protective-live/budget/follow/`.
+
+**The preview against the full estimate, the square as built, people hurt (Kummer):**
+
+| Charge | Full estimate | 1 band (as now) | 2 bands | 3 bands | 4 bands |
+|---|---:|---:|---:|---:|---:|
+| Middle | 1,037 | 1,241 | 1,060 | 1,011 | 988 |
+| 40 m south | 928 | 1,287 | 981 | 939 | 890 |
+| 71 m south (120 m stand-off) | 796 | 1,275 | 846 | 788 | 754 |
+| Outside the office | 1,161 | 1,277 | 1,142 | 1,116 | 1,090 |
+| Corner | 827 | 1,261 | 880 | 848 | 782 |
+
+Three bands follow the full estimate within 4% at every place. With them, the sides' glass agrees
+with the full estimate within 0.1 far more often:
+
+| Scene | Fraction broken | Some broken | Blown out |
+|---|---|---|---|
+| Square, 6 places | 98.3%, from 67.8% | 94.2%, from 75.8% | 90.1%, from 73.8% |
+| Street, 5 places | 99.2%, from 92.8% | 94.8%, from 87.0% | 91.5%, from 86.3% |
+| Beirut, 3 places | 98.4%, from 95.9% | 99.8%, as before | 74.5%, from 71.9% |
+
+It moves every scene's preview, not only a stand-off's.
+
+**The networks against the new preview** (`--follow`, the networks on every building):
+
+- **Street and Beirut: they still follow.**
+  - Within 0.1 of the preview: fraction broken 99.8–99.9%; blown out 92% and 77%, as with one band.
+  - Some broken: 93.3% on the street, from 97.6%; 100% on Beirut.
+  - People hurt within 0.3% on the street and 0.5% on Beirut.
+- **The square: they do not.**
+  - People hurt 7–25% above the new preview: 930 against 788 at the 120 m stand-off, 849 against 682
+    behind the terrace.
+  - Some broken within 0.1: 94.3%, from 97.4%.
+  - Thrown past 3b within 0.1: 55.3%, from 66.5%.
+  - The networks were trained on sides read by one strip for each way they face. A side read by
+    three strips of one facing is new to them.
+- **On the app's path** (what lies outside the training to the CPU, emmettl/bombcad-work#118):
+  - About 150 of the square's 398 buildings and 30 of the street's 781 go to the CPU with three bands
+    (none, or one, with one band).
+  - The frame grows from 2–4 ms to 13–20 ms on the square, and from 3 ms to 13 ms on the street.
+  - The people then follow the full estimate: 1,026 to 800 against 1,037 to 796.
+  - The square's ranking with the stand-off: **100% of pairs**, against 65% from the middle and 38%
+    outside the office with one band. The live search finds the stand-off on its own: −26.3% and
+    −34.2% by the full estimate at $1M, against −25.6% and −33.6% through the finalists.
+
+**Digests.** None move: one band is the default, the preview as it was.
+
+**For the user to decide.** To make three bands the default, the glass network (and the glass
+thrown's, which reads its rows) would be retrained on data made with them:
+- the response data run again with three bands, on the pieces of rounds 6 and 7;
+- then judged as before: the held-out frames, and the follow check above on the square, the street and
+  Beirut.
+
+Without that, three bands would either be judged by the networks badly on the square, or send 40% of
+its buildings to the CPU at four to five times the frame time. The budget optimiser does not need it
+to answer well: its finalists already bring the stand-off to the full estimate.
+
 ## Open questions
 
 - **Shielding.**

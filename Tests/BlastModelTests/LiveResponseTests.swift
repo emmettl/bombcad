@@ -247,6 +247,7 @@ struct LiveResponseTests {
         let scene = try FacadeGlassProbabilityTests.row()
         for incidence in FacadeLoadSurrogate.Incidence.allCases {
             let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2, incidence: incidence)
+                .withFacadeBands(1)
             for place in [scene.charge.position, SIMD3(100, 10, 1), SIMD3(390, 59, 2), SIMD3(65, 30, 0.5)] {
                 let fast = prepared.choices(charge: place)
                 let reference = prepared.referenceChoices(charge: place)
@@ -254,6 +255,33 @@ struct LiveResponseTests {
                 #expect(fast.map { $0.map(\.area) } == reference.map { $0.map(\.area) })
                 #expect(fast.map { $0.map(\.judged) } == reference.map { $0.map(\.judged) })
             }
+        }
+    }
+
+    @Test(
+        "Three bands: each façade group's area kept, its nearest strip still the judged one, the others for the glass"
+    )
+    func facadeBands() throws {
+        let scene = try FacadeGlassProbabilityTests.row()
+        let one = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+        let three = one.withFacadeBands(3)
+        // One by default, the preview the networks were trained on.
+        #expect(FacadeLoadSurrogate.Prepared.defaultFacadeBands == 1)
+        for place in [scene.charge.position, SIMD3(100, 10, 1), SIMD3(390, 59, 2)] {
+            let a = one.choices(charge: place)
+            let b = three.choices(charge: place)
+            var more = 0
+            for n in a.indices {
+                // The judged components are the same; the area over the building the same.
+                #expect(a[n].filter(\.judged).map(\.index) == b[n].filter(\.judged).map(\.index))
+                let (x, y) = (a[n].reduce(0) { $0 + $1.area }, b[n].reduce(0) { $0 + $1.area })
+                #expect(abs(x - y) <= 1e-9 * max(x, 1))
+                #expect(b[n].count <= a[n].count * 3)
+                more += b[n].count - a[n].count
+                // Each of one's entries is among three's, the nearest of its group.
+                for entry in a[n] { #expect(b[n].contains { $0.index == entry.index }) }
+            }
+            #expect(more > 0)
         }
     }
 

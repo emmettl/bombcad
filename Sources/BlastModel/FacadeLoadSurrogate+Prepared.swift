@@ -68,6 +68,24 @@ extension FacadeLoadSurrogate {
             var sideCount = 0
             /// Whether each component is a façade strip.
             var facades: [Bool] = []
+            /// Each component's area, m².
+            var componentAreas: [Double] = []
+        }
+
+        /// How many strips stand for each façade group in a preview, by their distance from the charge
+        /// (`choices`): the nearest for the nearest band of equal area, and each further band's middle
+        /// strip for its own (emmettl/bombcad-work#117; docs/protective-design.md, "A charge kept back,
+        /// read by the preview"). One, the nearest standing for the whole group, the preview as the
+        /// learned response was trained on it, by default. Three follows the full estimate as a charge
+        /// is kept back, but the networks were not trained on sides read so; it waits for the user's
+        /// decision on a retrain.
+        public var facadeBands = Prepared.defaultFacadeBands
+        public static let defaultFacadeBands = 1
+        /// The same layout with `bands` strips for each façade group.
+        public func withFacadeBands(_ bands: Int) -> Prepared {
+            var copy = self
+            copy.facadeBands = max(1, bands)
+            return copy
         }
         /// How long laying it out took, s.
         public let seconds: Double
@@ -143,6 +161,7 @@ extension FacadeLoadSurrogate {
                     layout.centres = components[n].map { outerFace($0).centre }
                     layout.facades = components[n].map { $0.kind == .facade }
                     layout.areas = [Double](repeating: 0, count: keys.count)
+                    layout.componentAreas = components[n].map { Double($0.spans.x * $0.spans.y) }
                     for (k, component) in components[n].enumerated() {
                         let spans = component.spans
                         layout.areas[Int(layout.group[k])] += Double(spans.x * spans.y)
@@ -355,6 +374,7 @@ extension FacadeLoadSurrogate {
         /// the nearest of each group (`previewGroups`), the group's area, m², and whether it is the
         /// nearest of its kind and side, which the estimate takes (the rest go to the glass alone).
         package func choices(charge: SIMD3<Float>) -> [[(index: Int, area: Double, judged: Bool)]] {
+            let bands = facadeBands
             var picked = [[(index: Int, area: Double, judged: Bool)]](repeating: [], count: objects.count)
             picked.withUnsafeMutableBufferPointer { out in
                 concurrently(iterations: (objects.count + 63) / 64) { chunk in
@@ -381,19 +401,70 @@ extension FacadeLoadSurrogate {
                             }
                             side[s] = chosen
                         }
-                        out[n] = (0..<groups).map { g in
-                            (
-                                best[g].index, layout.areas[g],
-                                side[Int(layout.sides[g])].index == best[g].index
-                            )
+                        guard bands > 1 else {
+                            out[n] = (0..<groups).map { g in
+                                (
+                                    best[g].index, layout.areas[g],
+                                    side[Int(layout.sides[g])].index == best[g].index
+                                )
+                            }
+                            continue
                         }
+                        // A façade group's strips by distance: the nearest for the nearest band's area,
+                        // each further band's middle strip for its own (the glass alone).
+                        var members = [[(k: Int, d: Float)]](repeating: [], count: groups)
+                        for (k, centre) in layout.centres.enumerated() where layout.facades[k] {
+                            members[Int(layout.group[k])].append((k, simd_distance_squared(centre, charge)))
+                        }
+                        var list: [(index: Int, area: Double, judged: Bool)] = []
+                        for g in 0..<groups {
+                            let judged = side[Int(layout.sides[g])].index == best[g].index
+                            guard members[g].count > 1 else {
+                                list.append((best[g].index, layout.areas[g], judged))
+                                continue
+                            }
+                            let ordered = members[g].sorted { ($0.d, $0.k) < ($1.d, $1.k) }
+                            let total = layout.areas[g]
+                            let share = total / Double(bands)
+                            var band = 0
+                            var bandArea = 0.0
+                            var bandStart = 0
+                            var entries: [(index: Int, area: Double, judged: Bool)] = []
+                            func close(_ end: Int) {
+                                guard end > bandStart else { return }
+                                if band == 0 {
+                                    entries.append((best[g].index, bandArea, judged))
+                                } else {
+                                    // The strip at the middle of the band's area.
+                                    var run = 0.0
+                                    var middle = ordered[bandStart].k
+                                    for t in bandStart..<end {
+                                        run += layout.componentAreas[ordered[t].k]
+                                        middle = ordered[t].k
+                                        if run >= bandArea / 2 { break }
+                                    }
+                                    entries.append((middle, bandArea, false))
+                                }
+                                band += 1
+                                bandArea = 0
+                                bandStart = end
+                            }
+                            for (t, member) in ordered.enumerated() {
+                                bandArea += layout.componentAreas[member.k]
+                                if bandArea >= share * 0.999, band < bands - 1 { close(t + 1) }
+                            }
+                            close(ordered.count)
+                            list += entries
+                        }
+                        out[n] = list
                     }
                 }
             }
             return picked
         }
 
-        /// `choices` as first written, by dictionaries: the reference its tests hold it to.
+        /// `choices` as first written, by dictionaries, one strip for each group: the reference its tests
+        /// hold it to with `facadeBands` one.
         package func referenceChoices(charge: SIMD3<Float>) -> [[(index: Int, area: Double, judged: Bool)]] {
             var picked = [[(index: Int, area: Double, judged: Bool)]](repeating: [], count: objects.count)
             picked.withUnsafeMutableBufferPointer { out in
