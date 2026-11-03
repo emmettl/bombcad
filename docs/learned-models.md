@@ -3551,6 +3551,15 @@ charge where it was and 60 m east (seed 1 only). Round 6's figures reproduce tha
   network is its own file and is unaffected. The ranges would be written again
   (`corpus.py ranges`). The built-in weights are unchanged until the user decides.
 
+### Adopted (3 November 2026)
+
+The user approved building it in on 3 November 2026, and it is (`LiveResponse+Embedded.swift`, seed
+1's weights, SHA-256 `0a012b68…f0dd1e6dc87`). The ranges were written again from its training's
+own rows (`corpus.py ranges --base $BOMBCAD_DATA/scratch/ref-corpus/pack-e`), and
+`LiveResponseRangeTests` finds the same gaps as against round 6's: the explorer's square and street
+within, Beirut's 6 m cells and the three presets' 0.25 m cells out, as listed above. The glass
+thrown's network is its own file and is unchanged.
+
 ## Not done yet
 
 - **The selector for the field models** ([choosing the next runs](#choosing-the-next-runs-where-the-models-are-least-sure-2-november-2026)):
