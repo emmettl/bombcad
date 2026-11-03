@@ -202,6 +202,46 @@ struct LiveResponseTests {
         #expect(result == nil)
     }
 
+    @Test(
+        "A scene without a charge, as a gas deflagration's, is left to the CPU's preview; with one, its rows are finite"
+    )
+    func noCharge() throws {
+        // The process plant's preset: a propane cloud, its charge 0 kg (emmettl/bombcad-work#118).
+        let scene = ScenarioPreset.processPlantExplosion.scenario
+        #expect(scene.charge.mass == 0 && scene.deflagration != nil)
+        let weights = try #require(LiveResponse.Weights.builtIn)
+        let model = LiveResponse.Model(weights: weights, engine: LiveResponse.CPUEngine(weights: weights))
+        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 1)
+        #expect(prepared.componentCount > 0)
+        let uncertainty = FacadeLoadSurrogate.Uncertainty(yieldLogSD: 0.2, samples: 4)
+        func batch(_ mass: Double) -> LiveResponse.Batch {
+            let (estimate, sides) = prepared.preview(charge: scene.charge.position, mass: mass)
+            return LiveResponse.batch(
+                estimate: estimate, sides: sides, mass: mass, cellSize: 1, coefficients: .adopted,
+                roofCoefficients: .roofs, uncertainty: uncertainty,
+                construction: { LiveResponse.constructionFeatures(scene.envelopeConstruction(for: $0)) },
+                glazing: { LiveResponse.glazingFeatures($0.mix) })
+        }
+        for mass in [0, -1, Double.nan, .infinity] {
+            #expect(!LiveResponse.judges(mass: mass))
+            let none = batch(mass)
+            #expect(
+                none.noCharge && none.componentCount == 0 && none.buildingCount == 0 && none.sideCount == 0)
+            let look = try prepared.livePreview(
+                charge: scene.charge.position, mass: mass, uncertainty: uncertainty, model: model)
+            #expect(look == nil)
+        }
+        // A charge put in its place: every input finite, the scaled distances among them.
+        let charged = batch(100)
+        #expect(!charged.noCharge && charged.buildingCount > 0 && charged.componentCount > 0)
+        #expect(charged.components.allSatisfy { $0.isFinite })
+        #expect(charged.buildings.allSatisfy { $0.isFinite })
+        #expect(charged.sides.allSatisfy { $0.isFinite })
+        let look = try prepared.livePreview(
+            charge: scene.charge.position, mass: 100, uncertainty: uncertainty, model: model)
+        #expect(look != nil)
+    }
+
     @Test("The preview's choice by its groups laid out once is the choice by dictionaries, to the component")
     func choices() throws {
         let scene = try FacadeGlassProbabilityTests.row()

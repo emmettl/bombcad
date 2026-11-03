@@ -99,8 +99,8 @@ extension FacadeLoadSurrogate.Prepared {
     /// engine (on the GPU in the app), and in place of their SDOF and the chances' draws, the learned
     /// response's networks: each component's damage level and glass, each glazed side's glass chances,
     /// and each building's walls' and roof's chances. Only `parts` is worked out, as `look`'s preview.
-    /// Nil where the networks do not know every building's construction and glazing (the CPU path is
-    /// then the preview). The learned field model's peaks are not taken: its strips draw its own
+    /// Nil where the networks do not know every building's construction and glazing, or there is no
+    /// charge (`LiveResponse.judges(mass:)`): the CPU path is then the preview. The learned field model's peaks are not taken: its strips draw its own
     /// scatter, which the networks were not trained on, so with that option on the preview stays the
     /// CPU's.
     public func livePreview(
@@ -109,6 +109,8 @@ extension FacadeLoadSurrogate.Prepared {
         roofCoefficients: FacadeLoadSurrogate.Coefficients = .roofs,
         model: LiveResponse.Model, keepEstimate: Bool = false
     ) throws -> (look: Look, stages: LiveStages)? {
+        // No charge (a gas deflagration's scene): the CPU's preview, which gives it no load.
+        guard LiveResponse.judges(mass: mass) else { return nil }
         var clock = ContinuousClock.now
         func lap() -> Double {
             let now = ContinuousClock.now

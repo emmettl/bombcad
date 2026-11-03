@@ -233,7 +233,9 @@ extension SimulationModel {
                             parts: parts, terms: terms, model: live)?.look
                         if liveLook == nil {
                             liveProblem =
-                                "The learned response was not trained on every building's construction or glazing here: the preview is the SDOF's."
+                                LiveResponse.judges(mass: Double(scenario.charge.mass))
+                                ? "The learned response was not trained on every building's construction or glazing here: the preview is the SDOF's."
+                                : "The learned response judges a charge, and there is none here: the preview is the SDOF's."
                         }
                     } catch {
                         liveProblem = "The learned response failed (\(error)): the preview is the SDOF's."

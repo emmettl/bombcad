@@ -3560,6 +3560,21 @@ own rows (`corpus.py ranges --base $BOMBCAD_DATA/scratch/ref-corpus/pack-e`), an
 within, Beirut's 6 m cells and the three presets' 0.25 m cells out, as listed above. The glass
 thrown's network is its own file and is unchanged.
 
+### The process plant's infinite scaled distance (3 November 2026)
+
+The process plant's preset is a propane cloud's deflagration: its charge is 0 kg. The live drag
+handed the networks that charge, so every building's scaled distance was a distance over a cube
+root of nothing, infinite, and every load the surrogate's floor for no charge (10⁻⁶ Pa). No
+training row has either. The quick estimate has no model of a deflagration's blast, and the CPU's
+preview gives such a scene no load, as the full estimate does. So the live response now leaves a
+scene without a charge to the CPU's preview (`LiveResponse.judges(mass:)`, in `LiveResponse.batch`
+and `Prepared.livePreview`), as it leaves constructions it cannot read, and the app says why. A
+test holds it (`LiveResponseTests`, "A scene without a charge"). `LiveResponseRangeTests` reads the
+plant's buildings under 100 kg put at the ignition point instead, as a user may set one. Under it
+every input is finite and the loads and scaled distances are within the training; the plant's
+gaps are its 0.25 m cells' panels and spans alone, 16 inputs (were 37), as the office tower's and
+the transport hub's.
+
 ## Not done yet
 
 - **The selector for the field models** ([choosing the next runs](#choosing-the-next-runs-where-the-models-are-least-sure-2-november-2026)):

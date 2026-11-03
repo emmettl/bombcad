@@ -28,6 +28,9 @@ struct LiveResponseRangeTests {
         "Scripts/ml/corpus.py", "Scripts/ml/embed_response.py",
     ]
 
+    /// The charge, kg, a preset without one (a gas deflagration's) is read under.
+    static let chargeless = 100.0
+
     /// The share of a scene's rows an input must leave the range on to count.
     static let share = 0.05
 
@@ -35,7 +38,8 @@ struct LiveResponseRangeTests {
     /// recorded gaps, not passes (docs/learned-models.md, "The built-in scenes checked", 3 November
     /// 2026). Beirut's port is on 6 m cells, the training's on 2 and 4 m: its roofs' panel height is
     /// out. The three presets the live response judges are on the app's 0.25 m cells, their panels
-    /// and spans far out, and the process plant's loads too.
+    /// and spans far out. The process plant's gas cloud has no charge, and is left to the CPU's
+    /// preview; its buildings are read under a charge of `chargeless` kg put in its place.
     static let known: [String: Set<String>] = [
         "explorer beirut": [
             "building roof.panelHeight", "component panelHeight",
@@ -47,17 +51,12 @@ struct LiveResponseRangeTests {
             "building wall3.panelHeight", "component panelHeight", "component span.long",
         ],
         "preset processPlantExplosion": [
-            "building roof.edge2", "building roof.lnZ", "building roof.load0", "building roof.load1",
-            "building roof.load3", "building roof.load4", "building roof.panelHeight",
-            "building wall0.kind.facade", "building wall0.lnZ", "building wall0.load0",
-            "building wall0.load1", "building wall0.load3", "building wall0.load4",
-            "building wall0.panelHeight", "building wall0.span.short", "building wall1.lnZ",
-            "building wall1.load0", "building wall1.load1", "building wall1.panelHeight",
-            "building wall1.span.short", "building wall2.lnZ", "building wall2.load0", "building wall2.load1",
-            "building wall2.oneWaySpan", "building wall2.panelHeight", "building wall2.span.short",
-            "building wall3.lnZ", "building wall3.load0", "building wall3.load1", "building wall3.oneWaySpan",
-            "building wall3.panelHeight", "building wall3.span.short", "component log10Impulse",
-            "component log10Peak", "component oneWaySpan", "component panelHeight", "component span.long",
+            "building roof.edge2", "building roof.panelHeight", "building wall0.kind.facade",
+            "building wall0.oneWaySpan", "building wall0.panelHeight", "building wall0.span.short",
+            "building wall1.panelHeight", "building wall1.span.short", "building wall2.panelHeight",
+            "building wall2.span.short", "building wall3.oneWaySpan", "building wall3.panelHeight",
+            "building wall3.span.short", "component oneWaySpan", "component panelHeight",
+            "component span.long",
         ],
         "preset transportHub": [
             "building roof.edge2", "building roof.panelHeight", "building wall0.kind.facade",
@@ -111,7 +110,7 @@ struct LiveResponseRangeTests {
                     coefficients: .adopted, roofCoefficients: .roofs, uncertainty: uncertainty,
                     construction: { LiveResponse.constructionFeatures(scene.envelopeConstruction(for: $0)) },
                     glazing: { LiveResponse.glazingFeatures($0.mix) })
-                if batch.unknown > 0 { return .leftToCPU(batch.unknown) }
+                if batch.unknown > 0 || batch.noCharge { return .leftToCPU(batch.unknown) }
                 // The glass thrown's network (emmettl/bombcad-work#117) reads the glass network's rows.
                 for (name, values, width) in [
                     ("component", batch.components, batch.componentWidth),
@@ -224,7 +223,16 @@ struct LiveResponseRangeTests {
         let cell = Float(0.25)
         for preset in ScenarioPreset.allCases {
             let scene = preset.scenario
-            let mass = Double(scene.charge.mass)
+            var mass = Double(scene.charge.mass)
+            if !LiveResponse.judges(mass: mass) {
+                // No charge (the process plant's gas cloud): left to the CPU's preview. Its buildings
+                // are read under a charge of `chargeless` kg put in its place, as a user may set one.
+                let none = try Self.reading(scene, cellSize: cell, places: [.zero], masses: [mass])
+                if case .rows = none {
+                    Issue.record("preset \(preset.rawValue): judged without a charge")
+                }
+                mass = Self.chargeless
+            }
             Self.check(
                 "preset \(preset.rawValue)",
                 try Self.reading(scene, cellSize: cell, places: [.zero], masses: [mass / 4, mass, mass * 4]))

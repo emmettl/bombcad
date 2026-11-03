@@ -164,11 +164,19 @@ extension LiveResponse {
         public var buildingHasWalls: [Bool] = []
         /// The buildings whose construction, and the sides whose mix, the networks do not know.
         public var unknown = 0
+        /// No charge to judge (`judges(mass:)`): no rows, and the scene left to the CPU's preview.
+        public var noCharge = false
 
         public var componentCount: Int { componentWidth == 0 ? 0 : components.count / componentWidth }
         public var sideCount: Int { sideWidth == 0 ? 0 : sides.count / sideWidth }
         public var buildingCount: Int { buildingWidth == 0 ? 0 : buildings.count / buildingWidth }
     }
+
+    /// Whether the networks judge a charge of `mass` kg. A scene without one, as a gas deflagration's
+    /// (the process plant's preset: its charge is 0 kg, the cloud its source), is left to the CPU's
+    /// preview, which gives it no load: the networks would read a scaled distance of infinity and
+    /// loads of nothing, which no training row has (emmettl/bombcad-work#118).
+    public static func judges(mass: Double) -> Bool { mass > 0 && mass.isFinite }
 
     /// The networks' inputs for `estimate` (a preview's: `Prepared.preview`) and its glazed `sides`,
     /// for a charge of `mass` kg, their loads predicted here on the CPU: its components' loads under
@@ -235,6 +243,11 @@ extension LiveResponse {
         componentLoads: (Int) -> (damage: Load, walls: Load?),
         stripLoad: (Int, Int) -> Load
     ) -> Batch {
+        guard judges(mass: mass) else {
+            var batch = Batch()
+            batch.noCharge = true
+            return batch
+        }
         let root = cbrt(mass)
         // Each building's components, top, base and construction's signature.
         var byOwner: [UUID: [Int]] = [:]
