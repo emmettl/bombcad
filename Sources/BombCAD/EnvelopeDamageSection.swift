@@ -875,6 +875,15 @@ struct WhatIfControls: View {
                 ForEach(LiveResponse.WhatIf.roofKinds, id: \.self) { Text($0.label).tag(Optional($0)) }
             }
             .help("For Quick Estimate: every building's roof of this, at its usual thickness.")
+            Button("Best for a Budget…") {
+                model.budgetPlanner.offer(standOff: nil, phrase: "")
+                model.showsBudgetPlanner = true
+            }
+            .controlSize(.small)
+            .disabled(model.settings.scenario.envelopeObjects.isEmpty)
+            .help(
+                "For Quick Estimate: the barrier walls and the glass, building by building, that leave fewest people hurt for what you will spend, found through the learned response and checked by the full estimate"
+            )
             if !whatIf.isEmpty {
                 Text("What if: \(whatIf.label). For the quick estimate only; the project is unchanged.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

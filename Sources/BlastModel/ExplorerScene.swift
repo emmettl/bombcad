@@ -151,6 +151,18 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
         public var range: ClosedRange<Float>
         /// "from the glass office".
         public var phrase: String
+        /// The line of bollards that keeps the charge back, for a budget's cost
+        /// (`ProtectionBudget.StandOff`): this long across the way in, m, and if it `wraps` round the
+        /// building's front, twice the stand-off more.
+        public var frontageM: Float = 0
+        public var wraps = false
+
+        /// The stand-off as a budget's plan takes it, the scene's first charge at `origin`.
+        public func budget(origin: SIMD3<Float>) -> ProtectionBudget.StandOff {
+            ProtectionBudget.StandOff(
+                from: SIMD2(origin.x, origin.y) + from, along: along, range: range, frontageM: frontageM,
+                wraps: wraps)
+        }
     }
 
     public var standOff: StandOff? {
@@ -160,12 +172,13 @@ public enum ExplorerScene: String, CaseIterable, Sendable, Identifiable {
             StandOff(
                 building: "The glass office", from: SIMD2(0, Self.pitch - Self.block / 2),
                 along: SIMD2(0, -1),
-                range: 3...120, phrase: "from the glass office")
+                range: 3...120, phrase: "from the glass office", frontageM: Self.block, wraps: true)
         // Along the high street's middle from outside the bank, east.
         case .street:
             StandOff(
                 building: "The bank", from: SIMD2((Self.bank.lowerBound + Self.bank.upperBound) / 2, 0),
-                along: SIMD2(1, 0), range: 0...150, phrase: "along the street from the bank")
+                along: SIMD2(1, 0), range: 0...150, phrase: "along the street from the bank",
+                frontageM: Self.streetWidth)
         case .beirut: nil
         }
     }

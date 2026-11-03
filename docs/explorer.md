@@ -581,3 +581,13 @@ hurt counted as a building crossed, 1.0–1.6% with the shelter term. The office
 stands above the wall, and in the square nearly every pane breaks anyway. The fine runs agree that a
 wall shelters only what is within one or two of its heights behind it.
 
+**Best for a Budget…** (3 November 2026, stage 2): in the same section, a sheet that asks for a budget
+and finds the walls, the glass building by building and the stand-off that leave the fewest people
+hurt. The search runs through the learned response, in under 2 s on the square and the street and
+2–4 s on Beirut, and draws its best walls in the view as it goes. The full estimate then judges its
+best few plans, in 2–10 s on the square and street and about a minute on Beirut. The best by it is
+put in the scene as a what-if. On the square at $1M, that is a 120 m stand-off with two walls, which
+leaves a quarter fewer people hurt. The live model alone would have picked walls and laminated glass,
+6% fewer: it reads a charge moved less well than a wall put up. The costs are illustrative, in
+dollars, and editable. See [protective design](protective-design.md#the-best-protection-for-a-budget-3-november-2026).
+

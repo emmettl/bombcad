@@ -1163,7 +1163,224 @@ as before. The people's default is unchanged: Kummer's, by the panes broken.
 
 **The budget optimiser** (the best barrier for a budget through the fast model) is not built in this
 stage. The search (`scenebench protect`, `ProtectionSearch`) would take the barrier term and the wall
-what-if as it stands, a later stage's work.
+what-if as it stands, a later stage's work. It was built the same day, on the live model rather than
+the planner's search: [below](#the-best-protection-for-a-budget-3-november-2026).
+
+## The best protection for a budget (3 November 2026)
+
+emmettl/bombcad-work#117, stage 2, approved by the user on 3 November 2026. The user gives a budget;
+the app searches through the learned response for the walls, glass and stand-off that leave the
+fewest people hurt, and the full estimate judges its best few plans again, as it judges a drag on
+let-go. It is in the explorer (Protect the buildings ▸ **Best for a Budget…**) and in the workbench
+(What if every building ▸ **Best for a Budget…**), and headless as `ProtectionBudget` in BlastModel
+(Linux-tested) and `scenebench budget-plan`.
+
+### The design
+
+**What it makes fewest.**
+
+- **People hurt** (`Objective.peopleHurt`), by the people's model chosen in the app. By default this
+  is Kummer's by the panes broken, the people default, which film and laminated glass barely move:
+  they hold the glass but do not stop it breaking. "Glass thrown into rooms (Bowen)" is offered by
+  name, in the sheet and in the people layer. Under it, film counts.
+- **Glass thrown past GSA 3b** (`Objective.glassThrown`): the glazed façade, m², expected to throw
+  its glass beyond 3 m of the window (each side's `thrownPast3b` times its glazed area).
+- **Both, in order:** under the people, any budget the people's gain leaves goes on the glass thrown
+  (`restOnGlass`, on). A weighted sum of the two would need a price on a person against a square
+  metre, which is not BombCAD's to set.
+
+**The choices.**
+
+- **Up to two barrier walls**, each 2, 3 or 4 m tall and 10–60 m long, along x or y, 0.3 m thick, as
+  the what-if's wall. Each stands clear of every building by half a metre. Each stands no nearer the
+  charge than Z = 2 m/kg^(1/3): 16 m for 500 kg, 159 m for Beirut's 0.5 kt (`leastWallZ`). The
+  barrier term holds Z within 2–8, it was fitted on walls in front of façades at Z 2–10, and the
+  model's walls are rigid, where a real wall that close would be thrown down. The first search, with
+  no such limit, stood a 4 m wall 4 m from the square's charge.
+- **Film** (8 mil, wet glazed) or **laminated glass**, building by building. Not side by side: the
+  learned response reads a building's glazing as one mix, and a side's own (`sideGlazing`) is
+  outside its training. The what-if gained `glassOf` (glass per building) and `moreBarriers` for this.
+- **A stand-off**, where the scene offers one (the explorer's square and street): the charge kept
+  back along the stand-off line from the protected building. Only a charge nearer than the stand-off
+  moves, to the line. It is bought as a line of bollards across the way in: the high street's 18 m
+  for the bank, at any distance, and for the office the 70 m frontage plus twice the stand-off, the
+  line wrapping round its front.
+
+**The costs**, in dollars (`ProtectionBudget.Costs`), are editable in the sheet. They are
+illustrative: an order of magnitude from open price guides, not a quote. They are not invented to
+the dollar either.
+
+| Change | Cost | From |
+|---|---:|---|
+| Security film, 8 mil wet glazed, installed | $160 per m² of glass | vendors' 2026 guides: $12–20 per sq ft for 8–14 mil wet-glazed film |
+| Laminated glass in place of the panes | $1,000 per m² of glass | the same guides (sellers of film): $50–150 per sq ft |
+| Barrier wall, reinforced concrete | $400 per m² of face | precast walls 6–8 ft tall at $150–320 per linear foot (≈ $250–480 per m²), a city's fence wall at $300–320; a blast wall more |
+| Bollards, crash rated | $2,000 per m of line | $1,200–2,500 or more each installed, one every 1.2–1.5 m |
+
+**The search** (`ProtectionBudget.optimise`) splits the plan in two, as the planner's design above
+does.
+
+- **Walls and stand-off, by a coordinate search over the live model.**
+  - The first walls tried stand across the line from the charge to each of the six buildings that
+    count most: 6 m in front of it (a wall shelters most within one or two of its heights), half way,
+    and as near the charge as a wall may stand.
+  - Each round tries every move from the plan: each wall moved along or across by the step (8 m,
+    halved when nothing helps, down to 1 m), a height or a length up or down, turned, or taken away; a
+    wall added; the stand-off longer or shorter.
+  - The best move is taken while it helps. A move is scored by one look at the scene with no glass,
+    plus the glass its money left would buy, from the glass's gains last measured.
+- **Glass, by a knapsack.** In the model, glass changes no load: the envelopes are rigid. So each
+  building's glass is its own, and its gain is measured for every building at once by two looks: every
+  building filmed, every building laminated. The gains are measured again where the plan now is
+  whenever a move is taken, and scaled between by each building's own figure. The money left buys the
+  best gain per dollar along each building's hull of options: a multiple-choice knapsack. On 200 random cases of seven buildings it came to at least 80% of the
+  exact best (tested). A gain under a hundredth of a person,
+  or of a square metre, is not bought.
+- **Finalists, and the referee.**
+  - With a stand-off offered, the walls and glass are searched with the stand-off fixed in turn at
+    none, at half what the budget buys past the charge, and at all of it. Then they are searched with
+    the stand-off free from the best of those.
+  - Each finalist's glass is bought from gains measured at its own site, and the plan is looked at as
+    a whole.
+  - The full estimate (100 drawn yields, the walls' and roofs' chances, the people on 200 draws)
+    judges each finalist and the scene as built (`ProtectionBudget.referee`). The best by it is put
+    in the scene.
+  - Without a stand-off, the finalists are the best three site-wide plans that differ: by their
+    walls' count, a wall 20 m or more away, or a turn.
+- **Seen as it goes.** Each look reports to the sheet: the stage, the plans looked at, the best so
+  far and its figure against as built, and the best walls drawn in the view. Stop gives the best so
+  far. A search stops after 600 looks or 20 s.
+
+**Why the referee is not optional.** The live model reads a wall well, and a charge moved badly. The
+learned response follows the CPU's preview to within half a per cent here. It is the preview's own
+approximation, each side judged by its strip nearest the charge, that misses what moving the charge
+does on the square. `budget-plan --compare-at`, the square at 500 kg as built, people hurt (Kummer):
+
+| Charge, from the square's middle | Live | CPU preview | Full estimate |
+|---|---:|---:|---:|
+| Middle | 1,239 | 1,241 | 1,037 |
+| 20 m south | 1,253 | 1,257 | 986 |
+| 40 m south | 1,282 | 1,287 | 928 |
+| 71 m south (the 120 m stand-off) | 1,271 | 1,275 | 796 |
+| 42 m north, outside the office | 1,279 | 1,277 | 1,161 |
+| Corner, 42 m east and south | 1,261 | 1,261 | 827 |
+
+The full estimate falls by a quarter as the charge goes south. The preview stays flat, and even
+rises. Scaling each building's live figure by its full one at the middle does not mend it (1,032 at
+71 m south). On the street the live model follows the full estimate's curve (763 to 668 against 739 to
+628 over 150 m). So a stand-off's plans are put forward as finalists, rather than left to the live
+model's ranking.
+
+### Judged
+
+`scenebench budget-plan --explorer square|street|beirut [--place …] --budgets … --judge --ranking 12`,
+on the Studio under `gpu-slot`, the learned response on the GPU. Logs are in
+`$BOMBCAD_DATA/protective-live/budget/` (`judge.sh`; the first round, with Bowen's people, the glass
+objective and Beirut's ranking, in `round1/`). Each budget's pick, by the full estimate, was set
+against the scene as built and five hand-placed plans of the same budget, where they stand and are
+affordable:
+
+- the explorer's wall in front of the protected building (3 m by 30 m);
+- a 4 m wall as near the charge as a wall may stand, as long as affordable;
+- film, or laminated glass, on the buildings nearest the charge until the money runs out;
+- the stand-off as far as the budget buys.
+
+**How fast.** A look takes 5–7 ms on the square and the street, 25–40 ms on Beirut within 1.5 km
+(2,870 glazed buildings). A search takes 0.3–2.1 s on the square and street (up to 4.6 s with other jobs on the Studio), and
+0.6–4 s on Beirut.
+The referee takes 2–10 s on the square and street, at 1.2–1.9 s a full look, and about a minute on
+Beirut, at 13–26 s a look. In the app, the live answer is drawn in seconds and the refereed one
+follows.
+
+**The pick against the full estimate and the baselines.** People hurt, Kummer's, full estimate,
+against the scene as built:
+
+| Scene, charge | $50,000 | $200,000 | $1,000,000 | Best baseline at $1M |
+|---|---|---|---|---|
+| Square, middle (1,037 as built) | −1.0% (a 3 m wall) | −2.0% (two 2 m walls, laminated in 1) | −25.6% (stand-off 120 m, two walls, laminated in 2) | stand-off alone, −23.2% |
+| Square, outside the office (1,161) | −0.7% | −1.3% | −33.6% (as above) | stand-off alone, −31.4% |
+| Street, middle (739) | −10.8% (stand-off 150 m, a 3 m wall) | −10.7% | −15.9% (stand-off, film and laminated in 6) | stand-off alone, −11.4% |
+| Street, outside the bank (753) | −11.6% | −12.4% | −17.7% | stand-off alone, −11.4% |
+| Beirut, 0.5 kt (53,845) | — | — | −1.0%; at $10M −4.9% (two 3 m walls, laminated in 13) | laminated on the nearest, −1.2% at $10M |
+
+With Bowen's glass thrown:
+
+| Scene, charge | $50,000 | $200,000 | $1,000,000 | Best baseline at $1M |
+|---|---|---|---|---|
+| Square, middle (172 as built) | −4.7% (a wall, film on 1) | −13.0% (film on 7) | −72.1% (film on 26) | film on the nearest 33, −71.0% |
+| Street, outside the bank (254) | −13.9% | −24.8% | −48.8% (film on 65, stand-off 75 m) | film on the nearest 76, −35.5% |
+| Beirut (25,180) | — | — | −2.9%; at $10M −15.8% (film on 61) | film on the nearest 120 at $10M, −7.5% |
+
+The glass thrown past 3b, outside the office: −1.7%, −5.8% and −22.8%, against film on the nearest
+at −18.4%.
+
+- **In all 25 cases the pick is the best of the plans set beside it,** by the full estimate.
+- **The referee changed the live model's answer in 4 of the 25 cases.**
+  - At $1M on the square, from the middle, the live best (walls and laminated glass, −5.4% live) was
+    −5.8% by the full estimate, and the 120 m stand-off −25.6%.
+  - From outside the office, the live best was −18.5% by the full estimate, and the 120 m stand-off
+    −33.6%.
+  - On the street at $200,000, from either place, the referee picked a finalist 0.1% behind the live
+    best by the live model, and 0.3% ahead of it by the full estimate.
+- **The hand-placed wall barely helps:** −0.2% on the square. At 500 kg nearly every pane on the
+  square breaks anyway, and most of the office's glass stands above a 3 m wall. The optimiser's walls
+  do better (−1 to −2%) by standing nearer the buildings that count and longer. Walls are a small
+  part of every plan's gain. On the square and street the stand-off is most of it, under Kummer, and
+  film under Bowen.
+- **Film under Kummer buys nothing:** film on the nearest 6–120 buildings, 0.0% in every scene. That
+  is the people default's own reading (stage 1: "Film on the square: people hurt 0% under Kummer").
+
+**How often the live model ranks plans as the full estimate does.** Pairs of plans (the search's best
+twelve site-wide plans, and the pick and baselines) that the full estimate tells apart by more than
+0.5%, ordered alike by the live model:
+
+| | Walls and glass, the charge where it is | All, stand-offs included |
+|---|---|---|
+| Square, middle, Kummer | 100% (52, 66, 53 pairs at the three budgets) | 100%, 100%, 65% |
+| Square, outside the office | 100% (10 pairs) | 50%, 38% |
+| Square, middle, Bowen | 100%, 82%, 97% | 100%, 82%, 81% |
+| Street, either place, Kummer or Bowen | (too few pairs) | 99–100% (13–101 pairs) |
+| Beirut, Kummer and Bowen (no stand-off) | 100% (10–27 pairs) | — |
+
+So the live model ranks walls and glass as the full estimate does, and the stand-off on the street.
+It ranks the stand-off on the square badly, which the finalists cover.
+
+**The live model's own figures** stand above the full estimate's by 19% on the square as built
+(Kummer), 3% on the street and under 1% on Beirut. With Bowen's people they are 12% above on the
+square and 10% below on the street. The changes it gives a plan are close to the full estimate's
+where the charge stays put: −5.4% against −5.8% at $1M on the square, and −5.0% against −4.9% on
+Beirut at $10M. The sheet shows both.
+
+**Standing: illustrative.** The loads are the quick estimate's, and the walls rigid. The barrier term
+rests on one family of made-up layouts. The people are Kummer's or Bowen's, and the costs an order of
+magnitude.
+
+### Proposals for the user
+
+- **The objective's default: the people hurt, Kummer's, the rest of the budget on the glass thrown**
+  (as built). The figures above set the two people's models side by side. Under Kummer, film never
+  counts (0.0%), and a plan buys stand-off and walls: on the square at $1M, −25.6%. Under Bowen, film
+  is most of every plan: −72% on the square at $1M. Kummer's is the people default for its fit to
+  Beirut's record (stage 1). So I propose keeping it, with Bowen's offered by name in the sheet, as
+  now.
+- **The costs: ship the dollar table as illustrative, editable,** rather than relative units. A
+  relative table ("film 1, laminate 6") would hide that the walls and bollards are priced per metre
+  and the glass per square metre.
+- **The referee on by default** (as built). It changed the answer in 4 of the 25 cases: twice on the
+  square by a fifth or more of the people hurt, and twice on the street by 0.3%. It costs 2–10 s on
+  the square and street. On Beirut, where there is no stand-off, it costs about a minute and has never
+  changed the answer. It could be skipped where there is no stand-off, which saves that minute.
+- **Walls no nearer than Z 2** (as built), where the barrier term was fitted.
+
+### What it lacks
+
+- **Glass side by side:** the networks read a building's glazing as one.
+- **Wall retrofits,** which the live model has as what-ifs for every building at once, not costed.
+- **A stand-off elsewhere than the explorer's two lines.** The workbench offers walls and glass only.
+  `Scenario.standOffLines` could feed it.
+- **One charge.** The planner's several weighted threats and posterior samples are not taken.
+- **The glass thrown network is being retrained** (claude-wt/thrown-retrain). The Bowen figures above
+  are on the weights of 2 November and will move with it.
 
 ## Open questions
 

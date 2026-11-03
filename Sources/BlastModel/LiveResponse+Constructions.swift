@@ -227,21 +227,38 @@ extension LiveResponse {
         public var roof: EnvelopeConstruction.Kind?
         /// A barrier wall put in the scene (emmettl/bombcad-work#117), as `Scenario.addBarrier` adds one.
         public var barrier: Barrier?
+        /// Barrier walls beside `barrier`, which a budget's plan may put up (`ProtectionBudget`); the
+        /// view's drag moves `barrier` alone.
+        public var moreBarriers: [Barrier] = []
+        /// Glass for some buildings alone, by their objects' ids, over `glass` (a budget's plan films
+        /// or laminates the buildings it pays for, not every one).
+        public var glassOf: [UUID: Glass] = [:]
 
         public init(
             glass: Glass? = nil, walls: EnvelopeConstruction.Kind? = nil,
-            roof: EnvelopeConstruction.Kind? = nil, barrier: Barrier? = nil
+            roof: EnvelopeConstruction.Kind? = nil, barrier: Barrier? = nil, moreBarriers: [Barrier] = [],
+            glassOf: [UUID: Glass] = [:]
         ) {
             self.glass = glass
             self.walls = walls
             self.roof = roof
             self.barrier = barrier
+            self.moreBarriers = moreBarriers
+            self.glassOf = glassOf
         }
 
-        public var isEmpty: Bool { glass == nil && walls == nil && roof == nil && barrier == nil }
+        public var isEmpty: Bool {
+            glass == nil && walls == nil && roof == nil && barrier == nil && moreBarriers.isEmpty
+                && glassOf.isEmpty
+        }
 
         /// Whether it builds any building otherwise.
-        public var changesConstructions: Bool { glass != nil || walls != nil || roof != nil }
+        public var changesConstructions: Bool {
+            glass != nil || walls != nil || roof != nil || !glassOf.isEmpty
+        }
+
+        /// Every barrier it puts up: `barrier` first.
+        public var barriers: [Barrier] { (barrier.map { [$0] } ?? []) + moreBarriers }
 
         /// A straight barrier wall on the plan, along x or y about its middle.
         public struct Barrier: Hashable, Sendable, Codable {
@@ -315,10 +332,12 @@ extension LiveResponse {
                     (scene.envelopeConstructions ?? []).map { ($0.objectID, $0) },
                     uniquingKeysWith: { _, last in last })
                 copy.envelopeConstructions = scene.envelopeObjects.map {
-                    applied(to: recorded[$0.id] ?? .assumed(objectID: $0.id))
+                    var c = applied(to: recorded[$0.id] ?? .assumed(objectID: $0.id))
+                    if let own = glassOf[$0.id] { c = own.applied(to: c) }
+                    return c
                 }
             }
-            if let barrier {
+            for barrier in barriers {
                 let (from, to) = barrier.ends
                 _ = try? copy.addBarrier(
                     from: from, to: to, height: barrier.heightM, thickness: barrier.thicknessM)
@@ -335,7 +354,19 @@ extension LiveResponse {
             if let walls { parts.append("walls of \(walls.label.lowercased())") }
             if let roof { parts.append("roofs of \(roof.label.lowercased())") }
             var text = parts.isEmpty ? "" : "every building's " + parts.joined(separator: ", ")
+            if !glassOf.isEmpty {
+                let filmed = glassOf.values.filter { if case .filmed = $0 { true } else { false } }.count
+                let laminated = glassOf.values.filter { if case .laminated = $0 { true } else { false } }
+                    .count
+                let other = glassOf.count - filmed - laminated
+                var some: [String] = []
+                if filmed > 0 { some.append("film on \(filmed) building\(filmed == 1 ? "" : "s")") }
+                if laminated > 0 { some.append("laminated glass in \(laminated)") }
+                if other > 0 { some.append("other glass in \(other)") }
+                text += (text.isEmpty ? "" : "; ") + some.joined(separator: ", ")
+            }
             if let barrier { text += (text.isEmpty ? "" : "; ") + barrier.label }
+            for more in moreBarriers { text += "; " + more.label }
             return text.isEmpty ? "as built" : text
         }
     }

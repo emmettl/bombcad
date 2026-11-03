@@ -190,6 +190,41 @@ struct ExplorerModelTests {
         #expect(abs(at.y - (explorer.origin!.y + standOff.from.y - 30)) < 0.5)
     }
 
+    @Test(
+        "Best for a budget: the stand-off offered, the search seen, its best judged and shown, then taken away"
+    )
+    func budget() async throws {
+        let model = SimulationModel(document: ProjectDocument.newProject())
+        model.learnedDefaults = UserDefaults(suiteName: "ExplorerModelTests.budget")!
+        try await settle(model)
+        let explorer = ExplorerModel(model: model)
+        explorer.reduceMotion = true
+        await explorer.open(.square)
+        try await settle(model)
+        explorer.openBudgetPlanner()
+        let planner = model.budgetPlanner
+        #expect(model.showsBudgetPlanner && planner.standOff != nil)
+        let start = model.settings.chargePosition
+        planner.budget = 60_000
+        planner.find(in: model)
+        #expect(planner.isRunning)
+        while planner.isRunning { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(planner.error == nil, "\(planner.error ?? "")")
+        let result = try #require(planner.result)
+        let refereed = try #require(planner.refereed)
+        #expect(planner.phase == .done && planner.shown == 0)
+        #expect(result.plan.cost.total <= 60_000 && refereed.best.plan.cost.total <= 60_000)
+        #expect(!result.finalists.isEmpty && refereed.finalists.count == result.finalists.count)
+        #expect(planner.progressText.contains("judged again by the full estimate"))
+        // Shown: the referee's best as the what-if, its walls drawn.
+        #expect(model.quickEstimateWhatIf == refereed.best.plan.whatIf)
+        #expect(model.barrierLines.isEmpty == refereed.best.plan.site.barriers.isEmpty)
+        try await settle(model)
+        planner.reset(in: model)
+        #expect(model.quickEstimateWhatIf.isEmpty && model.settings.chargePosition == start)
+        try await settle(model)
+    }
+
     @Test("The speed plays a wave in about five seconds")
     func speed() {
         #expect(ExplorerModel.speed(for: 0.8) == .quarter)

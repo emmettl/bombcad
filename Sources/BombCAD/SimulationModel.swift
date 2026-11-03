@@ -366,6 +366,10 @@ final class SimulationModel {
     var showsChargeInference = false
     /// The Protective Design sheet, and its target, changes and plans, kept while the window is open.
     var showsProtectivePlanner = false
+    /// Best for a Budget… (emmettl/bombcad-work#117): the walls, glass and stand-off that protect most
+    /// for what the user will spend, searched through the learned response (`BudgetPlannerModel`).
+    var showsBudgetPlanner = false
+    @ObservationIgnored lazy var budgetPlanner = BudgetPlannerModel()
     @ObservationIgnored lazy var protectionPlanner = ProtectionPlannerModel()
     /// The plan Protective Design shows: each building's sides' residual chances; empty for none.
     var protectionPlanChances: [UUID: [(axis: Int, outward: Int, chance: Double)]] = [:]
@@ -775,8 +779,8 @@ final class SimulationModel {
     var quickEstimateWhatIf = LiveResponse.WhatIf() {
         didSet {
             if quickEstimateWhatIf != oldValue, !barrierMoving { estimateChoiceChanged() }
-            if quickEstimateWhatIf.barrier != oldValue.barrier {
-                barrierLines = Self.lines(quickEstimateWhatIf.barrier, in: settings.scenario)
+            if quickEstimateWhatIf.barriers != oldValue.barriers {
+                barrierLines = quickEstimateWhatIf.barriers.flatMap { Self.lines($0, in: settings.scenario) }
             }
         }
     }

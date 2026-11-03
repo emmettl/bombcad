@@ -235,6 +235,9 @@
             .sheet(isPresented: $model.showsProtectivePlanner) {
                 ProtectionPlannerView(model: model, planner: model.protectionPlanner)
             }
+            .sheet(isPresented: $model.showsBudgetPlanner) {
+                BudgetPlannerView(model: model, planner: model.budgetPlanner)
+            }
             .sheet(isPresented: $model.showsChargeInference) {
                 ChargeInferenceView(model: model, inference: model.chargeInference)
             }

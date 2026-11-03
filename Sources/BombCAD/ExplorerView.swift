@@ -34,6 +34,13 @@
             .onChange(of: explorer.model.isDraggingCharge) { _, dragging in
                 if !dragging { Task { await explorer.replayWhenReady() } }
             }
+            .sheet(
+                isPresented: Binding(
+                    get: { explorer.model.showsBudgetPlanner },
+                    set: { explorer.model.showsBudgetPlanner = $0 })
+            ) {
+                BudgetPlannerView(model: explorer.model, planner: explorer.model.budgetPlanner)
+            }
             .onAppear { explorer.reduceMotion = reduceMotion }
             .onChange(of: reduceMotion) { _, reduce in explorer.reduceMotion = reduce }
             // The wave played to its end: its last caption said once.
@@ -408,6 +415,11 @@
                     .labelsHidden()
                     .pickerStyle(.segmented)
                 }
+                Button("Best for a Budget…") { explorer.openBudgetPlanner() }
+                    .disabled(model.envelopeGlassChances.isEmpty)
+                    .help(
+                        "The walls, glass and stand-off that leave fewest people hurt for what you will spend, found through the learned response and checked by the full estimate"
+                    )
                 if let line = scene.standOff, let standOff = explorer.standOff {
                     LabeledSlider(
                         title: "Stand-off",

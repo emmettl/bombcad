@@ -398,6 +398,13 @@ final class ExplorerModel {
         model.moveBarrier(to: barrier.centre + SIMD2(east, north))
     }
 
+    /// Best for a Budget…: the planner offered the scene's stand-off, its line from the scene's first charge.
+    func openBudgetPlanner() {
+        let line = origin.flatMap { origin in scene?.standOff.map { $0.budget(origin: origin) } }
+        model.budgetPlanner.offer(standOff: line, phrase: scene?.standOff?.phrase ?? "")
+        model.showsBudgetPlanner = true
+    }
+
     /// The wall turned a quarter.
     func turnWall() { model.quickEstimateWhatIf.barrier?.alongX.toggle() }
 
