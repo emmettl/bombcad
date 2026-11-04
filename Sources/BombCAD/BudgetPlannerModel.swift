@@ -88,6 +88,7 @@ final class BudgetPlannerModel {
         let people = model.occupancy
         let within = model.quickEstimateYieldWithin
         let leaves = model.liveLeavesUntrainedToCPU
+        let reading = model.facadeReading
         // The district as laid out for the quick estimate, if it was laid out from this scene as built.
         var layout = scene
         layout.charge.position = .zero
@@ -112,9 +113,10 @@ final class BudgetPlannerModel {
                 ) {
                     do {
                         let prepared =
-                            known
+                            (known
                             ?? FacadeLoadSurrogate.Prepared(
-                                scene: scene, cellSize: cellSize, incidence: terms.coefficients.incidence)
+                                scene: scene, cellSize: cellSize, incidence: terms.coefficients.incidence))
+                            .reading(reading)
                         let (made, _) = SimulationModel.makeLiveModel()
                         let mode: ProtectionBudget.Look.Mode =
                             made.map { .live($0, leavesUntrainedToCPU: leaves) } ?? .preview

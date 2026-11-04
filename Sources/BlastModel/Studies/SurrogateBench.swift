@@ -55,6 +55,25 @@ package enum SurrogateBench {
     /// emmettl/bombcad-work#109): `--incidence cells|outline`, else that of the terms it judges
     /// (`coefficients`). With `.outline` the district is laid out with its buildings' outlines
     /// (`DistrictInputs.keepsOutlines`).
+    /// The strips that stand for each façade group in a bench's previews: `--bands n`, or
+    /// `--facade-reading three-bands|nearest-strip`, else the adopted reading's
+    /// (`FacadeLoadSurrogate.FacadeReading`; emmettl/bombcad-work#117).
+    package static func facadeBands(_ args: [String]) throws -> Int {
+        if let bands = value(args, "bands") {
+            guard let n = Int(bands), n >= 1 else { throw BlastError.allocationFailed("--bands n") }
+            return n
+        }
+        guard let name = value(args, "facade-reading") else {
+            return FacadeLoadSurrogate.Prepared.defaultFacadeBands
+        }
+        guard let reading = FacadeLoadSurrogate.FacadeReading(rawValue: name) else {
+            throw BlastError.allocationFailed(
+                "--facade-reading "
+                    + FacadeLoadSurrogate.FacadeReading.allCases.map(\.rawValue).joined(separator: "|"))
+        }
+        return reading.bands
+    }
+
     package static func incidence(_ args: [String]) -> FacadeLoadSurrogate.Incidence {
         if let name = value(args, "incidence"), let incidence = FacadeLoadSurrogate.Incidence(rawValue: name)
         {

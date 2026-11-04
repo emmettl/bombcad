@@ -8,7 +8,9 @@ bytes as base64 lines in one string literal, with the file's SHA-256 beside them
 
 With `--add other.bclr`, the networks of `other` that the weights lack are added to them, the
 weights' own left as they are to the byte (emmettl/bombcad-work#117: the glass thrown network,
-trained alone, beside the shipped three).
+trained alone, beside the shipped three). With `--only side,building`, the weights keep those
+networks alone, their tensors as they were (after `--add`): to build in a network retrained alone in
+place of another's, or one network as a file of its own (emmettl/bombcad-work#117, three façade bands).
 """
 
 import argparse
@@ -30,6 +32,7 @@ def main():
                         help="the component network's glass-broken logit threshold, set in the header")
     parser.add_argument("--out", help="the weights, so set, written here too")
     parser.add_argument("--add", help="another .bclr whose networks the weights lack are added")
+    parser.add_argument("--only", help="keep these networks alone, comma-separated (after --add)")
     parser.add_argument("--extra", help="write the weights as a further built-in file, "
                         "Sources/BlastModel/LiveResponse+<Extra>.swift, its networks added to the main ones' at load "
                         "(`LiveResponse.Weights.builtIn`): the main file left as it is")
@@ -64,6 +67,25 @@ def main():
             header.setdefault("added", []).append(f"{name} from {other_header.get('trainedOn', args.add)}")
         text = json.dumps(header).encode()
         data = b"BCLR" + struct.pack("<II", version, len(text)) + text + blob
+        length = len(text)
+    if args.only:
+        keep = args.only.split(",")
+        assert all(name in header["networks"] for name in keep), "--only names a network the weights lack"
+        size = 2 if header.get("dtype", "float16") == "float16" else 4
+        blob = data[12 + length:]
+        kept, start = b"", 0
+        for name in keep:
+            network = header["networks"][name]
+            first = min(layer["offset"] for layer in network["layers"])
+            last = max(layer["offset"] + layer["inputs"] * layer["outputs"] + layer["outputs"]
+                       for layer in network["layers"])
+            for layer in network["layers"]:
+                layer["offset"] = layer["offset"] - first + start
+            kept += blob[first * size:last * size]
+            start += last - first
+        header["networks"] = {name: header["networks"][name] for name in keep}
+        text = json.dumps(header).encode()
+        data = b"BCLR" + struct.pack("<II", version, len(text)) + text + kept
         length = len(text)
     if args.broken_threshold is not None:
         header["brokenThreshold"] = args.broken_threshold

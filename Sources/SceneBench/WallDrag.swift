@@ -45,7 +45,8 @@ enum WallDrag {
 
         let clock = ContinuousClock.now
         let base = FacadeLoadSurrogate.Prepared(
-            scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
+            scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args)
+        ).withFacadeBands(try SurrogateBench.facadeBands(args))
         print(
             String(
                 format: "Prepared %d buildings, %d components, in %.2f s", scene.envelopeObjects.count,

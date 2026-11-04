@@ -130,6 +130,7 @@ extension SimulationModel {
         var layout = scenario
         layout.charge.position = .zero
         let incidence = surrogateTerms.coefficients.incidence
+        let reading = facadeReading
         // Laid out alike whatever its charge's size and its buildings' construction: a what-if or a
         // new size takes the same layout, built anew (`withConstructions`), not laid out again.
         // A barrier moved, or another fixed block, takes the same layout with its raster laid out
@@ -183,8 +184,9 @@ extension SimulationModel {
                 // The previews' kept responses grow with each place: begun again past a few
                 // hundred thousand.
                 let prepared =
-                    known.flatMap { $0.memo.misses < 400_000 ? $0 : nil }
-                    ?? FacadeLoadSurrogate.Prepared(scene: scenario, cellSize: cellSize, incidence: incidence)
+                    (known.flatMap { $0.memo.misses < 400_000 ? $0 : nil }
+                    ?? FacadeLoadSurrogate.Prepared(scene: scenario, cellSize: cellSize, incidence: incidence))
+                    .reading(reading)
                 var estimator: LearnedField.Estimator?
                 var problem: String?
                 var networks: (LearnedFieldNetwork, LearnedFieldNetwork?)?

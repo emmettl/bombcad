@@ -134,6 +134,17 @@ struct EnvelopeDamageSection: View {
                             + "(docs/glass-probability.md). A candidate, off by default."
                     )
                 Toggle(
+                    FacadeLoadSurrogate.FacadeReading.nearestStrip.label,
+                    isOn: $model.quickEstimateNearestStrip
+                )
+                .help(
+                    "For the drag preview and the budget planner: each façade read by its nearest strip alone, "
+                        + "as before 8 November 2026, in place of three bands of each façade by distance. One strip "
+                        + "reads a façade kept back from the charge too broken (docs/protective-design.md). The "
+                        + "learned response was retrained on three bands, so with this on it reads sides it was "
+                        + "not trained on. Off by default."
+                )
+                Toggle(
                     "Barrier walls as buildings crossed (terms of 28 October)",
                     isOn: $model.quickEstimateBarrierAsBuilding
                 )

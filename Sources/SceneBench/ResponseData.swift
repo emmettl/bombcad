@@ -26,7 +26,9 @@ import simd
 ///
 /// Each glazed side's glass thrown into its rooms (`SideGlass.thrownHurt`, `thrownSevere`;
 /// emmettl/bombcad-work#117) goes to `thrown` files beside, the side's inputs with those two answers.
-/// `--thrown-only` makes those alone: no components' or walls' answers.
+/// `--thrown-only` makes those alone: no components' or walls' answers; `--glass-only` those and the
+/// sides' glass chances. `--bands n` (or `--facade-reading nearest-strip`) reads each façade group by
+/// so many strips (`Prepared.facadeBands`; three by default since 8 November 2026).
 enum ResponseData {
     struct Meta: Codable {
         var district: String
@@ -135,7 +137,8 @@ enum ResponseData {
         let coefficients = terms.coefficients
         let roofCoefficients = FacadeLoadSurrogate.Coefficients.roofs
         let laidOut = FacadeLoadSurrogate.Prepared(
-            scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
+            scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args)
+        ).withFacadeBands(try SurrogateBench.facadeBands(args))
         let objects = scene.envelopeObjects
         let mapped = Dictionary(
             uniqueKeysWithValues: objects.map { ($0.id, scene.envelopeConstruction(for: $0.id)) })
@@ -178,6 +181,9 @@ enum ResponseData {
                 buildingOutputs: ["wallsModerate", "wallsHeavy", "roofModerate"], draws: draws, cellSize: dx)
         meta.thrownOutputs = ["thrownHurt", "thrownSevere"]
         let thrownOnly = args.contains("--thrown-only")
+        // `--glass-only`: the glazed sides' answers and the glass thrown's, no components' or walls'
+        // (emmettl/bombcad-work#117: the glass networks retrained on three façade bands).
+        let noComponents = thrownOnly || args.contains("--glass-only")
         guard meta.district == district else {
             throw BlastError.allocationFailed("a folder of another district's data: \(out)")
         }
@@ -300,7 +306,7 @@ enum ResponseData {
             levels.withUnsafeMutableBufferPointer { levelOut in
                 broken.withUnsafeMutableBufferPointer { brokenOut in
                     _ = SDOFResponseMemo.remembering(in: memo) {
-                        concurrently(iterations: thrownOnly ? 0 : estimate.loads.count) { k in
+                        concurrently(iterations: noComponents ? 0 : estimate.loads.count) { k in
                             let load = estimate.loads[k]
                             let construction = constructions[load.owner]!
                             let (top, base) = tops[load.owner]!
@@ -338,7 +344,7 @@ enum ResponseData {
                 ).sides : []
             let glassS = DistrictBenchmark.seconds(clock) - inputsS - damageS
             let ((structure, _), _) = SDOFResponseMemo.remembering(in: memo) {
-                thrownOnly
+                noComponents
                     ? ([], 0)
                     : FacadeLoadSurrogate.structureProbabilities(
                         estimate, mass: mass, cellSize: dx, constructions: { constructions[$0]! },
@@ -356,7 +362,7 @@ enum ResponseData {
             var y: [Float] = []
             var w: [Float] = []
             let cw = batch.componentWidth
-            for k in 0..<(thrownOnly ? 0 : batch.componentCount) {
+            for k in 0..<(noComponents ? 0 : batch.componentCount) {
                 // Dull: no damage and no glass broken.
                 let dull = levels[k] == 0 && broken[k] == 0
                 // A third of the rest kept, all those damaged.
@@ -373,7 +379,7 @@ enum ResponseData {
             var extra = [
                 (row: Int, prediction: FacadeLoadSurrogate.Prediction, load: EnvelopeComponentLoad)
             ]()
-            for k in 0..<(thrownOnly ? 0 : batch.componentCount) where uniform(frame, 13, UInt64(k)) < 0.5 {
+            for k in 0..<(noComponents ? 0 : batch.componentCount) where uniform(frame, 13, UInt64(k)) < 0.5 {
                 var p = estimate.predictions[k]
                 p.peakPa *= pow(10, 1.6 * uniform(frame, 14, UInt64(k)) - 0.8)
                 p.impulsePaS *= pow(10, 1.6 * uniform(frame, 15, UInt64(k)) - 0.8)
@@ -449,7 +455,7 @@ enum ResponseData {
             (x, y, w) = ([], [], [])
             let chances = Dictionary(uniqueKeysWithValues: structure.map { ($0.owner, $0) })
             let bw = batch.buildingWidth
-            for (b, owner) in batch.buildingOwners.enumerated() where !thrownOnly {
+            for (b, owner) in batch.buildingOwners.enumerated() where !noComponents {
                 let c = chances[owner] ?? FacadeLoadSurrogate.StructureChance(owner: owner)
                 let answers = [c.wallsModerate, c.wallsHeavy, c.roofModerate]
                 let dull = answers.allSatisfy { $0 < 1e-6 } || answers.allSatisfy { $0 > 1 - 1e-6 }

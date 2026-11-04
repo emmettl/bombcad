@@ -3896,6 +3896,141 @@ networks before, and their ranges, are unchanged to the byte. `LiveResponseRange
 was: its `known` and `leftToCPU` are still true. Its Beirut row was never short of the thrown's range
 on 5% of rows, and the square's and street's few buildings are the loads nearest a 5 t charge.
 
+## Three façade bands: the glass networks retrained (4 November 2026)
+
+emmettl/bombcad-work#117. On 4 November 2026 the user approved two steps: retrain the glass network
+and the glass thrown's on data made with three façade bands, then make three bands the default
+([protective design](protective-design.md#a-charge-kept-back-read-by-the-preview-4-november-2026)).
+It stopped on 4 November on one missed check: the networks follow the three-band CPU preview of
+people hurt within 1.4% on the square and 0.8% on Beirut, not about 0.5%. The user adopted it on
+8 November with the limit set at about 1.5% ([adopted](#adopted-8-november-2026)).
+
+**Which inputs move.** Three bands change only the glazed sides' rows. `response-data` was run on a
+square with one band and with three, every row kept (`--keep 1`). The components' and the buildings'
+rows and answers are the same to the bit as sets; their order follows the buildings' identifiers,
+which differ from run to run. So the component and walls networks are left as they are.
+
+**The data.** `scenebench response-data --glass-only` (new: the sides and the glass thrown, no
+components or walls), three bands, 32 draws. It covers 5,280 frames: 2.16 million side rows and 5.05
+million thrown rows. That took 35 CPU hours, about 2.7 hours on the Studio, with memory pressure at
+"warning" holding gpu-slot to two jobs. No piece went above 1.96 GB.
+
+It was run on the glass network's and the glass thrown's own pieces, the same seeds where they had
+them:
+- Beirut's whole district, 120 frames on 4 m cells (round 6's charges); within 1.3 km, 80 frames
+  (round 6's and the thrown's); on 6 m cells, 40 frames;
+- the four 4 m districts, 90 frames each;
+- squares 1–24, 100 frames each, and 60 more each on the thrown's seeds;
+- the corpus's twenty 2 m pieces, and four of the 6 m pool's;
+- **the stand-off cases:** the explorer's square and street, 60 frames each, with charges of 50 kg to
+  5 t within 150 m of their own place. So the square and the street are no longer held out from the
+  glass networks. Their frames 9 modulo 10 are.
+
+Mixed seed 7 (4 m and 2 m) and the explorer's Beirut (6 m and 4 m) were labelled as held-out
+scenes, 40 frames each. bombcad-pc could not be reached, so both networks were trained on the
+Studio's GPU under `gpu-slot`. That took 40 epochs, two seeds, about 110 s a seed, peaking at 6.9 GB
+(`ml/bands-studio-s1`, `-s2`). `embed_response.py --only` (new) builds the new glass network in with
+the component and walls networks as they were, byte for byte. `corpus.py ranges --side` (new) writes
+the glass network's ranges from its own data and leaves the other networks' ranges as they were.
+
+**Held out, against the CPU's own answers** (`corpus.py judge`). The figures are mean error (×1000)
+and within 0.1. "Built in" is the shipped networks:
+
+| Held out (three bands) | Measure | Built in | Seed 1 | Seed 2 |
+|---|---|---|---|---|
+| The new data's frames | Some broken / thrown past 3b, mean error | 15.1 / 14.2 | 9.3 / 9.1 | 9.2 / 9.1 |
+| | Glass thrown, hurt mean error | 1.89 | 1.35 | 1.35 |
+| The square's frames | Blown out / thrown past 3b, within 0.1 | 96.5 / 94.2% | 99.1 / 98.8% | 99.1 / 98.9% |
+| | Some broken / thrown past 3b, mean error | 21.6 / 21.1 | 14.2 / 12.1 | 13.8 / 12.1 |
+| The street's frames | Blown out / thrown past 3b, within 0.1 | 97.8 / 94.5% | 98.9 / 99.4% | 98.9 / 99.3% |
+| Mixed seed 7, 2 m | Blown out / thrown past 3b, within 0.1 | 97.0 / 94.2% | 98.6 / 98.2% | 98.7 / 98.4% |
+| Mixed seed 7, 4 m | Blown out / thrown past 3b, within 0.1 | 99.0 / 98.2% | 99.3 / 99.3% | 99.2 / 99.3% |
+| The explorer's Beirut, 6 m | Blown out / thrown past 3b, within 0.1 | 99.3 / 98.6% | 99.5 / 99.3% | 99.5 / 99.4% |
+| The explorer's Beirut, 4 m | Blown out / thrown past 3b, within 0.1 | 98.5 / 96.5% | 99.0 / 98.7% | 99.0 / 98.7% |
+
+On the same three-band data every measure improves. The seeds agree within 0.2 of a point on within 0.1, and within 0.6 on the mean errors (×1000).
+Against the shipped networks on one band, the problem they were trained for, the 2 m scenes' mean
+errors are higher with three bands. The square's some broken is 10.0 with one band and 14.2 with
+three; its thrown past 3b within 0.1 is 99.3% with one band and 98.8% with three. A side read by
+three strips is the harder answer to learn.
+
+**Following the three-band CPU preview, and the full estimate.** `scenebench budget-plan --follow`,
+people hurt (Kummer), the live response over the CPU's own preview (live/CPU) and over the full
+estimate (live/full), at each place:
+
+| Scene | Networks | Live/CPU preview | Live/full estimate |
+|---|---|---|---|
+| Square (6 places) | Built in, one band (as shipped) | −0.4 to +0.2% | +11 to +73% |
+| | Built in, three bands | +1.5 to +24.6% | −1.4 to +27.2% |
+| | Seed 1, three bands | −1.4 to +0.7% | −3.3 to +2.3% |
+| | Seed 2, three bands | −0.4 to +1.1% | −3.3 to +3.3% |
+| Street (5 places) | Built in, three bands | 0.0 to +1.2% | −2.6 to −1.0% |
+| | Seed 1, three bands | −0.3 to +0.1% | −3.0 to −2.0% |
+| Beirut (3 places) | Built in, one band | −1.0 to −0.8% | +0.4 to +2.5% |
+| | Built in, three bands | −0.4 to +0.3% | −1.7 to −0.2% |
+| | Seed 1, three bands | −0.8 to −0.6% | −1.9 to −1.2% |
+| | Seed 2, three bands | −1.2 to −1.0% | −2.3 to −1.7% |
+
+**The app's path** (what lies outside the training to the CPU), with seed 1:
+- **The square:** 0–1 of its 398 buildings go to the CPU, against about 150 with the built-in
+  networks on three bands. A frame takes 2.3–6.9 ms.
+- **The street:** 0–2 of 781 buildings, 3.1–14.7 ms.
+- **Beirut:** 7–9 of about 2,870 buildings.
+
+**The budget optimiser on the live path**, the square, seed 1 (`budget-plan --judge --ranking 12`):
+- **From the middle:** the live search orders 98–100% of the pairs the full estimate tells apart as the
+  full estimate does (52–86 pairs). The one exception is 4 of the 5 pairs where only walls and glass
+  change.
+- **Outside the office:** 100% (20 and 39 pairs).
+
+`LiveResponseRangeTests` and `LiveResponseFallbackTests` pass with their `known` and `leftToCPU`
+unchanged.
+
+**Against the rule:**
+- Held out against the CPU's answers: met on the same data. Every measure improves, beyond the seeds'
+  spread.
+- The square's buildings back on the networks, near 2–4 ms: met.
+- The square's ranking: met, 98–100%.
+- The full estimate: held or improved on the square (from +11 to +73% to −3 to +3%) and on the street.
+  On Beirut it is 0.2–1.0 point further below the full estimate than the built-in networks on three
+  bands, and as far from it as they are on one band.
+- Following the CPU preview within about 0.5%: **missed** on the square (seed 1 up to 1.4%, seed 2 up
+  to 1.1%) and on Beirut (0.6–1.2%). The street meets it (0.3%). The two seeds differ by up to 1.3
+  points on the square (−1.10% against +0.22% at the last place) and 0.5 on Beirut, so the gap is
+  about the seeds' own scatter.
+
+### Adopted (8 November 2026)
+
+The user adopted three bands on 8 November 2026: seed 1, with the follow limit set at about 1.5%,
+the seeds' own spread, in place of the 0.5% asked for on 4 November. Seed 1's largest miss is 1.38%,
+on the square. One band stays selectable by name.
+
+What was adopted, and what it costs:
+
+- **The miss against 0.5%.** Seed 1 follows the three-band CPU preview of people hurt within 1.4% on
+  the square (−1.38 to +0.72%) and 0.8% on Beirut (−0.59 to −0.75%); the street meets 0.5% (0.3%).
+  It passes only because the limit was moved.
+- **Beirut against the full estimate.** Seed 1 reads Beirut −1.2 to −1.9% against the full estimate,
+  0.2–1.0 point lower than the built-in networks read it on three bands (−0.2 to −1.7%).
+- **A harder answer on the 2 m scenes.** Against the CPU's own answers, the square's thrown past 3b
+  is within 0.1 on 98.8% of held-out rows, against 99.3% for the networks shipped until now on one
+  band. The square's some broken has a mean error of 14.2 (×1000), against 10.0. Those are different
+  answers to learn, so the comparison is not like for like, but a user's preview is that much less
+  close to its own CPU.
+- **What it buys.** The square's people, from 11–73% above the full estimate on one band to within
+  3.3% of it; its buildings on the networks (0–1 of 398 on the CPU), at 2.3–6.9 ms a frame; the budget
+  optimiser's square ranking at 98–100% of pairs (one subset of 5 pairs at 80%).
+- **The square and the street** are in the glass networks' training now, by their stand-off cases
+  (only their frames 9 modulo 10 are held out), so the follow check above is not independent of the
+  training on those two scenes. Mixed seed 7 and the explorer's Beirut remain held-out scenes.
+
+Built in: the glass network `ed243c62…` (with the component and walls networks as they were, byte for
+byte) and the glass thrown's `ccc8a19d…`, from `ml/bands-studio-s1`; the ranges rewritten;
+three bands the default (`FacadeLoadSurrogate.FacadeReading`). One band stays by name: `nearest-strip`
+in scenebench (`--facade-reading`), and in the app "Each façade read by its nearest strip (before
+8 November 2026)". The learned response was not trained on one band now, so with that choice it reads
+sides read differently from those it learned (new one-band follow: −1.6 to −0.5% on the square).
+
 ## Not done yet
 
 - **The selector for the field models** ([choosing the next runs](#choosing-the-next-runs-where-the-models-are-least-sure-2-november-2026)):

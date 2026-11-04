@@ -699,9 +699,12 @@ def measures(unit, net, folder, held):
                    for s, t in (("01", 0.1), ("002", 0.02))},
                 **{"%sError" % k: float((e[:, j] * wn).sum()) for j, k in enumerate(["hurt", "severe"])}}, len(x)
     within = np.abs(p - y) <= 0.1
-    return {k: float((within[:, j] * wn).sum()) for j, k in enumerate(
-        ["someBroken", "blownOut", "fractionBroken", "thrownPast3b", "openingsBlownOut"]
-        if unit == "side" else ["wallsModerate", "wallsHeavy", "roofModerate"])}, len(x)
+    names = (["someBroken", "blownOut", "fractionBroken", "thrownPast3b", "openingsBlownOut"]
+             if unit == "side" else ["wallsModerate", "wallsHeavy", "roofModerate"])
+    out = {k: float((within[:, j] * wn).sum()) for j, k in enumerate(names)}
+    if unit == "side":  # and each chance's mean error, which within 0.1 no longer tells apart
+        out.update({k + "Error": float((np.abs(p[:, j] - y[:, j]) * wn).sum()) for j, k in enumerate(names)})
+    return out, len(x)
 
 
 def judge(args):
@@ -722,6 +725,11 @@ def judge(args):
     shown = [("component", "levelExactWhereDamaged", "Component level, damaged rows"),
              ("component", "glassExact", "Component glass"),
              ("side", "someBroken", "Glass some broken"), ("side", "blownOut", "Glass blown out"),
+             ("side", "fractionBroken", "Glass fraction broken"), ("side", "thrownPast3b", "Glass thrown past 3b"),
+             ("side", "someBrokenError", "Glass some broken, mean error (×1000)"),
+             ("side", "blownOutError", "Glass blown out, mean error (×1000)"),
+             ("side", "fractionBrokenError", "Glass fraction broken, mean error (×1000)"),
+             ("side", "thrownPast3bError", "Glass thrown past 3b, mean error (×1000)"),
              ("building", "wallsModerate", "Walls moderate+"), ("building", "wallsHeavy", "Walls heavy+"),
              ("building", "roofModerate", "Roof moderate+"),
              ("thrown", "hurtWithin01", "Glass thrown, hurt within 0.1"),
@@ -809,7 +817,14 @@ def ranges(args):
     thrown_digest = (hashlib.sha256(Path(args.thrown_weights).read_bytes()).hexdigest()
                      if args.thrown_weights else None)
     nets = []
+    # `--side`: the glass network retrained on data of its own (three façade bands, 4 November 2026).
+    # The base's side rows are still drawn first, so that the networks after it take the same draws
+    # and their ranges stay as they were; the side's are then drawn from its own folders.
+    if args.side:
+        units.append(("side-own", base_folders(args.side)))
     for unit, folders_ in units:
+        own = unit == "side-own"
+        unit = "side" if own else unit
         xs, ws = [], []
         for f in folders_:
             x, _, w, _ = rows(f, unit)
@@ -818,10 +833,15 @@ def ranges(args):
                 ws.append(w)
         x = np.concatenate(xs)
         w = np.concatenate(ws)
-        pick = rng.choice(len(x), size=min(args.sample, len(x)), replace=False, p=w / w.sum())
+        pick = (np.random.default_rng(2) if own else rng).choice(
+            len(x), size=min(args.sample, len(x)), replace=False, p=w / w.sum())
         low = np.quantile(x[pick], 0.001, axis=0)
         high = np.quantile(x[pick], 0.999, axis=0)
-        nets.append((unit, feature_names(unit, x.shape[1]), low, high))
+        entry = (unit, feature_names(unit, x.shape[1]), low, high)
+        if own:
+            nets[[n[0] for n in nets].index("side")] = entry
+        else:
+            nets.append(entry)
         print("%s: %d rows of %d, %d inputs" % (unit, len(pick), len(x), x.shape[1]), flush=True)
     sources = sorted({f.parent.parent.name + "/" + f.parent.name for _, fs in units for f in fs})
     Path(args.out).write_text(ranges_swift(digest, thrown_digest, sources, nets))
@@ -962,6 +982,7 @@ def main(argv=None):
     p.add_argument("--weights", required=True, help="the built-in weights (.bclr), whose SHA-256 the file names")
     p.add_argument("--units", default="component,side,building")
     p.add_argument("--thrown", help="the thrown network's training folders, comma-separated")
+    p.add_argument("--side", help="the glass network's own training folders, if not the base's")
     p.add_argument("--thrown-weights", help="the thrown network's built-in weights (.bclr)")
     p.add_argument("--sample", type=int, default=400000)
     p.add_argument("--out", default=str(REPO / "Sources" / "BlastModel" / "LiveResponse+Ranges.swift"))

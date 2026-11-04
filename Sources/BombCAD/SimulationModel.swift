@@ -913,6 +913,21 @@ final class SimulationModel {
     /// A key of its own: "quickEstimate.barrierShielding" chose the shelter as a candidate before its
     /// adoption, the opposite of this.
     static let barrierAsBuildingKey = "quickEstimate.barrierAsBuildingOf3November"
+    /// Whether the preview reads each façade by its nearest strip alone, as before 8 November 2026
+    /// (`FacadeLoadSurrogate.FacadeReading.nearestStrip`), in place of three bands of each façade by
+    /// distance, adopted then (emmettl/bombcad-work#117): to reproduce an earlier preview. Off unless
+    /// chosen, and remembered.
+    var quickEstimateNearestStrip = UserDefaults.standard.bool(forKey: SimulationModel.nearestStripKey) {
+        didSet {
+            learnedDefaults.set(quickEstimateNearestStrip, forKey: Self.nearestStripKey)
+            estimateChoiceChanged()
+        }
+    }
+    static let nearestStripKey = "quickEstimate.nearestStripOf8November"
+    /// How the preview reads each façade (`Prepared.facadeBands`).
+    var facadeReading: FacadeLoadSurrogate.FacadeReading {
+        quickEstimateNearestStrip ? .nearestStrip : .adopted
+    }
     /// The façade terms and load scatter the quick estimate and the far field take.
     var surrogateTerms: FacadeLoadSurrogate.TermSet {
         if quickEstimateFirstFitTerms { return .fitted }

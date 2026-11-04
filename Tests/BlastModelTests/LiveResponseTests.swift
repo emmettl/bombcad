@@ -263,10 +263,13 @@ struct LiveResponseTests {
     )
     func facadeBands() throws {
         let scene = try FacadeGlassProbabilityTests.row()
-        let one = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+        let one = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2).reading(.nearestStrip)
         let three = one.withFacadeBands(3)
-        // One by default, the preview the networks were trained on.
-        #expect(FacadeLoadSurrogate.Prepared.defaultFacadeBands == 1)
+        // Three by default since 8 November 2026, the preview the glass networks were retrained on; the
+        // nearest strip alone kept by name.
+        #expect(FacadeLoadSurrogate.Prepared.defaultFacadeBands == 3)
+        #expect(FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2).facadeBands == 3)
+        #expect(FacadeLoadSurrogate.FacadeReading(rawValue: "nearest-strip")?.bands == 1)
         for place in [scene.charge.position, SIMD3(100, 10, 1), SIMD3(390, 59, 2)] {
             let a = one.choices(charge: place)
             let b = three.choices(charge: place)

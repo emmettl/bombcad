@@ -65,7 +65,8 @@ struct PreparedDistrictTests {
     )
     func preview() throws {
         let scene = try FacadeGlassProbabilityTests.row()
-        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+        // The nearest strip for each façade, by name; three bands are `previewInBands`.
+        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2).reading(.nearestStrip)
         let charge = scene.charge.position
         let full = prepared.estimate(charge: charge, mass: Double(scene.charge.mass))
         let (preview, sides) = prepared.preview(charge: charge, mass: Double(scene.charge.mass))
@@ -95,7 +96,7 @@ struct PreparedDistrictTests {
         // holds the strips of two fronts at a right angle, one facing the charge and one away
         // (emmettl/bombcad-work#110).
         let scene = try SurrogateOutlineIncidenceTests.block(degrees: 45)
-        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2).reading(.nearestStrip)
         #expect(prepared.raster.incidence == .outline)
         let charge = scene.charge.position
         let mass = Double(scene.charge.mass)
@@ -147,9 +148,43 @@ struct PreparedDistrictTests {
         }
         // Without its outline, one strip a side, as facing as the cells.
         let plain = try SurrogateOutlineIncidenceTests.block(degrees: 45, keepsOutlines: false)
-        let (_, plainSides) = FacadeLoadSurrogate.Prepared(scene: plain, cellSize: 2).preview(
-            charge: charge, mass: mass)
+        let (_, plainSides) = FacadeLoadSurrogate.Prepared(scene: plain, cellSize: 2).reading(.nearestStrip)
+            .preview(charge: charge, mass: mass)
         #expect(!plainSides.isEmpty && plainSides.allSatisfy { $0.strips.count == 1 })
+    }
+
+    @Test(
+        "Read in three bands, the default, a preview's estimate is the nearest strip's, and each side keeps its area over strips of its own"
+    )
+    func previewInBands() throws {
+        for scene in [
+            try FacadeGlassProbabilityTests.row(), try SurrogateOutlineIncidenceTests.block(degrees: 45),
+        ] {
+            let three = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+            #expect(three.facadeBands == 3)
+            let one = three.reading(.nearestStrip)
+            let charge = scene.charge.position
+            let mass = Double(scene.charge.mass)
+            let (estimate, sides) = three.preview(charge: charge, mass: mass)
+            let (nearest, nearestSides) = one.preview(charge: charge, mass: mass)
+            // The damage's and the walls' strips are not touched: the bands are for the glass alone.
+            #expect(estimate.components.map(\.id) == nearest.components.map(\.id))
+            #expect(estimate.features == nearest.features)
+            let fullSides = three.glassSides(three.estimate(charge: charge, mass: mass))
+            #expect(sides.count == fullSides.count && sides.count == nearestSides.count)
+            var more = 0
+            for ((a, b), c) in zip(zip(sides, fullSides), nearestSides) {
+                #expect(a.axis == b.axis && a.outward == b.outward)
+                let area = b.strips.reduce(0) { $0 + $1.areaM2 }
+                #expect(abs(a.strips.reduce(0) { $0 + $1.areaM2 } - area) < 1e-6)
+                // Each strip one of the side's own, the nearest strips still among them.
+                #expect(a.strips.allSatisfy { s in b.strips.contains { $0.features == s.features } })
+                #expect(c.strips.allSatisfy { s in a.strips.contains { $0.features == s.features } })
+                #expect(a.strips.count >= c.strips.count && a.strips.count <= 3 * c.strips.count)
+                more += a.strips.count - c.strips.count
+            }
+            #expect(more > 0)
+        }
     }
 
     @Test(

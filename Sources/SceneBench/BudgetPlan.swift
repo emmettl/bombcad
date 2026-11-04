@@ -47,7 +47,7 @@ enum BudgetPlanBench {
         let laying = ContinuousClock.now
         let prepared = FacadeLoadSurrogate.Prepared(
             scene: scene, cellSize: dx, incidence: terms.coefficients.incidence
-        ).withFacadeBands(value("bands").flatMap(Int.init) ?? FacadeLoadSurrogate.Prepared.defaultFacadeBands)
+        ).withFacadeBands(try SurrogateBench.facadeBands(args))
         print(
             String(
                 format:

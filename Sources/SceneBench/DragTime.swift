@@ -38,8 +38,10 @@ enum DragTime {
         }
         func seconds(_ start: ContinuousClock.Instant) -> Double { DistrictBenchmark.seconds(start) }
 
+        let bands = try SurrogateBench.facadeBands(args)
         let prepared = FacadeLoadSurrogate.Prepared(
-            scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
+            scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args)
+        ).withFacadeBands(bands)
         // `--live [--response file.bclr] [--engine cpu]`: the previews judged by the learned response
         // (emmettl/bombcad-work#112), its weights built in unless given, on the GPU unless asked.
         var live: LiveResponse.Model?
@@ -441,7 +443,8 @@ enum DragTime {
             var dragUncertainty = uncertainty(previewDraws)
             dragUncertainty.stratified = true
             var dragged = FacadeLoadSurrogate.Prepared(
-                scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args))
+                scene: scene, cellSize: dx, incidence: SurrogateBench.incidence(args)
+            ).withFacadeBands(bands)
             dragged.glassResponses = previewResponses
             var learned: LearnedField.Estimator?
             if let weights = value("weights") {

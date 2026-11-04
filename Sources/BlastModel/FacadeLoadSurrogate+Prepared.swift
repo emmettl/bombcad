@@ -75,12 +75,11 @@ extension FacadeLoadSurrogate {
         /// How many strips stand for each façade group in a preview, by their distance from the charge
         /// (`choices`): the nearest for the nearest band of equal area, and each further band's middle
         /// strip for its own (emmettl/bombcad-work#117; docs/protective-design.md, "A charge kept back,
-        /// read by the preview"). One, the nearest standing for the whole group, the preview as the
-        /// learned response was trained on it, by default. Three follows the full estimate as a charge
-        /// is kept back, but the networks were not trained on sides read so; it waits for the user's
-        /// decision on a retrain.
+        /// read by the preview"). Three by default since the user's decision of 8 November 2026, the
+        /// glass networks retrained on sides read so (docs/learned-models.md, "Three façade bands");
+        /// one, the nearest standing for the whole group, is the preview before (`FacadeReading`).
         public var facadeBands = Prepared.defaultFacadeBands
-        public static let defaultFacadeBands = 1
+        public static let defaultFacadeBands = FacadeReading.adopted.bands
         /// The same layout with `bands` strips for each façade group.
         public func withFacadeBands(_ bands: Int) -> Prepared {
             var copy = self

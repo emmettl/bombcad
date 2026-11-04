@@ -1494,6 +1494,11 @@ Without that, three bands would either be judged by the networks badly on the sq
 its buildings to the CPU at four to five times the frame time. The budget optimiser does not need it
 to answer well: its finalists already bring the stand-off to the full estimate.
 
+**Adopted, 8 November 2026.** The user approved the retrain on 4 November and adopted three bands
+on 8 November, with the networks retrained on them and one band kept by name
+([the retrain, its numbers and what it costs](learned-models.md#adopted-8-november-2026)). The text
+above is the state before that.
+
 ## Open questions
 
 - **Shielding.**
