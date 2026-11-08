@@ -178,7 +178,7 @@ rock is more broken. They cut about 36,000 coarse Voronoi cells into 91,208 slab
 large blocks among fines. The shader colours by the same bed coordinate the fracture uses, and tells
 weathered skin, old joint faces (iron-stained) and fresh breaks apart. A strip's end is ragged rather
 than straight; the terrain under the render-only rock is pulled in behind it, which removed the striped
-wall. The camera is closer and low, with the floor cut to a thin band. The swell is a coherent drift
+wall. The camera is closer and low; the floor still fills about a quarter to a third of the frame. The swell is a coherent drift
 of up to 3.4 m over 0.8 to 1.25 s before release.
 
 **The window.** Run it from a checkout (the build takes about two minutes):
@@ -198,8 +198,9 @@ new one is ready. The first event is computed at start-up (about 24 s), with pro
   steps a drawn frame, so the dust can be a moment behind the rock right after a jump and catches up.
   A jump past anything played yet replays from the last stored field, which can take a couple of seconds.
 - *Chips and gravel* are not rewound: on a jump backward the chips reset and fly again from there.
-- **Memory:** poses 836 MB, dust keyframes up to 599 MB, dust fields 168 MB; 3.2 GB footprint running,
-  4.1 GB during a refire, which holds two pose caches until it swaps.
+- **Memory:** poses 836 MB, dust keyframes up to 599 MB once the whole event has been played, dust
+  fields 168 MB. The footprint measured 3.2 GB after the first fire and 4.1 GB after a refire, in both
+  cases with few keyframes stored yet, so allow about 600 MB more once every second has been played.
 
 **Measured live loop**, this time a real one (`play --self-test`, which runs the same session object
 the window draws, on a scripted sequence), 91,208 blocks at 1600 x 900:
@@ -208,7 +209,7 @@ the window draws, on a scripted sequence), 91,208 blocks at 1600 x 900:
 |---|---|---|
 | Playing | 13 ms median, 20 ms p90 (77 fps, 50 fps) | 25 ms main-thread work a frame, 27 ms p90 (a ceiling of 40 fps) |
 | Scrubbing to a random frame and orbiting, every frame | 40 ms (25 fps) | 40 ms work (25 fps) |
-| While refiring | drawing held to 15 frames a second | same |
+| While refiring | drawing held to 15 frames a second | drew at the timer's 30 frames a second (25 ms of work); with its display link the window holds to 15 |
 
 The window column comes from a real NSWindow with real drawables, but behind other windows and paced
 by a 60 Hz timer (so as not to put a window over the user's screen, and because the view's own display
@@ -218,10 +219,15 @@ number is the work per frame. Refire takes **22 to 24 s** (the physics, with dra
 the 18 s hoped for; the rock now has 91,000 blocks at 5.9 spheres each and physics is 35 to 55 ms a
 frame. The dust is made on first playback, not in that time.
 
-**Stability:** no NaNs, no stray launches; speed capped at 45 m/s, as before.
+**Stability:** no NaNs, but it is not clean. Some blocks are thrown up to the 45 m/s speed cap by
+contact (26 of 600 frames have one at the cap), which is a contact fault, not a launch: the launch
+law gives at most about 18 m/s. The pile is calm but less settled than stage 1's: in the last second
+of the 20 s event the median block moved 0, the 99th percentile 2.9 cm and the worst 1.27 m, and 82 of
+91,208 moved more than 10 cm.
 
 **The look, frankly.** A big step. The slabs and wedges look like broken rock at last, the colour by bed
 reads, the swell reads as a slab pulling away at the left end, and the closer low camera is a real
 composition. At 3 to 4 s it is close to beautiful. What is still wrong: a sheet of dust across the pile
 around 10 s is too flat and too sharply cut off; the settled pile lacks fine material (the gravel doesn't
-collect on it); the ragged end is not fully seamless; the live window's coarser dust is smoother.
+collect on it); the ragged end is not fully seamless; the live window's coarser dust is smoother, and one
+frame of it showed a small white patch under the cloud that I did not trace.
