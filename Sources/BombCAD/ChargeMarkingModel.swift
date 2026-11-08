@@ -82,7 +82,8 @@ final class ChargeMarkingModel {
     /// How the marks are weighed together (stage 3: `ChargeFromDamage.Weighing.adopted`; stage 2's
     /// `independent` by choice).
     var weighing = ChargeFromDamage.Weighing.adopted
-    /// The scene's corner (0, 0) in longitude and latitude, for a survey placed by it.
+    /// The scene's corner (0, 0) in longitude and latitude, typed for a survey on a scene that
+    /// doesn't know its own place on the map (`SimulationModel.sceneLocation`).
     var cornerLongitude = ""
     var cornerLatitude = ""
     /// What the last survey loaded came to, in words; empty before one.
@@ -249,16 +250,18 @@ final class ChargeMarkingModel {
     func loadSurvey(_ url: URL, _ model: SimulationModel) async {
         guard let marking, !isWorking else { return }
         let charge = model.settings.chargePosition
-        let corner = corner
+        let location = model.sceneLocation ?? corner.map(SceneLocation.init(corner:))
         let ids = Array(plans.keys.filter { buildings[$0] != nil })
         let footprints = ids.map { plans[$0]!.rects }
+        let farIDs = Set(model.farFieldSet?.buildings.map(\.id) ?? [])
+        let far = Set(ids.indices.filter { farIDs.contains(ids[$0]) })
         isWorking = true
         defer { isWorking = false }
         let read = await Task.detached(priority: .userInitiated) {
             Result {
                 let survey = try ChargeFromDamage.readSurvey(
-                    url, corner: corner, charge: SIMD2(Double(charge.x), Double(charge.y)))
-                return (survey, ChargeFromDamage.match(survey, footprints: footprints))
+                    url, location: location, charge: SIMD2(Double(charge.x), Double(charge.y)))
+                return (survey, ChargeFromDamage.match(survey, footprints: footprints, far: far))
             }
         }.value
         switch read {
@@ -276,7 +279,6 @@ final class ChargeMarkingModel {
                 list.append(
                     (id, ChargeFromDamage.Mark(building: building, glass: seen.glass, walls: seen.walls)))
             }
-            let farIDs = Set(model.farFieldSet?.buildings.map(\.id) ?? [])
             let onFar = list.filter { farIDs.contains($0.id) }.count
             surveyReport = Self.surveyWords(
                 file: url.lastPathComponent, survey: survey, match: match, buildings: list.count, far: onFar)
@@ -333,6 +335,8 @@ final class ChargeMarkingModel {
         marking = nil
         readFor = nil
         wallsAs = [:]
+        cornerLongitude = ""
+        cornerLatitude = ""
         surveyReport = ""
         counts = Counts()
         paint = nil

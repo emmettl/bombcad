@@ -659,6 +659,10 @@ final class SimulationModel {
 
     // MARK: - The far field
 
+    /// Where the scene lies on the map, as New District laid it out (`SceneLocation`, saved with the
+    /// project): how a survey's longitudes and latitudes reach its buildings. Nil for other scenes.
+    var sceneLocation: SceneLocation?
+
     /// A district's buildings beyond its near field (New District's near field and far field): kept
     /// beside the scene, outside its air, drawn after it and judged after each run.
     var farFieldSet: FarFieldSet? {
@@ -1138,6 +1142,7 @@ final class SimulationModel {
             thermalSpec = document.thermal
             cloudSpec = document.cloud
             farFieldSet = document.farField
+            sceneLocation = document.location
             chargeMarking.restore(document.chargeMarks)
             projectArchive = document.archive
             projectDocumentID = document.documentID

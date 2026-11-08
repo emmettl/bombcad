@@ -8,14 +8,19 @@ extension ChargeFromDamage {
     /// and whether the survey says its walls are stone (masonry, which the network weighs as such).
     public struct SurveyEntry: Sendable, Equatable {
         public var place: SIMD2<Double>
+        /// Where it lies among the far field's buildings, if they have a mapping of their own
+        /// (`SceneLocation.far`); nil for `place`.
+        public var farPlace: SIMD2<Double>?
         public var glass: GlassSeen?
         public var walls: WallsSeen?
         public var masonry: Bool
 
         public init(
-            place: SIMD2<Double>, glass: GlassSeen? = nil, walls: WallsSeen? = nil, masonry: Bool = false
+            place: SIMD2<Double>, farPlace: SIMD2<Double>? = nil, glass: GlassSeen? = nil,
+            walls: WallsSeen? = nil, masonry: Bool = false
         ) {
             self.place = place
+            self.farPlace = farPlace
             self.glass = glass
             self.walls = walls
             self.masonry = masonry
@@ -61,6 +66,14 @@ extension ChargeFromDamage {
     /// Places in longitude and latitude are put on the scene by its corner (0, 0), `corner`.
     public static func readSurvey(_ url: URL, corner: SIMD2<Double>?, charge: SIMD2<Double>) throws -> Survey
     {
+        try readSurvey(url, location: corner.map(SceneLocation.init(corner:)), charge: charge)
+    }
+
+    /// `readSurvey`, with places in longitude and latitude put on the scene by where it lies on the
+    /// map, as its buildings were (`SceneLocation`, kept by New District); nil where that isn't known.
+    public static func readSurvey(_ url: URL, location: SceneLocation?, charge: SIMD2<Double>) throws
+        -> Survey
+    {
         var survey = Survey()
         var isFolder: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder) else {
@@ -83,13 +96,13 @@ extension ChargeFromDamage {
         let shapeFiles = Set(
             files.filter { $0.pathExtension.lowercased() == "shp" }.map { $0.deletingPathExtension().path })
         let paths = Set(files.map(\.path))
-        func placed(_ lonLat: SIMD2<Double>) throws -> SIMD2<Double> {
-            guard let corner else {
+        func placed(_ lonLat: SIMD2<Double>) throws -> (place: SIMD2<Double>, far: SIMD2<Double>?) {
+            guard let location else {
                 throw ChargeInferenceInputs.ReadError(
-                    "Give the longitude and latitude of the scene's corner, to put the survey on its buildings."
+                    "This survey gives longitudes and latitudes, and this project doesn't record where its scene lies on the map: it was made before New District kept that, or not from a map. Give the longitude and latitude of the scene's corner (0, 0), or load a marks CSV in the scene's metres."
                 )
             }
-            return MapBuildingPlacement(origin: corner, resolution: 1).position(lonLat)
+            return (location.scene.position(lonLat), location.far?.position(lonLat))
         }
         for file in files {
             switch file.pathExtension.lowercased() {
@@ -122,8 +135,10 @@ extension ChargeFromDamage {
                             survey.skipped += 1
                             continue
                         }
+                        let at = try placed(centre)
                         survey.entries.append(
-                            SurveyEntry(place: try placed(centre), glass: level >= 1 ? .broken : .whole))
+                            SurveyEntry(
+                                place: at.place, farPlace: at.far, glass: level >= 1 ? .broken : .whole))
                         used += 1
                     }
                     if used > 0 {
@@ -150,8 +165,9 @@ extension ChargeFromDamage {
                             survey.skipped += 1
                             continue
                         }
+                        let at = try placed(SIMD2(lon, lat))
                         survey.entries.append(
-                            SurveyEntry(place: try placed(SIMD2(lon, lat)), walls: seen, masonry: stone))
+                            SurveyEntry(place: at.place, farPlace: at.far, walls: seen, masonry: stone))
                         used += 1
                     }
                     if used > 0 {
@@ -183,9 +199,10 @@ extension ChargeFromDamage {
                             survey.skipped += 1
                             continue
                         }
+                        let at = try placed(SIMD2(f[1], f[0]))
                         survey.entries.append(
                             SurveyEntry(
-                                place: try placed(SIMD2(f[1], f[0])), glass: f[2] >= 1 ? .broken : .whole))
+                                place: at.place, farPlace: at.far, glass: f[2] >= 1 ? .broken : .whole))
                         used += 1
                     }
                     if used > 0 {
@@ -246,9 +263,11 @@ extension ChargeFromDamage {
 
     /// Puts `survey` on the buildings whose blocks' plans are `footprints` (each a list of
     /// rectangles, the scene's metres): each entry on the building it stands in, or the nearest
-    /// within `within` m, as `charge-from-damage table --structure` matches GEER's buildings.
+    /// within `within` m, as `charge-from-damage table --structure` matches GEER's buildings. The
+    /// buildings at the indices `far` are the far field's, sought at each entry's `farPlace`.
     public static func match(
-        _ survey: Survey, footprints: [[(low: SIMD2<Double>, high: SIMD2<Double>)]], within: Double = 15
+        _ survey: Survey, footprints: [[(low: SIMD2<Double>, high: SIMD2<Double>)]], within: Double = 15,
+        far: Set<Int> = []
     ) -> SurveyMatch {
         var result = SurveyMatch()
         // Bucketed by 100 m squares.
@@ -267,18 +286,25 @@ extension ChargeFromDamage {
             for k in keys { buckets[k, default: []].append(n) }
         }
         for entry in survey.entries {
-            let k = key(entry.place)
             var best: (Int, Double)?
-            for dx in -1...1 {
-                for dy in -1...1 {
-                    for n in buckets[k &+ SIMD2(dx, dy)] ?? [] {
-                        for r in footprints[n] {
-                            let d = simd_length(
-                                simd_max(simd_max(r.low - entry.place, entry.place - r.high), .zero))
-                            if d <= within, best.map({ d < $0.1 }) ?? true { best = (n, d) }
+            func search(_ place: SIMD2<Double>, among wanted: (Int) -> Bool) {
+                let k = key(place)
+                for dx in -1...1 {
+                    for dy in -1...1 {
+                        for n in buckets[k &+ SIMD2(dx, dy)] ?? [] where wanted(n) {
+                            for r in footprints[n] {
+                                let d = simd_length(simd_max(simd_max(r.low - place, place - r.high), .zero))
+                                if d <= within, best.map({ d < $0.1 }) ?? true { best = (n, d) }
+                            }
                         }
                     }
                 }
+            }
+            if let farPlace = entry.farPlace, !far.isEmpty {
+                search(entry.place) { !far.contains($0) }
+                search(farPlace) { far.contains($0) }
+            } else {
+                search(entry.place) { _ in true }
             }
             guard let (n, _) = best else {
                 result.unmatched += 1
@@ -337,7 +363,8 @@ extension ChargeFromDamage {
 
     /// The marks kept with a project (`chargeMarks.json`; emmettl/bombcad-work#116, stage 3): each
     /// building's by its id, the place searched about if it was moved, the weighing, and the
-    /// scene's corner a survey was put on by. A project saved before has none.
+    /// corner typed for a survey on a scene that doesn't know its own place on the map
+    /// (`SceneLocation` where it does). A project saved before has none.
     public struct SavedMarks: Codable, Sendable, Equatable {
         public struct Saved: Codable, Sendable, Equatable {
             public var id: UUID

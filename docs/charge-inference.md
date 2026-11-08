@@ -911,6 +911,13 @@ sheet does. A stone building's walls are weighed as masonry. The panel then says
 matched, on how many buildings (and how many of those are the far field's), how many found no
 building, and how many records were left out because their class is not one the network weighs.
 
+*8 November 2026:* a File ▸ New District project now keeps its place on the map (`location.json`,
+`SceneLocation`), and the panel uses it without asking: the survey's places are worked out by the
+same mapping about the same corner as the buildings were, the far field's by its own (the whole
+district's corner has its own cosine of latitude, metres apart across a district). A project saved
+before has no such file and opens as it did; the panel says why a survey in longitude and latitude
+can't be placed there and takes a typed corner, as before.
+
 **Beirut's survey through it** (`charge-from-damage survey`, the panel's code headless: the 2.5 km
 scene, the corner 35.491954 E, 33.878942 N). The survey's data are on StudioData under
 Beirut2020/GEER2021 with its SOURCE.md (ODC-By), not committed.

@@ -156,6 +156,7 @@ extension SimulationModel {
     func select(_ preset: ScenarioPreset) {
         // A preset replaces the scene within this project; retained assets support undo.
         settings.preset = preset
+        sceneLocation = nil
         adopt(preset.scenario)
     }
 
@@ -166,6 +167,7 @@ extension SimulationModel {
         savedRuns = []
         projectArchive = nil
         projectDocumentID = UUID()
+        sceneLocation = nil
         adopt(scenario)
         undoStack.removeAll()
         redoStack.removeAll()
@@ -187,6 +189,7 @@ extension SimulationModel {
         thermalSpec = document.thermal
         cloudSpec = document.cloud
         farFieldSet = document.farField
+        sceneLocation = document.location
         chargeMarking.restore(document.chargeMarks)
         projectArchive = document.archive
         projectDocumentID = document.documentID

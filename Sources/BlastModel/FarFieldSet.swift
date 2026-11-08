@@ -96,9 +96,7 @@ extension DistrictLayout {
         handoverM: Float, nearHalfSide: Float, radius: Float, halfSide: Float, cellSize: Float,
         name: String? = nil, footprintCells: Float? = nil
     ) throws -> (near: Scenario, far: FarFieldSet, report: MapBuildingReport) {
-        // Corners a whole number of cells apart, so that the cells line up.
-        let near = (nearHalfSide / cellSize).rounded(.up) * cellSize
-        let whole = max((halfSide / cellSize).rounded(.up) * cellSize, near)
+        let (near, whole) = hybridSides(nearHalfSide: nearHalfSide, halfSide: halfSide, cellSize: cellSize)
         // Its top clear over the hand-over, which the near run's façades reach.
         let (nearScene, report) = try scene(
             halfSide: near, cellSize: cellSize, name: name, footprintCells: footprintCells,

@@ -119,16 +119,31 @@
                     .help(
                         "Mark the buildings a survey saw, in place of these marks: a marks CSV, GEER's façade shapefile or structural .dbf, a CSV of lat,lon,class, or a folder of them"
                     )
-                HStack {
-                    Text("Corner").font(.caption)
-                    TextField("Longitude", text: $marking.cornerLongitude).frame(width: 90)
-                        .accessibilityLabel("Scene corner longitude")
-                    TextField("Latitude", text: $marking.cornerLatitude).frame(width: 90)
-                        .accessibilityLabel("Scene corner latitude")
+                if let location = model.sceneLocation {
+                    Text(
+                        "New District kept this scene's place on the map (corner \(location.scene.latitude.formatted(.number.precision(.fractionLength(5)))), \(location.scene.longitude.formatted(.number.precision(.fractionLength(5))))), so a survey's longitudes and latitudes land on its buildings."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    HStack {
+                        Text("Corner").font(.caption)
+                        TextField("Longitude", text: $marking.cornerLongitude).frame(width: 90)
+                            .accessibilityLabel("Scene corner longitude")
+                        TextField("Latitude", text: $marking.cornerLatitude).frame(width: 90)
+                            .accessibilityLabel("Scene corner latitude")
+                    }
+                    .help(
+                        "The longitude and latitude of the scene's corner (0, 0), as a map import places it, to put a survey's places on the scene"
+                    )
+                    if marking.corner == nil {
+                        Text(
+                            "This project doesn't record where its scene lies on the map (it was made before New District kept that, or not from a map), so a survey in longitudes and latitudes can't be placed until you give the corner above. A marks CSV in the scene's metres needs none."
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                .help(
-                    "The longitude and latitude of the scene's corner (0, 0), as a map import places it, to put a survey's places on the scene"
-                )
                 if !marking.surveyReport.isEmpty {
                     Text(marking.surveyReport).font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

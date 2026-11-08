@@ -257,6 +257,9 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     /// The buildings marked in Read the Charge from the Damage, saved as `chargeMarks.json`
     /// (emmettl/bombcad-work#116); a project saved before has none.
     var chargeMarks: ChargeFromDamage.SavedMarks?
+    /// Where a New District scene lies on the map, for a survey's longitudes and latitudes, saved
+    /// as `location.json` (emmettl/bombcad-work#116); a project saved before has none.
+    var location: SceneLocation?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -299,6 +302,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         cloud = model.cloudSpec
         farField = model.farFieldSet
         chargeMarks = model.chargeMarking.saved
+        location = model.sceneLocation
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -426,6 +430,13 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         if let data = archive.files["chargeMarks.json"] {
             chargeMarks = try JSONDecoder().decode(ChargeFromDamage.SavedMarks.self, from: data)
         }
+        if let data = archive.files["location.json"] {
+            let place = try Self.decodeProjectJSON(SceneLocation.self, from: data, file: "location.json")
+            guard place.isValid else {
+                throw ProjectFileError.invalid("The project's place on the map (location.json) is invalid.")
+            }
+            location = place
+        }
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -495,6 +506,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             files["chargeMarks.json"] = try ProjectArchive.encodeJSON(chargeMarks)
         } else {
             files.removeValue(forKey: "chargeMarks.json")
+        }
+        if let location {
+            files["location.json"] = try ProjectArchive.encodeJSON(location)
+        } else {
+            files.removeValue(forKey: "location.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.

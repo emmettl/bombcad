@@ -136,10 +136,7 @@ public struct DistrictLayout: Sendable {
         halfSide: Float, cellSize: Float, radius: Float? = nil, height: Float? = nil, name: String? = nil,
         footprintCells: Float? = nil, topRadius: Float? = nil, offset: SIMD2<Float> = .zero
     ) throws -> (scene: Scenario, report: MapBuildingReport) {
-        let corner = SIMD2(
-            charge.x - Double(halfSide - offset.x)
-                / (ElevationGrid.metresPerDegree * cos(charge.y * .pi / 180)),
-            charge.y - Double(halfSide - offset.y) / ElevationGrid.metresPerDegree)
+        let corner = corner(halfSide: halfSide, offset: offset)
         let at = SIMD2(halfSide, halfSide) - offset
         let placed = radius.map { buildings(within: $0) } ?? buildings
         var scene = Scenario(

@@ -191,5 +191,21 @@ struct ChargeMarkingTests {
         await again.chargeMarking.loadSurvey(geer, again)
         #expect(again.chargeMarking.error?.contains("corner") == true)
         #expect(again.chargeMarking.counts.buildings == 2)
+        // A scene that knows its place on the map needs no corner typed, and keeps it when saved.
+        let corner = SIMD2(35.5, 33.9)
+        again.sceneLocation = SceneLocation(corner: corner)
+        let block = try #require(again.settings.scenario.envelopeObjects.first { $0.id == ids[0] })
+        let middle = try #require(block.envelope?.blocks.first).middleForTest
+        let east = ElevationGrid.metresPerDegree * cos(corner.y * .pi / 180)
+        let there = corner + SIMD2(Double(middle.x) / east, Double(middle.y) / ElevationGrid.metresPerDegree)
+        try "lat,lon,class\n\(there.y),\(there.x),2\n".write(to: geer, atomically: true, encoding: .utf8)
+        await again.chargeMarking.loadSurvey(geer, again)
+        #expect(again.chargeMarking.error == nil)
+        #expect(again.chargeMarking.mark(of: ids[0])?.glass == .broken)
+        #expect(ProjectDocument(model: again).location == again.sceneLocation)
     }
+}
+
+extension Box {
+    fileprivate var middleForTest: SIMD2<Float> { SIMD2((min.x + max.x) / 2, (min.y + max.y) / 2) }
 }

@@ -1,4 +1,5 @@
 import BlastCore
+import DocumentKit
 import Foundation
 import Testing
 import simd
@@ -162,6 +163,13 @@ struct NewDistrictTests {
         #expect(restored.scenario == preview.scenario)
         #expect(restored.runSettings == preview.document.runSettings)
         #expect(restored.scenario.envelopeObjects.count == preview.report.placed.count)
+        // Where it lies on the map, kept to the bit; a project saved before has no such file.
+        #expect(preview.document.location != nil && preview.document.location?.far == nil)
+        #expect(restored.location == preview.document.location)
+        let archive = try preview.document.makeArchive()
+        let older = try ProjectArchive(
+            manifest: archive.manifest, files: archive.files.filter { $0.key != "location.json" })
+        #expect(try ProjectDocument(archive: older).location == nil)
     }
 
     @Test("Less memory takes coarser cells; too little says so")
@@ -235,6 +243,9 @@ struct NewDistrictTests {
         #expect(preview.document.runSettings?.duration == DistrictLayout.duration(radius: 100))
         let reopened = try ProjectDocument(fileWrapper: preview.document.makeArchive().fileWrapper())
         #expect(reopened.farField == far)
+        // Its place on the map kept, the far field's own mapping with it.
+        #expect(preview.document.location?.far != nil)
+        #expect(reopened.location == preview.document.location)
         // Run it: the far buildings judged once the run ends.
         let app = SimulationModel(document: reopened, playbackSpeed: .unlimited)
         // A few draws: a debug build draws the glass's chances slowly.
@@ -257,6 +268,58 @@ struct NewDistrictTests {
         #expect(app.farFieldGlass.allSatisfy { (0...1).contains($0.someBroken) })
         // The project written back keeps the far set.
         #expect(ProjectDocument(model: app).farField == far)
+    }
+
+    @Test(
+        "A survey in longitudes and latitudes lands on a New District project's buildings, near and far, once reopened",
+        .hangLimit)
+    func surveyOnReopened() async throws {
+        let district = try model()
+        district.nearAndFar = true
+        district.airChoice = .uniform
+        district.cellSize = 5
+        await district.lay()
+        let preview = try #require(district.preview, "\(district.message ?? "")")
+        let reopened = try ProjectDocument(fileWrapper: preview.document.makeArchive().fileWrapper())
+        let location = try #require(reopened.location)
+        let far = try #require(reopened.farField)
+        // A map building in each part: its centre, and the object it became there.
+        let centres = try #require(district.layout).buildings.compactMap { building -> SIMD2<Double>? in
+            let ring = building.rings[0].dropLast()
+            return ring.reduce(SIMD2<Double>.zero, +) / Double(ring.count)
+        }
+        func inside(_ place: SIMD2<Double>, _ envelope: BuildingEnvelope) -> Bool {
+            envelope.blocks.contains {
+                place.x >= Double($0.min.x) && place.x <= Double($0.max.x) && place.y >= Double($0.min.y)
+                    && place.y <= Double($0.max.y)
+            }
+        }
+        var chosen: [(lonLat: SIMD2<Double>, id: UUID)] = []
+        if let near = centres.lazy.compactMap({ lonLat -> (SIMD2<Double>, UUID)? in
+            reopened.scenario.envelopeObjects.first { inside(location.scene.position(lonLat), $0.envelope!) }
+                .map { (lonLat, $0.id) }
+        }).first {
+            chosen.append(near)
+        }
+        if let onFar = centres.lazy.compactMap({ lonLat -> (SIMD2<Double>, UUID)? in
+            far.buildings.first { inside(location.far!.position(lonLat), $0.envelope) }
+                .map { (lonLat, $0.id) }
+        }).first {
+            chosen.append(onFar)
+        }
+        #expect(chosen.count == 2)
+        let file = FileManager.default.temporaryDirectory.appending(path: "survey-\(UUID().uuidString).csv")
+        defer { try? FileManager.default.removeItem(at: file) }
+        try ("lat,lon,class\n" + chosen.map { "\($0.lonLat.y),\($0.lonLat.x),2\n" }.joined())
+            .write(to: file, atomically: true, encoding: .utf8)
+        let app = SimulationModel(document: reopened)
+        app.refinesCloseCalls = false
+        app.showsChargeMarking = true
+        await app.chargeMarking.open(app)
+        await app.chargeMarking.loadSurvey(file, app)
+        #expect(app.chargeMarking.error == nil, "\(app.chargeMarking.error ?? "")")
+        for (_, id) in chosen { #expect(app.chargeMarking.mark(of: id)?.glass == .broken) }
+        #expect(ProjectDocument(model: app).location == location)
     }
 
     @Test("The advisor hands over only where the whole district would not run on 4 m cells within the hour")

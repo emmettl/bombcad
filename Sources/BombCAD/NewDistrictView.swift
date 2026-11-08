@@ -340,6 +340,7 @@ final class NewDistrictModel {
                 let name = String(format: "District at %.4f, %.4f", layout.charge.y, layout.charge.x)
                 let made: (scene: Scenario, report: MapBuildingReport)
                 var far: FarFieldSet?
+                var location = layout.location(halfSide: half)
                 if let handover {
                     // The near box's buildings in the air, those beyond it beside the scene.
                     let split = try layout.hybrid(
@@ -351,6 +352,8 @@ final class NewDistrictModel {
                     far?.trendReach = FarFieldSet.trendReachDefault
                     // The match carried flat, adopted on 25 October 2026 (emmettl/bombcad-work#99).
                     far?.matchFlat = true
+                    location = layout.hybridLocation(
+                        nearHalfSide: half, halfSide: radius + 2 * air.cellSize, cellSize: air.cellSize)
                 } else {
                     made = try layout.scene(
                         halfSide: half, cellSize: air.cellSize, radius: radius, name: name,
@@ -358,6 +361,7 @@ final class NewDistrictModel {
                 }
                 var document = ProjectDocument(scenario: made.scene)
                 document.farField = far
+                document.location = location
                 // The scene's own run settings, before either kind of air changes them.
                 let base = document.runSettings
                 let run = settings(
