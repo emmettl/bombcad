@@ -1,0 +1,115 @@
+# Hillside blast: a quarry face as a spectacle (experiment)
+
+**Standing: illustrative.** Like the crater's growth ([docs/cratering.md](cratering.md), "How it
+grows"), this is for the eye. The fracture pattern is a Voronoi tessellation chosen by eye; the
+firings are a stylised row at even spacing and time, with no charge masses, hole layouts or
+loadings of any kind; each firing only gives nearby blocks a velocity by the law below. Nothing
+here says anything about real fragmentation, flyrock reach or safe distances, and no code path
+offers it as a blast-design aid. It is an experiment, reachable only from the `hillsideblast`
+command, and it changes nothing in the solver or any existing result.
+
+emmettl/bombcad-work#122.
+
+## The experiment, 8 November 2026
+
+The question: can BombCAD show a hillside of about 100,000 rock blocks blasted, in real time or
+near it, and does it look like anything? Run: `hillsideblast simulate --blocks 110000 --seconds 20
+--out NAME`, then `hillsideblast render --blocks 110000 --poses NAME --out NAME --clip --stills
+…` (outputs under `$BOMBCAD_DATA/hillside-blast/`).
+
+**The scene.** A heightfield hillside with a steep face; in front of a new, excavated face the
+rock between the old surface and the new one is cut into jittered Voronoi cells (about 108,000
+blocks, mean edge 1 m, a spread of sizes from a density field and boulders that exclude other
+sites, with clip planes along both surfaces). Each block is a clump of spheres (1 to 24, about 5
+on average) inscribed in its polyhedron, so it is rigid and can interlock, drawn as its own
+polyhedron with fresh and weathered faces. The skin of blocks against the new face (about 16,500
+of them) never lets go, so the final face is rough, and the rest fires on its own time.
+
+**Firings and the law.** One row of 16 firing points along the face, staggered 0.1 s apart so a
+ripple runs along it. A block at distance r from its nearest firing lets go at that firing's time
+plus r / 200 m/s, with a speed v = 15 (3 / max(r, 3)) m/s, jittered by 0.7 to 1.2 and at least 0.25 m/s, along a
+direction with 0.33 to 0.55 added upward before normalising. For the 0.22 s before it lets go it
+drifts at a tenth of that speed, which is the swell. All of it chosen by eye, stated so the look can
+be reproduced; none of it is a load.
+
+**The solver.** `BlockSimulation`, a small Metal contact solver for clumps: hash grid, spring
+dashpot with mass-scaled stiffness, Coulomb friction regularised by a tangential viscous term,
+heightfield ground, held blocks immovable until fired, sleeping once still with a body-level
+creep damper for the supported and slow.
+
+**First measurement: the project's own rigid-body code does not scale to this.** The reference
+`RigidBodyWorld` (`hillsideblast rigid-scaling`) is CPU, single-thread sequential impulses: at
+10,000 boxes in contact on terrain one step of 1/240 s takes 6.5 s (120 ms at 1,000, 680 ms at
+3,000; an exponent of 1.6 to 1.9 between those), so 100,000 would take minutes a step by
+extrapolation; it was not run. That route was stopped there. The
+brief's fallback (rigid bodies for the big blocks and particles for the rest) turned out not to be
+needed: clumps on the GPU keep every block rigid.
+
+**Frame times.** One animation frame of 1/30 s is 8 substeps at 240 Hz. M4 Max Studio, GPU time of
+the whole step:
+
+| Blocks | Spheres | Frame median | Frame p90 | Against real time (median, p90) |
+|---:|---:|---:|---:|---|
+| 10,059 | 50 k | 3.1 ms | 3.8 ms | 11x, 9x |
+| 31,641 | 156 k | 9.6 ms | 11.6 ms | 3.5x, 2.9x |
+| 108,015 | 530 k | 41 ms | 47 ms | 0.8x, 0.7x |
+| 108,015 (4 substeps, 120 Hz) | 530 k | 29 ms | 32 ms | 1.2x, 1.0x, but settles more slowly (70,500 awake at 8 s, against 35,500) |
+| 326,003 | 1.6 M | 319 ms | 359 ms | 0.1x |
+| 1,054,232 | 4.7 M | 599 ms | 2,110 ms | under 0.1x, and erratic |
+
+Each row is one clean 8 s run (two at 108,015, which agreed), counting only the frames with more
+than 5% of the blocks awake. Past 108,000 the cost grows faster than the count: at 326,000 the grid
+is 25 M cells, cleared every substep, which was not tuned. Drawing the 5.2 M triangles is not the limit: 3.1
+ms at 1080p with no dust, 8.3 ms at 3840 x 2160 supersampled with the dust ray-marched at 1080p;
+the dust solve itself is 17 ms a frame at a 1 m grid (5 to 6 ms at 1.5 m, measured with less
+care). Memory: 79 MB of solver buffers, 221 MB of blocks' mesh, about 390 MB of dust fields at 1 m
+(computed from their formats), and a 3.5 MB/frame pose cache for replay (2.1 GB for 20 s at 30
+frames a second).
+
+**Stable.** The pile settles without explosions: no NaNs, and in the last second of a 20 s run the
+median block moved 0.000 m, the 99th percentile 2.2 cm and the worst 14 cm; 8 of 108,015 moved more
+than 10 cm. It is not fully at rest: 25,178 blocks were still awake at 20 s, creeping at about 2
+cm/s at most for the 99th percentile, too little to see at this distance (2 cm is a fraction of a
+pixel). Contacts are soft: from the stiffness, a block should sink about a quarter of a metre at
+20 m/s and about 1 cm under a pile (estimated, not measured), which reads fine at this distance.
+
+**Not bit-reproducible.** The hash grid's lists are built in the order the GPU's threads arrive, so
+two runs of the same scene differ: at 20 s the same block sits a median of 0.28 m apart (99th
+percentile 3.3 m), while the pile as a whole agrees (mean height 6.072 m and 6.073 m). A feature
+that needs a repeatable result would have to sort the grid. It also moves frame times by a few per
+cent between runs (p90 45 to 49 ms over a whole 20 s event).
+
+**Interactive?** Not fully. Physics plus dust plus drawing adds up to about 66 to 72 ms per 1/30 s frame at
+108,000 blocks while the rock moves (41 to 47 + 17 + 8), so about 14 frames a second live; this
+was added up from the parts, not run as one live loop, and nothing here has a live window. A
+cached replay of the poses draws at 3 to 8 ms, so it could scrub freely, though no scrubbing was
+built. The dust is a forward solve and cannot be scrubbed without stored fields (17 MB a frame for
+density at 1 m, 10 GB for 20 s, so keyframes and a coarser field). Changing the firing order means
+running the physics again: about 18 s of GPU time for a 20 s event at 240 Hz. So: a precomputed event you can replay, with live re-firing near
+real time, not a scene that responds at 60 Hz.
+
+**The look, frankly.** Better than I expected from a short experiment, not yet beautiful:
+the swell of the face (a few frames before it lets go) reads, the ripple running along the row
+is clear, the rock tumbling down reads as rock, the settled pile is convincing from afar and the
+dust columns billow and drift. What is wrong: the dust is soft and a little blurry
+(a 1 m grid and noise erosion, no real turbulence); blocks are convex Voronoi cells, so the broken
+rock has a "rock crystal" sameness up close; there is no contact audio, no spall or small rock
+sliding on the pile (the sub-metre fraction is missing), no flash, and beyond the ends of the
+broken strip the terrain's own face is a smooth striped texture. A frame that looks like a photograph would need
+more resolution in blocks and dust than this, and an art pass.
+
+**Dust.** The collapse's passive cloud (docs/whole-event.md, "Dust, stage 1") is not reused: it
+rides the compressible air solver and draws its source from element work, neither of which runs at
+interactive cost or at this scale of contact. A simple incompressible smoke box at 1 m (GPU,
+stable-fluids with buoyancy, wind and vorticity confinement, fed by the firings and by moving
+blocks) and a ray march with detail noise is what is rendered.
+
+**What it would take to go from this to a real explorer scene:** a real rock-breaking source of
+blocks (tessellating an actual scene's terrain or structure and choosing a pattern), a proper
+contact solver stage (tangential history for real static friction, an upgrade to
+convex-convex or SDF contact for big blocks), the interactive frame budget (fewer substeps and a
+bigger sleeping fraction; the physics is the current limit, 41 to 47 ms at 108,000 blocks), a dust
+keyframe cache for scrubbing, and scene authoring (where the firings go, what breaks). In short: a
+new subsystem, with an art pass, for a feature whose standing stays "for the eye" and whose use
+is spectacle. The decision is the user's; nothing here
+changes defaults or results.

@@ -10,6 +10,7 @@ let package = Package(
         .executable(name: "BombCAD", targets: ["BombCAD"]),
         .executable(name: "blastbench", targets: ["blastbench"]),
         .executable(name: "rigidboxdemo", targets: ["RigidBoxDemo"]),
+        .executable(name: "hillsideblast", targets: ["HillsideBlast"]),
         .executable(name: "scenebench", targets: ["SceneBench"]),
         .executable(name: "blastmodel", targets: ["BlastModelCLI"]),
     ],
@@ -67,6 +68,10 @@ let package = Package(
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender", "RadialBlast"]),
         .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),
         .executableTarget(name: "BlastModelCLI", dependencies: ["BlastModel"]),
+        .executableTarget(
+            name: "HillsideBlast", dependencies: ["BlastModel"],
+            resources: [.copy("Hillside.metal"), .copy("HillsideDust.metal")],
+            swiftSettings: [.swiftLanguageMode(.v5)]),
         .executableTarget(
             name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
         .testTarget(
