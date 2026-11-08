@@ -11,6 +11,7 @@ struct HillsideBody {
     float4 invInertiaFire;
     float4 launchSwell;
     float4 spinRise;
+    float4 swell;
     uint first, count, state, pad;
 };
 
@@ -120,7 +121,7 @@ kernel void forces(const device HillsideBody *bodies [[buffer(0)]],
             if (l2 >= R * R || l2 < 1e-10f) continue;
             float l = sqrt(l2);
             float3 nrm = d / l;
-            float pen = R - l;
+            float pen = min(R - l, ri * 0.35f);
             HillsideBody B = bodies[bj];
             float invMb = (B.state == 1u) ? B.posInvMass.w : 0.0f;
             float mEff = 1.0f / (invM + invMb);
@@ -177,12 +178,12 @@ kernel void integrate(device HillsideBody *bodies [[buffer(0)]],
     float dt = u.dt;
     if (B.state == 0u) {
         float fire = B.invInertiaFire.w;
-        float rise = B.spinRise.w;
+        float rise = B.swell.w;
         if (u.time < fire) {
-            float s = (u.time - (fire - rise)) / rise;
+            float s = rise > 0.0f ? (u.time - (fire - rise)) / rise : -1.0f;
             if (s > 0.0f) {
                 float ease = s * s * (3.0f - 2.0f * s);
-                float3 v = B.launchSwell.xyz * B.launchSwell.w * ease;
+                float3 v = B.swell.xyz * ease;
                 bodies[b].velSleep = float4(v, 0.0f);
                 bodies[b].posInvMass.xyz += v * dt;
                 pose[2 * b] = float4(bodies[b].posInvMass.xyz, 0.0f);
@@ -213,9 +214,13 @@ kernel void integrate(device HillsideBody *bodies [[buffer(0)]],
     float3 tb = unrotate(B.quat, T);
     wb += B.invInertiaFire.xyz * tb * dt;
     w = rotate(B.quat, wb);
+    // Explicit rotation is stiff for flat, thin blocks: keep them slower than they could spin.
+    float spin = length(w);
+    if (spin > 14.0f) w *= 14.0f / spin;
     // A touch of drag keeps flying blocks from spinning for ever.
     w *= 0.9992f;
     float speed = length(v);
+    if (speed > 45.0f) { v *= 45.0f / speed; speed = 45.0f; }
     // A body held up by contact, moving slowly, is damped toward rest: explicit contact has no
     // static friction and creeps otherwise.
     float3 contact = F + float3(0, 0, u.gravity / B.posInvMass.w);
@@ -361,64 +366,247 @@ static inline float shadowAt(float3 world, float3 normal, constant HillsideCamer
     return sum / 9.0f;
 }
 
-static inline float3 shade(float3 albedo, float3 world, float3 n, constant HillsideCamera &cam, float shadow) {
+static inline float3 skyColor(float3 dir, constant HillsideCamera &cam) {
+    float h = saturate(dir.z * 2.6f + 0.02f);
+    float3 horizon = float3(0.98f, 0.72f, 0.46f);
+    float3 mid = float3(0.55f, 0.56f, 0.62f);
+    float3 zenith = float3(0.16f, 0.27f, 0.47f);
+    float3 base = mix(mix(horizon, mid, saturate(h * 2.2f)), zenith, saturate(h * 1.1f));
+    float sunGlow = pow(saturate(dot(dir, cam.sun.xyz)), 18.0f);
+    return base + float3(1.0f, 0.74f, 0.42f) * sunGlow * 0.8f;
+}
+
+static inline float dustShadow(float3 world, constant HillsideCamera &cam, texture3d<float> dustLight) {
+    if (cam.dustHigh.w < 0.5f) return 1.0f;
+    float3 uvw = (world - cam.dustLow.xyz) / (cam.dustHigh.xyz - cam.dustLow.xyz);
+    if (any(uvw < 0.0f) || any(uvw > 1.0f)) return 1.0f;
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    return exp(-dustLight.sample(s, uvw).r * 0.045f);
+}
+
+static inline float3 shade(float3 albedo, float3 world, float3 n, constant HillsideCamera &cam, float shadow, float dust) {
     float3 sun = cam.sun.xyz;
     float nl = max(dot(n, sun), 0.0f);
-    float3 sunColor = float3(1.0f, 0.86f, 0.68f) * 1.9f;
-    float3 sky = mix(float3(0.34f, 0.3f, 0.26f), float3(0.42f, 0.56f, 0.82f), n.z * 0.5f + 0.5f) * 0.34f;
-    float3 lit = albedo * (sunColor * nl * shadow + sky);
+    float3 sunColor = float3(1.0f, 0.74f, 0.47f) * 3.4f;
+    float up = n.z * 0.5f + 0.5f;
+    float3 skyLight = mix(float3(0.34f, 0.27f, 0.22f), float3(0.33f, 0.41f, 0.6f), up) * 0.55f;
+    float3 bounce = float3(0.5f, 0.38f, 0.26f) * saturate(-n.z * 0.5f + 0.35f) * 0.18f;
+    float3 lit = albedo * (sunColor * nl * shadow * dust + skyLight + bounce);
     float distance = length(world - cam.eye.xyz);
-    float fog = 1.0f - exp(-distance * distance * 0.9e-6f);
-    return mix(lit, cam.fogColor.rgb, fog);
+    float fog = 1.0f - exp(-distance * distance * 0.7e-6f);
+    float3 dir = (world - cam.eye.xyz) / max(distance, 1.0f);
+    return mix(lit, skyColor(float3(dir.x, dir.y, 0.03f), cam) * 0.95f, fog);
+}
+
+static inline float3 bumped(float3 n, float3 p, float scale, float strength, int octaves) {
+    float e = 0.04f / scale * 3.0f;
+    float h0 = fbm3(p * scale, octaves);
+    float3 g = float3(fbm3((p + float3(e, 0, 0)) * scale, octaves) - h0,
+                      fbm3((p + float3(0, e, 0)) * scale, octaves) - h0,
+                      fbm3((p + float3(0, 0, e)) * scale, octaves) - h0) / e;
+    return normalize(n - strength * (g - n * dot(g, n)));
 }
 
 fragment float4 blockFragment(RasterOut in [[stage_in]],
                               constant HillsideCamera &cam [[buffer(0)]],
                               depth2d<float> shadowMap [[texture(0)]],
+                              texture3d<float> dustLight [[texture(1)]],
                               sampler s [[sampler(0)]]) {
     float3 n = normalize(in.normal);
     float3 rest = in.local;
-    float band = sin(rest.z * 1.45f + 9.0f * fbm3(rest * 0.07f, 3)) * 0.5f + 0.5f;
-    float3 layer = mix(float3(0.27f, 0.24f, 0.19f), float3(0.44f, 0.38f, 0.29f), band);
-    float3 tint = mix(layer * 0.9f, layer * 1.25f, in.bodyTint);
+    float warp = fbm3(rest * 0.07f, 3);
+    float band = sin(rest.z * 1.5f + 9.0f * warp + rest.x * 0.12f) * 0.5f + 0.5f;
+    float thin = sin(rest.z * 9.0f + 3.0f * fbm3(rest * 0.3f, 2)) * 0.5f + 0.5f;
     float detail = fbm3(rest * 4.0f, 4);
+    float grain = fbm3(rest * 19.0f, 3);
+    float tintShift = in.bodyTint - 0.5f;
+    float3 layer = mix(float3(0.25f, 0.215f, 0.17f), float3(0.46f, 0.38f, 0.27f), band);
+    layer *= 0.8f + 0.25f * thin;
     float3 albedo;
     if (in.kind == 1u) {
-        // Weathered surface: darker, stained, mottled.
-        float stain = fbm3(in.world * 0.15f, 3);
-        float3 weathered = mix(float3(0.26f, 0.24f, 0.2f), float3(0.42f, 0.38f, 0.3f), detail);
-        albedo = mix(weathered, weathered * float3(0.75f, 0.85f, 0.55f), smoothstep(0.45f, 0.75f, stain)) * (0.8f + 0.4f * stain);
+        float stain = fbm3(in.world * 0.2f, 3);
+        float3 weathered = mix(float3(0.2f, 0.18f, 0.145f), float3(0.38f, 0.33f, 0.25f), detail);
+        float lichen = smoothstep(0.5f, 0.72f, fbm3(rest * 1.3f + 40.0f, 4));
+        albedo = mix(weathered, float3(0.26f, 0.29f, 0.13f) * (0.7f + 0.8f * grain), lichen * 0.3f);
+        // Beds show on the weathered face as ledges of colour.
+        float beds = smoothstep(0.25f, 0.75f, sin(in.world.z * 1.15f + 4.0f * fbm3(in.world * 0.05f, 3)) * 0.5f + 0.5f);
+        albedo *= (0.86f + 0.2f * beds) * (0.75f + 0.6f * stain);
     } else if (in.kind == 2u) {
-        albedo = float3(0.32f, 0.28f, 0.24f) * (0.7f + 0.6f * detail);
+        albedo = float3(0.22f, 0.2f, 0.17f) * (0.7f + 0.6f * detail);
     } else {
-        // Fresh fracture.
-        albedo = tint * (0.75f + 0.6f * detail);
+        // Fresh breaks are paler than the weathered skin.
+        albedo = (layer + float3(0.12f, 0.1f, 0.07f)) * (0.85f + 0.3f * tintShift) * (0.75f + 0.55f * detail);
     }
+    albedo *= 0.82f + 0.36f * grain;
+    float3 surface = in.kind == 1u ? bumped(n, rest, 1.6f, 0.7f, 4) : bumped(n, rest, 5.0f, 0.5f, 3);
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
-    return float4(shade(albedo, in.world, n, cam, shadow), 1.0f);
+    float dust = dustShadow(in.world, cam, dustLight);
+    return float4(shade(albedo, in.world, surface, cam, shadow, dust), 1.0f);
 }
 
 fragment float4 terrainFragment(TerrainOut in [[stage_in]],
                                 constant HillsideCamera &cam [[buffer(0)]],
                                 depth2d<float> shadowMap [[texture(0)]],
+                                texture3d<float> dustLight [[texture(1)]],
                                 sampler s [[sampler(0)]]) {
     float3 n = normalize(in.normal);
     float slope = 1.0f - n.z;
     float detail = fbm3(in.world * float3(2.2f), 5);
     float fine = fbm3(in.world * float3(9.0f), 3);
     float broad = fbm3(in.world * 0.035f, 3);
-    float3 ground = mix(float3(0.16f, 0.145f, 0.12f), float3(0.33f, 0.29f, 0.23f), detail * 0.7f + fine * 0.3f);
-    ground *= 0.65f + 0.7f * broad;
+    float pebbles = smoothstep(0.55f, 0.7f, fbm3(in.world * 3.7f + 11.0f, 3));
+    float3 ground = mix(float3(0.15f, 0.13f, 0.10f), float3(0.34f, 0.29f, 0.22f), detail * 0.7f + fine * 0.3f);
+    ground *= 0.55f + 0.95f * broad;
+    ground *= 0.85f + 0.3f * smoothstep(0.35f, 0.7f, fbm3(in.world * 0.012f + 17.0f, 3));
+    ground = mix(ground, ground * 1.35f + float3(0.03f), pebbles * 0.6f);
     float warp = fbm3(in.world * 0.07f, 3);
-    float strata = sin(in.world.z * 1.45f + 9.0f * warp) * 0.5f + 0.5f;
-    float cracks = smoothstep(0.42f, 0.5f, fbm3(in.world * float3(0.9f, 0.9f, 0.25f) + 40.0f, 4));
-    float3 rock = mix(float3(0.21f, 0.185f, 0.15f), float3(0.42f, 0.36f, 0.27f), detail) * (0.82f + 0.3f * strata) * (0.9f + 0.25f * cracks);
-    float grass = smoothstep(14.0f, 22.0f, in.world.z) * (1.0f - smoothstep(0.08f, 0.25f, slope));
-    float3 scrub = float3(0.13f, 0.17f, 0.075f) * (0.55f + 0.9f * detail);
+    float strata = sin(in.world.z * 1.5f + 9.0f * warp) * 0.5f + 0.5f;
+    float3 rock = mix(float3(0.21f, 0.18f, 0.14f), float3(0.42f, 0.35f, 0.26f), detail) * (0.8f + 0.35f * strata);
+    float crest = smoothstep(14.0f, 21.0f, in.world.z) * (1.0f - smoothstep(0.08f, 0.25f, slope));
+    float3 scrub = mix(float3(0.13f, 0.13f, 0.07f), float3(0.3f, 0.26f, 0.13f), detail * 0.6f + broad * 0.4f);
+    scrub = mix(scrub, float3(0.22f, 0.19f, 0.11f), smoothstep(0.45f, 0.7f, fbm3(in.world * 0.11f + 3.0f, 3)));
     float3 albedo = mix(ground, rock, smoothstep(0.12f, 0.45f, slope));
-    albedo = mix(albedo, scrub, grass * smoothstep(0.35f, 0.55f, broad));
+    albedo = mix(albedo, scrub, crest * smoothstep(0.32f, 0.5f, broad + 0.12f * fine));
+    float fade = saturate(1.0f - length(in.world - cam.eye.xyz) / 600.0f);
+    float3 surface = bumped(n, in.world, 1.4f, 0.28f * fade, 3);
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
-    return float4(shade(albedo, in.world, n, cam, shadow), 1.0f);
+    float dust = dustShadow(in.world, cam, dustLight);
+    return float4(shade(albedo, in.world, surface, cam, shadow, dust), 1.0f);
+}
+
+// Decorative chips and gravel: instanced little polyhedra, not rigid bodies. Attached to their
+// block until it has gone, then ballistic over the top-down height of the scene.
+struct HillsideChip {
+    float4 posSize;
+    float4 velAge;
+    float4 offsetDelay;
+    uint parent;
+    uint state;
+    float seed;
+    float tint;
+};
+
+struct HillsideChipUniforms {
+    float dt;
+    float gravity;
+    float time;
+    float pad;
+    float4 low;
+    float4 size;
+};
+
+kernel void chipUpdate(device HillsideChip *chips [[buffer(0)]],
+                       const device float4 *pose [[buffer(1)]],
+                       const device float4 *previous [[buffer(2)]],
+                       depth2d<float> height [[texture(0)]],
+                       constant HillsideChipUniforms &u [[buffer(3)]],
+                       uint i [[thread_position_in_grid]]) {
+    HillsideChip C = chips[i];
+    if (C.state == 3u) return;
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float dt = u.dt;
+    if (C.state == 0u) {
+        float4 p = pose[2 * C.parent];
+        if (p.w < 0.5f) return;
+        float age = C.velAge.w + dt;
+        if (age < C.offsetDelay.w) { chips[i].velAge.w = age; return; }
+        float3 pos = p.xyz + rotate(pose[2 * C.parent + 1], C.offsetDelay.xyz);
+        float3 v = (p.xyz - previous[2 * C.parent].xyz) / dt;
+        float3 jitter = float3(fract(C.seed * 13.7f), fract(C.seed * 29.3f), fract(C.seed * 7.1f)) * 2.0f - 1.0f;
+        v = v * 0.75f + jitter * 2.5f + float3(0, -0.6f, 1.2f);
+        C.posSize.xyz = pos;
+        C.velAge = float4(v, age);
+        C.state = 1u;
+    }
+    float r = C.posSize.w;
+    for (int sub = 0; sub < 2; ++sub) {
+        float sdt = dt * 0.5f;
+        if (C.state == 1u) {
+            float3 v = C.velAge.xyz;
+            v.z -= u.gravity * sdt;
+            v *= 0.997f;
+            C.posSize.xyz += v * sdt;
+            C.velAge.xyz = v;
+        }
+    }
+    float2 uv = float2((C.posSize.x - u.low.x) / u.size.x, 1.0f - (C.posSize.y - u.low.y) / u.size.y);
+    float h = u.size.z - height.sample(s, uv) * (u.size.z - u.size.w);
+    if (C.state == 1u && C.posSize.z <= h + r * 0.6f) {
+        C.posSize.z = h + r * 0.6f;
+        C.state = 2u;
+        C.velAge.xyz = float3(0);
+    } else if (C.state == 2u) {
+        if (C.posSize.z < h + r * 0.6f) C.posSize.z = h + r * 0.6f;
+        else if (C.posSize.z > h + r * 0.6f + 0.8f) C.state = 1u;
+    }
+    chips[i] = C;
+}
+
+constant float3 icoCorners[12] = {
+    float3(-0.526f, 0.851f, 0.0f), float3(0.526f, 0.851f, 0.0f), float3(-0.526f, -0.851f, 0.0f), float3(0.526f, -0.851f, 0.0f),
+    float3(0.0f, -0.526f, 0.851f), float3(0.0f, 0.526f, 0.851f), float3(0.0f, -0.526f, -0.851f), float3(0.0f, 0.526f, -0.851f),
+    float3(0.851f, 0.0f, -0.526f), float3(0.851f, 0.0f, 0.526f), float3(-0.851f, 0.0f, -0.526f), float3(-0.851f, 0.0f, 0.526f)
+};
+constant uint icoFaces[60] = {
+    0,11,5, 0,5,1, 0,1,7, 0,7,10, 0,10,11, 1,5,9, 5,11,4, 11,10,2, 10,7,6, 7,1,8,
+    3,9,4, 3,4,2, 3,2,6, 3,6,8, 3,8,9, 4,9,5, 2,4,11, 6,2,10, 8,6,7, 9,8,1
+};
+
+struct ChipOut {
+    float4 position [[position]];
+    float3 world;
+    float tint;
+    float seed;
+};
+
+static inline float4 chipPosition(HillsideChip c, uint vid, uint instance, constant HillsideCamera &cam, float4x4 m, thread float3 &world) {
+    uint corner = icoFaces[vid % 60];
+    float3 v = icoCorners[corner];
+    float h = fract(c.seed * (float(corner) * 3.17f + 1.3f)) * 0.75f + 0.45f;
+    float3 stretch = float3(1.0f + 0.7f * fract(c.seed * 91.0f), 1.0f + 0.5f * fract(c.seed * 53.0f), 0.55f + 0.5f * fract(c.seed * 37.0f));
+    float size = c.state == 0u ? 0.0f : c.posSize.w;
+    float angle = c.seed * 40.0f + c.velAge.w * 6.0f;
+    float ca = cos(angle), sa = sin(angle);
+    float3 p = v * h * stretch * size;
+    p = float3(ca * p.x - sa * p.y, sa * p.x + ca * p.y, p.z);
+    world = c.posSize.xyz + p;
+    return m * float4(world, 1.0f);
+}
+
+vertex ChipOut chipVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
+                          const device HillsideChip *chips [[buffer(0)]],
+                          constant HillsideCamera &cam [[buffer(2)]]) {
+    HillsideChip c = chips[instance];
+    ChipOut o;
+    o.position = chipPosition(c, vid, instance, cam, cam.viewProjection, o.world);
+    o.tint = c.tint;
+    o.seed = c.seed;
+    return o;
+}
+
+vertex float4 chipShadowVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
+                               const device HillsideChip *chips [[buffer(0)]],
+                               constant HillsideCamera &cam [[buffer(2)]]) {
+    HillsideChip c = chips[instance];
+    float3 w;
+    return chipPosition(c, vid, instance, cam, cam.shadow, w);
+}
+
+fragment float4 chipFragment(ChipOut in [[stage_in]],
+                             constant HillsideCamera &cam [[buffer(0)]],
+                             depth2d<float> shadowMap [[texture(0)]],
+                             texture3d<float> dustLight [[texture(1)]],
+                             sampler s [[sampler(0)]]) {
+    float3 n = normalize(cross(dfdx(in.world), dfdy(in.world)));
+    if (dot(n, cam.eye.xyz - in.world) < 0.0f) n = -n;
+    float3 albedo;
+    if (in.tint < 0.0f) {
+        albedo = float3(0.08f, 0.1f, 0.05f) * (0.6f + 1.2f * fract(in.seed * 11.0f));
+    } else {
+        albedo = mix(float3(0.21f, 0.18f, 0.14f), float3(0.5f, 0.43f, 0.32f), in.tint) * (0.7f + 0.5f * fract(in.seed * 17.0f));
+    }
+    float shadow = shadowAt(in.world, n, cam, shadowMap, s);
+    return float4(shade(albedo, in.world, n, cam, shadow, dustShadow(in.world, cam, dustLight)), 1.0f);
 }
 
 // Dust advection and shading come after the blocks.
@@ -436,7 +624,50 @@ static inline float3 aces(float3 x) {
     return clamp((x * (2.51f * x + 0.03f)) / (x * (2.43f * x + 0.59f) + 0.14f), 0.0f, 1.0f);
 }
 
-// Sky: a vertical gradient drawn where nothing else is.
+// Screen-space ambient occlusion: multiplied into the frame before the dust goes on it.
+static inline float3 aoWorld(float2 uv, depth2d<float> depth, constant HillsideCamera &cam) {
+    constexpr sampler s(filter::nearest, address::clamp_to_edge);
+    float d = depth.sample(s, uv);
+    float2 ndc = float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f);
+    float4 w = cam.inverseViewProjection * float4(ndc, d, 1.0f);
+    return w.xyz / w.w;
+}
+
+fragment float4 aoFragment(FullscreenOut in [[stage_in]],
+                           depth2d<float> depth [[texture(0)]],
+                           constant HillsideCamera &cam [[buffer(0)]]) {
+    constexpr sampler s(filter::nearest, address::clamp_to_edge);
+    float z = depth.sample(s, in.uv);
+    if (z >= 1.0f) return float4(1.0f);
+    float2 size = float2(depth.get_width(), depth.get_height());
+    float2 texel = 1.0f / size;
+    float3 p = aoWorld(in.uv, depth, cam);
+    float3 n = normalize(cross(aoWorld(in.uv + float2(texel.x, 0), depth, cam) - p, aoWorld(in.uv + float2(0, texel.y), depth, cam) - p));
+    if (dot(n, cam.eye.xyz - p) < 0.0f) n = -n;
+    float dist = length(cam.eye.xyz - p);
+    float radiusWorld = 2.2f;
+    float radiusPixels = radiusWorld * size.y * cam.misc.y / dist;
+    float phase = fract(sin(dot(in.position.xy, float2(12.9898f, 78.233f))) * 43758.5453f) * 6.2832f;
+    float occlusion = 0.0f;
+    int samples = 18;
+    for (int i = 0; i < samples; ++i) {
+        float f = (float(i) + 0.5f) / float(samples);
+        float angle = phase + f * 6.2832f * 5.0f;
+        float2 offset = float2(cos(angle), sin(angle)) * sqrt(f) * radiusPixels * texel;
+        float3 q = aoWorld(in.uv + offset, depth, cam);
+        float3 v = q - p;
+        float d = length(v);
+        if (d > 0.05f && d < radiusWorld * 2.0f) {
+            float h = dot(n, v / d);
+            occlusion += max(0.0f, h - 0.12f) * (1.0f - smoothstep(radiusWorld * 0.5f, radiusWorld * 2.0f, d));
+        }
+    }
+    float ao = 1.0f - occlusion / float(samples) * 1.9f;
+    ao = clamp(ao, 0.25f, 1.0f);
+    return float4(ao, ao, ao, 1.0f);
+}
+
+// Sky: a warm low gradient, distant hills in haze, drawn where nothing else is.
 struct SkyOut { float4 position [[position]]; float2 ndc; };
 vertex SkyOut skyVertex(uint vid [[vertex_id]]) {
     float2 p = float2(float(vid == 1) * 4.0f - 1.0f, float(vid == 2) * 4.0f - 1.0f);
@@ -448,18 +679,31 @@ vertex SkyOut skyVertex(uint vid [[vertex_id]]) {
 fragment float4 skyFragment(SkyOut in [[stage_in]], constant HillsideCamera &cam [[buffer(0)]]) {
     float4 far = cam.inverseViewProjection * float4(in.ndc, 1.0f, 1.0f);
     float3 dir = normalize(far.xyz / far.w - cam.eye.xyz);
-    float h = saturate(dir.z * 3.2f + 0.08f);
-    float3 horizon = float3(0.62f, 0.66f, 0.70f);
-    float3 zenith = float3(0.2f, 0.32f, 0.55f);
-    float sunGlow = pow(saturate(dot(dir, cam.sun.xyz)), 24.0f);
-    return float4(mix(horizon, zenith, h) + float3(1.0f, 0.86f, 0.62f) * sunGlow * 0.6f, 1.0f);
+    float3 color = skyColor(dir, cam);
+    float azimuth = atan2(dir.x, dir.y);
+    float ridge = 0.045f + 0.03f * fbm3(float3(azimuth * 6.0f, 2.0f, 0.0f), 4) + 0.012f * fbm3(float3(azimuth * 25.0f, 5.0f, 0.0f), 3);
+    float near = 0.02f + 0.05f * fbm3(float3(azimuth * 11.0f, 9.0f, 3.0f), 4);
+    if (dir.z < ridge) color = mix(float3(0.46f, 0.44f, 0.47f), color, 0.55f);
+    if (dir.z < near) color = mix(float3(0.34f, 0.3f, 0.31f), color, 0.4f);
+    return float4(color, 1.0f);
 }
 
 fragment float4 tonemap(FullscreenOut in [[stage_in]],
                         texture2d<float> hdr [[texture(0)]],
-                        sampler s [[sampler(0)]]) {
+                        sampler s [[sampler(0)]],
+                        constant HillsideCamera &cam [[buffer(0)]]) {
     float3 c = hdr.sample(s, in.uv).rgb;
-    c = aces(c * 0.55f);
+    c *= 0.62f;
+    float2 centre = in.uv - 0.5f;
+    float vignette = 1.0f - 0.42f * smoothstep(0.25f, 0.85f, length(centre * float2(1.15f, 1.0f)));
+    c *= vignette;
+    c = aces(c);
     c = pow(c, float3(1.0f / 2.2f));
+    // A small warm grade, and shadows held a little cool.
+    float luminance = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
+    c = mix(float3(luminance), c, 1.08f);
+    c *= mix(float3(0.96f, 0.99f, 1.06f), float3(1.04f, 1.0f, 0.94f), smoothstep(0.1f, 0.75f, luminance));
+    float grain = fract(sin(dot(in.position.xy + cam.misc.x * 37.0f, float2(12.9898f, 78.233f))) * 43758.5453f) - 0.5f;
+    c += grain * 0.012f;
     return float4(c, 1.0f);
 }

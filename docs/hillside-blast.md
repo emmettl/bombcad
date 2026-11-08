@@ -113,3 +113,55 @@ keyframe cache for scrubbing, and scene authoring (where the firings go, what br
 new subsystem, with an art pass, for a feature whose standing stays "for the eye" and whose use
 is spectacle. The decision is the user's; nothing here
 changes defaults or results.
+
+## Art pass, 8 November 2026
+
+On the user's word of 8 November: one art pass on the look. Same standing (illustrative, a stylised
+row of firings, no real blast designs). The renderer grew; the solver only got clamps. Run: `hillsideblast
+render --blocks 110000 --poses art/poses --out art --dust-h 1.0 --clip --bitrate 9000000 --stills
+3.0,4.2,6.5,19.9` from `simulate --blocks 110000 --seconds 20 --out art/poses`.
+
+**What changed.**
+- **Rock.** Voronoi cells bedded (an anisotropic metric with a slight tilt) so the rock splits flatter,
+  with each polygon's surface tessellated and displaced by noise in world position (so neighbours stay
+  matched until they part, 21 M triangles), per-block warp, normal mapping from noise, weathered and
+  fresh faces with beds and lichen.
+- **Small debris and fines.** About 1.2 million decorative stones: chips that leave their blocks,
+  ballistic over a per-frame top-down height of the scene, and gravel on the ground. None is a body.
+- **Swell.** A coherent drift of the held blocks out and up, up to about 2 m near a firing over 0.45 to
+  0.75 s before release, instead of a tenth of the launch. It reads: at 2.1 s, 37,000 blocks have moved
+  a median of 1.2 m before letting go. First firing moved to 1.8 s so the calm face is seen first.
+- **Dust.** MacCormack advection, stronger vorticity, and a march that cuts the field with a baked 3-D
+  Worley-Perlin volume, sampled with a warp, at 0.6 m steps through the cloud with empty-space skipping,
+  and a Henyey-Greenstein phase. The dust shadows the scene.
+- **The untouched face.** Render-only bedded blocks over all steep ground and past the strip, and the
+  ground carried on past the grid and a skirt beyond it, so the long lens sees no edge and no smooth wall.
+- **Light and camera.** Sun about 15° above the horizon raking along the face, 8192 shadow map,
+  screen-space AO, cool sky fill and warm sun, a graded, vignetted tonemap, and a slow 20-second dolly at
+  a long lens, oblique to the face so it runs away across the frame.
+
+**Solver changes (for the eye).** Inertia floored at half the largest axis, spin capped at 14 rad/s and
+speed at 45 m/s, and the overlap a contact sees capped at 35% of the radius: bedded blocks are flatter
+and were otherwise spinning up without limit (one reached 55 km/s in the first bedded run, as stray rocks
+launched straight up). Stability afterwards: in the last second of the 20 s run, median movement 0,
+99th percentile 2.3 cm, worst 26 cm, 8 blocks moved more than 10 cm.
+
+**Times.** Physics for the new scene: 36 ms median and 54 ms p90 over a 20 s event. The clip renders at
+1920 x 1080 from 3840 x 2160 at 54 s for 601 frames, about 90 ms per frame: 53 ms median to draw (the
+21 M triangles, shadows, AO, the dust march), 18 ms for the dust solve, and the encode. The clip is 23
+MB at 9 Mb/s.
+
+**The look, frankly.** Stopped after eight rounds, because further rounds had stopped helping, not because
+it is finished. The low light, the billowing dust and the broken rock at a few seconds in (the 4.2 s
+frame) are good. What still looks wrong: the settled pile and the broken rock are one colour and one
+kind of lump; the face beyond the strip is a flatter texture than the blocks, and a seam shows at the
+strip's end; a low sheet of dust lies across the pile for a few seconds around 8 to 10 s and reads as
+a layer rather than a cloud. Past this, a better source of rock shapes and colour, not more shader
+work, is what would move it.
+
+**A correction to the section above.** `final/clip.mp4` from the first experiment was frozen on its
+last frame for its whole 20 s (rendered after the stills, with the forward-only dust and poses
+already at the end); nobody watched it, and it was reported as a clip. The physics, the settling
+numbers and the stills were real. The draw times quoted above (3.1 and 8.3 ms) were measured on that
+frozen frame, so they are for a settled scene with little dust. This section's numbers come from a run
+in order, whose frames were checked.

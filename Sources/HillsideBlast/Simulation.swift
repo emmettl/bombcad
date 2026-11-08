@@ -5,6 +5,14 @@ import simd
 /// A GPU contact solver for the blocks: each block a clump of spheres (a rigid body whose contact
 /// is its spheres against other clumps and the heightfield), explicit, spring-dashpot contact
 /// with a mass-scaled stiffness, held in place until fired, asleep once still.
+/// A block's inertia per unit mass about its own axes, floored at half the largest: flat bedded
+/// blocks otherwise spin up without limit under the explicit contact (for the eye, not accuracy).
+private func inertiaFloor(_ block: Hillside.Block) -> SIMD3<Float> {
+    let d = block.inertiaDiagonalPerMass
+    let floor = 0.5 * d.max()
+    return SIMD3(max(d.x, floor), max(d.y, floor), max(d.z, floor))
+}
+
 final class BlockSimulation {
     /// Layout matches `HillsideBody` in `Hillside.metal`.
     struct GPUBody {
@@ -15,6 +23,7 @@ final class BlockSimulation {
         var invInertiaFire: SIMD4<Float>
         var launchSwell: SIMD4<Float>
         var spinRise: SIMD4<Float>
+        var swell: SIMD4<Float>
         var first: UInt32
         var count: UInt32
         var state: UInt32
@@ -92,11 +101,11 @@ final class BlockSimulation {
                     velSleep: .zero,
                     ang: .zero,
                     invInertiaFire: SIMD4(
-                        1 / max(mass * b.inertiaDiagonalPerMass.x, 1e-3),
-                        1 / max(mass * b.inertiaDiagonalPerMass.y, 1e-3),
-                        1 / max(mass * b.inertiaDiagonalPerMass.z, 1e-3), launchState.fire[n]),
-                    launchSwell: SIMD4(launchState.velocity[n], launch.swellShare),
+                        1 / max(mass * inertiaFloor(b).x, 1e-3), 1 / max(mass * inertiaFloor(b).y, 1e-3),
+                        1 / max(mass * inertiaFloor(b).z, 1e-3), launchState.fire[n]),
+                    launchSwell: SIMD4(launchState.velocity[n], 0),
                     spinRise: SIMD4(launchState.spin[n], launch.rise),
+                    swell: launchState.swell[n],
                     first: UInt32(b.firstSphere), count: UInt32(b.sphereCount), state: 0, pad: 0))
         }
         bodies = device.makeBuffer(bytes: gpuBodies, length: MemoryLayout<GPUBody>.stride * bodyCount)!

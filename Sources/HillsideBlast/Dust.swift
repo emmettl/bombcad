@@ -25,6 +25,8 @@ final class DustField {
     let high: SIMD3<Float>
     var velocity: [MTLTexture]
     var density: [MTLTexture]
+    let scratch: [MTLTexture]
+    let noiseVolume: MTLTexture
     var pressure: [MTLTexture]
     let divergence: MTLTexture
     let light: MTLTexture
@@ -70,6 +72,16 @@ final class DustField {
         }
         velocity = [texture(.rgba16Float), texture(.rgba16Float)]
         density = [texture(.r16Float), texture(.r16Float)]
+        scratch = [texture(.r16Float), texture(.r16Float)]
+        let noiseDescriptor = MTLTextureDescriptor()
+        noiseDescriptor.textureType = .type3D
+        noiseDescriptor.pixelFormat = .rg16Float
+        noiseDescriptor.width = 128
+        noiseDescriptor.height = 128
+        noiseDescriptor.depth = 128
+        noiseDescriptor.usage = [.shaderRead, .shaderWrite]
+        noiseDescriptor.storageMode = .private
+        noiseVolume = device.makeTexture(descriptor: noiseDescriptor)!
         pressure = [texture(.r16Float), texture(.r16Float)]
         divergence = texture(.r16Float)
         light = texture(.r16Float)
@@ -103,7 +115,7 @@ final class DustField {
         var map: [String: MTLComputePipelineState] = [:]
         for name in [
             "dustAddSources", "dustAdvectVelocity", "dustForces", "dustDivergence", "dustJacobi",
-            "dustProject", "dustAdvectDensity", "dustLight",
+            "dustProject", "dustAdvectDensity", "dustLight", "dustBackward", "dustCorrect", "dustBakeNoise",
         ] {
             map[name] = try device.makeComputePipelineState(function: library.makeFunction(name: name)!)
         }
@@ -144,8 +156,14 @@ final class DustField {
         // A first clear of the private textures so the first frame is defined.
         let buffer = queue.makeCommandBuffer()!
         let encoder = buffer.makeComputeCommandEncoder()!
+        encoder.setComputePipelineState(pipelines["dustBakeNoise"]!)
+        encoder.setTexture(noiseVolume, index: 0)
+        encoder.dispatchThreads(
+            MTLSize(width: 128, height: 128, depth: 128),
+            threadsPerThreadgroup: MTLSize(width: 16, height: 8, depth: 8))
         encoder.endEncoding()
         buffer.commit()
+        buffer.waitUntilCompleted()
     }
 
     private func add(_ p: SIMD3<Float>, dust: Float, velocity v: SIMD3<Float>) {
@@ -170,8 +188,8 @@ final class DustField {
             for _ in 0..<900 {
                 let offset = r.unit() * r.float(0.5, 11)
                 let p = firing.position + SIMD3(offset.x, offset.y - 5, offset.z * 0.8 + 4)
-                let radial = simd_normalize(offset + SIMD3(0, -1, 3))
-                add(p, dust: 80 * (1 - age), velocity: radial * 24 + SIMD3(0, -14, 30))
+                let radial = simd_normalize(offset + SIMD3(0, -2, 1.2))
+                add(p, dust: 130 * (1 - age), velocity: radial * 36 + SIMD3(0, -12, 18) + r.unit() * 8)
             }
         }
         let posePointer = pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
@@ -185,7 +203,7 @@ final class DustField {
             // A moving block sheds fines; a block striking something makes more.
             let size = restSize[n]
             var dust: Float = 0
-            if speed > 2.5 { dust += 0.12 * speed * size * size }
+            if speed > 2.5, p.z < 28 { dust += 0.04 * speed * size * size }
             add(SIMD3(p.x, p.y, p.z), dust: dust, velocity: v)
         }
         let buffer = queue.makeCommandBuffer()!
@@ -247,9 +265,22 @@ final class DustField {
         // Density advection and its light.
         encoder.setTexture(density[0], index: 0)
         encoder.setTexture(velocity[0], index: 1)
-        encoder.setTexture(density[1], index: 2)
+        encoder.setTexture(scratch[0], index: 2)
         encoder.setTexture(solid, index: 3)
         run("dustAdvectDensity")
+        encoder.memoryBarrier(scope: .textures)
+        encoder.setTexture(scratch[0], index: 0)
+        encoder.setTexture(velocity[0], index: 1)
+        encoder.setTexture(scratch[1], index: 2)
+        run("dustBackward")
+        encoder.memoryBarrier(scope: .textures)
+        encoder.setTexture(density[0], index: 0)
+        encoder.setTexture(scratch[0], index: 1)
+        encoder.setTexture(scratch[1], index: 2)
+        encoder.setTexture(velocity[0], index: 3)
+        encoder.setTexture(solid, index: 4)
+        encoder.setTexture(density[1], index: 5)
+        run("dustCorrect")
         encoder.memoryBarrier(scope: .textures)
         density.swapAt(0, 1)
         encoder.setTexture(density[0], index: 0)
@@ -278,6 +309,7 @@ final class DustField {
         encoder.setFragmentTexture(density[0], index: 0)
         encoder.setFragmentTexture(light, index: 1)
         encoder.setFragmentTexture(depth, index: 2)
+        encoder.setFragmentTexture(noiseVolume, index: 3)
         encoder.setFragmentSamplerState(self.sampler, index: 0)
         encoder.setFragmentBytes(&cam, length: MemoryLayout<CameraUniforms>.stride, index: 0)
         var u = uniforms

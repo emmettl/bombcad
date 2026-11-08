@@ -135,12 +135,21 @@ if command == "render" {
     precondition(bodies == hillside.blocks.count, "poses and hillside differ")
     let supersample = option(arguments, "--ss").flatMap(Int.init) ?? 2
     let lib = try library(device: device)
+    if !arguments.contains("--no-dressing") { hillside.buildDressing() }
+    let start = option(arguments, "--eye").map(parseVector) ?? SIMD3<Float>(-112, -250, 15)
+    let end = option(arguments, "--eye-end").map(parseVector) ?? SIMD3<Float>(-96, -232, 13)
+    let target = option(arguments, "--target").map(parseVector) ?? SIMD3<Float>(120, 14, 18)
+    let targetEnd = option(arguments, "--target-end").map(parseVector) ?? SIMD3<Float>(122, 14, 18)
+    let fov = option(arguments, "--fov").flatMap(Float.init) ?? 21
+    let path = CameraPath(
+        eyes: (start, end), targets: (target, targetEnd), fovY: (fov, fov * 0.93), duration: 20)
     let renderer = try Renderer(
-        device: device, library: lib, hillside: hillside, width: 1920, height: 1080, supersample: supersample)
+        device: device, library: lib, hillside: hillside, width: 1920, height: 1080, supersample: supersample,
+        path: path, frameRate: Float(fps))
     if !arguments.contains("--no-dust") {
         renderer.dust = try DustField(
             device: device, library: try dustLibrary(device: device), hillside: hillside, firings: firings,
-            width: 1920, height: 1080,
+            width: 1920 * supersample, height: 1080 * supersample,
             sun: SIMD3(renderer.camera.sun.x, renderer.camera.sun.y, renderer.camera.sun.z))
     }
     let restSizes = hillside.blocks.map(\.size)
@@ -157,33 +166,38 @@ if command == "render" {
             }
         }
     }
-    /// Reads frame i and advances the dust to it from wherever it was.
-    var dustFrame = 0
+    /// Reads frame i and advances the dust to it from where it was, in order. Dust and chips only
+    /// run forward, so a clip must take the frames in order from the start.
+    var dustFrame = -1
     func advance(to i: Int) {
+        guard i > dustFrame else { return }
         while dustFrame < i {
             dustFrame += 1
             readFrame(dustFrame)
-            if let dust = renderer.dust {
+            if dustFrame > 0, let dust = renderer.dust {
                 dustTimes.append(
                     dust.step(
                         pose: poseBuffer, previous: previousPose, bodies: bodies,
-                        time: Float(dustFrame) / Float(fps), restSize: restSizes, frameRate: Float(fps))
-                        * 1000)
+                        time: Float(dustFrame) / Float(fps),
+                        restSize: restSizes, frameRate: Float(fps)) * 1000)
             }
         }
-        if renderer.dust == nil { readFrame(i) }
     }
     let clip = arguments.contains("--clip")
     let stills = (option(arguments, "--stills")?.split(separator: ",").compactMap { Double($0) } ?? [])
         .sorted()
     var draws: [Double] = []
-    if let stillTimes = Optional(stills), !stillTimes.isEmpty {
-        for t in stillTimes {
-            let i = min(frames - 1, Int(t * Double(fps)))
+    // Stills come out of the clip's own run when there is one, so that everything stays in order.
+    var stillFrames = Dictionary(
+        uniqueKeysWithValues: stills.map { (min(frames - 1, Int($0 * Double(fps))), $0) })
+    if !clip {
+        for (i, t) in stillFrames.sorted(by: { $0.key < $1.key }) {
             advance(to: i)
-            draws.append(renderer.render(pose: poseBuffer, time: Float(t)) * 1000)
+            draws.append(
+                renderer.render(pose: poseBuffer, previous: previousPose, time: Float(i) / Float(fps)) * 1000)
             renderer.savePNG(dir.appendingPathComponent(String(format: "still-%05.2f.png", t)))
         }
+        stillFrames = [:]
     }
     if clip {
         let writer = try ClipWriter(
@@ -191,7 +205,11 @@ if command == "render" {
         let start = Date()
         for i in 0..<frames {
             advance(to: i)
-            draws.append(renderer.render(pose: poseBuffer, time: Float(i) / Float(fps)) * 1000)
+            draws.append(
+                renderer.render(pose: poseBuffer, previous: previousPose, time: Float(i) / Float(fps)) * 1000)
+            if let t = stillFrames[i] {
+                renderer.savePNG(dir.appendingPathComponent(String(format: "still-%05.2f.png", t)))
+            }
             writer.append(renderer)
             if i % 60 == 0 {
                 print("frame \(i)/\(frames) \(String(format: "%.1f", Date().timeIntervalSince(start))) s")

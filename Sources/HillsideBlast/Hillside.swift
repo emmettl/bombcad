@@ -214,6 +214,11 @@ struct Hillside {
     var indices: [UInt32] = []
     var meanEdge: Float = 0
     var maxRadius: Float = 0
+    /// Six local surface points per block, for the decorative chips.
+    var chipAnchors: [SIMD3<Float>] = []
+    /// Render-only dressing of the rest of the face (one identity pose).
+    var dressingVertices: [Vertex] = []
+    var dressingIndices: [UInt32] = []
     /// The domain of the hash grid (m).
     let low = SIMD3<Float>(-90, -190, -6)
     let high = SIMD3<Float>(290, 110, 110)
@@ -399,16 +404,19 @@ struct Hillside {
                         }
                     }
                 }
-                near.sort { $0.0 < $1.0 }
+                near.sort {
+                    Self.bedded($0.1, of: site, in: frozenSites)
+                        < Self.bedded($1.1, of: site, in: frozenSites)
+                }
                 let reach = cell * 2.2
                 var polyhedron = Polyhedron.box(
                     low: site - reach, high: site + reach)
-                for (distanceSquared, other) in near {
+                for (_, other) in near {
                     let extent = polyhedron.maxDistance(from: site)
-                    if distanceSquared > 4 * extent * extent { break }
                     let q = frozenSites[other]
-                    let normal = simd_normalize(q - site)
+                    let normal = Self.beddedNormal(q - site)
                     let middle = (q + site) * 0.5
+                    if simd_dot(normal, middle - site) > extent { continue }
                     polyhedron.clip(normal: normal, offset: simd_dot(normal, middle), kind: 0)
                 }
                 // Clip to the old surface and the new one, by tangent planes around the cell.
@@ -444,6 +452,35 @@ struct Hillside {
         )
         let radiusCap = meanEdge * 0.55
         let meanVolumeKept = keep.reduce(0) { $0 + $1.volume } / Float(max(keep.count, 1))
+        // Each block's displaced mesh, built in parallel.
+        var meshes = [(vertices: [Vertex], indices: [UInt32], anchors: [SIMD3<Float>])](
+            repeating: ([], [], []), count: keep.count)
+        meshes.withUnsafeMutableBufferPointer { out in
+            nonisolated(unsafe) let output = out
+            DispatchQueue.concurrentPerform(iterations: keep.count) { n in
+                var vertices: [Vertex] = []
+                var indices: [UInt32] = []
+                var anchors: [SIMD3<Float>] = []
+                var localRandom = Random(seed: UInt64(n) &+ 910)
+                let size = cbrt(keep[n].volume)
+                let level = size < 0.7 ? 1 : size < 1.4 ? 2 : size < 2.2 ? 3 : 4
+                Self.tessellate(
+                    keep[n].polyhedron, centre: keep[n].centroid, body: UInt32(n), level: level,
+                    warp: size * 0.07, seed: Float(n) * 0.137, vertices: &vertices, indices: &indices)
+                for _ in 0..<6 {
+                    let polygon = keep[n].polyhedron.faces[
+                        Int(localRandom.float() * Float(keep[n].polyhedron.faces.count - 1))]
+                    let a = polygon[0]
+                    let b = polygon[1]
+                    let c = polygon[2]
+                    let u = sqrt(localRandom.float())
+                    let v = localRandom.float()
+                    let point = a + (b - a) * u * v + (c - a) * u * (1 - v)
+                    anchors.append(point - keep[n].centroid)
+                }
+                output[n] = (vertices, indices, anchors)
+            }
+        }
         var blocks: [Block] = []
         blocks.reserveCapacity(keep.count)
         for (body, cell) in keep.enumerated() {
@@ -462,7 +499,7 @@ struct Hillside {
             planes.reserveCapacity(cell.polyhedron.faces.count)
             var corners: [SIMD3<Float>] = []
             corners.reserveCapacity(40)
-            for (f, polygon) in cell.polyhedron.faces.enumerated() {
+            for polygon in cell.polyhedron.faces {
                 var newell = SIMD3<Float>.zero
                 for k in polygon.indices {
                     let a = polygon[k]
@@ -473,20 +510,12 @@ struct Hillside {
                 var normal = simd_normalize(newell)
                 if simd_dot(normal, polygon[0] - c) < 0 { normal = -normal }
                 planes.append((normal, simd_dot(normal, polygon[0] - c)))
-                let packed = Self.pack(normal: normal, kind: cell.polyhedron.kinds[f])
-                let first = UInt32(vertices.count)
-                for v in polygon {
-                    let local = v - c
-                    vertices.append(
-                        Vertex(x: local.x, y: local.y, z: local.z, normal: packed, body: UInt32(body)))
-                    corners.append(local)
-                }
-                for k in 1..<UInt32(polygon.count - 1) {
-                    indices.append(first)
-                    indices.append(first + k)
-                    indices.append(first + k + 1)
-                }
+                for v in polygon { corners.append(v - c) }
             }
+            let base = UInt32(vertices.count)
+            vertices.append(contentsOf: meshes[body].vertices)
+            indices.append(contentsOf: meshes[body].indices.map { $0 + base })
+            chipAnchors.append(contentsOf: meshes[body].anchors)
             func inscribed(_ p: SIMD3<Float>) -> Float {
                 planes.reduce(Float.infinity) { min($0, $1.1 - simd_dot($1.0, p)) }
             }
@@ -535,6 +564,227 @@ struct Hillside {
         )
     }
 
+    /// The bedding: the rock splits flatter along these planes, tilted a little.
+    static let beddingNormal = simd_normalize(SIMD3<Float>(0.06, 0.05, 1))
+    static let beddingStretch: Float = 1.7
+
+    /// Squared distance from `site` to site `n` in the bedded metric.
+    static func bedded(_ n: Int, of site: SIMD3<Float>, in sites: [SIMD3<Float>]) -> Float {
+        let d = sites[n] - site
+        let along = simd_dot(d, beddingNormal)
+        return simd_length_squared(d) + (beddingStretch * beddingStretch - 1) * along * along
+    }
+
+    /// The plane normal between sites `d` apart, in the bedded metric.
+    static func beddedNormal(_ d: SIMD3<Float>) -> SIMD3<Float> {
+        let along = simd_dot(d, beddingNormal)
+        return simd_normalize(d + (beddingStretch * beddingStretch - 1) * along * beddingNormal)
+    }
+
+    /// Surface displacement, a function of world position alone so that neighbouring blocks stay
+    /// matched where they touch.
+    static func displacement(_ p: SIMD3<Float>) -> SIMD3<Float> {
+        let q = p * SIMD3<Float>(0.8, 0.8, 1.15) + 31
+        let large = SIMD3<Float>(
+            Noise.fbm(q, octaves: 2), Noise.fbm(q + 13.7, octaves: 2), Noise.fbm(q + 29.1, octaves: 2))
+        let r = p * 3.4 + 7
+        let fine = SIMD3<Float>(
+            Noise.fbm(r, octaves: 2), Noise.fbm(r + 5.3, octaves: 2), Noise.fbm(r + 17.9, octaves: 2))
+        return large * 0.22 + fine * 0.06
+    }
+
+    /// A polygon's tessellated, displaced surface: each fan triangle subdivided `level` times,
+    /// with vertex normals from its own grid. Kind comes from the polygon.
+    static func tessellate(
+        _ poly: Polyhedron, centre c: SIMD3<Float>, origin: SIMD3<Float>? = nil, body: UInt32, level n: Int,
+        warp: Float, seed: Float, relief: Float = 0, vertices: inout [Vertex], indices: inout [UInt32]
+    ) {
+        for (f, polygon) in poly.faces.enumerated() where polygon.count >= 3 {
+            for k in 1..<(polygon.count - 1) {
+                let (a, b, cc) = (polygon[0], polygon[k], polygon[k + 1])
+                var outward = simd_cross(b - a, cc - a)
+                if simd_length_squared(outward) < 1e-12 { continue }
+                let flip = simd_dot(outward, a - c) < 0
+                if flip { outward = -outward }
+                let corners = flip ? (a, cc, b) : (a, b, cc)
+                let side = n + 1
+                func at(_ i: Int, _ j: Int) -> Int { j * (2 * side - j + 1) / 2 + i }
+                var positions = [SIMD3<Float>](repeating: .zero, count: side * (side + 1) / 2)
+                for j in 0...n {
+                    for i in 0...(n - j) {
+                        let (u, v) = (Float(i) / Float(n), Float(j) / Float(n))
+                        var p = corners.0 + (corners.1 - corners.0) * u + (corners.2 - corners.0) * v
+                        p += displacement(p)
+                        if relief > 0 {
+                            let w = p * 0.42 + 13
+                            p +=
+                                relief
+                                * SIMD3<Float>(
+                                    Noise.fbm(w, octaves: 3), Noise.fbm(w + 4.7, octaves: 3),
+                                    Noise.fbm(w + 11.3, octaves: 3)) * 1.4
+                        }
+                        if warp > 0 {
+                            let t = p * 0.7 + seed
+                            p +=
+                                warp
+                                * SIMD3<Float>(
+                                    Noise.value(t), Noise.value(t + 9.1), Noise.value(t + 21.3)) * 1.5
+                        }
+                        positions[at(i, j)] = p
+                    }
+                }
+                var normals = [SIMD3<Float>](repeating: .zero, count: positions.count)
+                func triangle(_ x: Int, _ y: Int, _ z: Int) {
+                    let normal = simd_cross(positions[y] - positions[x], positions[z] - positions[x])
+                    normals[x] += normal
+                    normals[y] += normal
+                    normals[z] += normal
+                }
+                let first = UInt32(vertices.count)
+                for j in 0..<n {
+                    for i in 0..<(n - j) {
+                        triangle(at(i, j), at(i + 1, j), at(i, j + 1))
+                        indices += [
+                            first + UInt32(at(i, j)), first + UInt32(at(i + 1, j)),
+                            first + UInt32(at(i, j + 1)),
+                        ]
+                        if i + 1 < n - j {
+                            triangle(at(i + 1, j), at(i + 1, j + 1), at(i, j + 1))
+                            indices += [
+                                first + UInt32(at(i + 1, j)), first + UInt32(at(i + 1, j + 1)),
+                                first + UInt32(at(i, j + 1)),
+                            ]
+                        }
+                    }
+                }
+                for (m, position) in positions.enumerated() {
+                    var normal = simd_normalize(normals[m] + 1e-9 * outward)
+                    if normal.x.isNaN { normal = SIMD3(0, 0, 1) }
+                    let packed = pack(normal: normal, kind: poly.kinds[f])
+                    let local = position - (origin ?? c)
+                    vertices.append(Vertex(x: local.x, y: local.y, z: local.z, normal: packed, body: body))
+                }
+            }
+        }
+    }
+
+    /// Render-only rock over every steep part of the ground that the broken strip does not cover:
+    /// bedded cells a little proud of the terrain, so the strip's ends do not show.
+    mutating func buildDressing(edge: Float = 1.15) {
+        let t = terrain
+        let hillside = self
+        func surface(_ x: Float, _ y: Float) -> Float {
+            let inside = x > t.origin.x + 1 && x < t.origin.x + Float(t.columns - 2) * t.spacing
+            return inside ? hillside.height(t.heights, x, y) : hillside.oldHeight(x, y)
+        }
+        func slope(_ x: Float, _ y: Float) -> Float {
+            let e: Float = 1
+            let dx = (surface(x + e, y) - surface(x - e, y)) / (2 * e)
+            let dy = (surface(x, y + e) - surface(x, y - e)) / (2 * e)
+            return sqrt(dx * dx + dy * dy)
+        }
+        var r = Random(seed: 5150)
+        let lowXY = SIMD2<Float>(low.x - 60, low.y + 3)
+        let highXY = SIMD2<Float>(620, high.y - 3)
+        // Sites at the wanted density per unit volume of a 2.7 m band under the steep ground.
+        let trials = 300_000
+        var weightSum: Float = 0
+        var steepCount = 0
+        func surfaceWeight(_ x: Float, _ y: Float) -> Float {
+            let s = slope(x, y)
+            return s > 0.55 + 0.25 * r.float() ? sqrt(1 + s * s) : 0
+        }
+        for _ in 0..<trials {
+            let w = surfaceWeight(r.float(lowXY.x, highXY.x), r.float(lowXY.y, highXY.y))
+            if w > 0 {
+                weightSum += w
+                steepCount += 1
+            }
+        }
+        let area = (highXY.x - lowXY.x) * (highXY.y - lowXY.y) * weightSum / Float(trials)
+        let wanted = Int(area * 2.7 / (edge * edge * edge))
+        var sites: [SIMD3<Float>] = []
+        sites.reserveCapacity(wanted)
+        let maxWeight = sqrt(1 + 8 * 8 as Float)
+        var attemptsMade = 0
+        while sites.count < wanted && attemptsMade < 40_000_000 {
+            attemptsMade += 1
+            let (x, y) = (r.float(lowXY.x, highXY.x), r.float(lowXY.y, highXY.y))
+            let w = surfaceWeight(x, y)
+            guard w > 0, r.float() < min(1, w / maxWeight * 3) else { continue }
+            let e: Float = 0.8
+            let dx = (surface(x + e, y) - surface(x - e, y)) / (2 * e)
+            let dy = (surface(x, y + e) - surface(x, y - e)) / (2 * e)
+            let n = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+            sites.append(SIMD3(x, y, surface(x, y)) + n * (0.3 - 2.7 * r.float()))
+        }
+        let accepted = sites.count
+        let cell = edge * 2.1
+        var grid: [Int64: [Int32]] = [:]
+        func key(_ p: SIMD3<Float>) -> Int64 {
+            let g = floor(p / cell)
+            return Int64(g.x) &+ Int64(g.y) &* 1_000_003 &+ Int64(g.z) &* 2_000_000_011
+        }
+        for (n, p) in sites.enumerated() { grid[key(p), default: []].append(Int32(n)) }
+        let frozen = sites
+        let frozenGrid = grid
+        var meshes = [(vertices: [Vertex], indices: [UInt32])](repeating: ([], []), count: sites.count)
+        meshes.withUnsafeMutableBufferPointer { out in
+            nonisolated(unsafe) let output = out
+            DispatchQueue.concurrentPerform(iterations: frozen.count) { n in
+                let site = frozen[n]
+                var near: [Int] = []
+                for dk: Float in [-1, 0, 1] {
+                    for dj: Float in [-1, 0, 1] {
+                        for di: Float in [-1, 0, 1] {
+                            for other in frozenGrid[key(site + SIMD3(di, dj, dk) * cell)] ?? []
+                            where Int(other) != n {
+                                near.append(Int(other))
+                            }
+                        }
+                    }
+                }
+                near.sort { Self.bedded($0, of: site, in: frozen) < Self.bedded($1, of: site, in: frozen) }
+                var polyhedron = Polyhedron.box(low: site - cell * 1.8, high: site + cell * 1.8)
+                for other in near {
+                    let q = frozen[other]
+                    let normal = Self.beddedNormal(q - site)
+                    let middle = (q + site) * 0.5
+                    if simd_dot(normal, middle - site) > polyhedron.maxDistance(from: site) { continue }
+                    polyhedron.clip(normal: normal, offset: simd_dot(normal, middle), kind: 0)
+                }
+                let extent = min(polyhedron.maxDistance(from: site), cell)
+                for offset: SIMD2<Float> in [.zero, [0.7, 0], [-0.7, 0], [0, 0.7], [0, -0.7]] {
+                    let p = SIMD2(site.x, site.y) + offset * extent
+                    let e: Float = 0.5
+                    let z = surface(p.x, p.y)
+                    let dx = (surface(p.x + e, p.y) - surface(p.x - e, p.y)) / (2 * e)
+                    let dy = (surface(p.x, p.y + e) - surface(p.x, p.y - e)) / (2 * e)
+                    let normal = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+                    polyhedron.clip(
+                        normal: normal, offset: simd_dot(normal, SIMD3<Float>(p.x, p.y, z)) + 0.35, kind: 1)
+                }
+                let (volume, centroid) = polyhedron.volumeAndCentroid
+                guard polyhedron.faces.count >= 4, polyhedron.faces.count < 40, volume > 0.02 else { return }
+                var vertices: [Vertex] = []
+                var indices: [UInt32] = []
+                Self.tessellate(
+                    polyhedron, centre: centroid, origin: .zero, body: 0, level: 3, warp: 0, seed: 0,
+                    relief: 0.75, vertices: &vertices,
+                    indices: &indices)
+                output[n] = (vertices, indices)
+            }
+        }
+        for mesh in meshes where !mesh.vertices.isEmpty {
+            let base = UInt32(dressingVertices.count)
+            dressingVertices.append(contentsOf: mesh.vertices)
+            dressingIndices.append(contentsOf: mesh.indices.map { $0 + base })
+        }
+        print(
+            "dressing: \(sites.count) sites, \(dressingIndices.count / 3) triangles (\(accepted) steep samples)"
+        )
+    }
+
     /// Packs a unit normal in 10:10:10 and the face kind in the top two bits.
     static func pack(normal n: SIMD3<Float>, kind: UInt8) -> UInt32 {
         func s10(_ v: Float) -> UInt32 {
@@ -554,7 +804,7 @@ struct Firing {
 }
 
 enum FiringPattern {
-    static func row(hillside: Hillside, count: Int = 16, first: Float = 1.0, stagger: Float = 0.1) -> [Firing]
+    static func row(hillside: Hillside, count: Int = 16, first: Float = 1.8, stagger: Float = 0.1) -> [Firing]
     {
         let length = hillside.options.length
         return (0..<count).map { n in
@@ -573,21 +823,24 @@ struct Launch {
     var speed0: Float = 15
     var r0: Float = 3
     var exponent: Float = 1.0
-    /// The face swells before it lets go: blocks drift at a share of the launch for `rise` seconds.
-    var rise: Float = 0.22
-    var swellShare: Float = 0.1
+    /// The face swells before it lets go, coherently and by eye: a smooth drift out and up over
+    /// `rise` seconds, up to `swellAmplitude` metres near a firing, fading with distance.
+    var rise: Float = 0.45
+    var swellAmplitude: Float = 2.0
+    var swellReach: Float = 14
     /// Share of a block's launch that is up.
     var lift: Float = 0.55
     /// Speed of the break through the rock, for each block's release (m/s). Visual only.
     var front: Float = 200
 
     func apply(to blocks: inout [Hillside.Block], firings: [Firing], hillside: Hillside) -> (
-        fire: [Float], velocity: [SIMD3<Float>], spin: [SIMD3<Float>]
+        fire: [Float], velocity: [SIMD3<Float>], spin: [SIMD3<Float>], swell: [SIMD4<Float>]
     ) {
         var random = Random(seed: 77)
         var fire = [Float](repeating: 0, count: blocks.count)
         var velocity = [SIMD3<Float>](repeating: .zero, count: blocks.count)
         var spin = velocity
+        var swell = [SIMD4<Float>](repeating: .zero, count: blocks.count)
         for (n, block) in blocks.enumerated() {
             let c = block.centre
             var best: Float = .infinity
@@ -617,11 +870,17 @@ struct Launch {
             direction.z += lift * (0.6 + 0.4 * random.float())
             direction = simd_normalize(direction + 0.18 * random.unit())
             fire[n] = nearest.time + r / front
+            // Coherent: no jitter, so the face rises as a whole before it opens.
+            let reach = r / swellReach
+            let amplitude = swellAmplitude * exp(-reach * reach) + 0.2
+            let thisRise = rise + 0.3 * min(1, r / 25)
+            let swellDirection = simd_normalize(0.6 * outward + SIMD3<Float>(0, 0, 0.55) + 0.25 * radial)
+            swell[n] = SIMD4(swellDirection * amplitude / (0.5 * thisRise), thisRise)
             velocity[n] = direction * max(0.25, speed * random.float(0.7, 1.2))
             spin[n] =
                 random.unit()
                 * min(9, simd_length(velocity[n]) * random.float(0.3, 1.5) / max(block.size, 0.3))
         }
-        return (fire, velocity, spin)
+        return (fire, velocity, spin, swell)
     }
 }
