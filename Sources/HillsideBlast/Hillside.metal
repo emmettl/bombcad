@@ -407,6 +407,23 @@ static inline float3 bumped(float3 n, float3 p, float scale, float strength, int
     return normalize(n - strength * (g - n * dot(g, n)));
 }
 
+// The beds, on the same coordinate as the fracture's (`Fracture.families[0]`): index and colour.
+constant float3 beddingNormal = float3(0.0595f, 0.0496f, 0.9970f);
+static inline float bedCoordinate(float s) {
+    return (s + 0.9f * sin(0.31f * s + 1.2f) + 0.5f * sin(0.97f * s + 2.7f)) / 1.25f;
+}
+static inline float3 bedColour(float3 p) {
+    float s = dot(p, beddingNormal);
+    float k = floor(bedCoordinate(s));
+    float h = fract(sin(k * 91.7f + 3.1f) * 43758.5453f);
+    float3 pale = float3(0.53f, 0.47f, 0.37f);
+    float3 ochre = float3(0.56f, 0.42f, 0.26f);
+    float3 dark = float3(0.31f, 0.28f, 0.24f);
+    float3 cream = float3(0.62f, 0.56f, 0.46f);
+    float3 c = h < 0.35f ? pale : h < 0.62f ? ochre : h < 0.82f ? cream : dark;
+    return c * (0.9f + 0.25f * fract(h * 17.0f));
+}
+
 fragment float4 blockFragment(RasterOut in [[stage_in]],
                               constant HillsideCamera &cam [[buffer(0)]],
                               depth2d<float> shadowMap [[texture(0)]],
@@ -414,31 +431,30 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
                               sampler s [[sampler(0)]]) {
     float3 n = normalize(in.normal);
     float3 rest = in.local;
-    float warp = fbm3(rest * 0.07f, 3);
-    float band = sin(rest.z * 1.5f + 9.0f * warp + rest.x * 0.12f) * 0.5f + 0.5f;
-    float thin = sin(rest.z * 9.0f + 3.0f * fbm3(rest * 0.3f, 2)) * 0.5f + 0.5f;
     float detail = fbm3(rest * 4.0f, 4);
     float grain = fbm3(rest * 19.0f, 3);
     float tintShift = in.bodyTint - 0.5f;
-    float3 layer = mix(float3(0.25f, 0.215f, 0.17f), float3(0.46f, 0.38f, 0.27f), band);
-    layer *= 0.8f + 0.25f * thin;
+    float3 bed = bedColour(rest);
     float3 albedo;
     if (in.kind == 1u) {
+        // Weathered skin: darker than the bed, stained, a little lichen.
         float stain = fbm3(in.world * 0.2f, 3);
-        float3 weathered = mix(float3(0.2f, 0.18f, 0.145f), float3(0.38f, 0.33f, 0.25f), detail);
-        float lichen = smoothstep(0.5f, 0.72f, fbm3(rest * 1.3f + 40.0f, 4));
-        albedo = mix(weathered, float3(0.26f, 0.29f, 0.13f) * (0.7f + 0.8f * grain), lichen * 0.3f);
-        // Beds show on the weathered face as ledges of colour.
-        float beds = smoothstep(0.25f, 0.75f, sin(in.world.z * 1.15f + 4.0f * fbm3(in.world * 0.05f, 3)) * 0.5f + 0.5f);
-        albedo *= (0.86f + 0.2f * beds) * (0.75f + 0.6f * stain);
+        float3 weathered = mix(float3(0.17f, 0.16f, 0.13f), bed * 0.62f, smoothstep(0.25f, 0.8f, detail));
+        float lichen = smoothstep(0.52f, 0.72f, fbm3(rest * 1.3f + 40.0f, 4));
+        albedo = mix(weathered, float3(0.24f, 0.28f, 0.12f) * (0.7f + 0.8f * grain), lichen * 0.3f);
+        albedo *= 0.8f + 0.5f * stain;
     } else if (in.kind == 2u) {
-        albedo = float3(0.22f, 0.2f, 0.17f) * (0.7f + 0.6f * detail);
+        albedo = float3(0.2f, 0.18f, 0.15f) * (0.7f + 0.6f * detail);
+    } else if (in.kind == 3u) {
+        // An old joint or bedding plane: iron-stained, duller than a fresh break.
+        float iron = smoothstep(0.35f, 0.7f, fbm3(rest * 0.9f + 11.0f, 4));
+        albedo = mix(bed * 0.55f, float3(0.48f, 0.28f, 0.14f) * (0.8f + 0.5f * detail), iron * 0.75f);
     } else {
-        // Fresh breaks are paler than the weathered skin.
-        albedo = (layer + float3(0.12f, 0.1f, 0.07f)) * (0.85f + 0.3f * tintShift) * (0.75f + 0.55f * detail);
+        // A fresh break: the bed's own pale colour.
+        albedo = bed * (0.88f + 0.28f * tintShift) * (0.86f + 0.3f * detail);
     }
     albedo *= 0.82f + 0.36f * grain;
-    float3 surface = in.kind == 1u ? bumped(n, rest, 1.6f, 0.7f, 4) : bumped(n, rest, 5.0f, 0.5f, 3);
+    float3 surface = in.kind == 1u ? bumped(n, rest, 1.6f, 0.7f, 4) : bumped(n, rest, 3.0f, 0.3f, 3);
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
     float dust = dustShadow(in.world, cam, dustLight);
     return float4(shade(albedo, in.world, surface, cam, shadow, dust), 1.0f);
@@ -461,7 +477,7 @@ fragment float4 terrainFragment(TerrainOut in [[stage_in]],
     ground = mix(ground, ground * 1.35f + float3(0.03f), pebbles * 0.6f);
     float warp = fbm3(in.world * 0.07f, 3);
     float strata = sin(in.world.z * 1.5f + 9.0f * warp) * 0.5f + 0.5f;
-    float3 rock = mix(float3(0.21f, 0.18f, 0.14f), float3(0.42f, 0.35f, 0.26f), detail) * (0.8f + 0.35f * strata);
+    float3 rock = mix(float3(0.17f, 0.16f, 0.13f), bedColour(in.world) * 0.62f, smoothstep(0.25f, 0.8f, detail)) * (0.9f + 0.2f * strata);
     float crest = smoothstep(14.0f, 21.0f, in.world.z) * (1.0f - smoothstep(0.08f, 0.25f, slope));
     float3 scrub = mix(float3(0.13f, 0.13f, 0.07f), float3(0.3f, 0.26f, 0.13f), detail * 0.6f + broad * 0.4f);
     scrub = mix(scrub, float3(0.22f, 0.19f, 0.11f), smoothstep(0.45f, 0.7f, fbm3(in.world * 0.11f + 3.0f, 3)));
@@ -530,6 +546,7 @@ kernel void chipUpdate(device HillsideChip *chips [[buffer(0)]],
         }
     }
     float2 uv = float2((C.posSize.x - u.low.x) / u.size.x, 1.0f - (C.posSize.y - u.low.y) / u.size.y);
+    if (any(uv < 0.0f) || any(uv > 1.0f)) { C.state = 0u; C.offsetDelay.w = 1e9f; chips[i] = C; return; }
     float h = u.size.z - height.sample(s, uv) * (u.size.z - u.size.w);
     if (C.state == 1u && C.posSize.z <= h + r * 0.6f) {
         C.posSize.z = h + r * 0.6f;
@@ -706,4 +723,11 @@ fragment float4 tonemap(FullscreenOut in [[stage_in]],
     float grain = fract(sin(dot(in.position.xy + cam.misc.x * 37.0f, float2(12.9898f, 78.233f))) * 43758.5453f) - 0.5f;
     c += grain * 0.012f;
     return float4(c, 1.0f);
+}
+
+// The play window's presentation: its offscreen frame, scaled to the view.
+fragment float4 presentFragment(FullscreenOut in [[stage_in]],
+                                texture2d<float> frame [[texture(0)]],
+                                sampler s [[sampler(0)]]) {
+    return frame.sample(s, in.uv);
 }

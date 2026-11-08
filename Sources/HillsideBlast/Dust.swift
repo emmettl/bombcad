@@ -38,19 +38,19 @@ final class DustField {
     let composite: MTLRenderPipelineState
     let halfDust: MTLTexture
     let dustDraw: MTLRenderPipelineState
-    let firings: [Firing]
+    var firings: [Firing]
     var uniforms: Uniforms
     var lastTime: Float = 0
     let sampler: MTLSamplerState
 
     init(
         device: MTLDevice, library: MTLLibrary, hillside: Hillside, firings: [Firing], width: Int,
-        height: Int, sun: SIMD3<Float>
+        height: Int, sun: SIMD3<Float>, gridSize: Float = 1
     ) throws {
         self.device = device
         self.firings = firings
         queue = device.makeCommandQueue()!
-        let h = option(CommandLine.arguments, "--dust-h").flatMap(Float.init) ?? 1.0
+        let h = gridSize
         let low = SIMD3<Float>(-45, -165, -3)
         let extent = SIMD3<Float>(282, 237, 129)
         let dims = SIMD3<Int>(Int(extent.x / h), Int(extent.y / h), Int(extent.z / h))
@@ -172,7 +172,9 @@ final class DustField {
         guard c.x >= 0, c.y >= 0, c.z >= 0, c.x < dims.x, c.y < dims.y, c.z < dims.z else { return }
         let index = c.x + dims.x * (c.y + dims.y * c.z)
         if pointer[index] == .zero { touched.append(index) }
-        pointer[index] += SIMD4(v * dust, dust)
+        // A coarser field gets the same amount of dust per unit volume.
+        let scaled = dust / (h * h * h)
+        pointer[index] += SIMD4(v * scaled, scaled)
     }
 
     /// One 1/30 s dust step: sources from the firings and blocks (their poses this frame and last),
@@ -292,6 +294,66 @@ final class DustField {
         for index in touched { pointer[index] = .zero }
         touched.removeAll(keepingCapacity: true)
         return buffer.gpuEndTime - buffer.gpuStartTime
+    }
+
+    /// A stored field, for scrubbing: velocity and density copied on the GPU.
+    final class Keyframe {
+        let velocity: MTLTexture
+        let density: MTLTexture
+        init(device: MTLDevice, like field: DustField) {
+            func copy(_ t: MTLTexture) -> MTLTexture {
+                let d = MTLTextureDescriptor()
+                d.textureType = .type3D
+                d.pixelFormat = t.pixelFormat
+                d.width = t.width
+                d.height = t.height
+                d.depth = t.depth
+                d.usage = .shaderRead
+                d.storageMode = .private
+                return device.makeTexture(descriptor: d)!
+            }
+            velocity = copy(field.velocity[0])
+            density = copy(field.density[0])
+        }
+        var bytes: Int { velocity.allocatedSize + density.allocatedSize }
+    }
+
+    func store(into key: Keyframe) {
+        let buffer = queue.makeCommandBuffer()!
+        let blit = buffer.makeBlitCommandEncoder()!
+        blit.copy(from: velocity[0], to: key.velocity)
+        blit.copy(from: density[0], to: key.density)
+        blit.endEncoding()
+        buffer.commit()
+        buffer.waitUntilCompleted()
+    }
+
+    /// Back to a stored field; the light is rebuilt from it.
+    func restore(from key: Keyframe) {
+        let buffer = queue.makeCommandBuffer()!
+        let blit = buffer.makeBlitCommandEncoder()!
+        blit.copy(from: key.velocity, to: velocity[0])
+        blit.copy(from: key.density, to: density[0])
+        blit.endEncoding()
+        let encoder = buffer.makeComputeCommandEncoder()!
+        var u = uniforms
+        u.hdtsteps.y = 1.0 / 30
+        encoder.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
+        encoder.setTexture(density[0], index: 0)
+        encoder.setTexture(light, index: 1)
+        encoder.setComputePipelineState(pipelines["dustLight"]!)
+        encoder.dispatchThreads(
+            MTLSize(width: dims.x, height: dims.y, depth: dims.z),
+            threadsPerThreadgroup: MTLSize(width: 16, height: 8, depth: 8))
+        encoder.endEncoding()
+        buffer.commit()
+        buffer.waitUntilCompleted()
+    }
+
+    /// All the fields' bytes.
+    var bytes: Int {
+        (velocity + density + pressure + scratch + [divergence, light, solid, noiseVolume])
+            .reduce(source.length + halfDust.allocatedSize) { $0 + $1.allocatedSize }
     }
 
     func composite(

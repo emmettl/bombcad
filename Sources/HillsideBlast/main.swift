@@ -53,13 +53,20 @@ let name = option(arguments, "--out") ?? "run"
 let dir = dataRoot.appendingPathComponent(name, isDirectory: true)
 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 var hillside = Hillside(options: options)
-hillside.generate()
+if command != "play" { hillside.generate() }
 let firings = FiringPattern.row(hillside: hillside)
 var launch = Launch()
 
 func writeReport(_ text: String) {
     print(text)
     try? text.write(to: dir.appendingPathComponent("\(command).txt"), atomically: true, encoding: .utf8)
+}
+
+if command == "play" {
+    try MainActor.assumeIsolated {
+        try PlayApp.run(arguments: arguments, hillside: &hillside, device: device, dataRoot: dataRoot)
+    }
+    exit(0)
 }
 
 if command == "simulate" {
@@ -136,11 +143,11 @@ if command == "render" {
     let supersample = option(arguments, "--ss").flatMap(Int.init) ?? 2
     let lib = try library(device: device)
     if !arguments.contains("--no-dressing") { hillside.buildDressing() }
-    let start = option(arguments, "--eye").map(parseVector) ?? SIMD3<Float>(-112, -250, 15)
-    let end = option(arguments, "--eye-end").map(parseVector) ?? SIMD3<Float>(-96, -232, 13)
-    let target = option(arguments, "--target").map(parseVector) ?? SIMD3<Float>(120, 14, 18)
-    let targetEnd = option(arguments, "--target-end").map(parseVector) ?? SIMD3<Float>(122, 14, 18)
-    let fov = option(arguments, "--fov").flatMap(Float.init) ?? 21
+    let start = option(arguments, "--eye").map(parseVector) ?? SIMD3<Float>(-46, -74, 3.6)
+    let end = option(arguments, "--eye-end").map(parseVector) ?? SIMD3<Float>(-33, -66, 3.4)
+    let target = option(arguments, "--target").map(parseVector) ?? SIMD3<Float>(66, 16, 16)
+    let targetEnd = option(arguments, "--target-end").map(parseVector) ?? SIMD3<Float>(72, 14, 16)
+    let fov = option(arguments, "--fov").flatMap(Float.init) ?? 36
     let path = CameraPath(
         eyes: (start, end), targets: (target, targetEnd), fovY: (fov, fov * 0.93), duration: 20)
     let renderer = try Renderer(
@@ -150,7 +157,8 @@ if command == "render" {
         renderer.dust = try DustField(
             device: device, library: try dustLibrary(device: device), hillside: hillside, firings: firings,
             width: 1920 * supersample, height: 1080 * supersample,
-            sun: SIMD3(renderer.camera.sun.x, renderer.camera.sun.y, renderer.camera.sun.z))
+            sun: SIMD3(renderer.camera.sun.x, renderer.camera.sun.y, renderer.camera.sun.z),
+            gridSize: option(arguments, "--dust-h").flatMap(Float.init) ?? 1)
     }
     let restSizes = hillside.blocks.map(\.size)
     let poseBuffer = device.makeBuffer(length: 32 * bodies, options: .storageModeShared)!
@@ -180,6 +188,10 @@ if command == "render" {
                         pose: poseBuffer, previous: previousPose, bodies: bodies,
                         time: Float(dustFrame) / Float(fps),
                         restSize: restSizes, frameRate: Float(fps)) * 1000)
+            }
+            if dustFrame > 0 {
+                renderer.stepDecor(
+                    pose: poseBuffer, previous: previousPose, time: Float(dustFrame) / Float(fps))
             }
         }
     }

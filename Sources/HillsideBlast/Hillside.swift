@@ -171,6 +171,10 @@ struct Polyhedron {
 struct Hillside {
     struct Options {
         var blocks = 100_000
+        /// Coarse Voronoi cells as a share of `blocks`: the bedding and joints cut them further.
+        var siteShare: Float = 0.33
+        /// 0 for the render's full mesh, 1 for the live window's (fewer triangles).
+        var meshDetail = 0
         var spheres = 5
         var seed: UInt64 = 2026
         /// Length of the broken strip along the face (m).
@@ -344,7 +348,8 @@ struct Hillside {
             return false
         }
         sites.append(contentsOf: boulders.map(\.0))
-        while sites.count < options.blocks {
+        let siteTarget = Int(Float(options.blocks) * options.siteShare)
+        while sites.count < siteTarget {
             let p = SIMD3<Float>(
                 random.float(boxLow.x, boxHigh.x), random.float(boxLow.y, boxHigh.y),
                 random.float(boxLow.z, boxHigh.z))
@@ -444,13 +449,33 @@ struct Hillside {
                 }
             }
         }
-        let built = builtRaw.compactMap { $0 }
+        let cells = builtRaw.compactMap { $0 }
+        // Bedding and joints cut each coarse cell into slabs and wedges, and more where the rock
+        // is more broken, so large blocks stand among fines.
+        let referenceVolume = cells.reduce(0) { $0 + $1.volume } / Float(max(cells.count, 1))
+        var cutOut = [[Built]](repeating: [], count: cells.count)
+        cutOut.withUnsafeMutableBufferPointer { out in
+            nonisolated(unsafe) let output = out
+            DispatchQueue.concurrentPerform(iterations: cells.count) { n in
+                let centre = cells[n].centroid
+                let intensity = min(1, density(centre) / 2.6)
+                let pieces = Fracture.fracture(
+                    cells[n].polyhedron, intensity: intensity, minimumVolume: 0.012 * referenceVolume)
+                output[n] = pieces.compactMap { piece -> Built? in
+                    let (volume, centroid) = piece.volumeAndCentroid
+                    guard piece.faces.count >= 4, volume > 0, piece.faces.count < 48 else { return nil }
+                    return Built(polyhedron: piece, volume: volume, centroid: centroid)
+                }
+            }
+        }
+        let built = cutOut.flatMap { $0 }
         let meanVolume = built.reduce(0) { $0 + $1.volume } / Float(max(built.count, 1))
-        let keep = built.filter { $0.volume > 0.08 * meanVolume }
+        let keep = built.filter { $0.volume > 0.02 * meanVolume }
         print(
             "built \(built.count) cells, kept \(keep.count) (dropped slivers); mean volume \(String(format: "%.2f", meanVolume)) m3, took \(String(format: "%.1f", Date().timeIntervalSince(start))) s"
         )
-        let radiusCap = meanEdge * 0.55
+        let finalEdge = cbrt(meanVolume)
+        let radiusCap = finalEdge * 0.55
         let meanVolumeKept = keep.reduce(0) { $0 + $1.volume } / Float(max(keep.count, 1))
         // Each block's displaced mesh, built in parallel.
         var meshes = [(vertices: [Vertex], indices: [UInt32], anchors: [SIMD3<Float>])](
@@ -463,7 +488,12 @@ struct Hillside {
                 var anchors: [SIMD3<Float>] = []
                 var localRandom = Random(seed: UInt64(n) &+ 910)
                 let size = cbrt(keep[n].volume)
-                let level = size < 0.7 ? 1 : size < 1.4 ? 2 : size < 2.2 ? 3 : 4
+                let level: Int
+                if options.meshDetail > 0 {
+                    level = size < 1.2 ? 1 : 2
+                } else {
+                    level = size < 0.55 ? 1 : size < 1.2 ? 2 : size < 2.2 ? 3 : 4
+                }
                 Self.tessellate(
                     keep[n].polyhedron, centre: keep[n].centroid, body: UInt32(n), level: level,
                     warp: size * 0.07, seed: Float(n) * 0.137, vertices: &vertices, indices: &indices)
@@ -525,8 +555,15 @@ struct Hillside {
             spheres.append(Sphere(offset: .zero, radius: central))
             var chosen: [SIMD3<Float>] = [.zero]
             var added = 1
+            let aspect =
+                (localBounds.1 - localBounds.0).max() / max((localBounds.1 - localBounds.0).min(), 0.05)
             let target = max(
-                3, min(24, Int((Float(options.spheres) * pow(cell.volume / meanVolumeKept, 0.7)).rounded())))
+                3,
+                min(
+                    12,
+                    Int(
+                        (Float(options.spheres) * pow(cell.volume / meanVolumeKept, 0.7) + aspect * 0.5)
+                            .rounded())))
             while added < target {
                 let farthest = corners.max { a, b in
                     chosen.reduce(Float.infinity) { min($0, simd_distance_squared(a, $1)) }
@@ -670,7 +707,7 @@ struct Hillside {
 
     /// Render-only rock over every steep part of the ground that the broken strip does not cover:
     /// bedded cells a little proud of the terrain, so the strip's ends do not show.
-    mutating func buildDressing(edge: Float = 1.15) {
+    mutating func buildDressing(edge: Float = 1.15, level: Int = 3) {
         let t = terrain
         let hillside = self
         func surface(_ x: Float, _ y: Float) -> Float {
@@ -769,7 +806,7 @@ struct Hillside {
                 var vertices: [Vertex] = []
                 var indices: [UInt32] = []
                 Self.tessellate(
-                    polyhedron, centre: centroid, origin: .zero, body: 0, level: 3, warp: 0, seed: 0,
+                    polyhedron, centre: centroid, origin: .zero, body: 0, level: level, warp: 0, seed: 0,
                     relief: 0.75, vertices: &vertices,
                     indices: &indices)
                 output[n] = (vertices, indices)
@@ -803,15 +840,40 @@ struct Firing {
     var time: Float
 }
 
+/// The order the ripple runs along the row. Stylised, for the eye.
+enum FiringOrder: String, CaseIterable {
+    case leftToRight = "Left to right"
+    case rightToLeft = "Right to left"
+    case centreOut = "Centre out"
+    case edgesIn = "Edges in"
+    case scattered = "Scattered"
+}
+
 enum FiringPattern {
-    static func row(hillside: Hillside, count: Int = 16, first: Float = 1.8, stagger: Float = 0.1) -> [Firing]
-    {
+    static func row(
+        hillside: Hillside, count: Int = 16, first: Float = 1.8, stagger: Float = 0.1,
+        order: FiringOrder = .leftToRight
+    ) -> [Firing] {
         let length = hillside.options.length
+        // Each firing's place in the order (0 first), by the distance that matters to that order.
+        let positions = (0..<count).map { Float($0) - Float(max(count - 1, 1)) * 0.5 }
+        var ranked: [Int]
+        switch order {
+        case .leftToRight: ranked = Array(0..<count)
+        case .rightToLeft: ranked = Array((0..<count).reversed())
+        case .centreOut: ranked = (0..<count).sorted { abs(positions[$0]) < abs(positions[$1]) }
+        case .edgesIn: ranked = (0..<count).sorted { abs(positions[$0]) > abs(positions[$1]) }
+        case .scattered:
+            var r = Random(seed: 41)
+            ranked = (0..<count).map { ($0, r.float()) }.sorted { $0.1 < $1.1 }.map(\.0)
+        }
+        var rank = [Int](repeating: 0, count: count)
+        for (place, firing) in ranked.enumerated() { rank[firing] = place }
         return (0..<count).map { n in
             let x = 12 + (length - 24) * Float(n) / Float(max(count - 1, 1))
             let y = Hillside.faceLine(x) + hillside.options.depth * 0.45
             let z = hillside.height(hillside.original, x, y) * 0.55
-            return Firing(position: SIMD3(x, y, z), time: first + stagger * Float(n))
+            return Firing(position: SIMD3(x, y, z), time: first + stagger * Float(rank[n]))
         }
     }
 }
@@ -825,9 +887,9 @@ struct Launch {
     var exponent: Float = 1.0
     /// The face swells before it lets go, coherently and by eye: a smooth drift out and up over
     /// `rise` seconds, up to `swellAmplitude` metres near a firing, fading with distance.
-    var rise: Float = 0.45
-    var swellAmplitude: Float = 2.0
-    var swellReach: Float = 14
+    var rise: Float = 0.8
+    var swellAmplitude: Float = 3.4
+    var swellReach: Float = 20
     /// Share of a block's launch that is up.
     var lift: Float = 0.55
     /// Speed of the break through the rock, for each block's release (m/s). Visual only.
@@ -857,7 +919,9 @@ struct Launch {
             let across =
                 c.y - Hillside.faceLine(c.x) - hillside.options.depth
                 * Hillside.mask(c.x, length: hillside.options.length)
-            if across > -2.6 {
+            // The strip's end is ragged: the last blocks to hold back come and go along it.
+            let raggedness = Noise.fbm(c * SIMD3<Float>(0.05, 0.05, 0.03) + 19, octaves: 3)
+            if across > -2.6 + 9 * raggedness {
                 fire[n] = .greatestFiniteMagnitude
                 velocity[n] = .zero
                 spin[n] = .zero
@@ -873,7 +937,7 @@ struct Launch {
             // Coherent: no jitter, so the face rises as a whole before it opens.
             let reach = r / swellReach
             let amplitude = swellAmplitude * exp(-reach * reach) + 0.2
-            let thisRise = rise + 0.3 * min(1, r / 25)
+            let thisRise = rise + 0.45 * min(1, r / 25)
             let swellDirection = simd_normalize(0.6 * outward + SIMD3<Float>(0, 0, 0.55) + 0.25 * radial)
             swell[n] = SIMD4(swellDirection * amplitude / (0.5 * thisRise), thisRise)
             velocity[n] = direction * max(0.25, speed * random.float(0.7, 1.2))

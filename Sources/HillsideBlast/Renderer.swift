@@ -52,6 +52,16 @@ func parseVector(_ text: String) -> SIMD3<Float> {
     return SIMD3(v[0], v[1], v[2])
 }
 
+/// How much the renderer draws: everything for the film, less for the play window.
+struct RenderQuality {
+    var shadowSize = 8192
+    var decorScale: Float = 1
+    /// The chips land on the terrain alone, not on the moving blocks: one height pass, not one a frame.
+    var staticHeight = false
+    static let film = RenderQuality()
+    static let live = RenderQuality(shadowSize: 4096, decorScale: 0.3, staticHeight: true)
+}
+
 final class Renderer {
     let device: MTLDevice
     let queue: MTLCommandQueue
@@ -97,6 +107,11 @@ final class Renderer {
     let chipCount: Int
     var camera: CameraUniforms
     let cameraPath: CameraPath
+    /// A view that replaces the path, for the play window.
+    var viewOverride: (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float)?
+    let quality: RenderQuality
+    var heightDrawn = false
+    let pristineChips: MTLBuffer
     let topDown: simd_float4x4
     let heightTop: Float = 130
     let heightBottom: Float = 0
@@ -105,8 +120,9 @@ final class Renderer {
 
     init(
         device: MTLDevice, library: MTLLibrary, hillside: Hillside, width: Int, height: Int, supersample: Int,
-        path: CameraPath, frameRate: Float
+        path: CameraPath, frameRate: Float, quality: RenderQuality = .film
     ) throws {
+        self.quality = quality
         self.device = device
         self.library = library
         self.hillside = hillside
@@ -136,9 +152,12 @@ final class Renderer {
         identityRest = device.makeBuffer(bytes: identityR, length: 16)!
         let rest = hillside.blocks.map { SIMD4<Float>($0.centre, Float($0.size)) }
         restCentres = device.makeBuffer(bytes: rest, length: 16 * rest.count)!
-        let chipData = Decor.make(hillside: hillside)
+        let chipData = Decor.make(hillside: hillside, scale: quality.decorScale)
         chips = chipData.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
         chipCount = chipData.count
+        pristineChips = chipData.withUnsafeBytes {
+            device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)!
+        }
         // Terrain mesh.
         let t = hillside.terrain
         var vertices = [Float]()
@@ -155,7 +174,9 @@ final class Renderer {
                         (h(i - 1, j) - h(i + 1, j)) / (2 * t.spacing),
                         (h(i, j - 1) - h(i, j + 1)) / (2 * t.spacing), 1
                     ))
-                vertices += [x, y, h(i, j), n.x, n.y, n.z]
+                // The steep ground sits behind the render-only rock, not through it.
+                let inset: Float = n.z < 0.8 ? 1.8 : 0
+                vertices += [x, y, h(i, j) - inset, n.x, n.y, n.z]
             }
         }
         var indices = [UInt32]()
@@ -179,7 +200,7 @@ final class Renderer {
             let main =
                 x > t.origin.x + 1 && x < t.origin.x + Float(t.columns - 2) * t.spacing
                 && y < t.origin.y + Float(t.rows - 2) * t.spacing
-            if main { return hillside.height(t.heights, x, y) - 0.6 }
+            if main { return hillside.height(t.heights, x, y) - 2.2 }
             return hillside.oldHeight(x, y)
         }
         for j in 0..<extRows {
@@ -189,7 +210,8 @@ final class Renderer {
                 let dx = extHeight(x + 1, y) - extHeight(x - 1, y)
                 let dy = extHeight(x, y + 1) - extHeight(x, y - 1)
                 let n = simd_normalize(SIMD3<Float>(-dx * 0.5, -dy * 0.5, 1))
-                vertices += [x, y, z, n.x, n.y, n.z]
+                let inset: Float = n.z < 0.8 ? 1.8 : 0
+                vertices += [x, y, z - inset, n.x, n.y, n.z]
             }
         }
         for j in 0..<(extRows - 1) {
@@ -219,7 +241,7 @@ final class Renderer {
             d.storageMode = .private
             return device.makeTexture(descriptor: d)!
         }
-        shadowMap = depthTarget(8192, 8192)
+        shadowMap = depthTarget(quality.shadowSize, quality.shadowSize)
         heightMap = depthTarget(1000, 790)
         hdrDepth = depthTarget(width * supersample, height * supersample)
         let hdrDescriptor = MTLTextureDescriptor.texture2DDescriptor(
@@ -323,7 +345,7 @@ final class Renderer {
     func render(pose: MTLBuffer, previous: MTLBuffer, time: Float) -> Double {
         let buffer = queue.makeCommandBuffer()!
         var cam = camera
-        let view = cameraPath.at(time)
+        let view = viewOverride ?? cameraPath.at(time)
         let tanHalf = tan(view.fovY * 0.5)
         let vp =
             perspective(fovY: view.fovY, aspect: aspect, near: 3, far: 1600)
@@ -336,9 +358,6 @@ final class Renderer {
             cam.dustLow = SIMD4(dust.low, 0)
             cam.dustHigh = SIMD4(dust.high, 1)
         }
-        // Top-down height of everything, for the chips to land on.
-        var top = cam
-        top.shadow = topDown
         func drawGeometry(
             _ encoder: MTLRenderCommandEncoder, block: MTLRenderPipelineState, terrain: MTLRenderPipelineState
         ) {
@@ -364,33 +383,6 @@ final class Renderer {
                 indexBuffer: terrainIndices,
                 indexBufferOffset: 0)
         }
-        let heightPass = MTLRenderPassDescriptor()
-        heightPass.depthAttachment.texture = heightMap
-        heightPass.depthAttachment.loadAction = .clear
-        heightPass.depthAttachment.storeAction = .store
-        heightPass.depthAttachment.clearDepth = 1
-        let heightEncoder = buffer.makeRenderCommandEncoder(descriptor: heightPass)!
-        heightEncoder.setDepthStencilState(opaqueDepth)
-        heightEncoder.setCullMode(.none)
-        heightEncoder.setVertexBytes(&top, length: MemoryLayout<CameraUniforms>.stride, index: 2)
-        drawGeometry(heightEncoder, block: blockShadow, terrain: terrainShadow)
-        heightEncoder.endEncoding()
-        // Chips: one frame's step.
-        var chipUniforms = Decor.Uniforms(
-            dt: 1 / frameRate, gravity: 9.81, time: time, pad: 0, low: SIMD4(hillside.low, 0),
-            size: SIMD4(
-                hillside.high.x - hillside.low.x, hillside.high.y - hillside.low.y, heightTop, heightBottom))
-        let compute = buffer.makeComputeCommandEncoder()!
-        compute.setComputePipelineState(chipUpdate)
-        compute.setBuffer(chips, offset: 0, index: 0)
-        compute.setBuffer(pose, offset: 0, index: 1)
-        compute.setBuffer(previous, offset: 0, index: 2)
-        compute.setTexture(heightMap, index: 0)
-        compute.setBytes(&chipUniforms, length: MemoryLayout<Decor.Uniforms>.stride, index: 3)
-        compute.dispatchThreads(
-            MTLSize(width: chipCount, height: 1, depth: 1),
-            threadsPerThreadgroup: MTLSize(width: 32, height: 1, depth: 1))
-        compute.endEncoding()
         // Shadow map.
         let shadowPass = MTLRenderPassDescriptor()
         shadowPass.depthAttachment.texture = shadowMap
@@ -485,6 +477,62 @@ final class Renderer {
         return buffer.gpuEndTime - buffer.gpuStartTime
     }
 
+    /// One frame's step of the decorative chips, over a top-down height of the scene.
+    func stepDecor(pose: MTLBuffer, previous: MTLBuffer, time: Float) {
+        let buffer = queue.makeCommandBuffer()!
+        var top = camera
+        top.shadow = topDown
+        if !(quality.staticHeight && heightDrawn) {
+            let heightPass = MTLRenderPassDescriptor()
+            heightPass.depthAttachment.texture = heightMap
+            heightPass.depthAttachment.loadAction = .clear
+            heightPass.depthAttachment.storeAction = .store
+            heightPass.depthAttachment.clearDepth = 1
+            let encoder = buffer.makeRenderCommandEncoder(descriptor: heightPass)!
+            encoder.setDepthStencilState(opaqueDepth)
+            encoder.setCullMode(.none)
+            encoder.setVertexBytes(&top, length: MemoryLayout<CameraUniforms>.stride, index: 2)
+            if !quality.staticHeight {
+                encoder.setRenderPipelineState(blockShadow)
+                encoder.setVertexBuffer(blockVertices, offset: 0, index: 0)
+                encoder.setVertexBuffer(pose, offset: 0, index: 1)
+                encoder.drawIndexedPrimitives(
+                    type: .triangle, indexCount: indexCount, indexType: .uint32, indexBuffer: blockIndices,
+                    indexBufferOffset: 0)
+            }
+            encoder.setRenderPipelineState(terrainShadow)
+            encoder.setVertexBuffer(terrainVertices, offset: 0, index: 0)
+            encoder.drawIndexedPrimitives(
+                type: .triangle, indexCount: terrainIndexCount, indexType: .uint32,
+                indexBuffer: terrainIndices,
+                indexBufferOffset: 0)
+            encoder.endEncoding()
+            heightDrawn = true
+        }
+        var chipUniforms = Decor.Uniforms(
+            dt: 1 / frameRate, gravity: 9.81, time: time, pad: 0, low: SIMD4(hillside.low, 0),
+            size: SIMD4(
+                hillside.high.x - hillside.low.x, hillside.high.y - hillside.low.y, heightTop, heightBottom))
+        let compute = buffer.makeComputeCommandEncoder()!
+        compute.setComputePipelineState(chipUpdate)
+        compute.setBuffer(chips, offset: 0, index: 0)
+        compute.setBuffer(pose, offset: 0, index: 1)
+        compute.setBuffer(previous, offset: 0, index: 2)
+        compute.setTexture(heightMap, index: 0)
+        compute.setBytes(&chipUniforms, length: MemoryLayout<Decor.Uniforms>.stride, index: 3)
+        compute.dispatchThreads(
+            MTLSize(width: chipCount, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 32, height: 1, depth: 1))
+        compute.endEncoding()
+        buffer.commit()
+        buffer.waitUntilCompleted()
+    }
+
+    /// Back to the chips as built, for a jump backward.
+    func resetDecor() {
+        chips.contents().copyMemory(from: pristineChips.contents(), byteCount: chips.length)
+    }
+
     func savePNG(_ url: URL) {
         let bytesPerRow = 4 * width
         var data = [UInt8](repeating: 0, count: bytesPerRow * height)
@@ -562,7 +610,7 @@ enum Decor {
         var size: SIMD4<Float>
     }
 
-    static func make(hillside: Hillside) -> [Chip] {
+    static func make(hillside: Hillside, scale: Float = 1) -> [Chip] {
         var r = Random(seed: 8_675_309)
         var chips: [Chip] = []
         chips.reserveCapacity(1_000_000)
@@ -600,19 +648,19 @@ enum Decor {
                     state: 3,
                     seed: r.float(), tint: tint))
         }
-        for _ in 0..<260_000 {
+        for _ in 0..<Int(260_000 * scale) {
             let x = r.float(hillside.low.x, hillside.high.x)
             let toe =
                 Hillside.faceLine(x) + hillside.options.depth
                 * Hillside.mask(x, length: hillside.options.length) - 2
             onGround(x, toe - 14 * -log(max(r.float(), 1e-3)), size(0.05, 0.28, 0.38), r.float(0.25, 0.75))
         }
-        for _ in 0..<220_000 {
+        for _ in 0..<Int(220_000 * scale) {
             onGround(
                 r.float(hillside.low.x, hillside.high.x), r.float(hillside.low.y, -8), size(0.05, 0.18, 0.4),
                 r.float(0.2, 0.65))
         }
-        for _ in 0..<320_000 {
+        for _ in 0..<Int(320_000 * scale) {
             let x = r.float(hillside.low.x, hillside.high.x)
             let y = r.float(-430, hillside.low.y)
             let s = size(0.06, 0.25, 0.42)
