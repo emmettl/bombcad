@@ -154,6 +154,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.7.4 (19) | `56cc7a8e` | `5867f3cd-4763-4bf6-bcbb-1662511d8dca` | Published as v0.7.4           |
 | 0.7.5 (20) | `9a069d5b` | `cda8ce69-c963-4916-950c-287101cb74a7` | Published as v0.7.5           |
 | 0.8.0 (21) | `9651365d` | `8f6599b4-9d29-4b36-acb7-27ec3d29a691` | Published as v0.8.0           |
+| 0.9.0 (22) | `3e5bcff2` | `28eeda4b-c58a-4320-bc1c-fa643e04f344` | Published as v0.9.0           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -449,6 +450,23 @@ stapled ticket, passed `codesign --verify --deep --strict`, was accepted by `spc
 2026-11-02 at the user's word, with tag `v0.8.0` on `9651365d`, as the latest release, its notes'
 links pointing at the docs as tagged. The copy downloaded back matched the checksum. The Homebrew
 tap's cask is 0.8.0, with the release's checksum, and `brew audit --cask --strict --online` passed.
+
+Build 22 (0.9.0) was prepared on 2026-11-09 from `3e5bcff2` on main (in the worktree
+`$BOMBCAD_DATA/release-0.9.0`), with its notes assembled from twelve fragments, Best for a Budget
+first, and a Known limitations section added, and landed with the version by `make ship`.
+`make release` ran once, under `gpu-slot --mem 8`, with notarytool finding the profile from an
+agent's shell. It passed `make check` (492 app, 1062 model and 673 core GPU tests; the log's "Full
+check: FAILED" is `test-nightly-suspects`' fixture, as before), the release smoke runs, and the
+app's own run and interface smoke from inside its bundle. Apple accepted it (submission
+`28eeda4b-c58a-4320-bc1c-fa643e04f344`). A fresh expansion of its ZIP (45,146,518 bytes) matched
+the checksum (`7142181c6f2ecd7837453886d9378a00952a5bd5293f2a23be9f82526a2d9ae7`), validated its
+stapled ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, carries its licence, and is 0.9.0, build 22. The hands-on test above (a
+browser download on another Mac) was not done. It was published on 2026-11-09 at the user's word,
+with tag `v0.9.0` on `3e5bcff2`, as the latest release, its notes' links pointing at the docs as
+tagged. The copy downloaded back matched the checksum, and its ticket, signature and Gatekeeper
+checks passed. The Homebrew tap's cask is 0.9.0, with the release's checksum, and
+`brew audit --cask --strict --online` passed.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
