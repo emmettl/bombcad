@@ -56,10 +56,10 @@ func parseVector(_ text: String) -> SIMD3<Float> {
 struct RenderQuality {
     var shadowSize = 8192
     var decorScale: Float = 1
-    /// The chips land on the terrain alone, not on the moving blocks: one height pass, not one a frame.
-    var staticHeight = false
+    /// Frames between redraws of the top-down height the chips land on (the blocks included).
+    var heightEvery = 1
     static let film = RenderQuality()
-    static let live = RenderQuality(shadowSize: 4096, decorScale: 0.3, staticHeight: true)
+    static let live = RenderQuality(shadowSize: 4096, decorScale: 0.35, heightEvery: 6)
 }
 
 final class Renderer {
@@ -110,7 +110,7 @@ final class Renderer {
     /// A view that replaces the path, for the play window.
     var viewOverride: (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float)?
     let quality: RenderQuality
-    var heightDrawn = false
+    var heightFrame = 0
     let pristineChips: MTLBuffer
     let topDown: simd_float4x4
     let heightTop: Float = 130
@@ -482,7 +482,8 @@ final class Renderer {
         let buffer = queue.makeCommandBuffer()!
         var top = camera
         top.shadow = topDown
-        if !(quality.staticHeight && heightDrawn) {
+        heightFrame += 1
+        if heightFrame % quality.heightEvery == 1 || quality.heightEvery == 1 {
             let heightPass = MTLRenderPassDescriptor()
             heightPass.depthAttachment.texture = heightMap
             heightPass.depthAttachment.loadAction = .clear
@@ -492,14 +493,12 @@ final class Renderer {
             encoder.setDepthStencilState(opaqueDepth)
             encoder.setCullMode(.none)
             encoder.setVertexBytes(&top, length: MemoryLayout<CameraUniforms>.stride, index: 2)
-            if !quality.staticHeight {
-                encoder.setRenderPipelineState(blockShadow)
-                encoder.setVertexBuffer(blockVertices, offset: 0, index: 0)
-                encoder.setVertexBuffer(pose, offset: 0, index: 1)
-                encoder.drawIndexedPrimitives(
-                    type: .triangle, indexCount: indexCount, indexType: .uint32, indexBuffer: blockIndices,
-                    indexBufferOffset: 0)
-            }
+            encoder.setRenderPipelineState(blockShadow)
+            encoder.setVertexBuffer(blockVertices, offset: 0, index: 0)
+            encoder.setVertexBuffer(pose, offset: 0, index: 1)
+            encoder.drawIndexedPrimitives(
+                type: .triangle, indexCount: indexCount, indexType: .uint32, indexBuffer: blockIndices,
+                indexBufferOffset: 0)
             encoder.setRenderPipelineState(terrainShadow)
             encoder.setVertexBuffer(terrainVertices, offset: 0, index: 0)
             encoder.drawIndexedPrimitives(
@@ -507,7 +506,6 @@ final class Renderer {
                 indexBuffer: terrainIndices,
                 indexBufferOffset: 0)
             encoder.endEncoding()
-            heightDrawn = true
         }
         var chipUniforms = Decor.Uniforms(
             dt: 1 / frameRate, gravity: 9.81, time: time, pad: 0, low: SIMD4(hillside.low, 0),
@@ -618,13 +616,10 @@ enum Decor {
             let u = r.float()
             return min(high, low * pow(max(u, 1e-4), -power))
         }
-        // Chips that leave their blocks.
-        for (n, block) in hillside.blocks.enumerated() {
+        // Chips that leave their blocks, and fines that trickle after them and settle on the pile.
+        // Nothing is strewn on the floor beforehand: what lies there comes from the event.
+        for (n, block) in hillside.blocks.enumerated() where !block.skin {
             let c = block.centre
-            let across =
-                c.y - Hillside.faceLine(c.x) - hillside.options.depth
-                * Hillside.mask(c.x, length: hillside.options.length)
-            if across > -2.6 { continue }
             let count = max(2, min(8, Int(block.size * block.size * 3 + 2)))
             for k in 0..<count {
                 let anchor = hillside.chipAnchors[6 * n + k % 6]
@@ -634,40 +629,15 @@ enum Decor {
                         offsetDelay: SIMD4(anchor, r.float(0.02, 1.4)), parent: UInt32(n), state: 0,
                         seed: r.float(), tint: r.float(0.25, 0.9)))
             }
-        }
-        // Gravel and small stones: dense under the faces, thinning across the floor.
-        let t = hillside.terrain
-        func onGround(_ x: Float, _ y: Float, _ s: Float, _ tint: Float) {
-            guard x > hillside.low.x, y > hillside.low.y, x < hillside.high.x, y < hillside.high.y else {
-                return
+            let fines = Int((Float(4 + Int(block.size * 4)) * scale).rounded())
+            for k in 0..<fines {
+                let anchor = hillside.chipAnchors[6 * n + (k + 3) % 6]
+                chips.append(
+                    Chip(
+                        posSize: SIMD4(c, size(0.025, 0.12, 0.35)), velAge: .zero,
+                        offsetDelay: SIMD4(anchor, r.float(0.3, 3.0)), parent: UInt32(n), state: 0,
+                        seed: r.float(), tint: r.float(0.3, 0.95)))
             }
-            let z = hillside.height(t.heights, x, y)
-            chips.append(
-                Chip(
-                    posSize: SIMD4(x, y, z + s * 0.45, s), velAge: .zero, offsetDelay: .zero, parent: 0,
-                    state: 3,
-                    seed: r.float(), tint: tint))
-        }
-        for _ in 0..<Int(260_000 * scale) {
-            let x = r.float(hillside.low.x, hillside.high.x)
-            let toe =
-                Hillside.faceLine(x) + hillside.options.depth
-                * Hillside.mask(x, length: hillside.options.length) - 2
-            onGround(x, toe - 14 * -log(max(r.float(), 1e-3)), size(0.05, 0.28, 0.38), r.float(0.25, 0.75))
-        }
-        for _ in 0..<Int(220_000 * scale) {
-            onGround(
-                r.float(hillside.low.x, hillside.high.x), r.float(hillside.low.y, -8), size(0.05, 0.18, 0.4),
-                r.float(0.2, 0.65))
-        }
-        for _ in 0..<Int(320_000 * scale) {
-            let x = r.float(hillside.low.x, hillside.high.x)
-            let y = r.float(-430, hillside.low.y)
-            let s = size(0.06, 0.25, 0.42)
-            chips.append(
-                Chip(
-                    posSize: SIMD4(x, y, 0.1 + s * 0.4, s), velAge: .zero, offsetDelay: .zero, parent: 0,
-                    state: 3, seed: r.float(), tint: r.float(0.2, 0.7)))
         }
         print("decor: \(chips.count) chips and stones")
         return chips

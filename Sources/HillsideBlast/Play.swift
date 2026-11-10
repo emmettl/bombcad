@@ -133,16 +133,18 @@ final class PlaySession {
     private(set) var frame = 0
     private(set) var dustFrame = 0
     private var decoded = -1
+    /// The frame `previous` holds.
+    private var previousFrame = -1
     var playing = false
     /// Dust steps a drawn frame may spend catching up after a scrub.
     var catchUpSteps = 4
     private var clock = 0.0
 
-    var yaw: Float = -0.894
+    var yaw: Float = -0.81
     var pitch: Float = -0.086
     var distance: Float = 143
-    var focus = SIMD3<Float>(68, 15, 16)
-    var fovDegrees: Float = 36
+    var focus = SIMD3<Float>(68, 15, 21)
+    var fovDegrees: Float = 32
 
     var refireProgress: Float?
     var refireStatus = ""
@@ -282,6 +284,17 @@ final class PlaySession {
             if next >= eventFrames - 1 { playing = false }
             if next != frame { frame = next }
         }
+        if decoded != frame {
+            previousFrame = decoded
+            let bodies = cache.bodies
+            previous.contents().copyMemory(from: pose.contents(), byteCount: 32 * bodies)
+            cache.decode(
+                frame: frame, into: pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies))
+            if frame == decoded + 1 {
+                renderer.stepDecor(pose: pose, previous: previous, time: Float(frame) / Self.frameRate)
+            }
+            decoded = frame
+        }
         // The dust runs forward only: from the nearest stored field before the frame.
         if let dust {
             if dustFrame > frame
@@ -299,14 +312,18 @@ final class PlaySession {
             while dustFrame < frame, budget > 0 {
                 dustFrame += 1
                 let bodies = cache.bodies
-                cache.decode(
-                    frame: dustFrame - 1,
-                    into: dustPrevious.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies))
-                cache.decode(
-                    frame: dustFrame,
-                    into: dustPose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies))
+                // Catching up to the shown frame from the one before: those poses are decoded already.
+                let shown = dustFrame == frame && previousFrame == frame - 1
+                if !shown {
+                    cache.decode(
+                        frame: dustFrame - 1,
+                        into: dustPrevious.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies))
+                    cache.decode(
+                        frame: dustFrame,
+                        into: dustPose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies))
+                }
                 _ = dust.step(
-                    pose: dustPose, previous: dustPrevious, bodies: bodies,
+                    pose: shown ? pose : dustPose, previous: shown ? previous : dustPrevious, bodies: bodies,
                     time: Float(dustFrame) / Self.frameRate,
                     restSize: restSizes, frameRate: Self.frameRate)
                 budget -= 1
@@ -317,16 +334,6 @@ final class PlaySession {
                     keys[k] = key
                 }
             }
-        }
-        if decoded != frame {
-            let bodies = cache.bodies
-            previous.contents().copyMemory(from: pose.contents(), byteCount: 32 * bodies)
-            cache.decode(
-                frame: frame, into: pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies))
-            if frame == decoded + 1 {
-                renderer.stepDecor(pose: pose, previous: previous, time: Float(frame) / Self.frameRate)
-            }
-            decoded = frame
         }
     }
 
@@ -466,6 +473,10 @@ final class PlayController: NSObject, MTKViewDelegate, NSWindowDelegate {
     let fireButton = NSButton(title: "Fire again", target: nil, action: nil)
     let progress = NSProgressIndicator()
     let status = NSTextField(labelWithString: "")
+    /// The live frame time, over the view: the interval between frames and the work in each.
+    let readout = NSTextField(labelWithString: "")
+    var interval = 0.0
+    var workTime = 0.0
     let staggerLabel = NSTextField(labelWithString: "")
     let countLabel = NSTextField(labelWithString: "")
     var last = Date()
@@ -545,6 +556,12 @@ final class PlayController: NSObject, MTKViewDelegate, NSWindowDelegate {
         metalView.translatesAutoresizingMaskIntoConstraints = false
         let content = NSView()
         content.addSubview(metalView)
+        readout.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        readout.textColor = .white
+        readout.backgroundColor = NSColor.black.withAlphaComponent(0.45)
+        readout.drawsBackground = true
+        readout.translatesAutoresizingMaskIntoConstraints = false
+        metalView.addSubview(readout)
         content.addSubview(controls)
         NSLayoutConstraint.activate([
             metalView.topAnchor.constraint(equalTo: content.topAnchor),
@@ -555,6 +572,8 @@ final class PlayController: NSObject, MTKViewDelegate, NSWindowDelegate {
             controls.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             controls.bottomAnchor.constraint(equalTo: content.bottomAnchor),
             top.widthAnchor.constraint(equalTo: controls.widthAnchor, constant: -24),
+            readout.topAnchor.constraint(equalTo: metalView.topAnchor, constant: 8),
+            readout.leadingAnchor.constraint(equalTo: metalView.leadingAnchor, constant: 8),
         ])
         window.contentView = content
         if activate {
@@ -616,7 +635,12 @@ final class PlayController: NSObject, MTKViewDelegate, NSWindowDelegate {
             format: "%.1f s  %.0f fps  %@", seconds, fps,
             session.refireProgress != nil
                 ? "firing \(Int((session.refireProgress ?? 0) * 100))%" : session.refireStatus)
-        test?.work(Date().timeIntervalSince(now) * 1000)
+        let work = Date().timeIntervalSince(now) * 1000
+        interval = interval == 0 ? elapsed * 1000 : interval * 0.9 + elapsed * 100
+        workTime = workTime == 0 ? work : workTime * 0.9 + work * 0.1
+        readout.stringValue = String(
+            format: " %5.1f ms  %3.0f fps   work %4.1f ms ", interval, 1000 / max(interval, 1e-3), workTime)
+        test?.work(work)
         test?.tick(elapsed: elapsed)
     }
 }
@@ -684,7 +708,7 @@ final class PlayTest {
                 phase = .firing
                 ticks = 0
                 session.settings = FiringSettings(order: .centreOut, stagger: 0.06, count: 22)
-                session.yaw = -0.894
+                session.yaw = -0.81
                 session.refire()
                 session.onRefireDone = { [weak self] in
                     guard let self else { return }

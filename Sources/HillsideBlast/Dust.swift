@@ -32,6 +32,13 @@ final class DustField {
     let light: MTLTexture
     let solid: MTLTexture
     let source: MTLBuffer
+    let heatSource: MTLBuffer
+    let heatPointer: UnsafeMutablePointer<Float>
+    /// Each block's release time, and whether it shows on the face, for the puffs at release.
+    let blockFire: [Float]
+    let exposed: [Bool]
+    /// Each block's velocity at the last step, for the impacts.
+    var lastVelocity: [SIMD3<Float>]
     let pointer: UnsafeMutablePointer<SIMD4<Float>>
     var touched: [Int] = []
     let pipelines: [String: MTLComputePipelineState]
@@ -99,8 +106,10 @@ final class DustField {
             for j in 0..<dims.y {
                 for i in 0..<dims.x {
                     let world = low + h * (SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5)
-                    solidBytes[i + dims.x * (j + dims.y * k)] =
-                        world.z < hillside.height(hillside.original, world.x, world.y) ? 255 : 0
+                    // The ground left after the blast, not the hill before it: dust must be free to
+                    // fill the space the rock leaves and to move with it.
+                    let ground = hillside.height(hillside.terrain.heights, world.x, world.y)
+                    solidBytes[i + dims.x * (j + dims.y * k)] = world.z < ground ? 255 : 0
                 }
             }
         }
@@ -112,6 +121,18 @@ final class DustField {
         source = device.makeBuffer(length: 16 * cells, options: .storageModeShared)!
         memset(source.contents(), 0, 16 * cells)
         pointer = source.contents().bindMemory(to: SIMD4<Float>.self, capacity: cells)
+        heatSource = device.makeBuffer(length: 4 * cells, options: .storageModeShared)!
+        memset(heatSource.contents(), 0, 4 * cells)
+        heatPointer = heatSource.contents().bindMemory(to: Float.self, capacity: cells)
+        var blocks = hillside.blocks
+        let launchState = Launch().apply(to: &blocks, firings: firings, hillside: hillside)
+        blockFire = launchState.fire
+        exposed = hillside.blocks.map { b in
+            let c = b.centre
+            return hillside.height(hillside.original, c.x, c.y) - c.z < 2.5
+                || hillside.height(hillside.original, c.x, c.y - 2.5) < c.z
+        }
+        lastVelocity = Array(repeating: .zero, count: hillside.blocks.count)
         var map: [String: MTLComputePipelineState] = [:]
         for name in [
             "dustAddSources", "dustAdvectVelocity", "dustForces", "dustDivergence", "dustJacobi",
@@ -166,12 +187,13 @@ final class DustField {
         buffer.waitUntilCompleted()
     }
 
-    private func add(_ p: SIMD3<Float>, dust: Float, velocity v: SIMD3<Float>) {
+    private func add(_ p: SIMD3<Float>, dust: Float, velocity v: SIMD3<Float>, heat: Float = 0) {
         let g = (p - low) / h
         let c = SIMD3<Int>(Int(g.x), Int(g.y), Int(g.z))
         guard c.x >= 0, c.y >= 0, c.z >= 0, c.x < dims.x, c.y < dims.y, c.z < dims.z else { return }
         let index = c.x + dims.x * (c.y + dims.y * c.z)
         if pointer[index] == .zero { touched.append(index) }
+        heatPointer[index] += heat * dust / (h * h * h)
         // A coarser field gets the same amount of dust per unit volume.
         let scaled = dust / (h * h * h)
         pointer[index] += SIMD4(v * scaled, scaled)
@@ -183,15 +205,17 @@ final class DustField {
         pose: MTLBuffer, previous: MTLBuffer, bodies: Int, time: Float, restSize: [Float], frameRate: Float
     ) -> Double {
         let dt = 1 / frameRate
-        for firing in firings where time >= firing.time && time < firing.time + 0.35 {
-            let age = (time - firing.time) / 0.35
-            // A plume along the face from the firing, pushed out and up.
+        // Each firing's puff, born on the face in front of it at its own time, so the ripple runs
+        // through the dust as it does through the rock.
+        for firing in firings where time >= firing.time && time < firing.time + 0.3 {
+            let age = (time - firing.time) / 0.3
             var r = Random(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
-            for _ in 0..<900 {
-                let offset = r.unit() * r.float(0.5, 11)
-                let p = firing.position + SIMD3(offset.x, offset.y - 5, offset.z * 0.8 + 4)
-                let radial = simd_normalize(offset + SIMD3(0, -2, 1.2))
-                add(p, dust: 130 * (1 - age), velocity: radial * 36 + SIMD3(0, -12, 18) + r.unit() * 8)
+            let x = firing.position.x
+            let front = SIMD3<Float>(x, Hillside.faceLine(x) - 1.5, firing.position.z)
+            for _ in 0..<700 {
+                let offset = r.unit() * r.float(0.3, 7) * SIMD3<Float>(1, 0.5, 1.2)
+                let out = simd_normalize(SIMD3<Float>(offset.x * 0.4, -3, offset.z * 0.4 + 1))
+                add(front + offset, dust: 70 * (1 - age), velocity: out * 22 + r.unit() * 6, heat: 1)
             }
         }
         let posePointer = pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
@@ -201,12 +225,25 @@ final class DustField {
             let q = previousPointer[2 * n]
             guard p.w != 0 else { continue }
             let v = SIMD3(p.x - q.x, p.y - q.y, p.z - q.z) * frameRate
-            let speed = simd_length(v)
-            // A moving block sheds fines; a block striking something makes more.
+            let here = SIMD3(p.x, p.y, p.z)
             let size = restSize[n]
-            var dust: Float = 0
-            if speed > 2.5, p.z < 28 { dust += 0.04 * speed * size * size }
-            add(SIMD3(p.x, p.y, p.z), dust: dust, velocity: v)
+            let speed = simd_length(v)
+            // A block on the face lets go with a puff that travels with it.
+            if exposed[n], blockFire[n] > time - dt, blockFire[n] <= time {
+                add(here, dust: 6 * size * size, velocity: v + SIMD3(0, -4, 3), heat: 0.8)
+            }
+            // A tumbling block trails dust.
+            if speed > 3, p.z < 30 { add(here, dust: 0.03 * speed * size * size, velocity: v, heat: 0.2) }
+            // A block that strikes the floor or the pile throws dust up, in proportion to the blow.
+            let change = simd_length(v - lastVelocity[n])
+            if change > 4, p.z < 30 {
+                let before = lastVelocity[n]
+                let spray = SIMD3(before.x * 0.5, before.y * 0.5, 2.5 + 0.15 * change)
+                add(
+                    here - SIMD3(0, 0, 0.4 * size), dust: 0.12 * (change - 4) * size * size, velocity: spray,
+                    heat: 0.7)
+            }
+            lastVelocity[n] = v
         }
         let buffer = queue.makeCommandBuffer()!
         let encoder = buffer.makeComputeCommandEncoder()!
@@ -221,6 +258,7 @@ final class DustField {
         }
         // Sources.
         encoder.setBuffer(source, offset: 0, index: 1)
+        encoder.setBuffer(heatSource, offset: 0, index: 2)
         encoder.setTexture(velocity[0], index: 0)
         encoder.setTexture(density[0], index: 1)
         encoder.setTexture(velocity[1], index: 2)
@@ -291,7 +329,10 @@ final class DustField {
         encoder.endEncoding()
         buffer.commit()
         buffer.waitUntilCompleted()
-        for index in touched { pointer[index] = .zero }
+        for index in touched {
+            pointer[index] = .zero
+            heatPointer[index] = 0
+        }
         touched.removeAll(keepingCapacity: true)
         return buffer.gpuEndTime - buffer.gpuStartTime
     }
@@ -330,6 +371,7 @@ final class DustField {
 
     /// Back to a stored field; the light is rebuilt from it.
     func restore(from key: Keyframe) {
+        lastVelocity = Array(repeating: .zero, count: lastVelocity.count)
         let buffer = queue.makeCommandBuffer()!
         let blit = buffer.makeBlitCommandEncoder()!
         blit.copy(from: key.velocity, to: velocity[0])

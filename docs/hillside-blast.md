@@ -231,3 +231,63 @@ composition. At 3 to 4 s it is close to beautiful. What is still wrong: a sheet 
 around 10 s is too flat and too sharply cut off; the settled pile lacks fine material (the gravel doesn't
 collect on it); the ragged end is not fully seamless; the live window's coarser dust is smoother, and one
 frame of it showed a small white patch under the cloud that I did not trace.
+
+## Stage 3: the contact fault, the dust tied to the event, and the face's ends, 10 November 2026
+
+On the user's word of 10 November (emmettl/bombcad-work#124). Same standing: illustrative, a stylised
+row of firings for the eye, not a blast-design aid. Experimental command only.
+
+**1. The contact fault.** Traced with `simulate --trace`, which records every block's speed each frame.
+- *Thrown to the 45 m/s cap.* Every such block was still held (state 0) the frame before, moving at
+  the swell's 7 m/s, and reached 30–45 m/s in the frame it let go. The swell moved held blocks
+  kinematically, as immovable bodies. Neighbours whose swell directions converged were driven deep
+  into one another with no contact force between them, and when they were released the stored overlap
+  burst them apart. Fix: the swell is dynamic. A block wakes when its swell begins and is pushed along
+  the swell's velocity profile, so contact keeps swelling blocks apart. Its launch is the stated
+  launch less the swell it already has.
+- *Late creep.* After that, 59 blocks still moved more than 10 cm in the last second. Their histories
+  showed ringing in place, not sliding: ±3–6 cm a frame, sleep and wake again. Each block of six
+  spheres touches its neighbours at 20 to 55 sphere pairs, and the sum of those explicit springs and
+  dashpots is past the explicit limit even when each is stable alone. Fix: each body's update is
+  linearly implicit in its own summed contact stiffness and damping (backward Euler on that sum). Free
+  flight is unchanged. The stage 2 overlap cap, a symptom of the first fault, is gone.
+- **Before and after** (20 s event at 240 Hz): frames with a block at the 45 m/s cap 26 → 0 (frames
+  over 30 m/s 39 → 0, fastest 45.0 → 28.7 m/s, which the launch law allows); last second's worst move
+  1.44 m → 0.07 m, 99th percentile 2.8 cm → 0, blocks over 10 cm 77 → 0. The 45 m/s cap is still in
+  the code and never reached.
+
+**2. Fines on the pile.** A shading, not bodies: grit and dust gather on the upward faces of rock that
+has moved, in patches, building up as the dust settles over 6 s. The decorative chips also include
+small fines that leave their blocks over three seconds and settle.
+
+**3. The dust, and why it felt separate from the blast.**
+- *What disconnected it.* Each firing's dust was injected as a ball around a point inside the rock,
+  4.5 m behind the face, and the dust field treated the original hillside as solid. So the plume was
+  born inside the rock, pushed out through the face, and could never fill the space the rock left
+  or move with the slump. The rest came from any block moving faster than 2.5 m/s in the air, as a
+  trail, so a cloud appeared where blocks flew rather than where they struck. Buoyancy grew with the
+  dust's amount, so the densest settled dust kept lifting into a low flat sheet.
+- *What changed.* The field's solid is now the ground after the blast. Each firing's puff is born on
+  the face in front of it at its own time, so the ripple runs through the dust. Each block on the face
+  lets go with a small puff that takes its velocity. Blocks lift dust where they strike the floor or
+  the pile, in proportion to the change in their velocity. New dust carries the velocity it was born
+  with in proportion to its share of the cell. A heat channel (cooling in about 1.6 s) drives the rise,
+  not the amount of dust, so the plumes lift and then drift. The flat sheet is gone. The play window
+  shares all of this and its field is 1.5 m.
+
+**4. The floor.** No stones are strewn before the event; what lies on the floor comes from the rock.
+The default camera is lower on the floor and higher on the face.
+
+**5. The face's ends.** The flat planes at the left end and the seam at the strip's end were the
+heightfield's own smooth face, seen where nothing covered it. A skin of held, unbroken blocks of the
+same rock now runs along the old face for 165 m past each end of the strip. Each skin block's outer
+face is set in by a random share of its size, so the face steps. The terrain grid is wider to carry it.
+Seams remain at about 165 m past each end, out of the default frame.
+
+**6. Frame-time readout.** The window shows the frame interval (ms and fps) and the work in each frame,
+live, top left. The window self-test (behind other windows, timer-paced, 118,477 blocks): playing
+33 ms median interval, 28 ms main-thread work (a ceiling of 35 fps); scrubbing 50 ms (47 ms work).
+First fire 15 s, refire 16–17 s. Footprint 3.8 GB after the first fire, 5.0 GB after a refire. The rate
+on glass is left to the readout; I did not put a window over the user's screen.
+
+**Render:** 59 ms median to draw a 4K-internal frame, 22 ms for the dust solve; 601 frames in order.

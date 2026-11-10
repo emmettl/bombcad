@@ -89,8 +89,21 @@ if command == "simulate" {
         try? handle.write(contentsOf: Data(bytes: sim.pose.contents(), count: 32 * sim.bodyCount))
     }
     writePose()
+    // Diagnostics: every block's speed and state each frame, for tracing contact faults.
+    let tracing = arguments.contains("--trace")
+    var speeds = [Float](repeating: 0, count: tracing ? frames * sim.bodyCount : 0)
+    var states = [UInt8](repeating: 0, count: tracing ? frames * sim.bodyCount : 0)
     for frame in 0..<frames {
         let gpu = sim.advance(substeps: substeps)
+        if tracing {
+            let b = sim.bodies.contents().bindMemory(
+                to: BlockSimulation.GPUBody.self, capacity: sim.bodyCount)
+            for n in 0..<sim.bodyCount {
+                let v = b[n].velSleep
+                speeds[frame * sim.bodyCount + n] = simd_length(SIMD3(v.x, v.y, v.z))
+                states[frame * sim.bodyCount + n] = UInt8(b[n].state)
+            }
+        }
         stepTimes.append(gpu * 1000)
         writePose()
         let c = sim.census()
@@ -110,6 +123,88 @@ if command == "simulate" {
         }
     }
     try? handle.close()
+    if tracing {
+        var blocks = hillside.blocks
+        let state = launch.apply(to: &blocks, firings: firings, hillside: hillside)
+        var out =
+            "body,first_fast_frame,peak,speed_before(5 frames),states_before,fire_time,launch_speed,swell_speed,size,volume,spheres,extent_ratio,z\n"
+        let n = sim.bodyCount
+        for body in 0..<n {
+            var peak: Float = 0
+            var first = -1
+            for f in 0..<frames {
+                let v = speeds[f * n + body]
+                peak = max(peak, v)
+                if first < 0, v > 30 { first = f }
+            }
+            guard first >= 0 else { continue }
+            let before = (max(0, first - 5)...first).map { String(format: "%.1f", speeds[$0 * n + body]) }
+                .joined(separator: " ")
+            let st = (max(0, first - 5)...first).map { "\(states[$0 * n + body])" }.joined()
+            let block = hillside.blocks[body]
+            let e = block.inertiaDiagonalPerMass
+            out += String(
+                format: "%d,%d,%.1f,%@,%@,%.2f,%.1f,%.1f,%.2f,%.3f,%d,%.1f,%.1f\n", body, first, peak, before,
+                st,
+                state.fire[body], simd_length(state.velocity[body]),
+                simd_length(SIMD3(state.swell[body].x, state.swell[body].y, state.swell[body].z)),
+                block.size, block.volume, block.sphereCount, sqrt(e.max() / max(e.min(), 1e-6)),
+                block.centre.z)
+        }
+        try out.write(to: dir.appendingPathComponent("trace-fast.csv"), atomically: true, encoding: .utf8)
+        // The late movers: what they rest on at the end.
+        let b = sim.bodies.contents().bindMemory(to: BlockSimulation.GPUBody.self, capacity: n)
+        let lastFrames = 30
+        var late =
+            "body,moved_last_s,z,size,spheres,state,terrain_gap_min,deepest_overlap_ratio,overlaps,overlap_with_held,mass,partner_mass_max\n"
+        let positions = (0..<n).map { SIMD3(b[$0].posInvMass.x, b[$0].posInvMass.y, b[$0].posInvMass.z) }
+        func rotate(_ q: SIMD4<Float>, _ v: SIMD3<Float>) -> SIMD3<Float> {
+            simd_quatf(vector: q).act(v)
+        }
+        var world = [SIMD4<Float>](repeating: .zero, count: hillside.spheres.count)
+        var owner = [Int](repeating: 0, count: hillside.spheres.count)
+        for body in 0..<n {
+            let block = hillside.blocks[body]
+            for k in block.firstSphere..<(block.firstSphere + block.sphereCount) {
+                world[k] = SIMD4(
+                    positions[body] + rotate(b[body].quat, hillside.spheres[k].offset),
+                    hillside.spheres[k].radius)
+                owner[k] = body
+            }
+        }
+        // Distance moved over the last second, from the speeds (their sum over the frames).
+        for body in 0..<n {
+            var moved: Float = 0
+            for f in (frames - lastFrames)..<frames { moved += speeds[f * n + body] / frameRate }
+            guard moved > 0.1 else { continue }
+            let block = hillside.blocks[body]
+            var gap = Float.infinity
+            var deepest: Float = 0
+            var count = 0
+            var withHeld = 0
+            var partner: Float = 0
+            for k in block.firstSphere..<(block.firstSphere + block.sphereCount) {
+                let c = world[k]
+                let h = hillside.height(hillside.terrain.heights, c.x, c.y)
+                gap = min(gap, c.z - h - c.w)
+                for j in 0..<world.count where owner[j] != body {
+                    let d = simd_distance(SIMD3(c.x, c.y, c.z), SIMD3(world[j].x, world[j].y, world[j].z))
+                    let overlap = c.w + world[j].w - d
+                    if overlap > 0 {
+                        count += 1
+                        deepest = max(deepest, overlap / min(c.w, world[j].w))
+                        if b[owner[j]].state == 0 { withHeld += 1 }
+                        partner = max(partner, 1 / b[owner[j]].posInvMass.w)
+                    }
+                }
+            }
+            late += String(
+                format: "%d,%.2f,%.1f,%.2f,%d,%d,%.3f,%.2f,%d,%d,%.0f,%.0f\n", body, moved, positions[body].z,
+                block.size, block.sphereCount, b[body].state, gap, deepest, count, withHeld,
+                1 / b[body].posInvMass.w, partner)
+        }
+        try late.write(to: dir.appendingPathComponent("trace-late.csv"), atomically: true, encoding: .utf8)
+    }
     var csv = "t_s,awake,held,asleep,max_speed,mean_speed,kinetic_energy,bad,gpu_ms\n"
     for (i, c) in census.enumerated() {
         csv += "\(c.0),\(c.1),\(c.2),\(c.3),\(c.4),\(c.5),\(c.6),\(c.7),\(stepTimes[i])\n"
@@ -145,9 +240,9 @@ if command == "render" {
     if !arguments.contains("--no-dressing") { hillside.buildDressing() }
     let start = option(arguments, "--eye").map(parseVector) ?? SIMD3<Float>(-46, -74, 3.6)
     let end = option(arguments, "--eye-end").map(parseVector) ?? SIMD3<Float>(-33, -66, 3.4)
-    let target = option(arguments, "--target").map(parseVector) ?? SIMD3<Float>(66, 16, 16)
-    let targetEnd = option(arguments, "--target-end").map(parseVector) ?? SIMD3<Float>(72, 14, 16)
-    let fov = option(arguments, "--fov").flatMap(Float.init) ?? 36
+    let target = option(arguments, "--target").map(parseVector) ?? SIMD3<Float>(80, 18, 21)
+    let targetEnd = option(arguments, "--target-end").map(parseVector) ?? SIMD3<Float>(86, 16, 21)
+    let fov = option(arguments, "--fov").flatMap(Float.init) ?? 31
     let path = CameraPath(
         eyes: (start, end), targets: (target, targetEnd), fovY: (fov, fov * 0.93), duration: 20)
     let renderer = try Renderer(

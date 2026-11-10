@@ -199,6 +199,8 @@ struct Hillside {
         var firstSphere: Int
         var sphereCount: Int
         var size: Float
+        /// Part of the held skin past the strip: never released.
+        var skin = false
     }
     /// Layout matches `HillsideBlockVertex` in `Hillside.metal`.
     struct Vertex {
@@ -251,7 +253,7 @@ struct Hillside {
     }
     func newHeight(_ x: Float, _ y: Float) -> Float {
         let m = Self.mask(x, length: options.length)
-        return Self.profile(y, x, shift: options.depth * m) + Self.relief(x, y) * (0.4 + 0.6 * m)
+        return Self.profile(y, x, shift: options.depth * m) + Self.relief(x, y) * (1 - 0.6 * m)
     }
 
     /// Height at (x, y) on a heightfield given as the old or excavated surface (bilinear on the grid).
@@ -270,8 +272,8 @@ struct Hillside {
     init(options: Options) {
         self.options = options
         let spacing: Float = 1
-        let originXY = SIMD2<Float>(-90, -190)
-        let columns = 381
+        let originXY = SIMD2<Float>(-170, -190)
+        let columns = 541
         let rows = 301
         terrain = Terrain(origin: originXY, spacing: spacing, columns: columns, rows: rows, heights: [])
         original = []
@@ -303,6 +305,17 @@ struct Hillside {
             let a = height(hNew, p.x, p.y)
             let b = height(hOld, p.x, p.y)
             return b - a > 0.2 && p.z > a && p.z < b
+        }
+        /// Within `skinThickness` behind the old face where nothing is broken.
+        let skinThickness: Float = 2.4
+        func skin(_ p: SIMD3<Float>) -> Bool {
+            let b = height(hOld, p.x, p.y)
+            // Anywhere in the band behind the old face that the strip's broken rock does not
+            // fill, including where the strip tapers out at its ends.
+            guard !inside(p), p.z < b, p.z > 0.2 else { return false }
+            // Not under the excavated floor in front of the new face.
+            if b - height(hNew, p.x, p.y) > 0.2, p.z < height(hNew, p.x, p.y) { return false }
+            return height(hOld, p.x, p.y - skinThickness) < p.z
         }
         // Rock, not rubble: a spread of sizes through a smooth density field, with finer breakage
         // near the row of firings.
@@ -360,18 +373,47 @@ struct Hillside {
         }
         let boxVolume = (boxHigh - boxLow).x * (boxHigh - boxLow).y * (boxHigh - boxLow).z
         let rockVolume = boxVolume * Float(insideSamples) / Float(volumeSamples)
+        // A skin of the same rock along the old face past the strip's ends, held for ever, so the
+        // face looks the same on both sides of where the blast stops.
+        let skinLow = SIMD3<Float>(-165, -25, 0.2)
+        let skinHigh = SIMD3<Float>(options.length + 165, 45, 45)
+        var skinSamples = 0
+        var skinHits = 0
+        var skinRandom = Random(seed: options.seed &+ 23)
+        func skinSample() -> SIMD3<Float> {
+            SIMD3(
+                skinRandom.float(skinLow.x, skinHigh.x), skinRandom.float(skinLow.y, skinHigh.y),
+                skinRandom.float(skinLow.z, skinHigh.z))
+        }
+        for _ in 0..<400_000 {
+            skinSamples += 1
+            if skin(skinSample()) { skinHits += 1 }
+        }
+        let skinBox = (skinHigh - skinLow).x * (skinHigh - skinLow).y * (skinHigh - skinLow).z
+        let skinVolume = skinBox * Float(skinHits) / Float(skinSamples)
+        let skinTarget = Int(2.5 * Float(siteTarget) * skinVolume / max(rockVolume, 1))
+        var skinSites = 0
+        while skinSites < skinTarget {
+            let p = skinSample()
+            guard skin(p), skinRandom.float() * densityPeak < density(p) else { continue }
+            sites.append(p)
+            skinSites += 1
+        }
+        print("skin past the strip's ends: \(Int(skinVolume)) m3, \(skinSites) sites")
         meanEdge = cbrt(rockVolume / Float(options.blocks))
         print(
             "rock volume \(Int(rockVolume)) m3, \(sites.count) sites, mean edge \(String(format: "%.2f", meanEdge)) m (density rejection took \(String(format: "%.1f", Date().timeIntervalSince(start))) s)"
         )
         // A hash of the sites for neighbours.
         let cell = meanEdge * 2.2
+        let hashLow = simd_min(boxLow, skinLow)
+        let hashHigh = simd_max(boxHigh, skinHigh)
         let dims = SIMD3<Int>(
-            Int(ceil((boxHigh.x - boxLow.x) / cell)) + 1, Int(ceil((boxHigh.y - boxLow.y) / cell)) + 1,
-            Int(ceil((boxHigh.z - boxLow.z) / cell)) + 1)
+            Int(ceil((hashHigh.x - hashLow.x) / cell)) + 1, Int(ceil((hashHigh.y - hashLow.y) / cell)) + 1,
+            Int(ceil((hashHigh.z - hashLow.z) / cell)) + 1)
         var buckets = [[Int32]](repeating: [], count: dims.x * dims.y * dims.z)
         func bucket(_ p: SIMD3<Float>) -> SIMD3<Int> {
-            let g = (p - boxLow) / cell
+            let g = (p - hashLow) / cell
             return simd_clamp(SIMD3<Int>(Int(g.x), Int(g.y), Int(g.z)), .zero, dims &- 1)
         }
         for (n, p) in sites.enumerated() {
@@ -379,12 +421,14 @@ struct Hillside {
             buckets[b.x + dims.x * (b.y + dims.y * b.z)].append(Int32(n))
         }
         let frozenSites = sites
+        let frozenStripCount = sites.count - skinSites
         let frozenBuckets = buckets
         // Clip each cell.
         struct Built {
             var polyhedron: Polyhedron
             var volume: Float
             var centroid: SIMD3<Float>
+            var skin = false
         }
         var builtRaw = [Built?](repeating: nil, count: sites.count)
         let hillside = self
@@ -392,6 +436,7 @@ struct Hillside {
             nonisolated(unsafe) let output = out
             DispatchQueue.concurrentPerform(iterations: frozenSites.count) { n in
                 let site = frozenSites[n]
+                let isSkin = n >= frozenStripCount
                 let b = bucket(site)
                 var near: [(Float, Int)] = []
                 near.reserveCapacity(200)
@@ -439,13 +484,26 @@ struct Hillside {
                         return (n, simd_dot(n, SIMD3<Float>(p.x, p.y, z)))
                     }
                     let top = normal(hOld)
-                    polyhedron.clip(normal: top.0, offset: top.1, kind: 1)
-                    let bottom = normal(hNew)
-                    polyhedron.clip(normal: -bottom.0, offset: -bottom.1, kind: 2)
+                    // Each cell's outer face sits a little in from the surface or not, so the face is
+                    // stepped block by block rather than one smooth plane.
+                    let recess = extent * 0.55 * Noise.hash(Int32(n), 7, 11).magnitude
+                    polyhedron.clip(normal: top.0, offset: top.1 - recess, kind: 1)
+                    if isSkin {
+                        // Behind the skin: the old surface's plane under the site itself, moved in by
+                        // the thickness. (Planes from the other samples, up on the brow, cut away
+                        // the whole of a steep face's skin.)
+                        if offset == .zero {
+                            polyhedron.clip(normal: -top.0, offset: -(top.1 - skinThickness), kind: 2)
+                        }
+                    } else {
+                        let bottom = normal(hNew)
+                        polyhedron.clip(normal: -bottom.0, offset: -bottom.1, kind: 2)
+                    }
                 }
                 let (volume, centroid) = polyhedron.volumeAndCentroid
                 if polyhedron.faces.count >= 4, volume > 0, polyhedron.faces.count < 40 {
-                    output[n] = Built(polyhedron: polyhedron, volume: volume, centroid: centroid)
+                    output[n] = Built(
+                        polyhedron: polyhedron, volume: volume, centroid: centroid, skin: isSkin)
                 }
             }
         }
@@ -464,7 +522,7 @@ struct Hillside {
                 output[n] = pieces.compactMap { piece -> Built? in
                     let (volume, centroid) = piece.volumeAndCentroid
                     guard piece.faces.count >= 4, volume > 0, piece.faces.count < 48 else { return nil }
-                    return Built(polyhedron: piece, volume: volume, centroid: centroid)
+                    return Built(polyhedron: piece, volume: volume, centroid: centroid, skin: cells[n].skin)
                 }
             }
         }
@@ -496,7 +554,8 @@ struct Hillside {
                 }
                 Self.tessellate(
                     keep[n].polyhedron, centre: keep[n].centroid, body: UInt32(n), level: level,
-                    warp: size * 0.07, seed: Float(n) * 0.137, vertices: &vertices, indices: &indices)
+                    warp: size * 0.07, seed: Float(n) * 0.137, relief: 0.16, vertices: &vertices,
+                    indices: &indices)
                 for _ in 0..<6 {
                     let polygon = keep[n].polyhedron.faces[
                         Int(localRandom.float() * Float(keep[n].polyhedron.faces.count - 1))]
@@ -592,7 +651,7 @@ struct Hillside {
                     firstVertex: firstVertex, vertexCount: vertices.count - firstVertex,
                     firstIndex: firstIndex, indexCount: indices.count - firstIndex,
                     firstSphere: firstSphere, sphereCount: spheres.count - firstSphere,
-                    size: cbrt(cell.volume)))
+                    size: cbrt(cell.volume), skin: cell.skin))
         }
         self.blocks = blocks
         maxRadius = spheres.reduce(0) { max($0, $1.radius) }
@@ -753,6 +812,12 @@ struct Hillside {
             let dx = (surface(x + e, y) - surface(x - e, y)) / (2 * e)
             let dy = (surface(x, y + e) - surface(x, y - e)) / (2 * e)
             let n = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+            // The skin of blocks covers the old face near the strip; the dressing goes on past it.
+            if x > -163, x < options.length + 163,
+                hillside.height(original, x, y) - hillside.height(t.heights, x, y) < 0.3
+            {
+                continue
+            }
             sites.append(SIMD3(x, y, surface(x, y)) + n * (0.3 - 2.7 * r.float()))
         }
         let accepted = sites.count
@@ -921,7 +986,11 @@ struct Launch {
                 * Hillside.mask(c.x, length: hillside.options.length)
             // The strip's end is ragged: the last blocks to hold back come and go along it.
             let raggedness = Noise.fbm(c * SIMD3<Float>(0.05, 0.05, 0.03) + 19, octaves: 3)
-            if across > -2.6 + 9 * raggedness {
+            let unbroken =
+                hillside.height(hillside.original, c.x, c.y)
+                - hillside.height(hillside.terrain.heights, c.x, c.y)
+                < 0.3
+            if block.skin || unbroken || across > -2.6 + 9 * raggedness {
                 fire[n] = .greatestFiniteMagnitude
                 velocity[n] = .zero
                 spin[n] = .zero

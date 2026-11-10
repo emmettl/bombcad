@@ -19,6 +19,7 @@ kernel void dustAddSources(texture3d<float, access::read> vIn [[texture(0)]],
                            texture3d<float, access::write> vOut [[texture(2)]],
                            texture3d<float, access::write> dOut [[texture(3)]],
                            const device float4 *source [[buffer(1)]],
+                           const device float *heatSource [[buffer(2)]],
                            constant HillsideDustUniforms &u [[buffer(0)]],
                            uint3 id [[thread_position_in_grid]]) {
     int n = int(id.x) + u.dims.x * (int(id.y) + u.dims.y * int(id.z));
@@ -26,10 +27,12 @@ kernel void dustAddSources(texture3d<float, access::read> vIn [[texture(0)]],
     float dust = dIn.read(id).r;
     float4 v = vIn.read(id);
     if (s.w > 0.0f) {
-        dust = min(dust + s.w * u.hdtsteps.y, 40.0f);
-        // Velocity toward the source's mean velocity, weighted by what was added.
-        float blend = clamp(s.w * 0.25f, 0.0f, 0.95f);
+        float added = s.w * u.hdtsteps.y;
+        // New dust carries the velocity and heat it was born with, as its share of the cell.
+        float blend = clamp(added / (dust + added + 1e-3f), 0.0f, 0.92f);
         v.xyz = mix(v.xyz, s.xyz / s.w, blend);
+        v.w = mix(v.w, heatSource[n] / s.w, blend);
+        dust = min(dust + added, 40.0f);
     }
     vOut.write(v, id);
     dOut.write(float4(dust), id);
@@ -44,7 +47,9 @@ kernel void dustAdvectVelocity(texture3d<float, access::sample> vIn [[texture(0)
     float3 size = float3(u.dims.xyz);
     float3 back = (pos - (v + u.wind.xyz) * u.hdtsteps.y / u.hdtsteps.x) / size;
     float3 s = vIn.sample(triSampler, back).xyz;
-    vOut.write(float4(s * 0.995f, 0.0f), id);
+    float4 carried = vIn.sample(triSampler, back);
+    // Heat cools with an e-folding time of about three seconds.
+    vOut.write(float4(s * 0.995f, carried.w * exp(-u.hdtsteps.y / 1.6f)), id);
 }
 
 kernel void dustForces(texture3d<float, access::read> vIn [[texture(0)]],
@@ -56,7 +61,9 @@ kernel void dustForces(texture3d<float, access::read> vIn [[texture(0)]],
     float3 v = vIn.read(id).xyz;
     float dust = dIn.read(id).r;
     // Buoyancy of the warm dusty gas, and a touch of vorticity confinement.
-    v.z += dust * 0.05f * u.hdtsteps.y;
+    // Hot, dusty gas rises; cold dust only drifts.
+    float heat = vIn.read(id).w;
+    v.z += (heat * 3.2f + min(dust, 4.0f) * 0.01f) * u.hdtsteps.y;
     if (p.x > 0 && p.y > 0 && p.z > 0 && p.x < u.dims.x - 1 && p.y < u.dims.y - 1 && p.z < u.dims.z - 1) {
         float3 vx0 = vIn.read(uint3(p + int3(-1,0,0))).xyz, vx1 = vIn.read(uint3(p + int3(1,0,0))).xyz;
         float3 vy0 = vIn.read(uint3(p + int3(0,-1,0))).xyz, vy1 = vIn.read(uint3(p + int3(0,1,0))).xyz;
@@ -70,7 +77,7 @@ kernel void dustForces(texture3d<float, access::read> vIn [[texture(0)]],
             v += cross(n, w) * min(magnitude, 20.0f) * 1.1f * u.hdtsteps.y;
         }
     }
-    vOut.write(float4(v, 0.0f), id);
+    vOut.write(float4(v, vIn.read(id).w), id);
 }
 
 kernel void dustDivergence(texture3d<float, access::read> vIn [[texture(0)]],
@@ -127,7 +134,7 @@ kernel void dustProject(texture3d<float, access::read> vIn [[texture(0)]],
     float f = pIn.read(uint3(clamp(p + int3(0,0,1), int3(0), m))).r;
     if (sIn.read(uint3(clamp(p + int3(0,0,-1), int3(0), m))).r > 0.5f) d = c;
     v -= 0.5f * float3(r - l, t - b, f - d);
-    vOut.write(float4(v, 0.0f), id);
+    vOut.write(float4(v, vIn.read(id).w), id);
 }
 
 kernel void dustAdvectDensity(texture3d<float, access::sample> dIn [[texture(0)]],
@@ -338,7 +345,7 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
             quiet = 0;
             float sigma = shaped * (d * 0.12f + 0.55f);
             float a = 1.0f - exp(-sigma * step);
-            float tau = light.sample(triSampler, p).r * 0.11f;
+            float tau = light.sample(triSampler, p).r * 0.075f;
             float direct = exp(-tau) + 0.22f * exp(-tau * 0.3f);
             float heightFrac = saturate(p.z * 2.0f);
             float3 ambient = mix(ambientDown, ambientUp, heightFrac) * (0.45f + 0.55f * exp(-tau * 0.4f));

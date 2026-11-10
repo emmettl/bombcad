@@ -104,6 +104,8 @@ kernel void forces(const device HillsideBody *bodies [[buffer(0)]],
     float invM = A.posInvMass.w;
     float3 apos = A.posInvMass.xyz;
     float3 f = float3(0), t = float3(0);
+    // The contacts' summed stiffness and damping on this sphere, for the body's implicit update.
+    float kSum = 0.0f, cSum = 0.0f;
     int3 c = gridCell(pi, u);
     float dt2 = u.dt * u.dt;
     for (int dz = -1; dz <= 1; ++dz) {
@@ -121,7 +123,7 @@ kernel void forces(const device HillsideBody *bodies [[buffer(0)]],
             if (l2 >= R * R || l2 < 1e-10f) continue;
             float l = sqrt(l2);
             float3 nrm = d / l;
-            float pen = min(R - l, ri * 0.35f);
+            float pen = R - l;
             HillsideBody B = bodies[bj];
             float invMb = (B.state == 1u) ? B.posInvMass.w : 0.0f;
             float mEff = 1.0f / (invM + invMb);
@@ -136,6 +138,8 @@ kernel void forces(const device HillsideBody *bodies [[buffer(0)]],
             float ft = min(u.friction * fn, gamma * vtl);
             float3 F = fn * nrm - (vtl > 1e-5f ? ft * vt / vtl : float3(0));
             f += F;
+            kSum += k;
+            cSum += 2.0f * u.damping * sqrt(k * mEff) + gamma;
             float3 arm = (pi - nrm * ri) - apos;
             t += cross(arm, F);
             if (B.state == 2u && length_squared(rel) > u.wakeSpeed * u.wakeSpeed) {
@@ -160,11 +164,13 @@ kernel void forces(const device HillsideBody *bodies [[buffer(0)]],
             float ft = min(u.friction * fn, gamma * vtl);
             float3 F = fn * tn - (vtl > 1e-5f ? ft * vt / vtl : float3(0));
             f += F;
+            kSum += k;
+            cSum += 2.0f * u.damping * sqrt(k * mEff) + gamma;
             t += cross((pi - tn * ri) - apos, F);
         }
     }
-    forceOut[i] = float4(f, 0);
-    torqueOut[i] = float4(t, 0);
+    forceOut[i] = float4(f, kSum);
+    torqueOut[i] = float4(t, cSum);
 }
 
 kernel void integrate(device HillsideBody *bodies [[buffer(0)]],
@@ -176,23 +182,29 @@ kernel void integrate(device HillsideBody *bodies [[buffer(0)]],
                       uint b [[thread_position_in_grid]]) {
     HillsideBody B = bodies[b];
     float dt = u.dt;
+    // The swell is dynamic: a block wakes when its swell begins and is pushed along it, so that
+    // contact keeps swelling neighbours apart. (Moved kinematically while held, as before, blocks
+    // whose swells converged ran deep into one another and burst apart when released.)
+    float fire = B.invInertiaFire.w;
+    float rise = B.swell.w;
     if (B.state == 0u) {
-        float fire = B.invInertiaFire.w;
-        float rise = B.swell.w;
-        if (u.time < fire) {
-            float s = rise > 0.0f ? (u.time - (fire - rise)) / rise : -1.0f;
-            if (s > 0.0f) {
-                float ease = s * s * (3.0f - 2.0f * s);
-                float3 v = B.swell.xyz * ease;
-                bodies[b].velSleep = float4(v, 0.0f);
-                bodies[b].posInvMass.xyz += v * dt;
-                pose[2 * b] = float4(bodies[b].posInvMass.xyz, 0.0f);
-            }
-            return;
-        }
+        if (rise <= 0.0f || u.time < fire - rise) { return; }
         B.state = 1u;
-        B.velSleep = float4(B.launchSwell.xyz, 0.0f);
-        B.ang = float4(B.spinRise.xyz, 0.0f);
+        B.velSleep = float4(0.0f);
+    }
+    // The swell's push this substep: the change of its velocity profile, eased.
+    float3 swellPush = float3(0.0f);
+    if (B.pad == 0u && rise > 0.0f) {
+        float s1 = saturate((u.time - (fire - rise)) / rise);
+        float s0 = saturate((u.time - dt - (fire - rise)) / rise);
+        swellPush = B.swell.xyz * (s1 * s1 * (3.0f - 2.0f * s1) - s0 * s0 * (3.0f - 2.0f * s0));
+    }
+    if (B.pad == 0u && u.time >= fire) {
+        // Let go: the launch, less the swell the block was given.
+        B.pad = 1u;
+        B.state = 1u;
+        B.velSleep.xyz += B.launchSwell.xyz - B.swell.xyz;
+        B.ang.xyz += B.spinRise.xyz;
     }
     if (B.state == 2u) {
         if (atomic_exchange_explicit(&wake[b], 0u, memory_order_relaxed) != 0u) {
@@ -204,15 +216,24 @@ kernel void integrate(device HillsideBody *bodies [[buffer(0)]],
     }
     atomic_store_explicit(&wake[b], 0u, memory_order_relaxed);
     float3 F = float3(0, 0, -u.gravity / B.posInvMass.w), T = float3(0);
+    float K = 0.0f, C = 0.0f;
     for (uint s = 0; s < B.count; ++s) {
         F += forceIn[B.first + s].xyz;
         T += torqueIn[B.first + s].xyz;
+        K += forceIn[B.first + s].w;
+        C += torqueIn[B.first + s].w;
     }
-    float3 v = B.velSleep.xyz + F * B.posInvMass.w * dt;
+    // Linearly implicit in the body's own contacts: each contact's spring and dashpot is explicit
+    // and stable alone, but a block of six spheres touches its neighbours at twenty to fifty
+    // sphere pairs at once, and their sum is past the explicit limit: blocks at rest in the pile
+    // rang at about a metre a second and crept. Backward Euler on the summed stiffness and
+    // damping keeps them still, and leaves free flight (no contacts) as it was.
+    float implicitShare = 1.0f / (1.0f + B.posInvMass.w * (dt * C + dt * dt * K));
+    float3 v = B.velSleep.xyz + F * B.posInvMass.w * dt * implicitShare + swellPush;
     float3 w = B.ang.xyz;
     float3 wb = unrotate(B.quat, w);
     float3 tb = unrotate(B.quat, T);
-    wb += B.invInertiaFire.xyz * tb * dt;
+    wb += B.invInertiaFire.xyz * tb * dt * implicitShare;
     w = rotate(B.quat, wb);
     // Explicit rotation is stiff for flat, thin blocks: keep them slower than they could spin.
     float spin = length(w);
@@ -241,6 +262,7 @@ kernel void integrate(device HillsideBody *bodies [[buffer(0)]],
     q = normalize(q + dq * dt);
     float sleep = B.velSleep.w;
     if (speed < u.sleepSpeed && length(w) < u.sleepSpin) sleep += dt; else sleep = 0.0f;
+    if (B.pad == 0u) sleep = 0.0f;
     if (sleep > u.sleepTime) { B.state = 2u; v = float3(0); w = float3(0); sleep = 0.0f; }
     B.posInvMass.xyz = pos;
     B.quat = q;
@@ -278,6 +300,7 @@ struct RasterOut {
     float3 normal;
     float3 local;
     float bodyTint;
+    float released;
     uint kind [[flat]];
 };
 
@@ -321,6 +344,7 @@ vertex RasterOut blockVertex(uint vid [[vertex_id]],
     o.local = local + rest[v.body].xyz;
     o.bodyTint = fract(float(v.body) * 0.6180339f);
     o.kind = v.normalKind >> 30;
+    o.released = pose[2 * v.body].w > 0.5f ? 1.0f : 0.0f;
     return o;
 }
 
@@ -454,6 +478,19 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
         albedo = bed * (0.88f + 0.28f * tintShift) * (0.86f + 0.3f * detail);
     }
     albedo *= 0.82f + 0.36f * grain;
+    // Fines: grit and dust settled on the upper faces of rock that has moved, gathering as the
+    // dust comes down. A shading of the surface, not bodies.
+    if (in.released > 0.5f) {
+        float up = smoothstep(0.25f, 0.85f, n.z);
+        float patch = smoothstep(0.3f, 0.62f, fbm3(rest * 0.9f + 5.0f, 3));
+        float settle = saturate((cam.misc.x - 2.5f) / 6.0f);
+        float cover = up * patch * (0.35f + 0.65f * settle);
+        float3 cellId = floor(rest * 14.0f);
+        float speck = hash31(cellId);
+        float3 grit = mix(float3(0.42f, 0.37f, 0.29f), float3(0.66f, 0.6f, 0.5f), speck);
+        grit *= 0.7f + 0.5f * step(0.72f, hash31(cellId + 3.1f));
+        albedo = mix(albedo, grit, cover * 0.85f);
+    }
     float3 surface = in.kind == 1u ? bumped(n, rest, 1.6f, 0.7f, 4) : bumped(n, rest, 3.0f, 0.3f, 3);
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
     float dust = dustShadow(in.world, cam, dustLight);
