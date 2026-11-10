@@ -302,7 +302,7 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
     float3 size = float3(u.dims.xyz) * h;
     float3 accumulated = float3(0.0f);
     float transmittance = 1.0f;
-    float3 albedo = float3(0.5f, 0.41f, 0.31f);
+    float3 albedo = float3(0.62f, 0.53f, 0.42f);
     float mu = dot(dir, cam.sun.xyz);
     float g = 0.45f;
     float hgForward = (1.0f - g * g) / pow(1.0f + g * g - 2.0f * g * mu, 1.5f) * 0.25f;
@@ -311,7 +311,7 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
     float phase = 0.75f * hgForward + 0.45f * hgBack;
     float3 sunColor = float3(1.0f, 0.72f, 0.46f) * 5.2f;
     float3 ambientUp = float3(0.42f, 0.5f, 0.68f) * 0.42f;
-    float3 ambientDown = float3(0.3f, 0.23f, 0.17f) * 0.3f;
+    float3 ambientDown = float3(0.62f, 0.5f, 0.38f) * 0.42f;
     int quiet = 0;
     bool stepping = false;
     float tt = cam.misc.x;
@@ -346,9 +346,11 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
             float sigma = shaped * (d * 0.12f + 0.55f);
             float a = 1.0f - exp(-sigma * step);
             float tau = light.sample(triSampler, p).r * 0.075f;
-            float direct = exp(-tau) + 0.22f * exp(-tau * 0.3f);
+            // Light scattered many times in dust is lost slowly: an octave sum of attenuations,
+            // each weaker and less extinguished, so the shadowed underside stays pale and glows.
+            float direct = exp(-tau) + 0.32f * exp(-tau * 0.25f) + 0.14f * exp(-tau * 0.06f);
             float heightFrac = saturate(p.z * 2.0f);
-            float3 ambient = mix(ambientDown, ambientUp, heightFrac) * (0.45f + 0.55f * exp(-tau * 0.4f));
+            float3 ambient = mix(ambientDown, ambientUp, heightFrac) * (0.6f + 0.4f * exp(-tau * 0.4f));
             float3 lit = albedo * (sunColor * phase * direct + ambient);
             accumulated += transmittance * a * lit;
             transmittance *= 1.0f - a;

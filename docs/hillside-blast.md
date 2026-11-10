@@ -291,3 +291,21 @@ First fire 15 s, refire 16–17 s. Footprint 3.8 GB after the first fire, 5.0 GB
 on glass is left to the readout; I did not put a window over the user's screen.
 
 **Render:** 59 ms median to draw a 4K-internal frame, 22 ms for the dust solve; 601 frames in order.
+
+## A look pass on stage 3, 10 November 2026
+
+On the user's word of 10 November: re-rendered from the stage 3 poses, nothing re-simulated.
+- **Dust lit through:** its light is an octave sum of attenuations (multiple scattering
+  approximated), with a warm ground bounce and stronger sky fill. Undersides read pale and glowing
+  rather than dark and smoky, and the self-shadowing still shapes the billows.
+- **Rock variety:** each block takes its own shade (darker, redder or greyer), its own surface
+  roughness and scale, and paler chipped flecks on fresh breaks. Bigger blocks shed a few larger
+  decorative spalls (0.3–0.7 m) onto the pile, for a spread of sizes.
+- **Floor:** paler haul-road patches, darker damp hollows, faint tracks and grit, and a gentler bump
+  that no longer reads as rippled sand.
+- **The window's dust:** it shares the shading, so it now matches the clip's colour and light. Its
+  field stays 1.5 m: at 1.2 m it cost 51 ms of work a frame (15 fps) against 27 ms (30 fps), so it
+  remains a little softer than the clip's 1 m.
+
+Window self-test after the pass: playing 33 ms interval, 27 ms of work; scrubbing 66 ms; first fire 16 s;
+footprint 3.9 GB (4.9 GB after a refire). Clip: 56 ms median to draw, 22 ms for the dust.

@@ -629,6 +629,17 @@ enum Decor {
                         offsetDelay: SIMD4(anchor, r.float(0.02, 1.4)), parent: UInt32(n), state: 0,
                         seed: r.float(), tint: r.float(0.25, 0.9)))
             }
+            // Spalls: a few larger slabs off the bigger blocks, for a spread of sizes in the pile.
+            if block.size > 1.3 {
+                for k in 0..<Int(block.size) {
+                    let anchor = hillside.chipAnchors[6 * n + (k + 1) % 6]
+                    chips.append(
+                        Chip(
+                            posSize: SIMD4(c, r.float(0.3, 0.7)), velAge: .zero,
+                            offsetDelay: SIMD4(anchor, r.float(0.05, 0.8)), parent: UInt32(n), state: 0,
+                            seed: r.float(), tint: r.float(0.3, 0.9)))
+                }
+            }
             let fines = Int((Float(4 + Int(block.size * 4)) * scale).rounded())
             for k in 0..<fines {
                 let anchor = hillside.chipAnchors[6 * n + (k + 3) % 6]

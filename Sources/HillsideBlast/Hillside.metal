@@ -459,6 +459,13 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
     float grain = fbm3(rest * 19.0f, 3);
     float tintShift = in.bodyTint - 0.5f;
     float3 bed = bedColour(rest);
+    // Each block its own: some darker or redder, some smoother, some pitted.
+    float h1 = in.bodyTint;
+    float h2 = fract(h1 * 7.31f + 0.17f);
+    float h3 = fract(h1 * 13.77f + 0.61f);
+    bed *= mix(float3(0.78f, 0.76f, 0.74f), float3(1.12f, 1.05f, 0.96f), h2);
+    if (h3 > 0.86f) bed = mix(bed, float3(0.46f, 0.3f, 0.2f), 0.45f);
+    if (h3 < 0.1f) bed = mix(bed, float3(0.32f, 0.31f, 0.3f), 0.5f);
     float3 albedo;
     if (in.kind == 1u) {
         // Weathered skin: darker than the bed, stained, a little lichen.
@@ -476,6 +483,9 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
     } else {
         // A fresh break: the bed's own pale colour.
         albedo = bed * (0.88f + 0.28f * tintShift) * (0.86f + 0.3f * detail);
+        // Chipped edges and percussion marks: paler flecks.
+        float fleck = smoothstep(0.62f, 0.7f, fbm3(rest * 9.0f + h2 * 30.0f, 3));
+        albedo = mix(albedo, albedo * 1.35f + 0.04f, fleck * 0.5f);
     }
     albedo *= 0.82f + 0.36f * grain;
     // Fines: grit and dust settled on the upper faces of rock that has moved, gathering as the
@@ -491,7 +501,9 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
         grit *= 0.7f + 0.5f * step(0.72f, hash31(cellId + 3.1f));
         albedo = mix(albedo, grit, cover * 0.85f);
     }
-    float3 surface = in.kind == 1u ? bumped(n, rest, 1.6f, 0.7f, 4) : bumped(n, rest, 3.0f, 0.3f, 3);
+    float roughScale = mix(2.0f, 6.5f, h2);
+    float roughness = mix(0.18f, 0.6f, h3);
+    float3 surface = in.kind == 1u ? bumped(n, rest, 1.6f, 0.7f, 4) : bumped(n, rest, roughScale, roughness, 3);
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
     float dust = dustShadow(in.world, cam, dustLight);
     return float4(shade(albedo, in.world, surface, cam, shadow, dust), 1.0f);
@@ -512,6 +524,16 @@ fragment float4 terrainFragment(TerrainOut in [[stage_in]],
     ground *= 0.55f + 0.95f * broad;
     ground *= 0.85f + 0.3f * smoothstep(0.35f, 0.7f, fbm3(in.world * 0.012f + 17.0f, 3));
     ground = mix(ground, ground * 1.35f + float3(0.03f), pebbles * 0.6f);
+    // A worked quarry floor: broad paler haul-road patches, darker damp hollows, drifts of
+    // grit and tracks along the face.
+    float roads = smoothstep(0.42f, 0.6f, fbm3(float3(in.world.x * 0.012f, in.world.y * 0.03f, 2.0f), 3));
+    ground = mix(ground, float3(0.46f, 0.41f, 0.33f) * (0.8f + 0.4f * fine), roads * 0.7f);
+    float damp = smoothstep(0.58f, 0.72f, fbm3(in.world * 0.045f + 31.0f, 4));
+    ground *= 1.0f - damp * 0.5f;
+    float tracks = smoothstep(0.86f, 0.98f, abs(sin(in.world.y * 1.9f + 2.5f * fbm3(in.world * 0.05f, 2))));
+    ground *= 1.0f - tracks * roads * 0.18f;
+    float grit = step(0.83f, hash31(floor(in.world * 7.0f)));
+    ground = mix(ground, float3(0.5f, 0.45f, 0.37f), grit * 0.35f * (1.0f - damp));
     float warp = fbm3(in.world * 0.07f, 3);
     float strata = sin(in.world.z * 1.5f + 9.0f * warp) * 0.5f + 0.5f;
     float3 rock = mix(float3(0.17f, 0.16f, 0.13f), bedColour(in.world) * 0.62f, smoothstep(0.25f, 0.8f, detail)) * (0.9f + 0.2f * strata);
@@ -521,7 +543,7 @@ fragment float4 terrainFragment(TerrainOut in [[stage_in]],
     float3 albedo = mix(ground, rock, smoothstep(0.12f, 0.45f, slope));
     albedo = mix(albedo, scrub, crest * smoothstep(0.32f, 0.5f, broad + 0.12f * fine));
     float fade = saturate(1.0f - length(in.world - cam.eye.xyz) / 600.0f);
-    float3 surface = bumped(n, in.world, 1.4f, 0.28f * fade, 3);
+    float3 surface = bumped(n, in.world, 1.1f, (0.16f + 0.1f * (1.0f - roads)) * fade, 3);
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
     float dust = dustShadow(in.world, cam, dustLight);
     return float4(shade(albedo, in.world, surface, cam, shadow, dust), 1.0f);
