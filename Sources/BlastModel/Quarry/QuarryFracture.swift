@@ -4,26 +4,26 @@ import simd
 /// Procedural bedding and joints for the hillside's rock: plane families at irregular spacing,
 /// each plane present only in patches, that cut Voronoi cells into slabs and wedges. Illustrative:
 /// for the look of bedded, jointed rock, not a structural model of any real rock mass.
-enum Fracture {
-    struct Family {
-        var normal: SIMD3<Float>
+public enum QuarryFracture {
+    public struct Family: Sendable {
+        public var normal: SIMD3<Float>
         /// Mean spacing (m), with sinusoids in the coordinate along `normal` making it irregular.
-        var spacing: Float
-        var amplitude1: Float
-        var frequency1: Float
-        var phase1: Float
-        var amplitude2: Float
-        var frequency2: Float
-        var phase2: Float
+        public var spacing: Float
+        public var amplitude1: Float
+        public var frequency1: Float
+        public var phase1: Float
+        public var amplitude2: Float
+        public var frequency2: Float
+        public var phase2: Float
         /// Base chance a plane cuts a given patch.
-        var persistence: Float
+        public var persistence: Float
     }
 
     /// Bedding first (the same spacing the shader colours by), then two steep joint sets and a
     /// shallow shear set that makes wedges.
-    static let families: [Family] = [
+    public static let families: [Family] = [
         Family(
-            normal: Hillside.beddingNormal, spacing: 1.25, amplitude1: 0.9, frequency1: 0.31, phase1: 1.2,
+            normal: QuarryFace.beddingNormal, spacing: 1.25, amplitude1: 0.9, frequency1: 0.31, phase1: 1.2,
             amplitude2: 0.5, frequency2: 0.97, phase2: 2.7, persistence: 0.72),
         Family(
             normal: simd_normalize(SIMD3<Float>(0.97, 0.22, 0.05)), spacing: 2.9, amplitude1: 1.5,
@@ -45,7 +45,7 @@ enum Fracture {
     }
 
     /// The offsets (along `normal`) of family `f`'s planes between `low` and `high`.
-    static func planes(_ f: Family, low: Float, high: Float) -> [(index: Int, offset: Float)] {
+    public static func planes(_ f: Family, low: Float, high: Float) -> [(index: Int, offset: Float)] {
         let first = Int(ceil(coordinate(low, f)))
         let last = Int(floor(coordinate(high, f)))
         guard first <= last else { return [] }
@@ -70,10 +70,12 @@ enum Fracture {
 
     /// Cuts a cell by the planes that are present around it. `intensity` (0...1): how fractured
     /// the rock is here, from whole large blocks to fines.
-    static func fracture(_ cell: Polyhedron, intensity: Float, minimumVolume: Float) -> [Polyhedron] {
+    public static func fracture(_ cell: QuarryPolyhedron, intensity: Float, minimumVolume: Float)
+        -> [QuarryPolyhedron]
+    {
         var pieces = [cell]
         for (j, family) in families.enumerated() {
-            var next: [Polyhedron] = []
+            var next: [QuarryPolyhedron] = []
             next.reserveCapacity(pieces.count * 2)
             for piece in pieces {
                 var parts = [piece]
@@ -82,10 +84,10 @@ enum Fracture {
                 let centre = piece.volumeAndCentroid.centroid
                 for (k, offset) in planes(family, low: low + 0.02, high: high - 0.02) {
                     // The plane is present in patches, and more where the rock is more broken.
-                    let patch = Noise.value(centre * 0.16 + SIMD3(Float(j) * 3.1, Float(k) * 1.7, 2.3))
+                    let patch = QuarryNoise.value(centre * 0.16 + SIMD3(Float(j) * 3.1, Float(k) * 1.7, 2.3))
                     let present = (patch * 0.5 + 0.5) * (0.65 + 0.7 * hash(j, k))
                     guard present < chance else { continue }
-                    var split: [Polyhedron] = []
+                    var split: [QuarryPolyhedron] = []
                     for part in parts {
                         let (a, b) = part.extent(along: family.normal)
                         guard offset > a + 0.02, offset < b - 0.02 else {
@@ -115,8 +117,8 @@ enum Fracture {
     }
 }
 
-extension Polyhedron {
-    func extent(along n: SIMD3<Float>) -> (Float, Float) {
+extension QuarryPolyhedron {
+    public func extent(along n: SIMD3<Float>) -> (Float, Float) {
         var low = Float.infinity
         var high = -Float.infinity
         for polygon in faces {

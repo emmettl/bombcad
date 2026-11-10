@@ -1,24 +1,23 @@
-import BlastModel
 import Foundation
 import simd
 
-// The hillside: a quarry face as a heightfield, the rock in front of a new, excavated face broken
+// The face: a quarry face as a heightfield, the rock in front of a new, excavated face broken
 // up into jittered Voronoi blocks. Illustrative: the fracture pattern is for the eye.
 
 /// splitmix64.
-struct Random {
-    var state: UInt64
-    init(seed: UInt64) { state = seed }
-    mutating func next() -> UInt64 {
+public struct QuarryRandom: Sendable {
+    public var state: UInt64
+    public init(seed: UInt64) { state = seed }
+    public mutating func next() -> UInt64 {
         state &+= 0x9e37_79b9_7f4a_7c15
         var z = state
         z = (z ^ (z >> 30)) &* 0xbf58_476d_1ce4_e5b9
         z = (z ^ (z >> 27)) &* 0x94d0_49bb_1331_11eb
         return z ^ (z >> 31)
     }
-    mutating func float() -> Float { Float(next() >> 40) / Float(1 << 24) }
-    mutating func float(_ low: Float, _ high: Float) -> Float { low + (high - low) * float() }
-    mutating func unit() -> SIMD3<Float> {
+    public mutating func float() -> Float { Float(next() >> 40) / Float(1 << 24) }
+    public mutating func float(_ low: Float, _ high: Float) -> Float { low + (high - low) * float() }
+    public mutating func unit() -> SIMD3<Float> {
         while true {
             let v = SIMD3(float(-1, 1), float(-1, 1), float(-1, 1))
             let l = simd_length_squared(v)
@@ -28,8 +27,8 @@ struct Random {
 }
 
 /// Smooth value noise, roughly in [-1, 1].
-enum Noise {
-    static func hash(_ x: Int32, _ y: Int32, _ z: Int32) -> Float {
+public enum QuarryNoise {
+    public static func hash(_ x: Int32, _ y: Int32, _ z: Int32) -> Float {
         var h = UInt32(bitPattern: x) &* 0x8DA6_B343
         h ^= UInt32(bitPattern: y) &* 0xD816_3841
         h ^= UInt32(bitPattern: z) &* 0xCB1A_B31F
@@ -38,7 +37,7 @@ enum Noise {
         h ^= h >> 16
         return Float(h & 0xFFFFFF) / Float(0xFFFFFF) * 2 - 1
     }
-    static func value(_ p: SIMD3<Float>) -> Float {
+    public static func value(_ p: SIMD3<Float>) -> Float {
         let floored = floor(p)
         let f = p - floored
         let t = f * f * (3 - 2 * f)
@@ -52,7 +51,7 @@ enum Noise {
         let g = c + (d - c) * t.y
         return e + (g - e) * t.z
     }
-    static func fbm(_ p: SIMD3<Float>, octaves: Int = 4) -> Float {
+    public static func fbm(_ p: SIMD3<Float>, octaves: Int = 4) -> Float {
         var sum: Float = 0
         var amplitude: Float = 0.5
         var q = p
@@ -72,11 +71,11 @@ private func smoothstep(_ a: Float, _ b: Float, _ x: Float) -> Float {
 
 /// One block's polyhedron: planar polygons, their kind (0 a fresh fracture, 1 the weathered surface,
 /// 2 the excavated surface beneath).
-struct Polyhedron {
-    var faces: [[SIMD3<Float>]]
-    var kinds: [UInt8]
+public struct QuarryPolyhedron: Sendable {
+    public var faces: [[SIMD3<Float>]]
+    public var kinds: [UInt8]
 
-    static func box(low: SIMD3<Float>, high: SIMD3<Float>) -> Polyhedron {
+    public static func box(low: SIMD3<Float>, high: SIMD3<Float>) -> QuarryPolyhedron {
         let (a, b) = (low, high)
         let v = [
             SIMD3(a.x, a.y, a.z), SIMD3(b.x, a.y, a.z), SIMD3(b.x, b.y, a.z), SIMD3(a.x, b.y, a.z),
@@ -85,11 +84,11 @@ struct Polyhedron {
         let f: [[Int]] = [
             [3, 2, 1, 0], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [1, 2, 6, 5], [3, 0, 4, 7],
         ]
-        return Polyhedron(faces: f.map { $0.map { v[$0] } }, kinds: Array(repeating: 0, count: 6))
+        return QuarryPolyhedron(faces: f.map { $0.map { v[$0] } }, kinds: Array(repeating: 0, count: 6))
     }
 
     /// Keeps the side where dot(n, x) <= d; the new face gets `kind`.
-    mutating func clip(normal n: SIMD3<Float>, offset d: Float, kind: UInt8) {
+    public mutating func clip(normal n: SIMD3<Float>, offset d: Float, kind: UInt8) {
         var newFaces: [[SIMD3<Float>]] = []
         var newKinds: [UInt8] = []
         var cut: [SIMD3<Float>] = []
@@ -145,7 +144,7 @@ struct Polyhedron {
     }
 
     /// Volume and centroid, by tetrahedra from the first vertex.
-    var volumeAndCentroid: (volume: Float, centroid: SIMD3<Float>) {
+    public var volumeAndCentroid: (volume: Float, centroid: SIMD3<Float>) {
         guard let origin = faces.first?.first else { return (0, .zero) }
         var volume: Float = 0
         var moment = SIMD3<Float>.zero
@@ -160,104 +159,175 @@ struct Polyhedron {
         return (abs(volume), abs(volume) > 0 ? moment / volume + origin : origin)
     }
 
-    func maxDistance(from p: SIMD3<Float>) -> Float {
+    public func maxDistance(from p: SIMD3<Float>) -> Float {
         var largest: Float = 0
         for polygon in faces { for v in polygon { largest = max(largest, simd_distance_squared(v, p)) } }
         return sqrt(largest)
     }
 }
 
-/// The hillside and its blocks, ready for the GPU.
-struct Hillside {
-    struct Options {
-        var blocks = 100_000
-        /// Coarse Voronoi cells as a share of `blocks`: the bedding and joints cut them further.
-        var siteShare: Float = 0.33
-        /// 0 for the render's full mesh, 1 for the live window's (fewer triangles).
-        var meshDetail = 0
-        var spheres = 5
-        var seed: UInt64 = 2026
-        /// Length of the broken strip along the face (m).
-        var length: Float = 180
-        /// How far back from the old face the new one stands (m).
-        var depth: Float = 26
+/// Where a quarry face lies: the ground, and a strip along the face from `start` to `end`, in the
+/// ground's own metres. The broken rock is the face's material between the old face and a new one
+/// `depth` behind it. Illustrative: for the look of a face being blasted, not a design of one.
+public struct QuarrySite: Sendable {
+    public var terrain: Terrain
+    public var start: SIMD2<Float>
+    public var end: SIMD2<Float>
+    public var depth: Float
+
+    public init(terrain: Terrain, start: SIMD2<Float>, end: SIMD2<Float>, depth: Float = 26) {
+        self.terrain = terrain
+        self.start = start
+        self.end = end
+        self.depth = depth
     }
 
-    /// A contact sphere: local offset from the centroid, its radius.
-    struct Sphere {
-        var offset: SIMD3<Float>
-        var radius: Float
-    }
-    struct Block {
-        var centre: SIMD3<Float>
-        var volume: Float
-        var inertiaDiagonalPerMass: SIMD3<Float>
-        var firstVertex: Int
-        var vertexCount: Int
-        var firstIndex: Int
-        var indexCount: Int
-        var firstSphere: Int
-        var sphereCount: Int
-        var size: Float
-        /// Part of the held skin past the strip: never released.
-        var skin = false
-    }
-    /// Layout matches `HillsideBlockVertex` in `Hillside.metal`.
-    struct Vertex {
-        var x: Float, y: Float, z: Float
-        var normal: UInt32
-        var body: UInt32
-    }
+    public var length: Float { simd_distance(start, end) }
 
-    var options: Options
-    /// The excavated ground the blocks rest on and land on.
-    var terrain: Terrain
-    /// The old surface, before the blast, on the same grid.
-    var original: [Float]
-    var blocks: [Block] = []
-    var spheres: [Sphere] = []
-    var vertices: [Vertex] = []
-    var indices: [UInt32] = []
-    var meanEdge: Float = 0
-    var maxRadius: Float = 0
-    /// Six local surface points per block, for the decorative chips.
-    var chipAnchors: [SIMD3<Float>] = []
-    /// Render-only dressing of the rest of the face (one identity pose).
-    var dressingVertices: [Vertex] = []
-    var dressingIndices: [UInt32] = []
-    /// The domain of the hash grid (m).
-    let low = SIMD3<Float>(-90, -190, -6)
-    let high = SIMD3<Float>(290, 110, 110)
+    /// The built-in face: a quarry floor, a steep face and a hill behind it, with the strip
+    /// along the face from (0, 0) to (180, 0).
+    public static func builtIn() -> QuarrySite {
+        let origin = SIMD2<Float>(-420, -420)
+        let (columns, rows) = (1101, 761)
+        var heights = [Float](repeating: 0, count: columns * rows)
+        for j in 0..<rows {
+            for i in 0..<columns {
+                let p = origin + SIMD2(Float(i), Float(j))
+                heights[i + columns * j] = BuiltInHill.height(p.x, p.y)
+            }
+        }
+        let terrain = Terrain(origin: origin, spacing: 1, columns: columns, rows: rows, heights: heights)
+        return QuarrySite(terrain: terrain, start: .zero, end: SIMD2(180, 0))
+    }
+}
 
+/// The built-in hill's shape (m).
+enum BuiltInHill {
     static func faceLine(_ x: Float) -> Float {
         6 * sin(x / 37) + 3.5 * sin(x / 13 + 1) + 1.2 * sin(x / 5.3 + 2)
     }
-    static func profile(_ y: Float, _ x: Float, shift: Float) -> Float {
-        // Up the old (or new) face: 4 m wide for a steep drop, then the top of the hill.
-        let across = y - faceLine(x) - shift
+    static func height(_ x: Float, _ y: Float) -> Float {
+        let across = y - faceLine(x)
         let rise = smoothstep(-1, 4, across)
-        // The top of the hill does not depend on the shift, so behind the new face nothing is taken.
-        let top = 26 + 0.14 * max(0, y - faceLine(x)) + 3 * sin(x / 41 + 0.7) + 1.5 * sin(x / 17)
-        return rise * top
-    }
-    static func relief(_ x: Float, _ y: Float) -> Float {
+        let top = 26 + 0.14 * max(0, across) + 3 * sin(x / 41 + 0.7) + 1.5 * sin(x / 17)
         let q = SIMD3<Float>(x / 22, y / 22, 3.1)
-        return 1.6 * Noise.fbm(q, octaves: 5)
+        return rise * top + 1.6 * QuarryNoise.fbm(q, octaves: 5)
     }
+}
+
+/// The face and its blocks, ready for the GPU. Everything is in the strip's own frame: x along the
+/// strip from its start, y into the hill (the uphill side), z up as in the ground.
+public struct QuarryFace: Sendable {
+    public struct Options: Sendable {
+        public var blocks = 100_000
+        /// Coarse Voronoi cells as a share of `blocks`: the bedding and joints cut them further.
+        public var siteShare: Float = 0.33
+        /// 0 for the film's full mesh, 1 for the live window's (fewer triangles).
+        public var meshDetail = 0
+        public var spheres = 5
+        public var seed: UInt64 = 2026
+        public init() {}
+    }
+
+    /// A contact sphere: local offset from the centroid, its radius.
+    public struct Sphere: Sendable {
+        public var offset: SIMD3<Float>
+        public var radius: Float
+    }
+    public struct Block: Sendable {
+        public var centre: SIMD3<Float>
+        public var volume: Float
+        public var inertiaDiagonalPerMass: SIMD3<Float>
+        public var firstVertex: Int
+        public var vertexCount: Int
+        public var firstIndex: Int
+        public var indexCount: Int
+        public var firstSphere: Int
+        public var sphereCount: Int
+        public var size: Float
+        /// Part of the held skin past the strip: never released.
+        public var skin = false
+    }
+    /// Layout matches `QuarryBlockVertex` in `QuarryRender.metal`.
+    public struct Vertex: Sendable {
+        public var x: Float, y: Float, z: Float
+        public var normal: UInt32
+        public var body: UInt32
+    }
+
+    public enum Failure: Error, Equatable, Sendable {
+        /// The strip lies on ground with no face to break: nothing between old and new surfaces.
+        case noFace
+        case stripTooShort
+    }
+
+    public let site: QuarrySite
+    public var options: Options
+    /// Length of the broken strip along the face (m).
+    public let length: Float
+    /// How far back from the old face the new one stands (m).
+    public var depth: Float { site.depth }
+    /// The strip's frame in the ground: origin, along and into the hill.
+    public let origin: SIMD2<Float>
+    public let along: SIMD2<Float>
+    public let inward: SIMD2<Float>
+    /// The excavated ground the blocks rest on and land on, in the strip's frame.
+    public var terrain: Terrain
+    /// The old surface, before the blast, on the same grid.
+    public var original: [Float]
+    public var blocks: [Block] = []
+    public var spheres: [Sphere] = []
+    public var vertices: [Vertex] = []
+    public var indices: [UInt32] = []
+    public var meanEdge: Float = 0
+    public var maxRadius: Float = 0
+    /// Six local surface points per block, for the decorative chips.
+    public var chipAnchors: [SIMD3<Float>] = []
+    /// Render-only dressing of the rest of the face (one identity pose).
+    public var dressingVertices: [Vertex] = []
+    public var dressingIndices: [UInt32] = []
+    /// What the generator made, line by line (counts and times).
+    public var report: [String] = []
+    /// The domain of the hash grid (m).
+    public let low: SIMD3<Float>
+    public let high: SIMD3<Float>
+    /// The lowest floor and the highest old ground near the strip (m).
+    public let floorLevel: Float
+    public let topLevel: Float
+    /// The old face's line (its y at each x, a metre apart from the grid's first column) and the
+    /// floor and top heights in front of and behind it.
+    private let faceTable: [Float]
+    private let floorTable: [Float]
+    private let topTable: [Float]
+
+    /// The strip's frame to the ground's.
+    public func world(_ p: SIMD2<Float>) -> SIMD2<Float> { origin + along * p.x + inward * p.y }
+    /// The ground's frame to the strip's.
+    public func local(_ p: SIMD2<Float>) -> SIMD2<Float> {
+        let d = p - origin
+        return SIMD2(simd_dot(d, along), simd_dot(d, inward))
+    }
+
+    private func table(_ t: [Float], _ x: Float) -> Float {
+        let g = max(0, min(Float(t.count - 2), x - terrain.origin.x))
+        let i = Int(g)
+        return t[i] + (t[i + 1] - t[i]) * (g - Float(i))
+    }
+    /// The old face's y at x.
+    public func faceLine(_ x: Float) -> Float { table(faceTable, x) }
+    public func floorHeight(_ x: Float) -> Float { table(floorTable, x) }
+
     /// Pulls the new face back only along the strip, with rounded ends.
-    static func mask(_ x: Float, length: Float) -> Float {
+    public static func mask(_ x: Float, length: Float) -> Float {
         smoothstep(0, 18, x) * (1 - smoothstep(length - 18, length, x))
     }
-    func oldHeight(_ x: Float, _ y: Float) -> Float {
-        Self.profile(y, x, shift: 0) + Self.relief(x, y)
-    }
-    func newHeight(_ x: Float, _ y: Float) -> Float {
-        let m = Self.mask(x, length: options.length)
-        return Self.profile(y, x, shift: options.depth * m) + Self.relief(x, y) * (1 - 0.6 * m)
+    /// The old ground anywhere, in the strip's frame.
+    public func oldHeight(_ x: Float, _ y: Float) -> Float {
+        site.terrain.height(at: world(SIMD2(x, y)))
     }
 
     /// Height at (x, y) on a heightfield given as the old or excavated surface (bilinear on the grid).
-    func height(_ h: [Float], _ x: Float, _ y: Float) -> Float {
+    public func height(_ h: [Float], _ x: Float, _ y: Float) -> Float {
         let gx = max(0, min(Float(terrain.columns - 2), (x - terrain.origin.x) / terrain.spacing))
         let gy = max(0, min(Float(terrain.rows - 2), (y - terrain.origin.y) / terrain.spacing))
         let i = Int(gx)
@@ -269,36 +339,115 @@ struct Hillside {
         return a + (b - a) * fy
     }
 
-    init(options: Options) {
+    /// The site laid out in the strip's frame; `generate()` then breaks the rock.
+    public init(site: QuarrySite, options: Options = Options()) throws {
+        self.site = site
         self.options = options
+        length = site.length
+        guard length >= 40 else { throw Failure.stripTooShort }
+        origin = site.start
+        along = simd_normalize(site.end - site.start)
+        var into = SIMD2<Float>(-along.y, along.x)
+        // Into the hill: the side whose ground is higher.
+        let middle = (site.start + site.end) / 2
+        var higher: Float = 0
+        for t: Float in [-0.3, 0, 0.3] {
+            let p = middle + along * (t * length)
+            higher += site.terrain.height(at: p + into * 15) - site.terrain.height(at: p - into * 15)
+        }
+        if higher < 0 { into = -into }
+        inward = into
         let spacing: Float = 1
         let originXY = SIMD2<Float>(-170, -190)
-        let columns = 541
+        let columns = Int(length) + 341
         let rows = 301
         terrain = Terrain(origin: originXY, spacing: spacing, columns: columns, rows: rows, heights: [])
         original = []
+        let site = self.site
+        let (start, alongAxis, inwardAxis) = (origin, along, inward)
+        func old(_ x: Float, _ y: Float) -> Float {
+            site.terrain.height(at: start + alongAxis * x + inwardAxis * y)
+        }
+        // The old face's line: at each x the steepest rise into the hill near the strip, smoothed.
+        var face = [Float](repeating: 0, count: columns)
+        for i in 0..<columns {
+            let x = originXY.x + Float(i)
+            var best: Float = -.infinity
+            var at: Float = 0
+            var y: Float = -40
+            while y <= 40 {
+                let rise = old(x, y + 1) - old(x, y - 1)
+                if rise > best {
+                    best = rise
+                    at = y
+                }
+                y += 0.5
+            }
+            face[i] = at
+        }
+        var smoothed = face
+        for i in 0..<columns {
+            let range = max(0, i - 4)...min(columns - 1, i + 4)
+            smoothed[i] = range.reduce(0) { $0 + face[$1] } / Float(range.count)
+        }
+        faceTable = smoothed
+        floorTable = (0..<columns).map { old(originXY.x + Float($0), smoothed[$0] - 8) }
+        topTable = (0..<columns).map { old(originXY.x + Float($0), smoothed[$0] + 8) }
         var exc = [Float](repeating: 0, count: columns * rows)
-        var old = exc
+        var oldGrid = exc
         for j in 0..<rows {
             for i in 0..<columns {
                 let x = originXY.x + Float(i) * spacing
                 let y = originXY.y + Float(j) * spacing
-                old[i + columns * j] = oldHeight(x, y)
-                exc[i + columns * j] = min(old[i + columns * j], newHeight(x, y))
+                let h0 = old(x, y)
+                oldGrid[i + columns * j] = h0
+                // The new face is the old one's shape, moved `depth` into the hill along the strip:
+                // the ground keeps the old face's share of its rise, counted from the new face.
+                let shift = site.depth * Self.mask(x, length: length)
+                let floor = floorTable[i]
+                let rise = topTable[i] - floor
+                var h1 = h0
+                if shift > 0, rise > 2 {
+                    let u = y - smoothed[i] - shift
+                    let share = max(0, min(1, (old(x, smoothed[i] + u) - floor) / rise))
+                    h1 = min(h0, floor + share * (h0 - floor))
+                }
+                exc[i + columns * j] = h1
             }
         }
         terrain.heights = exc
-        original = old
+        original = oldGrid
+        // Levels near the strip, for the domains.
+        var lowest = Float.infinity
+        var highest = -Float.infinity
+        for j in 0..<rows {
+            let y = originXY.y + Float(j)
+            guard y > -60, y < 80 else { continue }
+            for i in 0..<columns {
+                lowest = min(lowest, exc[i + columns * j])
+                highest = max(highest, oldGrid[i + columns * j])
+            }
+        }
+        floorLevel = lowest
+        topLevel = highest
+        low = SIMD3(-90, -190, lowest - 6)
+        high = SIMD3(length + 110, 110, highest + 60)
+        let cut = zip(oldGrid, exc).reduce(Float(0)) { $0 + ($1.0 - $1.1) }
+        guard cut > 2000 else { throw Failure.noFace }
     }
 
     /// Generate the blocks.
-    mutating func generate(timing: Bool = true) {
+    public mutating func generate(timing: Bool = true) {
         let options = self.options
+        let length = self.length
+        let depth = self.depth
         let start = Date()
         // Bounds of the broken strip.
-        let boxLow = SIMD3<Float>(-1, -15, -1)
-        let boxHigh = SIMD3<Float>(options.length + 1, options.depth + 30, 55)
-        var random = Random(seed: options.seed)
+        let faceLow = faceTable.min() ?? 0
+        let faceHigh = faceTable.max() ?? 0
+        let boxLow = SIMD3<Float>(-1, faceLow - 15, floorLevel - 1)
+        let boxHigh = SIMD3<Float>(length + 1, faceHigh + depth + 30, topLevel + 1)
+        var random = QuarryRandom(seed: options.seed)
         let hOld = original
         let hNew = terrain.heights
         func inside(_ p: SIMD3<Float>) -> Bool {
@@ -312,10 +461,10 @@ struct Hillside {
             let b = height(hOld, p.x, p.y)
             // Anywhere in the band behind the old face that the strip's broken rock does not
             // fill, including where the strip tapers out at its ends.
-            guard !inside(p), p.z < b, p.z > 0.2 else { return false }
+            guard !inside(p), p.z < b, p.z > floorHeight(p.x) + 0.2 else { return false }
             // Not under the excavated floor in front of the new face.
             if b - height(hNew, p.x, p.y) > 0.2, p.z < height(hNew, p.x, p.y) { return false }
-            return height(hOld, p.x, p.y - skinThickness) < p.z
+            return height(hOld, p.x, p.y - skinThickness) < p.z && abs(p.y - faceLine(p.x)) < 30
         }
         // Rock, not rubble: a spread of sizes through a smooth density field, with finer breakage
         // near the row of firings.
@@ -325,8 +474,8 @@ struct Hillside {
         var insideSamples = 0
         func density(_ p: SIMD3<Float>) -> Float {
             let q = p / SIMD3<Float>(25, 18, 12)
-            let broad = exp(1.8 * Noise.fbm(q, octaves: 3))
-            let across = abs(p.y - Self.faceLine(p.x) - options.depth * 0.4) / 18
+            let broad = exp(1.8 * QuarryNoise.fbm(q, octaves: 3))
+            let across = abs(p.y - faceLine(p.x) - depth * 0.4) / 18
             let near = 0.6 + 1.4 * exp(-across * across)
             return broad * near
         }
@@ -334,7 +483,7 @@ struct Hillside {
         // A spread with real big blocks: a few boulder centres that nothing else may come near.
         var boulders: [(SIMD3<Float>, Float)] = []
         let boulderCount = options.blocks / 180
-        var boulderRandom = Random(seed: options.seed &+ 11)
+        var boulderRandom = QuarryRandom(seed: options.seed &+ 11)
         while boulders.count < boulderCount {
             let p = SIMD3<Float>(
                 boulderRandom.float(boxLow.x, boxHigh.x), boulderRandom.float(boxLow.y, boxHigh.y),
@@ -375,11 +524,11 @@ struct Hillside {
         let rockVolume = boxVolume * Float(insideSamples) / Float(volumeSamples)
         // A skin of the same rock along the old face past the strip's ends, held for ever, so the
         // face looks the same on both sides of where the blast stops.
-        let skinLow = SIMD3<Float>(-165, -25, 0.2)
-        let skinHigh = SIMD3<Float>(options.length + 165, 45, 45)
+        let skinLow = SIMD3<Float>(-165, faceLow - 25, floorLevel + 0.2)
+        let skinHigh = SIMD3<Float>(length + 165, faceHigh + 45, topLevel)
         var skinSamples = 0
         var skinHits = 0
-        var skinRandom = Random(seed: options.seed &+ 23)
+        var skinRandom = QuarryRandom(seed: options.seed &+ 23)
         func skinSample() -> SIMD3<Float> {
             SIMD3(
                 skinRandom.float(skinLow.x, skinHigh.x), skinRandom.float(skinLow.y, skinHigh.y),
@@ -399,9 +548,9 @@ struct Hillside {
             sites.append(p)
             skinSites += 1
         }
-        print("skin past the strip's ends: \(Int(skinVolume)) m3, \(skinSites) sites")
+        report.append("skin past the strip's ends: \(Int(skinVolume)) m3, \(skinSites) sites")
         meanEdge = cbrt(rockVolume / Float(options.blocks))
-        print(
+        report.append(
             "rock volume \(Int(rockVolume)) m3, \(sites.count) sites, mean edge \(String(format: "%.2f", meanEdge)) m (density rejection took \(String(format: "%.1f", Date().timeIntervalSince(start))) s)"
         )
         // A hash of the sites for neighbours.
@@ -425,7 +574,7 @@ struct Hillside {
         let frozenBuckets = buckets
         // Clip each cell.
         struct Built {
-            var polyhedron: Polyhedron
+            var polyhedron: QuarryPolyhedron
             var volume: Float
             var centroid: SIMD3<Float>
             var skin = false
@@ -459,7 +608,7 @@ struct Hillside {
                         < Self.bedded($1.1, of: site, in: frozenSites)
                 }
                 let reach = cell * 2.2
-                var polyhedron = Polyhedron.box(
+                var polyhedron = QuarryPolyhedron.box(
                     low: site - reach, high: site + reach)
                 for (_, other) in near {
                     let extent = polyhedron.maxDistance(from: site)
@@ -486,7 +635,7 @@ struct Hillside {
                     let top = normal(hOld)
                     // Each cell's outer face sits a little in from the surface or not, so the face is
                     // stepped block by block rather than one smooth plane.
-                    let recess = extent * 0.55 * Noise.hash(Int32(n), 7, 11).magnitude
+                    let recess = extent * 0.55 * QuarryNoise.hash(Int32(n), 7, 11).magnitude
                     polyhedron.clip(normal: top.0, offset: top.1 - recess, kind: 1)
                     if isSkin {
                         // Behind the skin: the old surface's plane under the site itself, moved in by
@@ -517,7 +666,7 @@ struct Hillside {
             DispatchQueue.concurrentPerform(iterations: cells.count) { n in
                 let centre = cells[n].centroid
                 let intensity = min(1, density(centre) / 2.6)
-                let pieces = Fracture.fracture(
+                let pieces = QuarryFracture.fracture(
                     cells[n].polyhedron, intensity: intensity, minimumVolume: 0.012 * referenceVolume)
                 output[n] = pieces.compactMap { piece -> Built? in
                     let (volume, centroid) = piece.volumeAndCentroid
@@ -529,7 +678,7 @@ struct Hillside {
         let built = cutOut.flatMap { $0 }
         let meanVolume = built.reduce(0) { $0 + $1.volume } / Float(max(built.count, 1))
         let keep = built.filter { $0.volume > 0.02 * meanVolume }
-        print(
+        report.append(
             "built \(built.count) cells, kept \(keep.count) (dropped slivers); mean volume \(String(format: "%.2f", meanVolume)) m3, took \(String(format: "%.1f", Date().timeIntervalSince(start))) s"
         )
         let finalEdge = cbrt(meanVolume)
@@ -544,7 +693,7 @@ struct Hillside {
                 var vertices: [Vertex] = []
                 var indices: [UInt32] = []
                 var anchors: [SIMD3<Float>] = []
-                var localRandom = Random(seed: UInt64(n) &+ 910)
+                var localRandom = QuarryRandom(seed: UInt64(n) &+ 910)
                 let size = cbrt(keep[n].volume)
                 let level: Int
                 if options.meshDetail > 0 {
@@ -605,8 +754,19 @@ struct Hillside {
             vertices.append(contentsOf: meshes[body].vertices)
             indices.append(contentsOf: meshes[body].indices.map { $0 + base })
             chipAnchors.append(contentsOf: meshes[body].anchors)
+            // Inscribed in the block, and clear of the ground it rests on: a sphere that starts in
+            // the ground is pushed out of it as soon as its block wakes, and a large block was thrown
+            // that way (emmettl/bombcad-work#125).
+            let groundNow = terrain.heights
             func inscribed(_ p: SIMD3<Float>) -> Float {
-                planes.reduce(Float.infinity) { min($0, $1.1 - simd_dot($1.0, p)) }
+                let inside = planes.reduce(Float.infinity) { min($0, $1.1 - simd_dot($1.0, p)) }
+                let w = c + p
+                let e: Float = 0.5
+                let ground = height(groundNow, w.x, w.y)
+                let dx = (height(groundNow, w.x + e, w.y) - height(groundNow, w.x - e, w.y)) / (2 * e)
+                let dy = (height(groundNow, w.x, w.y + e) - height(groundNow, w.x, w.y - e)) / (2 * e)
+                let up = 1 / sqrt(1 + dx * dx + dy * dy)
+                return min(inside, (w.z - ground) * up - 0.02)
             }
             // Contact: the inscribed sphere at the centre, and spheres toward the far corners.
             let firstSphere = spheres.count
@@ -655,44 +815,47 @@ struct Hillside {
         }
         self.blocks = blocks
         maxRadius = spheres.reduce(0) { max($0, $1.radius) }
-        print(
+        report.append(
             "blocks \(blocks.count), spheres \(spheres.count) (\(String(format: "%.2f", Float(spheres.count) / Float(max(blocks.count, 1)))) per block), max radius \(String(format: "%.2f", maxRadius)) m, vertices \(vertices.count), triangles \(indices.count / 3), \(String(format: "%.1f", Date().timeIntervalSince(start))) s in all"
         )
     }
 
     /// The bedding: the rock splits flatter along these planes, tilted a little.
-    static let beddingNormal = simd_normalize(SIMD3<Float>(0.06, 0.05, 1))
-    static let beddingStretch: Float = 1.7
+    public static let beddingNormal = simd_normalize(SIMD3<Float>(0.06, 0.05, 1))
+    public static let beddingStretch: Float = 1.7
 
     /// Squared distance from `site` to site `n` in the bedded metric.
-    static func bedded(_ n: Int, of site: SIMD3<Float>, in sites: [SIMD3<Float>]) -> Float {
+    public static func bedded(_ n: Int, of site: SIMD3<Float>, in sites: [SIMD3<Float>]) -> Float {
         let d = sites[n] - site
         let along = simd_dot(d, beddingNormal)
         return simd_length_squared(d) + (beddingStretch * beddingStretch - 1) * along * along
     }
 
     /// The plane normal between sites `d` apart, in the bedded metric.
-    static func beddedNormal(_ d: SIMD3<Float>) -> SIMD3<Float> {
+    public static func beddedNormal(_ d: SIMD3<Float>) -> SIMD3<Float> {
         let along = simd_dot(d, beddingNormal)
         return simd_normalize(d + (beddingStretch * beddingStretch - 1) * along * beddingNormal)
     }
 
     /// Surface displacement, a function of world position alone so that neighbouring blocks stay
     /// matched where they touch.
-    static func displacement(_ p: SIMD3<Float>) -> SIMD3<Float> {
+    public static func displacement(_ p: SIMD3<Float>) -> SIMD3<Float> {
         let q = p * SIMD3<Float>(0.8, 0.8, 1.15) + 31
         let large = SIMD3<Float>(
-            Noise.fbm(q, octaves: 2), Noise.fbm(q + 13.7, octaves: 2), Noise.fbm(q + 29.1, octaves: 2))
+            QuarryNoise.fbm(q, octaves: 2), QuarryNoise.fbm(q + 13.7, octaves: 2),
+            QuarryNoise.fbm(q + 29.1, octaves: 2))
         let r = p * 3.4 + 7
         let fine = SIMD3<Float>(
-            Noise.fbm(r, octaves: 2), Noise.fbm(r + 5.3, octaves: 2), Noise.fbm(r + 17.9, octaves: 2))
+            QuarryNoise.fbm(r, octaves: 2), QuarryNoise.fbm(r + 5.3, octaves: 2),
+            QuarryNoise.fbm(r + 17.9, octaves: 2))
         return large * 0.22 + fine * 0.06
     }
 
     /// A polygon's tessellated, displaced surface: each fan triangle subdivided `level` times,
     /// with vertex normals from its own grid. Kind comes from the polygon.
-    static func tessellate(
-        _ poly: Polyhedron, centre c: SIMD3<Float>, origin: SIMD3<Float>? = nil, body: UInt32, level n: Int,
+    public static func tessellate(
+        _ poly: QuarryPolyhedron, centre c: SIMD3<Float>, origin: SIMD3<Float>? = nil, body: UInt32,
+        level n: Int,
         warp: Float, seed: Float, relief: Float = 0, vertices: inout [Vertex], indices: inout [UInt32]
     ) {
         for (f, polygon) in poly.faces.enumerated() where polygon.count >= 3 {
@@ -716,15 +879,16 @@ struct Hillside {
                             p +=
                                 relief
                                 * SIMD3<Float>(
-                                    Noise.fbm(w, octaves: 3), Noise.fbm(w + 4.7, octaves: 3),
-                                    Noise.fbm(w + 11.3, octaves: 3)) * 1.4
+                                    QuarryNoise.fbm(w, octaves: 3), QuarryNoise.fbm(w + 4.7, octaves: 3),
+                                    QuarryNoise.fbm(w + 11.3, octaves: 3)) * 1.4
                         }
                         if warp > 0 {
                             let t = p * 0.7 + seed
                             p +=
                                 warp
                                 * SIMD3<Float>(
-                                    Noise.value(t), Noise.value(t + 9.1), Noise.value(t + 21.3)) * 1.5
+                                    QuarryNoise.value(t), QuarryNoise.value(t + 9.1),
+                                    QuarryNoise.value(t + 21.3)) * 1.5
                         }
                         positions[at(i, j)] = p
                     }
@@ -766,7 +930,7 @@ struct Hillside {
 
     /// Render-only rock over every steep part of the ground that the broken strip does not cover:
     /// bedded cells a little proud of the terrain, so the strip's ends do not show.
-    mutating func buildDressing(edge: Float = 1.15, level: Int = 3) {
+    public mutating func buildDressing(edge: Float = 1.15, level: Int = 3) {
         let t = terrain
         let hillside = self
         func surface(_ x: Float, _ y: Float) -> Float {
@@ -779,7 +943,7 @@ struct Hillside {
             let dy = (surface(x, y + e) - surface(x, y - e)) / (2 * e)
             return sqrt(dx * dx + dy * dy)
         }
-        var r = Random(seed: 5150)
+        var r = QuarryRandom(seed: 5150)
         let lowXY = SIMD2<Float>(low.x - 60, low.y + 3)
         let highXY = SIMD2<Float>(620, high.y - 3)
         // Sites at the wanted density per unit volume of a 2.7 m band under the steep ground.
@@ -813,7 +977,7 @@ struct Hillside {
             let dy = (surface(x, y + e) - surface(x, y - e)) / (2 * e)
             let n = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
             // The skin of blocks covers the old face near the strip; the dressing goes on past it.
-            if x > -163, x < options.length + 163,
+            if x > -163, x < length + 163,
                 hillside.height(original, x, y) - hillside.height(t.heights, x, y) < 0.3
             {
                 continue
@@ -847,7 +1011,7 @@ struct Hillside {
                     }
                 }
                 near.sort { Self.bedded($0, of: site, in: frozen) < Self.bedded($1, of: site, in: frozen) }
-                var polyhedron = Polyhedron.box(low: site - cell * 1.8, high: site + cell * 1.8)
+                var polyhedron = QuarryPolyhedron.box(low: site - cell * 1.8, high: site + cell * 1.8)
                 for other in near {
                     let q = frozen[other]
                     let normal = Self.beddedNormal(q - site)
@@ -882,138 +1046,16 @@ struct Hillside {
             dressingVertices.append(contentsOf: mesh.vertices)
             dressingIndices.append(contentsOf: mesh.indices.map { $0 + base })
         }
-        print(
+        report.append(
             "dressing: \(sites.count) sites, \(dressingIndices.count / 3) triangles (\(accepted) steep samples)"
         )
     }
 
     /// Packs a unit normal in 10:10:10 and the face kind in the top two bits.
-    static func pack(normal n: SIMD3<Float>, kind: UInt8) -> UInt32 {
+    public static func pack(normal n: SIMD3<Float>, kind: UInt8) -> UInt32 {
         func s10(_ v: Float) -> UInt32 {
             UInt32(max(0, min(1023, (v * 0.5 + 0.5) * 1023 + 0.5)))
         }
         return s10(n.x) | (s10(n.y) << 10) | (s10(n.z) << 20) | (UInt32(kind) << 30)
-    }
-}
-
-/// A row of firings, stylised for the eye: even along the face, staggered in time so a ripple runs
-/// along it. No charge masses or designs of any kind; each firing only imparts a velocity by the
-/// scaled law in `Launch`. This is a picture, not a blast-design aid: it says nothing about real
-/// fragmentation, flyrock reach or safe distances.
-struct Firing {
-    var position: SIMD3<Float>
-    var time: Float
-}
-
-/// The order the ripple runs along the row. Stylised, for the eye.
-enum FiringOrder: String, CaseIterable {
-    case leftToRight = "Left to right"
-    case rightToLeft = "Right to left"
-    case centreOut = "Centre out"
-    case edgesIn = "Edges in"
-    case scattered = "Scattered"
-}
-
-enum FiringPattern {
-    static func row(
-        hillside: Hillside, count: Int = 16, first: Float = 1.8, stagger: Float = 0.1,
-        order: FiringOrder = .leftToRight
-    ) -> [Firing] {
-        let length = hillside.options.length
-        // Each firing's place in the order (0 first), by the distance that matters to that order.
-        let positions = (0..<count).map { Float($0) - Float(max(count - 1, 1)) * 0.5 }
-        var ranked: [Int]
-        switch order {
-        case .leftToRight: ranked = Array(0..<count)
-        case .rightToLeft: ranked = Array((0..<count).reversed())
-        case .centreOut: ranked = (0..<count).sorted { abs(positions[$0]) < abs(positions[$1]) }
-        case .edgesIn: ranked = (0..<count).sorted { abs(positions[$0]) > abs(positions[$1]) }
-        case .scattered:
-            var r = Random(seed: 41)
-            ranked = (0..<count).map { ($0, r.float()) }.sorted { $0.1 < $1.1 }.map(\.0)
-        }
-        var rank = [Int](repeating: 0, count: count)
-        for (place, firing) in ranked.enumerated() { rank[firing] = place }
-        return (0..<count).map { n in
-            let x = 12 + (length - 24) * Float(n) / Float(max(count - 1, 1))
-            let y = Hillside.faceLine(x) + hillside.options.depth * 0.45
-            let z = hillside.height(hillside.original, x, y) * 0.55
-            return Firing(position: SIMD3(x, y, z), time: first + stagger * Float(rank[n]))
-        }
-    }
-}
-
-/// Per-block launch state from the firings: when it lets go and how fast.
-struct Launch {
-    /// Scaled law, stated: the speed at distance r from the nearest firing is
-    /// `speed0 (r0 / max(r, r0))^exponent`; illustrative, chosen by eye.
-    var speed0: Float = 15
-    var r0: Float = 3
-    var exponent: Float = 1.0
-    /// The face swells before it lets go, coherently and by eye: a smooth drift out and up over
-    /// `rise` seconds, up to `swellAmplitude` metres near a firing, fading with distance.
-    var rise: Float = 0.8
-    var swellAmplitude: Float = 3.4
-    var swellReach: Float = 20
-    /// Share of a block's launch that is up.
-    var lift: Float = 0.55
-    /// Speed of the break through the rock, for each block's release (m/s). Visual only.
-    var front: Float = 200
-
-    func apply(to blocks: inout [Hillside.Block], firings: [Firing], hillside: Hillside) -> (
-        fire: [Float], velocity: [SIMD3<Float>], spin: [SIMD3<Float>], swell: [SIMD4<Float>]
-    ) {
-        var random = Random(seed: 77)
-        var fire = [Float](repeating: 0, count: blocks.count)
-        var velocity = [SIMD3<Float>](repeating: .zero, count: blocks.count)
-        var spin = velocity
-        var swell = [SIMD4<Float>](repeating: .zero, count: blocks.count)
-        for (n, block) in blocks.enumerated() {
-            let c = block.centre
-            var best: Float = .infinity
-            var nearest = firings[0]
-            for firing in firings {
-                let d = simd_distance_squared(c, firing.position)
-                if d < best {
-                    best = d
-                    nearest = firing
-                }
-            }
-            let r = sqrt(best)
-            // The last skin of blocks against the new face stays put, so the face is left rough.
-            let across =
-                c.y - Hillside.faceLine(c.x) - hillside.options.depth
-                * Hillside.mask(c.x, length: hillside.options.length)
-            // The strip's end is ragged: the last blocks to hold back come and go along it.
-            let raggedness = Noise.fbm(c * SIMD3<Float>(0.05, 0.05, 0.03) + 19, octaves: 3)
-            let unbroken =
-                hillside.height(hillside.original, c.x, c.y)
-                - hillside.height(hillside.terrain.heights, c.x, c.y)
-                < 0.3
-            if block.skin || unbroken || across > -2.6 + 9 * raggedness {
-                fire[n] = .greatestFiniteMagnitude
-                velocity[n] = .zero
-                spin[n] = .zero
-                continue
-            }
-            let speed = speed0 * pow(r0 / max(r, r0), exponent)
-            let radial = simd_normalize(c - nearest.position + SIMD3<Float>(0, 0, 0.5))
-            let outward = SIMD3<Float>(0, -1, 0)
-            var direction = simd_normalize(0.55 * radial + 0.45 * outward)
-            direction.z += lift * (0.6 + 0.4 * random.float())
-            direction = simd_normalize(direction + 0.18 * random.unit())
-            fire[n] = nearest.time + r / front
-            // Coherent: no jitter, so the face rises as a whole before it opens.
-            let reach = r / swellReach
-            let amplitude = swellAmplitude * exp(-reach * reach) + 0.2
-            let thisRise = rise + 0.45 * min(1, r / 25)
-            let swellDirection = simd_normalize(0.6 * outward + SIMD3<Float>(0, 0, 0.55) + 0.25 * radial)
-            swell[n] = SIMD4(swellDirection * amplitude / (0.5 * thisRise), thisRise)
-            velocity[n] = direction * max(0.25, speed * random.float(0.7, 1.2))
-            spin[n] =
-                random.unit()
-                * min(9, simd_length(velocity[n]) * random.float(0.3, 1.5) / max(block.size, 0.3))
-        }
-        return (fire, velocity, spin, swell)
     }
 }

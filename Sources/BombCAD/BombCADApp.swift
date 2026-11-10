@@ -78,6 +78,7 @@ enum BombCADMain {
             .defaultSize(width: 1440, height: 920)
             .commands {
                 NewDistrictCommands()
+                QuarryFaceCommands()
                 SimulationCommands()
                 HelpCommands()
             }
@@ -87,6 +88,12 @@ enum BombCADMain {
             }
             .defaultSize(width: 620, height: 820)
             .windowResizability(.contentMinSize)
+
+            // Experimental and illustrative (File ▸ New Quarry Face): not a blast-design aid.
+            Window("Quarry Face (Experimental)", id: "quarry-face") {
+                QuarryFaceView()
+            }
+            .defaultSize(width: 1400, height: 860)
 
             Window("BombCAD Help", id: "help") {
                 HelpView()

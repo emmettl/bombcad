@@ -49,13 +49,16 @@ let package = Package(
                 .product(name: "CompressibleFlow", package: "continuumkit"),
                 .product(name: "Numerics", package: "continuumkit"),
                 .product(name: "ContactSearchMetal", package: "continuumkit"),
-            ], resources: [.copy("Shaders")]),
+            ],
+            resources: [
+                .copy("Shaders"), .copy("Quarry/QuarrySolver.metal"), .copy("Quarry/QuarryDust.metal"),
+            ]),
         .target(
             name: "BlastRender",
             dependencies: [
                 "BlastCore",
                 .product(name: "SceneView", package: "continuumkit"),
-            ], resources: [.copy("Shaders")]),
+            ], resources: [.copy("Shaders"), .copy("Quarry/QuarryRender.metal")]),
         // On an iPad, BombCAD is the viewer of runs kept on a Mac nearby (ViewerApp.swift,
         // Scripts/build-ipad-viewer.sh). ContinuumKit's SceneRender, which the app takes only for
         // its orbiting view, imports AppKit, so the iPad leaves it out.
@@ -69,8 +72,7 @@ let package = Package(
         .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),
         .executableTarget(name: "BlastModelCLI", dependencies: ["BlastModel"]),
         .executableTarget(
-            name: "HillsideBlast", dependencies: ["BlastModel"],
-            resources: [.copy("Hillside.metal"), .copy("HillsideDust.metal")],
+            name: "HillsideBlast", dependencies: ["BlastModel", "BlastCore", "BlastRender"],
             swiftSettings: [.swiftLanguageMode(.v5)]),
         .executableTarget(
             name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),

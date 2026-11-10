@@ -1,3 +1,4 @@
+import BlastModel
 import Foundation
 import Metal
 import simd
@@ -7,86 +8,87 @@ import simd
 /// with a mass-scaled stiffness, held in place until fired, asleep once still.
 /// A block's inertia per unit mass about its own axes, floored at half the largest: flat bedded
 /// blocks otherwise spin up without limit under the explicit contact (for the eye, not accuracy).
-private func inertiaFloor(_ block: Hillside.Block) -> SIMD3<Float> {
+private func inertiaFloor(_ block: QuarryFace.Block) -> SIMD3<Float> {
     let d = block.inertiaDiagonalPerMass
     let floor = 0.5 * d.max()
     return SIMD3(max(d.x, floor), max(d.y, floor), max(d.z, floor))
 }
 
-final class BlockSimulation {
-    /// Layout matches `HillsideBody` in `Hillside.metal`.
-    struct GPUBody {
-        var posInvMass: SIMD4<Float>
-        var quat: SIMD4<Float>
-        var velSleep: SIMD4<Float>
-        var ang: SIMD4<Float>
-        var invInertiaFire: SIMD4<Float>
-        var launchSwell: SIMD4<Float>
-        var spinRise: SIMD4<Float>
-        var swell: SIMD4<Float>
-        var first: UInt32
-        var count: UInt32
-        var state: UInt32
-        var pad: UInt32
+public final class QuarrySimulation {
+    /// Layout matches `QuarryBody` in `QuarrySolver.metal`.
+    public struct GPUBody {
+        public var posInvMass: SIMD4<Float>
+        public var quat: SIMD4<Float>
+        public var velSleep: SIMD4<Float>
+        public var ang: SIMD4<Float>
+        public var invInertiaFire: SIMD4<Float>
+        public var launchSwell: SIMD4<Float>
+        public var spinRise: SIMD4<Float>
+        public var swell: SIMD4<Float>
+        public var first: UInt32
+        public var count: UInt32
+        public var state: UInt32
+        public var pad: UInt32
     }
 
-    /// Layout matches `HillsideUniforms` in `Hillside.metal`.
-    struct Uniforms {
-        var dt: Float
-        var time: Float
-        var gravity: Float
-        var kc: Float
-        var damping: Float
-        var friction: Float
-        var wakeSpeed: Float
-        var cell: Float
-        var origin: SIMD4<Float>
-        var dims: SIMD4<Int32>
-        var terrainOrigin: SIMD4<Float>
-        var terrainDims: SIMD4<Int32>
-        var sleepSpeed: Float
-        var sleepSpin: Float
-        var sleepTime: Float
-        var frictionGamma: Float
-        var bodyCount: UInt32
-        var sphereCount: UInt32
-        var cellCount: UInt32
-        var pad: UInt32
+    /// Layout matches `QuarryUniforms` in `QuarrySolver.metal`.
+    public struct Uniforms {
+        public var dt: Float
+        public var time: Float
+        public var gravity: Float
+        public var kc: Float
+        public var damping: Float
+        public var friction: Float
+        public var wakeSpeed: Float
+        public var cell: Float
+        public var origin: SIMD4<Float>
+        public var dims: SIMD4<Int32>
+        public var terrainOrigin: SIMD4<Float>
+        public var terrainDims: SIMD4<Int32>
+        public var sleepSpeed: Float
+        public var sleepSpin: Float
+        public var sleepTime: Float
+        public var frictionGamma: Float
+        public var bodyCount: UInt32
+        public var sphereCount: UInt32
+        public var cellCount: UInt32
+        public var pad: UInt32
     }
 
-    let device: MTLDevice
-    let queue: MTLCommandQueue
-    let bodies: MTLBuffer
-    let spheres: MTLBuffer
-    let sphereBody: MTLBuffer
-    let world: MTLBuffer
-    let velocity: MTLBuffer
-    let heads: MTLBuffer
-    let next: MTLBuffer
-    let forces: MTLBuffer
-    let torques: MTLBuffer
-    let wake: MTLBuffer
-    let heights: MTLBuffer
-    let pose: MTLBuffer
-    let bodyCount: Int
-    let sphereCount: Int
-    var uniforms: Uniforms
-    let pipelines: [String: MTLComputePipelineState]
-    var substepCount = 0
+    public let device: MTLDevice
+    public let queue: MTLCommandQueue
+    public let bodies: MTLBuffer
+    public let spheres: MTLBuffer
+    public let sphereBody: MTLBuffer
+    public let world: MTLBuffer
+    public let velocity: MTLBuffer
+    public let heads: MTLBuffer
+    public let next: MTLBuffer
+    public let forces: MTLBuffer
+    public let torques: MTLBuffer
+    public let wake: MTLBuffer
+    public let heights: MTLBuffer
+    public let pose: MTLBuffer
+    public let bodyCount: Int
+    public let sphereCount: Int
+    public var uniforms: Uniforms
+    public let pipelines: [String: MTLComputePipelineState]
+    public var substepCount = 0
 
-    init(
-        device: MTLDevice, library: MTLLibrary, hillside: Hillside, launch: Launch, firings: [Firing],
+    public init(
+        device: MTLDevice, face hillside: QuarryFace, launch: QuarryLaunch, firings: [QuarryFiring],
         dt: Float
     ) throws {
         self.device = device
         queue = device.makeCommandQueue()!
+        let library = try QuarryShaders.library(device: device, file: "QuarrySolver")
         var pipelines: [String: MTLComputePipelineState] = [:]
         for name in ["updateSpheres", "clearGrid", "insertSpheres", "forces", "integrate"] {
             pipelines[name] = try device.makeComputePipelineState(function: library.makeFunction(name: name)!)
         }
         self.pipelines = pipelines
         var blocks = hillside.blocks
-        let launchState = launch.apply(to: &blocks, firings: firings, hillside: hillside)
+        let launchState = launch.apply(to: &blocks, firings: firings, face: hillside)
         bodyCount = blocks.count
         sphereCount = hillside.spheres.count
         let density: Float = 2500
@@ -181,7 +183,7 @@ final class BlockSimulation {
 
     /// Advances `substeps` substeps on one command buffer; returns the GPU time (s).
     @discardableResult
-    func advance(substeps: Int) -> Double {
+    public func advance(substeps: Int) -> Double {
         let buffer = queue.makeCommandBuffer()!
         let encoder = buffer.makeComputeCommandEncoder(dispatchType: .serial)!
         var u = uniforms
@@ -234,7 +236,7 @@ final class BlockSimulation {
     }
 
     /// Awake bodies, the fastest speed, and any NaN seen.
-    func census() -> (
+    public func census() -> (
         awake: Int, held: Int, asleep: Int, maxSpeed: Float, meanSpeed: Float, kineticEnergy: Float, bad: Int
     ) {
         let p = bodies.contents().bindMemory(to: GPUBody.self, capacity: bodyCount)
@@ -264,8 +266,20 @@ final class BlockSimulation {
     }
 }
 
+/// The quarry's Metal, each file compiled on its own, copied to the bundle as a resource.
+public enum QuarryShaders {
+    public static func library(device: MTLDevice, file: String, bundle: Bundle? = nil) throws -> MTLLibrary {
+        guard
+            let url = (bundle ?? Bundle.module).url(forResource: file, withExtension: "metal")
+        else { throw BlastError.missingShader("\(file).metal") }
+        let options = MTLCompileOptions()
+        options.languageVersion = .version3_1
+        return try device.makeLibrary(source: try String(contentsOf: url, encoding: .utf8), options: options)
+    }
+}
+
 extension MTLComputeCommandEncoder {
     /// A thread execution width safe for these pipelines: Apple GPUs report 32; a fixed value keeps
     /// the encode simple.
-    var deviceWidth: Int { 32 }
+    public var deviceWidth: Int { 32 }
 }

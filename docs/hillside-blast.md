@@ -309,3 +309,78 @@ On the user's word of 10 November: re-rendered from the stage 3 poses, nothing r
 
 Window self-test after the pass: playing 33 ms interval, 27 ms of work; scrubbing 66 ms; first fire 16 s;
 footprint 3.9 GB (4.9 GB after a refire). Clip: 56 ms median to draw, 22 ms for the dust.
+
+## The Quarry Face scene, stage 1, 10 November 2026
+
+On the user's word of 10 November (emmettl/bombcad-work#125): the experiment as a scene in the app,
+**File ▸ New Quarry Face (Experimental)…** Same standing: illustrative, stylised firing patterns, no
+link to the blast solver's loads, and no fragmentation, reach or safety outputs. The window says so,
+and it is not a blast-design aid.
+
+**What a user can do.**
+- Open the window; it lays out the built-in hillside, breaks the rock and fires it.
+- Drag along a face on the map to choose the strip; the rock behind it breaks and fires.
+- Open a terrain file instead (GeoTIFF or ESRI ASCII, read by the app's own `ElevationGrid`
+  reader). A crop up to 1.2 km across at 2 m is taken round the file's middle; then you drag a strip.
+- Set the order (left to right, right to left, centre out, edges in, scattered), the ripple (20 to
+  400 ms between firings) and the number of firings (6 to 30), and fire again; progress is shown and
+  the old event stays on view until the new one is ready.
+- Orbit, pan and zoom; play and scrub the 20 s event; a readout shows the frame time.
+
+**Where it lives** (CLAUDE.md, "Where code goes").
+- BlastModel, `Sources/BlastModel/Quarry/`: the layout on any terrain, the fracture, the blocks and
+  their spheres, the firing patterns, the launch law and the packed pose cache. Tested in
+  `QuarryFaceTests`, which run on Linux.
+- BlastCore: the contact solver and the dust field, each Metal file compiled on its own.
+- BlastRender: the renderer and `QuarrySession`, which fires in the background and replays.
+- BombCAD: the window and its menu item. `hillsideblast` is now a thin command over the same code.
+
+**On any terrain.** The strip gives the frame: x along it, y into the hill (the higher side). The
+old face's line is found at each x as the steepest rise within 40 m of the strip, smoothed. The new
+face is the old face's shape moved `depth` (26 m) into the hill along the strip, with rounded ends:
+the ground keeps the old face's share of its rise, counted from the new face. A strip with no face
+under it (less than 2,000 m³ cut) is refused, with a message.
+
+**Memory.** At 117,000 blocks, measured with the window's own session (`hillsideblast play
+--self-test`):
+- the pose cache is 264 MB, from 1,086 MB: every other frame stored, interpolated between, 10 bytes
+  a moving block (16-bit positions over the domain, 6 mm; smallest-three orientation), and the held
+  skin not stored;
+- the dust fields are 157 MB at 1.5 m;
+- dust kept for scrubbing goes to disk, 24 MB a second of event, written as playback first passes
+  each second, under the user's Caches folder and removed when the window closes or reopens;
+- the process footprint is 3.0 GB after the first fire and 2.9 GB after a refire, against 3.9 to
+  5.0 GB before.
+
+So the budget beside the app's own runs is about 3 GB of memory and up to 0.5 GB of disk for a 20 s
+event.
+
+**Measured** (the same session as the window, behind other windows, timer-paced): playing 33 ms
+interval, 27 ms of work a frame; scrubbing and orbiting every frame 67 ms (53 ms of work, a little
+more than before, for the interpolation and the reads from disk); first fire 16 s, refire 16 s.
+
+**A fix found on the way.** At small block counts (8,000 to 30,000, so blocks up to 5.6 m) a few
+large blocks were thrown to the speed cap. Their contact spheres started below the excavated ground,
+because the clip planes follow a curved new face only approximately, and were pushed out as soon as
+the block woke. Spheres are now kept inscribed above the ground too. At 8,000 blocks, frames at the
+cap went from 1 to 0 and blocks over 10 cm in the last second from 104 to 1. The 117,000-block scene
+is unchanged in its numbers: no frame at the cap, and none over 10 cm in the last second.
+
+**Tests.**
+- `QuarryFaceTests` (BlastModel): blocks fill the cut and repeat with the seed; a strip on a turned
+  and moved copy of the hill finds the same face; flat ground and a short strip are refused; every
+  firing order fires each point once at the stagger; the launch law's bound; the pose cache's round
+  trip (6 mm, a tenth of a degree, interpolated).
+- `QuarrySimulationTests` (BlastCore, GPU): 20,000 blocks fired for 12 s. Nothing faster than the
+  launch law allows, the last second's 99th percentile under 1 cm, and fewer than one block in a
+  thousand over 10 cm.
+- `QuarryFaceSceneTests` (BombCAD): the window's model opens on the built-in hillside, breaks
+  12,000 blocks, fires in the background, settles, scrubs back and draws.
+
+**Where it stopped.**
+- The window has not been looked at on a screen, so as not to cover the user's. Its 3-D view is the
+  same session that `hillsideblast play` draws, but the SwiftUI controls around it are unchecked.
+- Terrain files are cropped round their middle, and there is no choosing where. The open project's
+  own terrain is not offered.
+- Dragging is on a 2-D map, not in the 3-D view.
+- A dragged strip regenerates in about 5 to 10 s at 100,000 blocks, plus the firing.

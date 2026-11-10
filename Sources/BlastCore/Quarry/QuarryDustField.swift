@@ -1,3 +1,4 @@
+import BlastModel
 import Foundation
 import Metal
 import simd
@@ -6,60 +7,61 @@ import simd
 /// advection, Jacobi pressure, buoyancy, a little wind), fed by the firings and by blocks as they
 /// strike the ground, ray-marched over the frame. Not the collapse's air-carried dust: that needs
 /// the compressible air solver and its element work, far from an interactive scene.
-final class DustField {
-    /// Layout matches `HillsideDustUniforms` in `HillsideDust.metal`.
-    struct Uniforms {
-        var low: SIMD4<Float>
-        var hdtsteps: SIMD4<Float>
-        var dims: SIMD4<Int32>
-        var wind: SIMD4<Float>
-        var sun: SIMD4<Float>
-        var lowHigh: SIMD4<Float>
+public final class QuarryDustField {
+    /// Layout matches `QuarryDustUniforms` in `QuarryDust.metal`.
+    public struct Uniforms {
+        public var low: SIMD4<Float>
+        public var hdtsteps: SIMD4<Float>
+        public var dims: SIMD4<Int32>
+        public var wind: SIMD4<Float>
+        public var sun: SIMD4<Float>
+        public var lowHigh: SIMD4<Float>
     }
 
-    let device: MTLDevice
-    let queue: MTLCommandQueue
-    let dims: SIMD3<Int>
-    let h: Float
-    let low: SIMD3<Float>
-    let high: SIMD3<Float>
-    var velocity: [MTLTexture]
-    var density: [MTLTexture]
-    let scratch: [MTLTexture]
-    let noiseVolume: MTLTexture
-    var pressure: [MTLTexture]
-    let divergence: MTLTexture
-    let light: MTLTexture
-    let solid: MTLTexture
-    let source: MTLBuffer
-    let heatSource: MTLBuffer
-    let heatPointer: UnsafeMutablePointer<Float>
+    public let device: MTLDevice
+    public let queue: MTLCommandQueue
+    public let dims: SIMD3<Int>
+    public let h: Float
+    public let low: SIMD3<Float>
+    public let high: SIMD3<Float>
+    public var velocity: [MTLTexture]
+    public var density: [MTLTexture]
+    public let scratch: [MTLTexture]
+    public let noiseVolume: MTLTexture
+    public var pressure: [MTLTexture]
+    public let divergence: MTLTexture
+    public let light: MTLTexture
+    public let solid: MTLTexture
+    public let source: MTLBuffer
+    public let heatSource: MTLBuffer
+    public let heatPointer: UnsafeMutablePointer<Float>
     /// Each block's release time, and whether it shows on the face, for the puffs at release.
-    let blockFire: [Float]
-    let exposed: [Bool]
+    public let blockFire: [Float]
+    public let exposed: [Bool]
     /// Each block's velocity at the last step, for the impacts.
-    var lastVelocity: [SIMD3<Float>]
-    let pointer: UnsafeMutablePointer<SIMD4<Float>>
-    var touched: [Int] = []
-    let pipelines: [String: MTLComputePipelineState]
-    let composite: MTLRenderPipelineState
-    let halfDust: MTLTexture
-    let dustDraw: MTLRenderPipelineState
-    var firings: [Firing]
-    var uniforms: Uniforms
-    var lastTime: Float = 0
-    let sampler: MTLSamplerState
+    public var lastVelocity: [SIMD3<Float>]
+    public let pointer: UnsafeMutablePointer<SIMD4<Float>>
+    public var touched: [Int] = []
+    public let pipelines: [String: MTLComputePipelineState]
+    /// The face, for where each firing's puff is born.
+    public let face: QuarryFace
+    public var firings: [QuarryFiring]
+    public var uniforms: Uniforms
+    public var lastTime: Float = 0
+    public let sampler: MTLSamplerState
 
-    init(
-        device: MTLDevice, library: MTLLibrary, hillside: Hillside, firings: [Firing], width: Int,
-        height: Int, sun: SIMD3<Float>, gridSize: Float = 1
+    public init(
+        device: MTLDevice, face hillside: QuarryFace, firings: [QuarryFiring], sun: SIMD3<Float>,
+        gridSize: Float = 1
     ) throws {
         self.device = device
+        face = hillside
+        let library = try QuarryShaders.library(device: device, file: "QuarryDust")
         self.firings = firings
         queue = device.makeCommandQueue()!
         let h = gridSize
-        let low = SIMD3<Float>(-45, -165, -3)
-        let extent = SIMD3<Float>(282, 237, 129)
+        let low = SIMD3<Float>(-45, -165, hillside.floorLevel - 3)
+        let extent = SIMD3<Float>(hillside.length + 102, 237, 129)
         let dims = SIMD3<Int>(Int(extent.x / h), Int(extent.y / h), Int(extent.z / h))
         let high = low + h * SIMD3<Float>(dims)
         self.h = h
@@ -99,7 +101,7 @@ final class DustField {
         solidDescriptor.height = dims.y
         solidDescriptor.depth = dims.z
         solidDescriptor.usage = [.shaderRead]
-        solidDescriptor.storageMode = .managed
+        solidDescriptor.storageMode = .shared
         let solidTexture = device.makeTexture(descriptor: solidDescriptor)!
         var solidBytes = [UInt8](repeating: 0, count: dims.x * dims.y * dims.z)
         for k in 0..<dims.z {
@@ -125,7 +127,7 @@ final class DustField {
         memset(heatSource.contents(), 0, 4 * cells)
         heatPointer = heatSource.contents().bindMemory(to: Float.self, capacity: cells)
         var blocks = hillside.blocks
-        let launchState = Launch().apply(to: &blocks, firings: firings, hillside: hillside)
+        let launchState = QuarryLaunch().apply(to: &blocks, firings: firings, face: hillside)
         blockFire = launchState.fire
         exposed = hillside.blocks.map { b in
             let c = b.centre
@@ -152,28 +154,6 @@ final class DustField {
             low: SIMD4(low, 0), hdtsteps: SIMD4(h, 0, 0, 0),
             dims: SIMD4(Int32(dims.x), Int32(dims.y), Int32(dims.z), 0),
             wind: SIMD4(1.4, -0.3, 0.05, 0), sun: SIMD4(sun, 0), lowHigh: SIMD4(high, 0))
-        let d = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba16Float, width: width, height: height, mipmapped: false)
-        d.usage = [.renderTarget, .shaderRead]
-        d.storageMode = .private
-        halfDust = device.makeTexture(descriptor: d)!
-        let draw = MTLRenderPipelineDescriptor()
-        draw.vertexFunction = library.makeFunction(name: "fullscreen")!
-        draw.fragmentFunction = library.makeFunction(name: "dustFragment")!
-        draw.colorAttachments[0].pixelFormat = .rgba16Float
-        dustDraw = try device.makeRenderPipelineState(descriptor: draw)
-        let blend = MTLRenderPipelineDescriptor()
-        blend.vertexFunction = library.makeFunction(name: "fullscreen")!
-        blend.fragmentFunction = library.makeFunction(name: "dustComposite")!
-        blend.colorAttachments[0].pixelFormat = .rgba16Float
-        blend.colorAttachments[0].isBlendingEnabled = true
-        blend.colorAttachments[0].rgbBlendOperation = .add
-        blend.colorAttachments[0].alphaBlendOperation = .add
-        blend.colorAttachments[0].sourceRGBBlendFactor = .one
-        blend.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-        blend.colorAttachments[0].sourceAlphaBlendFactor = .one
-        blend.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
-        composite = try device.makeRenderPipelineState(descriptor: blend)
         // A first clear of the private textures so the first frame is defined.
         let buffer = queue.makeCommandBuffer()!
         let encoder = buffer.makeComputeCommandEncoder()!
@@ -201,7 +181,7 @@ final class DustField {
 
     /// One 1/30 s dust step: sources from the firings and blocks (their poses this frame and last),
     /// then the fluid.
-    func step(
+    public func step(
         pose: MTLBuffer, previous: MTLBuffer, bodies: Int, time: Float, restSize: [Float], frameRate: Float
     ) -> Double {
         let dt = 1 / frameRate
@@ -209,9 +189,9 @@ final class DustField {
         // through the dust as it does through the rock.
         for firing in firings where time >= firing.time && time < firing.time + 0.3 {
             let age = (time - firing.time) / 0.3
-            var r = Random(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
+            var r = QuarryRandom(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
             let x = firing.position.x
-            let front = SIMD3<Float>(x, Hillside.faceLine(x) - 1.5, firing.position.z)
+            let front = SIMD3<Float>(x, face.faceLine(x) - 1.5, firing.position.z)
             for _ in 0..<700 {
                 let offset = r.unit() * r.float(0.3, 7) * SIMD3<Float>(1, 0.5, 1.2)
                 let out = simd_normalize(SIMD3<Float>(offset.x * 0.4, -3, offset.z * 0.4 + 1))
@@ -337,45 +317,49 @@ final class DustField {
         return buffer.gpuEndTime - buffer.gpuStartTime
     }
 
-    /// A stored field, for scrubbing: velocity and density copied on the GPU.
-    final class Keyframe {
-        let velocity: MTLTexture
-        let density: MTLTexture
-        init(device: MTLDevice, like field: DustField) {
-            func copy(_ t: MTLTexture) -> MTLTexture {
-                let d = MTLTextureDescriptor()
-                d.textureType = .type3D
-                d.pixelFormat = t.pixelFormat
-                d.width = t.width
-                d.height = t.height
-                d.depth = t.depth
-                d.usage = .shaderRead
-                d.storageMode = .private
-                return device.makeTexture(descriptor: d)!
-            }
-            velocity = copy(field.velocity[0])
-            density = copy(field.density[0])
-        }
-        var bytes: Int { velocity.allocatedSize + density.allocatedSize }
-    }
+    /// Bytes of one stored field: velocity (four halves a cell) and density (one).
+    public var storedBytes: Int { dims.x * dims.y * dims.z * 10 }
 
-    func store(into key: Keyframe) {
+    /// Writes the field as it stands (velocity and density) to `url`, for scrubbing back to it.
+    public func save(to url: URL) throws {
+        let cells = dims.x * dims.y * dims.z
+        let staging = device.makeBuffer(length: cells * 10, options: .storageModeShared)!
         let buffer = queue.makeCommandBuffer()!
         let blit = buffer.makeBlitCommandEncoder()!
-        blit.copy(from: velocity[0], to: key.velocity)
-        blit.copy(from: density[0], to: key.density)
+        let size = MTLSize(width: dims.x, height: dims.y, depth: dims.z)
+        blit.copy(
+            from: velocity[0], sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(), sourceSize: size,
+            to: staging, destinationOffset: 0, destinationBytesPerRow: dims.x * 8,
+            destinationBytesPerImage: dims.x * dims.y * 8)
+        blit.copy(
+            from: density[0], sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(), sourceSize: size,
+            to: staging, destinationOffset: cells * 8, destinationBytesPerRow: dims.x * 2,
+            destinationBytesPerImage: dims.x * dims.y * 2)
         blit.endEncoding()
         buffer.commit()
         buffer.waitUntilCompleted()
+        try Data(bytesNoCopy: staging.contents(), count: cells * 10, deallocator: .none).write(to: url)
     }
 
-    /// Back to a stored field; the light is rebuilt from it.
-    func restore(from key: Keyframe) {
+    /// Back to a field written by `save`; the light is rebuilt from it.
+    public func load(from url: URL) throws {
+        let cells = dims.x * dims.y * dims.z
+        let data = try Data(contentsOf: url)
+        guard data.count == cells * 10 else { throw CocoaError(.fileReadCorruptFile) }
+        let staging = data.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
         lastVelocity = Array(repeating: .zero, count: lastVelocity.count)
         let buffer = queue.makeCommandBuffer()!
         let blit = buffer.makeBlitCommandEncoder()!
-        blit.copy(from: key.velocity, to: velocity[0])
-        blit.copy(from: key.density, to: density[0])
+        let size = MTLSize(width: dims.x, height: dims.y, depth: dims.z)
+        blit.copy(
+            from: staging, sourceOffset: 0, sourceBytesPerRow: dims.x * 8,
+            sourceBytesPerImage: dims.x * dims.y * 8,
+            sourceSize: size, to: velocity[0], destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin())
+        blit.copy(
+            from: staging, sourceOffset: cells * 8, sourceBytesPerRow: dims.x * 2,
+            sourceBytesPerImage: dims.x * dims.y * 2, sourceSize: size, to: density[0], destinationSlice: 0,
+            destinationLevel: 0, destinationOrigin: MTLOrigin())
         blit.endEncoding()
         let encoder = buffer.makeComputeCommandEncoder()!
         var u = uniforms
@@ -393,42 +377,8 @@ final class DustField {
     }
 
     /// All the fields' bytes.
-    var bytes: Int {
+    public var bytes: Int {
         (velocity + density + pressure + scratch + [divergence, light, solid, noiseVolume])
-            .reduce(source.length + halfDust.allocatedSize) { $0 + $1.allocatedSize }
-    }
-
-    func composite(
-        buffer: MTLCommandBuffer, hdr: MTLTexture, depth: MTLTexture, camera: CameraUniforms,
-        sampler: MTLSamplerState
-    ) {
-        var cam = camera
-        // Half-resolution ray march against the scene's depth.
-        let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = halfDust
-        pass.colorAttachments[0].loadAction = .dontCare
-        pass.colorAttachments[0].storeAction = .store
-        let encoder = buffer.makeRenderCommandEncoder(descriptor: pass)!
-        encoder.setRenderPipelineState(dustDraw)
-        encoder.setFragmentTexture(density[0], index: 0)
-        encoder.setFragmentTexture(light, index: 1)
-        encoder.setFragmentTexture(depth, index: 2)
-        encoder.setFragmentTexture(noiseVolume, index: 3)
-        encoder.setFragmentSamplerState(self.sampler, index: 0)
-        encoder.setFragmentBytes(&cam, length: MemoryLayout<CameraUniforms>.stride, index: 0)
-        var u = uniforms
-        encoder.setFragmentBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-        encoder.endEncoding()
-        let over = MTLRenderPassDescriptor()
-        over.colorAttachments[0].texture = hdr
-        over.colorAttachments[0].loadAction = .load
-        over.colorAttachments[0].storeAction = .store
-        let blend = buffer.makeRenderCommandEncoder(descriptor: over)!
-        blend.setRenderPipelineState(self.composite)
-        blend.setFragmentTexture(halfDust, index: 0)
-        blend.setFragmentSamplerState(self.sampler, index: 0)
-        blend.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-        blend.endEncoding()
+            .reduce(source.length) { $0 + $1.allocatedSize }
     }
 }

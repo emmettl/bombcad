@@ -1,3 +1,6 @@
+import BlastCore
+import BlastModel
+import BlastRender
 import Foundation
 import Metal
 import simd
@@ -9,17 +12,6 @@ func option(_ arguments: [String], _ name: String) -> String? {
     guard let i = arguments.firstIndex(of: name), i + 1 < arguments.count else { return nil }
     return arguments[i + 1]
 }
-
-/// Compiles one of the target's Metal files, copied beside the program as a resource.
-func compile(_ file: String, device: MTLDevice) throws -> MTLLibrary {
-    let options = MTLCompileOptions()
-    options.languageVersion = .version3_1
-    let url = Bundle.module.url(forResource: file, withExtension: "metal")!
-    return try device.makeLibrary(source: try String(contentsOf: url, encoding: .utf8), options: options)
-}
-
-func library(device: MTLDevice) throws -> MTLLibrary { try compile("Hillside", device: device) }
-func dustLibrary(device: MTLDevice) throws -> MTLLibrary { try compile("HillsideDust", device: device) }
 
 func percentile(_ values: [Double], _ p: Double) -> Double {
     let sorted = values.sorted()
@@ -44,7 +36,7 @@ if command == "rigid-scaling" {
 }
 
 let device = MTLCreateSystemDefaultDevice()!
-var options = Hillside.Options()
+var options = QuarryFace.Options()
 options.blocks = option(arguments, "--blocks").flatMap(Int.init) ?? 100_000
 options.spheres = option(arguments, "--spheres").flatMap(Int.init) ?? 5
 let substepsPerSecond = option(arguments, "--hz").flatMap(Float.init) ?? 240
@@ -52,27 +44,27 @@ let seconds = option(arguments, "--seconds").flatMap(Float.init) ?? 20
 let name = option(arguments, "--out") ?? "run"
 let dir = dataRoot.appendingPathComponent(name, isDirectory: true)
 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-var hillside = Hillside(options: options)
-if command != "play" { hillside.generate() }
-let firings = FiringPattern.row(hillside: hillside)
-var launch = Launch()
+if command == "play" {
+    try MainActor.assumeIsolated {
+        try PlayApp.run(arguments: arguments, options: options, device: device, dataRoot: dataRoot)
+    }
+    exit(0)
+}
+
+var hillside = try QuarryFace(site: .builtIn(), options: options)
+hillside.generate()
+for line in hillside.report { print(line) }
+let firings = QuarryFiringPattern.row(face: hillside)
+let launch = QuarryLaunch()
 
 func writeReport(_ text: String) {
     print(text)
     try? text.write(to: dir.appendingPathComponent("\(command).txt"), atomically: true, encoding: .utf8)
 }
 
-if command == "play" {
-    try MainActor.assumeIsolated {
-        try PlayApp.run(arguments: arguments, hillside: &hillside, device: device, dataRoot: dataRoot)
-    }
-    exit(0)
-}
-
 if command == "simulate" {
-    let lib = try library(device: device)
-    let sim = try BlockSimulation(
-        device: device, library: lib, hillside: hillside, launch: launch, firings: firings,
+    let sim = try QuarrySimulation(
+        device: device, face: hillside, launch: launch, firings: firings,
         dt: 1 / substepsPerSecond)
     let frameRate: Float = 30
     let substeps = max(1, Int((substepsPerSecond / frameRate).rounded()))
@@ -97,7 +89,7 @@ if command == "simulate" {
         let gpu = sim.advance(substeps: substeps)
         if tracing {
             let b = sim.bodies.contents().bindMemory(
-                to: BlockSimulation.GPUBody.self, capacity: sim.bodyCount)
+                to: QuarrySimulation.GPUBody.self, capacity: sim.bodyCount)
             for n in 0..<sim.bodyCount {
                 let v = b[n].velSleep
                 speeds[frame * sim.bodyCount + n] = simd_length(SIMD3(v.x, v.y, v.z))
@@ -125,7 +117,7 @@ if command == "simulate" {
     try? handle.close()
     if tracing {
         var blocks = hillside.blocks
-        let state = launch.apply(to: &blocks, firings: firings, hillside: hillside)
+        let state = launch.apply(to: &blocks, firings: firings, face: hillside)
         var out =
             "body,first_fast_frame,peak,speed_before(5 frames),states_before,fire_time,launch_speed,swell_speed,size,volume,spheres,extent_ratio,z\n"
         let n = sim.bodyCount
@@ -153,7 +145,7 @@ if command == "simulate" {
         }
         try out.write(to: dir.appendingPathComponent("trace-fast.csv"), atomically: true, encoding: .utf8)
         // The late movers: what they rest on at the end.
-        let b = sim.bodies.contents().bindMemory(to: BlockSimulation.GPUBody.self, capacity: n)
+        let b = sim.bodies.contents().bindMemory(to: QuarrySimulation.GPUBody.self, capacity: n)
         let lastFrames = 30
         var late =
             "body,moved_last_s,z,size,spheres,state,terrain_gap_min,deepest_overlap_ratio,overlaps,overlap_with_held,mass,partner_mass_max\n"
@@ -220,7 +212,7 @@ if command == "simulate" {
             sim.bodyCount, sim.sphereCount, substeps, substepsPerSecond, percentile(p, 0.5),
             percentile(p, 0.9), p.max() ?? 0, percentile(during, 0.5), percentile(during, 0.9), during.count,
             census.last?.1 ?? 0, census.last?.3 ?? 0, census.last?.2 ?? 0, census.last?.7 ?? 0, peakAwake,
-            (MemoryLayout<BlockSimulation.GPUBody>.stride * sim.bodyCount + 60 * sim.sphereCount
+            (MemoryLayout<QuarrySimulation.GPUBody>.stride * sim.bodyCount + 60 * sim.sphereCount
                 + sim.heads.length + 32 * sim.bodyCount) >> 20))
     print("wrote \(poseURL.path)")
     exit(0)
@@ -236,22 +228,21 @@ if command == "render" {
     let fps = header[2]
     precondition(bodies == hillside.blocks.count, "poses and hillside differ")
     let supersample = option(arguments, "--ss").flatMap(Int.init) ?? 2
-    let lib = try library(device: device)
     if !arguments.contains("--no-dressing") { hillside.buildDressing() }
     let start = option(arguments, "--eye").map(parseVector) ?? SIMD3<Float>(-46, -74, 3.6)
     let end = option(arguments, "--eye-end").map(parseVector) ?? SIMD3<Float>(-33, -66, 3.4)
     let target = option(arguments, "--target").map(parseVector) ?? SIMD3<Float>(80, 18, 21)
     let targetEnd = option(arguments, "--target-end").map(parseVector) ?? SIMD3<Float>(86, 16, 21)
     let fov = option(arguments, "--fov").flatMap(Float.init) ?? 31
-    let path = CameraPath(
+    let path = QuarryCameraPath(
         eyes: (start, end), targets: (target, targetEnd), fovY: (fov, fov * 0.93), duration: 20)
-    let renderer = try Renderer(
-        device: device, library: lib, hillside: hillside, width: 1920, height: 1080, supersample: supersample,
-        path: path, frameRate: Float(fps))
+    let renderer = try QuarryRenderer(
+        device: device, face: hillside, width: 1920, height: 1080, supersample: supersample,
+        path: path, frameRate: Float(fps),
+        sun: option(arguments, "--sun").map(parseVector) ?? SIMD3<Float>(0.86, -0.42, 0.26))
     if !arguments.contains("--no-dust") {
-        renderer.dust = try DustField(
-            device: device, library: try dustLibrary(device: device), hillside: hillside, firings: firings,
-            width: 1920 * supersample, height: 1080 * supersample,
+        renderer.dust = try QuarryDustField(
+            device: device, face: hillside, firings: firings,
             sun: SIMD3(renderer.camera.sun.x, renderer.camera.sun.y, renderer.camera.sun.z),
             gridSize: option(arguments, "--dust-h").flatMap(Float.init) ?? 1)
     }

@@ -1,130 +1,135 @@
-import AVFoundation
+import BlastCore
+import BlastModel
 import CoreGraphics
-import CoreVideo
 import Foundation
 import ImageIO
 import Metal
 import UniformTypeIdentifiers
 import simd
 
-/// Layout matches `HillsideCamera` in `Hillside.metal` and `HillsideDust.metal`.
-struct CameraUniforms {
-    var viewProjection: simd_float4x4
-    var shadow: simd_float4x4
-    var eye: SIMD4<Float>
-    var sun: SIMD4<Float>
-    var fogColor: SIMD4<Float>
-    var terrainOrigin: SIMD4<Float>
-    var inverseViewProjection: simd_float4x4
-    var dustLow: SIMD4<Float>
-    var dustHigh: SIMD4<Float>
-    var misc: SIMD4<Float>
+/// Layout matches `QuarryCamera` in `QuarryRender.metal`.
+public struct QuarryCameraUniforms {
+    public var viewProjection: simd_float4x4
+    public var shadow: simd_float4x4
+    public var eye: SIMD4<Float>
+    public var sun: SIMD4<Float>
+    public var fogColor: SIMD4<Float>
+    public var terrainOrigin: SIMD4<Float>
+    public var inverseViewProjection: simd_float4x4
+    public var dustLow: SIMD4<Float>
+    public var dustHigh: SIMD4<Float>
+    public var misc: SIMD4<Float>
 }
 
-func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
-    let y = 1 / tan(fovY * 0.5)
-    let x = y / aspect
-    let z = far / (near - far)
-    return simd_float4x4(
-        SIMD4(x, 0, 0, 0), SIMD4(0, y, 0, 0), SIMD4(0, 0, z, -1), SIMD4(0, 0, z * near, 0))
-}
+public enum QuarryMatrix {
+    public static func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
+        let y = 1 / tan(fovY * 0.5)
+        let x = y / aspect
+        let z = far / (near - far)
+        return simd_float4x4(
+            SIMD4(x, 0, 0, 0), SIMD4(0, y, 0, 0), SIMD4(0, 0, z, -1), SIMD4(0, 0, z * near, 0))
+    }
 
-func lookAt(eye: SIMD3<Float>, target: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
-    let f = simd_normalize(target - eye)
-    let s = simd_normalize(simd_cross(f, up))
-    let u = simd_cross(s, f)
-    return simd_float4x4(
-        SIMD4(s.x, u.x, -f.x, 0), SIMD4(s.y, u.y, -f.y, 0), SIMD4(s.z, u.z, -f.z, 0),
-        SIMD4(-simd_dot(s, eye), -simd_dot(u, eye), simd_dot(f, eye), 1))
-}
+    public static func lookAt(eye: SIMD3<Float>, target: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
+        let f = simd_normalize(target - eye)
+        let s = simd_normalize(simd_cross(f, up))
+        let u = simd_cross(s, f)
+        return simd_float4x4(
+            SIMD4(s.x, u.x, -f.x, 0), SIMD4(s.y, u.y, -f.y, 0), SIMD4(s.z, u.z, -f.z, 0),
+            SIMD4(-simd_dot(s, eye), -simd_dot(u, eye), simd_dot(f, eye), 1))
+    }
 
-func orthographic(left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float)
-    -> simd_float4x4
-{
-    simd_float4x4(
-        SIMD4(2 / (right - left), 0, 0, 0), SIMD4(0, 2 / (top - bottom), 0, 0),
-        SIMD4(0, 0, 1 / (near - far), 0),
-        SIMD4((left + right) / (left - right), (top + bottom) / (bottom - top), near / (near - far), 1))
-}
+    public static func orthographic(
+        left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float
+    )
+        -> simd_float4x4
+    {
+        simd_float4x4(
+            SIMD4(2 / (right - left), 0, 0, 0), SIMD4(0, 2 / (top - bottom), 0, 0),
+            SIMD4(0, 0, 1 / (near - far), 0),
+            SIMD4((left + right) / (left - right), (top + bottom) / (bottom - top), near / (near - far), 1))
+    }
 
-func parseVector(_ text: String) -> SIMD3<Float> {
-    let v = text.split(separator: ",").compactMap { Float($0) }
-    return SIMD3(v[0], v[1], v[2])
 }
 
 /// How much the renderer draws: everything for the film, less for the play window.
-struct RenderQuality {
-    var shadowSize = 8192
-    var decorScale: Float = 1
+public struct QuarryRenderQuality: Sendable {
+    public var shadowSize = 8192
+    public var decorScale: Float = 1
     /// Frames between redraws of the top-down height the chips land on (the blocks included).
-    var heightEvery = 1
-    static let film = RenderQuality()
-    static let live = RenderQuality(shadowSize: 4096, decorScale: 0.35, heightEvery: 6)
+    public var heightEvery = 1
+    public static let film = QuarryRenderQuality()
+    public static let live = QuarryRenderQuality(shadowSize: 4096, decorScale: 0.35, heightEvery: 6)
 }
 
-final class Renderer {
-    let device: MTLDevice
-    let queue: MTLCommandQueue
-    let library: MTLLibrary
-    let hillside: Hillside
-    let width: Int
-    let height: Int
-    let supersample: Int
-    let blockVertices: MTLBuffer
-    let blockIndices: MTLBuffer
-    let indexCount: Int
-    let dressingVertices: MTLBuffer
-    let dressingIndices: MTLBuffer
-    let dressingCount: Int
-    let identityPose: MTLBuffer
-    let identityRest: MTLBuffer
-    let terrainVertices: MTLBuffer
-    let terrainIndices: MTLBuffer
-    let terrainIndexCount: Int
-    let shadowMap: MTLTexture
-    let hdr: MTLTexture
-    let hdrDepth: MTLTexture
-    let output: MTLTexture
-    let heightMap: MTLTexture
-    let noDust: MTLTexture
-    let shadowSampler: MTLSamplerState
-    let linearSampler: MTLSamplerState
-    let blockPipeline: MTLRenderPipelineState
-    let terrainPipeline: MTLRenderPipelineState
-    let chipPipeline: MTLRenderPipelineState
-    let blockShadow: MTLRenderPipelineState
-    let terrainShadow: MTLRenderPipelineState
-    let chipShadow: MTLRenderPipelineState
-    let chipUpdate: MTLComputePipelineState
-    let tonemap: MTLRenderPipelineState
-    let sky: MTLRenderPipelineState
-    let aoPipeline: MTLRenderPipelineState
-    let skyDepth: MTLDepthStencilState
-    let opaqueDepth: MTLDepthStencilState
-    var dust: DustField?
-    let restCentres: MTLBuffer
-    let chips: MTLBuffer
-    let chipCount: Int
-    var camera: CameraUniforms
-    let cameraPath: CameraPath
+public final class QuarryRenderer {
+    public let device: MTLDevice
+    public let queue: MTLCommandQueue
+    public let library: MTLLibrary
+    public let hillside: QuarryFace
+    public let width: Int
+    public let height: Int
+    public let supersample: Int
+    public let blockVertices: MTLBuffer
+    public let blockIndices: MTLBuffer
+    public let indexCount: Int
+    public let dressingVertices: MTLBuffer
+    public let dressingIndices: MTLBuffer
+    public let dressingCount: Int
+    public let identityPose: MTLBuffer
+    public let identityRest: MTLBuffer
+    public let terrainVertices: MTLBuffer
+    public let terrainIndices: MTLBuffer
+    public let terrainIndexCount: Int
+    public let shadowMap: MTLTexture
+    public let hdr: MTLTexture
+    public let hdrDepth: MTLTexture
+    public let output: MTLTexture
+    public let heightMap: MTLTexture
+    public let noDust: MTLTexture
+    public let shadowSampler: MTLSamplerState
+    public let linearSampler: MTLSamplerState
+    public let blockPipeline: MTLRenderPipelineState
+    public let terrainPipeline: MTLRenderPipelineState
+    public let chipPipeline: MTLRenderPipelineState
+    public let blockShadow: MTLRenderPipelineState
+    public let terrainShadow: MTLRenderPipelineState
+    public let chipShadow: MTLRenderPipelineState
+    public let chipUpdate: MTLComputePipelineState
+    public let tonemap: MTLRenderPipelineState
+    public let sky: MTLRenderPipelineState
+    public let aoPipeline: MTLRenderPipelineState
+    public let skyDepth: MTLDepthStencilState
+    public let opaqueDepth: MTLDepthStencilState
+    public var dust: QuarryDustField?
+    let dustPass: QuarryDustPass
+    public let restCentres: MTLBuffer
+    public let chips: MTLBuffer
+    public let chipCount: Int
+    public var camera: QuarryCameraUniforms
+    public let cameraPath: QuarryCameraPath
     /// A view that replaces the path, for the play window.
-    var viewOverride: (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float)?
-    let quality: RenderQuality
-    var heightFrame = 0
-    let pristineChips: MTLBuffer
-    let topDown: simd_float4x4
-    let heightTop: Float = 130
-    let heightBottom: Float = 0
-    let aspect: Float
-    let frameRate: Float
+    public var viewOverride: (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float)?
+    public let quality: QuarryRenderQuality
+    public var heightFrame = 0
+    public let pristineChips: MTLBuffer
+    public let topDown: simd_float4x4
+    public let heightTop: Float = 130
+    public let heightBottom: Float = 0
+    public let aspect: Float
+    public let frameRate: Float
 
-    init(
-        device: MTLDevice, library: MTLLibrary, hillside: Hillside, width: Int, height: Int, supersample: Int,
-        path: CameraPath, frameRate: Float, quality: RenderQuality = .film
+    public init(
+        device: MTLDevice, face hillside: QuarryFace, width: Int, height: Int, supersample: Int,
+        path: QuarryCameraPath, frameRate: Float, quality: QuarryRenderQuality = .film,
+        sun: SIMD3<Float> = SIMD3(0.86, -0.42, 0.26)
     ) throws {
         self.quality = quality
         self.device = device
+        let library = try QuarryShaders.library(device: device, file: "QuarryRender", bundle: Bundle.module)
         self.library = library
+        dustPass = try QuarryDustPass(
+            device: device, library: library, width: width * supersample, height: height * supersample)
         self.hillside = hillside
         self.width = width
         self.height = height
@@ -152,7 +157,7 @@ final class Renderer {
         identityRest = device.makeBuffer(bytes: identityR, length: 16)!
         let rest = hillside.blocks.map { SIMD4<Float>($0.centre, Float($0.size)) }
         restCentres = device.makeBuffer(bytes: rest, length: 16 * rest.count)!
-        let chipData = Decor.make(hillside: hillside, scale: quality.decorScale)
+        let chipData = QuarryDecor.make(face: hillside, scale: quality.decorScale)
         chips = chipData.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
         chipCount = chipData.count
         pristineChips = chipData.withUnsafeBytes {
@@ -316,22 +321,23 @@ final class Renderer {
         opaqueDepth = device.makeDepthStencilState(descriptor: depthState)!
 
         aspect = Float(width) / Float(height)
-        let sun = simd_normalize(
-            option(CommandLine.arguments, "--sun").map(parseVector) ?? SIMD3<Float>(0.86, -0.42, 0.26))
+        let sun = simd_normalize(sun)
         let centre = (hillside.low + hillside.high) * 0.5
         let lightEye = centre + sun * 420
-        let lightView = lookAt(eye: lightEye, target: centre, up: SIMD3(0, 0, 1))
-        let ortho = orthographic(left: -260, right: 260, bottom: -130, top: 130, near: 30, far: 900)
+        let lightView = QuarryMatrix.lookAt(eye: lightEye, target: centre, up: SIMD3(0, 0, 1))
+        let reach = max(260, (hillside.high.x - hillside.low.x) * 0.7)
+        let ortho = QuarryMatrix.orthographic(
+            left: -reach, right: reach, bottom: -reach / 2, top: reach / 2, near: 30, far: 900 + reach)
         let span = hillside.high - hillside.low
         let middle = (hillside.high + hillside.low) * 0.5
         topDown =
-            orthographic(
+            QuarryMatrix.orthographic(
                 left: -span.x / 2, right: span.x / 2, bottom: -span.y / 2, top: span.y / 2, near: 0,
                 far: heightTop - heightBottom)
-            * lookAt(
+            * QuarryMatrix.lookAt(
                 eye: SIMD3(middle.x, middle.y, heightTop), target: SIMD3(middle.x, middle.y, 0),
                 up: SIMD3(0, 1, 0))
-        camera = CameraUniforms(
+        camera = QuarryCameraUniforms(
             viewProjection: matrix_identity_float4x4, shadow: ortho * lightView, eye: .zero,
             sun: SIMD4(sun, 0),
             fogColor: SIMD4(0.6, 0.55, 0.5, 1), terrainOrigin: .zero,
@@ -342,14 +348,14 @@ final class Renderer {
     /// Renders one frame with block poses from `pose`, `previous` being the frame before, stepping
     /// the decorative chips by one frame. Returns the GPU time (s).
     @discardableResult
-    func render(pose: MTLBuffer, previous: MTLBuffer, time: Float) -> Double {
+    public func render(pose: MTLBuffer, previous: MTLBuffer, time: Float) -> Double {
         let buffer = queue.makeCommandBuffer()!
         var cam = camera
         let view = viewOverride ?? cameraPath.at(time)
         let tanHalf = tan(view.fovY * 0.5)
         let vp =
-            perspective(fovY: view.fovY, aspect: aspect, near: 3, far: 1600)
-            * lookAt(eye: view.eye, target: view.target, up: SIMD3(0, 0, 1))
+            QuarryMatrix.perspective(fovY: view.fovY, aspect: aspect, near: 3, far: 1600)
+            * QuarryMatrix.lookAt(eye: view.eye, target: view.target, up: SIMD3(0, 0, 1))
         cam.viewProjection = vp
         cam.inverseViewProjection = vp.inverse
         cam.eye = SIMD4(view.eye, 1)
@@ -392,7 +398,7 @@ final class Renderer {
         let shadow = buffer.makeRenderCommandEncoder(descriptor: shadowPass)!
         shadow.setDepthStencilState(opaqueDepth)
         shadow.setCullMode(.front)
-        shadow.setVertexBytes(&cam, length: MemoryLayout<CameraUniforms>.stride, index: 2)
+        shadow.setVertexBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
         drawGeometry(shadow, block: blockShadow, terrain: terrainShadow)
         shadow.setCullMode(.none)
         shadow.setRenderPipelineState(chipShadow)
@@ -416,8 +422,8 @@ final class Renderer {
         scene.setFragmentTexture(shadowMap, index: 0)
         scene.setFragmentTexture(dust?.light ?? noDust, index: 1)
         scene.setFragmentSamplerState(shadowSampler, index: 0)
-        scene.setFragmentBytes(&cam, length: MemoryLayout<CameraUniforms>.stride, index: 0)
-        scene.setVertexBytes(&cam, length: MemoryLayout<CameraUniforms>.stride, index: 2)
+        scene.setFragmentBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 0)
+        scene.setVertexBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
         // Blocks and their rest positions.
         scene.setRenderPipelineState(blockPipeline)
         scene.setVertexBuffer(blockVertices, offset: 0, index: 0)
@@ -456,10 +462,10 @@ final class Renderer {
         let ao = buffer.makeRenderCommandEncoder(descriptor: aoPass)!
         ao.setRenderPipelineState(aoPipeline)
         ao.setFragmentTexture(hdrDepth, index: 0)
-        ao.setFragmentBytes(&cam, length: MemoryLayout<CameraUniforms>.stride, index: 0)
+        ao.setFragmentBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 0)
         ao.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         ao.endEncoding()
-        dust?.composite(buffer: buffer, hdr: hdr, depth: hdrDepth, camera: cam, sampler: linearSampler)
+        if let dust { dustPass.composite(dust, buffer: buffer, hdr: hdr, depth: hdrDepth, camera: cam) }
         // Tonemap and downsample.
         let finalPass = MTLRenderPassDescriptor()
         finalPass.colorAttachments[0].texture = output
@@ -469,7 +475,7 @@ final class Renderer {
         final.setRenderPipelineState(tonemap)
         final.setFragmentTexture(hdr, index: 0)
         final.setFragmentSamplerState(linearSampler, index: 0)
-        final.setFragmentBytes(&cam, length: MemoryLayout<CameraUniforms>.stride, index: 0)
+        final.setFragmentBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 0)
         final.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         final.endEncoding()
         buffer.commit()
@@ -478,7 +484,7 @@ final class Renderer {
     }
 
     /// One frame's step of the decorative chips, over a top-down height of the scene.
-    func stepDecor(pose: MTLBuffer, previous: MTLBuffer, time: Float) {
+    public func stepDecor(pose: MTLBuffer, previous: MTLBuffer, time: Float) {
         let buffer = queue.makeCommandBuffer()!
         var top = camera
         top.shadow = topDown
@@ -492,7 +498,7 @@ final class Renderer {
             let encoder = buffer.makeRenderCommandEncoder(descriptor: heightPass)!
             encoder.setDepthStencilState(opaqueDepth)
             encoder.setCullMode(.none)
-            encoder.setVertexBytes(&top, length: MemoryLayout<CameraUniforms>.stride, index: 2)
+            encoder.setVertexBytes(&top, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
             encoder.setRenderPipelineState(blockShadow)
             encoder.setVertexBuffer(blockVertices, offset: 0, index: 0)
             encoder.setVertexBuffer(pose, offset: 0, index: 1)
@@ -507,7 +513,7 @@ final class Renderer {
                 indexBufferOffset: 0)
             encoder.endEncoding()
         }
-        var chipUniforms = Decor.Uniforms(
+        var chipUniforms = QuarryDecor.Uniforms(
             dt: 1 / frameRate, gravity: 9.81, time: time, pad: 0, low: SIMD4(hillside.low, 0),
             size: SIMD4(
                 hillside.high.x - hillside.low.x, hillside.high.y - hillside.low.y, heightTop, heightBottom))
@@ -517,7 +523,7 @@ final class Renderer {
         compute.setBuffer(pose, offset: 0, index: 1)
         compute.setBuffer(previous, offset: 0, index: 2)
         compute.setTexture(heightMap, index: 0)
-        compute.setBytes(&chipUniforms, length: MemoryLayout<Decor.Uniforms>.stride, index: 3)
+        compute.setBytes(&chipUniforms, length: MemoryLayout<QuarryDecor.Uniforms>.stride, index: 3)
         compute.dispatchThreads(
             MTLSize(width: chipCount, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 32, height: 1, depth: 1))
@@ -527,11 +533,11 @@ final class Renderer {
     }
 
     /// Back to the chips as built, for a jump backward.
-    func resetDecor() {
+    public func resetDecor() {
         chips.contents().copyMemory(from: pristineChips.contents(), byteCount: chips.length)
     }
 
-    func savePNG(_ url: URL) {
+    public func savePNG(_ url: URL) {
         let bytesPerRow = 4 * width
         var data = [UInt8](repeating: 0, count: bytesPerRow * height)
         output.getBytes(
@@ -552,30 +558,26 @@ final class Renderer {
             CGImageDestinationFinalize(destination)
         }
     }
-
-    /// Copies the frame into a new pixel buffer for AVFoundation.
-    func pixelBuffer(pool: CVPixelBufferPool) -> CVPixelBuffer? {
-        var out: CVPixelBuffer?
-        guard CVPixelBufferPoolCreatePixelBuffer(nil, pool, &out) == kCVReturnSuccess, let pixel = out else {
-            return nil
-        }
-        CVPixelBufferLockBaseAddress(pixel, [])
-        defer { CVPixelBufferUnlockBaseAddress(pixel, []) }
-        output.getBytes(
-            CVPixelBufferGetBaseAddress(pixel)!, bytesPerRow: CVPixelBufferGetBytesPerRow(pixel),
-            from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
-        return pixel
-    }
 }
 
 /// The camera over the clip: from one view to another, easing, with a long lens.
-struct CameraPath {
-    var eyes: (SIMD3<Float>, SIMD3<Float>)
-    var targets: (SIMD3<Float>, SIMD3<Float>)
-    var fovY: (Float, Float)
-    var duration: Float
+public struct QuarryCameraPath: Sendable {
+    public var eyes: (SIMD3<Float>, SIMD3<Float>)
+    public var targets: (SIMD3<Float>, SIMD3<Float>)
+    public var fovY: (Float, Float)
+    public var duration: Float
 
-    func at(_ time: Float) -> (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float) {
+    public init(
+        eyes: (SIMD3<Float>, SIMD3<Float>), targets: (SIMD3<Float>, SIMD3<Float>), fovY: (Float, Float),
+        duration: Float
+    ) {
+        self.eyes = eyes
+        self.targets = targets
+        self.fovY = fovY
+        self.duration = duration
+    }
+
+    public func at(_ time: Float) -> (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float) {
         let u = max(0, min(1, time / duration))
         let s = u * u * u * (u * (u * 6 - 15) + 10)
         return (
@@ -586,30 +588,30 @@ struct CameraPath {
 }
 
 /// Decorative chips, gravel and scrub: instanced little polyhedra, never rigid bodies.
-enum Decor {
-    /// Layout matches `HillsideChip` in `Hillside.metal`.
-    struct Chip {
-        var posSize: SIMD4<Float>
-        var velAge: SIMD4<Float>
-        var offsetDelay: SIMD4<Float>
-        var parent: UInt32
-        var state: UInt32
-        var seed: Float
-        var tint: Float
+public enum QuarryDecor {
+    /// Layout matches `QuarryChip` in `QuarryRender.metal`.
+    public struct Chip {
+        public var posSize: SIMD4<Float>
+        public var velAge: SIMD4<Float>
+        public var offsetDelay: SIMD4<Float>
+        public var parent: UInt32
+        public var state: UInt32
+        public var seed: Float
+        public var tint: Float
     }
 
-    /// Layout matches `HillsideChipUniforms` in `Hillside.metal`.
-    struct Uniforms {
-        var dt: Float
-        var gravity: Float
-        var time: Float
-        var pad: Float
-        var low: SIMD4<Float>
-        var size: SIMD4<Float>
+    /// Layout matches `QuarryChipUniforms` in `QuarryRender.metal`.
+    public struct Uniforms {
+        public var dt: Float
+        public var gravity: Float
+        public var time: Float
+        public var pad: Float
+        public var low: SIMD4<Float>
+        public var size: SIMD4<Float>
     }
 
-    static func make(hillside: Hillside, scale: Float = 1) -> [Chip] {
-        var r = Random(seed: 8_675_309)
+    public static func make(face hillside: QuarryFace, scale: Float = 1) -> [Chip] {
+        var r = QuarryRandom(seed: 8_675_309)
         var chips: [Chip] = []
         chips.reserveCapacity(1_000_000)
         func size(_ low: Float, _ high: Float, _ power: Float) -> Float {
@@ -652,53 +654,5 @@ enum Decor {
         }
         print("decor: \(chips.count) chips and stones")
         return chips
-    }
-}
-
-/// Writes the frames to an H.264 movie.
-final class ClipWriter {
-    let writer: AVAssetWriter
-    let input: AVAssetWriterInput
-    let adaptor: AVAssetWriterInputPixelBufferAdaptor
-    var frame = 0
-    let fps: Int32
-
-    init(url: URL, width: Int, height: Int, fps: Int32) throws {
-        try? FileManager.default.removeItem(at: url)
-        writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
-        input = AVAssetWriterInput(
-            mediaType: .video,
-            outputSettings: [
-                AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: width, AVVideoHeightKey: height,
-                AVVideoCompressionPropertiesKey: [
-                    AVVideoAverageBitRateKey: option(CommandLine.arguments, "--bitrate").flatMap(Int.init)
-                        ?? 10_000_000
-                ],
-            ])
-        input.expectsMediaDataInRealTime = false
-        adaptor = AVAssetWriterInputPixelBufferAdaptor(
-            assetWriterInput: input,
-            sourcePixelBufferAttributes: [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-                kCVPixelBufferWidthKey as String: width, kCVPixelBufferHeightKey as String: height,
-            ])
-        writer.add(input)
-        writer.startWriting()
-        writer.startSession(atSourceTime: .zero)
-        self.fps = fps
-    }
-
-    func append(_ renderer: Renderer) {
-        guard let pool = adaptor.pixelBufferPool, let pixel = renderer.pixelBuffer(pool: pool) else { return }
-        while !input.isReadyForMoreMediaData { Thread.sleep(forTimeInterval: 0.001) }
-        adaptor.append(pixel, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: fps))
-        frame += 1
-    }
-
-    func finish() {
-        input.markAsFinished()
-        let done = DispatchSemaphore(value: 0)
-        writer.finishWriting { done.signal() }
-        done.wait()
     }
 }

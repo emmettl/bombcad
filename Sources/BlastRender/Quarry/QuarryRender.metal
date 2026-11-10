@@ -1,30 +1,7 @@
-// The hillside experiment's shaders (docs/hillside-blast.md): compiled at run time from this file,
-// which the target copies as a resource. Illustrative; not a blast-design aid.
+// The quarry face's renderer (docs/hillside-blast.md), compiled on its own at run time.
+// Illustrative: for the look of a face being blasted; not a blast-design aid.
 #include <metal_stdlib>
 using namespace metal;
-
-struct HillsideBody {
-    float4 posInvMass;
-    float4 quat;
-    float4 velSleep;
-    float4 ang;
-    float4 invInertiaFire;
-    float4 launchSwell;
-    float4 spinRise;
-    float4 swell;
-    uint first, count, state, pad;
-};
-
-struct HillsideUniforms {
-    float dt, time, gravity, kc;
-    float damping, friction, wakeSpeed, cell;
-    float4 origin;
-    int4 dims;
-    float4 terrainOrigin;
-    int4 terrainDims;
-    float sleepSpeed, sleepSpin, sleepTime, frictionGamma;
-    uint bodyCount, sphereCount, cellCount, pad;
-};
 
 static inline float3 rotate(float4 q, float3 v) {
     float3 t = 2.0f * cross(q.xyz, v);
@@ -36,246 +13,9 @@ static inline float3 unrotate(float4 q, float3 v) {
     return v + q.w * t + cross(-q.xyz, t);
 }
 
-kernel void updateSpheres(const device HillsideBody *bodies [[buffer(0)]],
-                          const device float4 *spheres [[buffer(1)]],
-                          const device uint *sphereBody [[buffer(2)]],
-                          device float4 *world [[buffer(3)]],
-                          device float4 *velocity [[buffer(4)]],
-                          uint i [[thread_position_in_grid]]) {
-    const device HillsideBody &b = bodies[sphereBody[i]];
-    float3 r = rotate(b.quat, spheres[i].xyz);
-    world[i] = float4(b.posInvMass.xyz + r, spheres[i].w);
-    velocity[i] = float4(b.velSleep.xyz + cross(b.ang.xyz, r), 0.0f);
-}
-
-kernel void clearGrid(device uint *heads [[buffer(0)]],
-                      uint i [[thread_position_in_grid]]) {
-    heads[i] = 0xFFFFFFFFu;
-}
-
-static inline int3 gridCell(float3 p, constant HillsideUniforms &u) {
-    return clamp(int3(floor((p - u.origin.xyz) / u.cell)), int3(0), u.dims.xyz - 1);
-}
-static inline uint gridIndex(int3 c, constant HillsideUniforms &u) {
-    return uint(c.x + u.dims.x * (c.y + u.dims.y * c.z));
-}
-
-kernel void insertSpheres(const device float4 *world [[buffer(0)]],
-                          device atomic_uint *heads [[buffer(1)]],
-                          device uint *next [[buffer(2)]],
-                          constant HillsideUniforms &u [[buffer(3)]],
-                          uint i [[thread_position_in_grid]]) {
-    uint cell = gridIndex(gridCell(world[i].xyz, u), u);
-    uint previous = atomic_exchange_explicit(&heads[cell], i, memory_order_relaxed);
-    next[i] = previous;
-}
-
-static inline void terrainSample(float2 p, const device float *h, constant HillsideUniforms &u, thread float &height, thread float3 &normal) {
-    float2 g = (p - u.terrainOrigin.xy) / u.terrainOrigin.z;
-    int ci = u.terrainDims.x, cj = u.terrainDims.y;
-    int i = clamp(int(floor(g.x)), 0, ci - 2);
-    int j = clamp(int(floor(g.y)), 0, cj - 2);
-    float fx = g.x - float(i), fy = g.y - float(j);
-    float h00 = h[i + ci * j], h10 = h[i + 1 + ci * j], h01 = h[i + ci * (j + 1)], h11 = h[i + 1 + ci * (j + 1)];
-    height = mix(mix(h00, h10, fx), mix(h01, h11, fx), fy);
-    float sx = mix(h10 - h00, h11 - h01, fy) / u.terrainOrigin.z;
-    float sy = mix(h01 - h00, h11 - h10, fx) / u.terrainOrigin.z;
-    normal = normalize(float3(-sx, -sy, 1.0f));
-}
-
-kernel void forces(const device HillsideBody *bodies [[buffer(0)]],
-                   const device float4 *world [[buffer(1)]],
-                   const device float4 *velocity [[buffer(2)]],
-                   const device uint *sphereBody [[buffer(3)]],
-                   const device uint *heads [[buffer(4)]],
-                   const device uint *next [[buffer(5)]],
-                   const device float *heights [[buffer(6)]],
-                   constant HillsideUniforms &u [[buffer(7)]],
-                   device float4 *forceOut [[buffer(8)]],
-                   device float4 *torqueOut [[buffer(9)]],
-                   device atomic_uint *wake [[buffer(10)]],
-                   uint i [[thread_position_in_grid]]) {
-    uint bi = sphereBody[i];
-    HillsideBody A = bodies[bi];
-    if (A.state != 1u) { forceOut[i] = float4(0); torqueOut[i] = float4(0); return; }
-    float3 pi = world[i].xyz;
-    float ri = world[i].w;
-    float3 vi = velocity[i].xyz;
-    float invM = A.posInvMass.w;
-    float3 apos = A.posInvMass.xyz;
-    float3 f = float3(0), t = float3(0);
-    // The contacts' summed stiffness and damping on this sphere, for the body's implicit update.
-    float kSum = 0.0f, cSum = 0.0f;
-    int3 c = gridCell(pi, u);
-    float dt2 = u.dt * u.dt;
-    for (int dz = -1; dz <= 1; ++dz) {
-    for (int dy = -1; dy <= 1; ++dy) {
-    for (int dx = -1; dx <= 1; ++dx) {
-        int3 n = c + int3(dx, dy, dz);
-        if (any(n < int3(0)) || any(n >= u.dims.xyz)) continue;
-        uint j = heads[gridIndex(n, u)];
-        for (int guard = 0; guard < 80 && j != 0xFFFFFFFFu; ++guard, j = next[j]) {
-            uint bj = sphereBody[j];
-            if (bj == bi) continue;
-            float3 d = pi - world[j].xyz;
-            float R = ri + world[j].w;
-            float l2 = dot(d, d);
-            if (l2 >= R * R || l2 < 1e-10f) continue;
-            float l = sqrt(l2);
-            float3 nrm = d / l;
-            float pen = R - l;
-            HillsideBody B = bodies[bj];
-            float invMb = (B.state == 1u) ? B.posInvMass.w : 0.0f;
-            float mEff = 1.0f / (invM + invMb);
-            float k = u.kc * mEff / dt2;
-            float3 rel = vi - velocity[j].xyz;
-            float vn = dot(rel, nrm);
-            float fn = k * pen - 2.0f * u.damping * sqrt(k * mEff) * vn;
-            if (fn <= 0.0f) continue;
-            float3 vt = rel - vn * nrm;
-            float vtl = length(vt);
-            float gamma = u.frictionGamma * sqrt(k * mEff);
-            float ft = min(u.friction * fn, gamma * vtl);
-            float3 F = fn * nrm - (vtl > 1e-5f ? ft * vt / vtl : float3(0));
-            f += F;
-            kSum += k;
-            cSum += 2.0f * u.damping * sqrt(k * mEff) + gamma;
-            float3 arm = (pi - nrm * ri) - apos;
-            t += cross(arm, F);
-            if (B.state == 2u && length_squared(rel) > u.wakeSpeed * u.wakeSpeed) {
-                atomic_store_explicit(&wake[bj], 1u, memory_order_relaxed);
-            }
-        }
-    }}}
-    // Terrain.
-    float h; float3 tn;
-    terrainSample(pi.xy, heights, u, h, tn);
-    float gap = (pi.z - h) * tn.z - ri;
-    if (gap < 0.0f) {
-        float pen = -gap;
-        float mEff = 1.0f / invM;
-        float k = u.kc * mEff / dt2;
-        float vn = dot(vi, tn);
-        float fn = k * pen - 2.0f * u.damping * sqrt(k * mEff) * vn;
-        if (fn > 0.0f) {
-            float3 vt = vi - vn * tn;
-            float vtl = length(vt);
-            float gamma = u.frictionGamma * sqrt(k * mEff);
-            float ft = min(u.friction * fn, gamma * vtl);
-            float3 F = fn * tn - (vtl > 1e-5f ? ft * vt / vtl : float3(0));
-            f += F;
-            kSum += k;
-            cSum += 2.0f * u.damping * sqrt(k * mEff) + gamma;
-            t += cross((pi - tn * ri) - apos, F);
-        }
-    }
-    forceOut[i] = float4(f, kSum);
-    torqueOut[i] = float4(t, cSum);
-}
-
-kernel void integrate(device HillsideBody *bodies [[buffer(0)]],
-                      const device float4 *forceIn [[buffer(1)]],
-                      const device float4 *torqueIn [[buffer(2)]],
-                      device atomic_uint *wake [[buffer(3)]],
-                      constant HillsideUniforms &u [[buffer(4)]],
-                      device float4 *pose [[buffer(5)]],
-                      uint b [[thread_position_in_grid]]) {
-    HillsideBody B = bodies[b];
-    float dt = u.dt;
-    // The swell is dynamic: a block wakes when its swell begins and is pushed along it, so that
-    // contact keeps swelling neighbours apart. (Moved kinematically while held, as before, blocks
-    // whose swells converged ran deep into one another and burst apart when released.)
-    float fire = B.invInertiaFire.w;
-    float rise = B.swell.w;
-    if (B.state == 0u) {
-        if (rise <= 0.0f || u.time < fire - rise) { return; }
-        B.state = 1u;
-        B.velSleep = float4(0.0f);
-    }
-    // The swell's push this substep: the change of its velocity profile, eased.
-    float3 swellPush = float3(0.0f);
-    if (B.pad == 0u && rise > 0.0f) {
-        float s1 = saturate((u.time - (fire - rise)) / rise);
-        float s0 = saturate((u.time - dt - (fire - rise)) / rise);
-        swellPush = B.swell.xyz * (s1 * s1 * (3.0f - 2.0f * s1) - s0 * s0 * (3.0f - 2.0f * s0));
-    }
-    if (B.pad == 0u && u.time >= fire) {
-        // Let go: the launch, less the swell the block was given.
-        B.pad = 1u;
-        B.state = 1u;
-        B.velSleep.xyz += B.launchSwell.xyz - B.swell.xyz;
-        B.ang.xyz += B.spinRise.xyz;
-    }
-    if (B.state == 2u) {
-        if (atomic_exchange_explicit(&wake[b], 0u, memory_order_relaxed) != 0u) {
-            B.state = 1u;
-            B.velSleep.w = 0.0f;
-        } else {
-            return;
-        }
-    }
-    atomic_store_explicit(&wake[b], 0u, memory_order_relaxed);
-    float3 F = float3(0, 0, -u.gravity / B.posInvMass.w), T = float3(0);
-    float K = 0.0f, C = 0.0f;
-    for (uint s = 0; s < B.count; ++s) {
-        F += forceIn[B.first + s].xyz;
-        T += torqueIn[B.first + s].xyz;
-        K += forceIn[B.first + s].w;
-        C += torqueIn[B.first + s].w;
-    }
-    // Linearly implicit in the body's own contacts: each contact's spring and dashpot is explicit
-    // and stable alone, but a block of six spheres touches its neighbours at twenty to fifty
-    // sphere pairs at once, and their sum is past the explicit limit: blocks at rest in the pile
-    // rang at about a metre a second and crept. Backward Euler on the summed stiffness and
-    // damping keeps them still, and leaves free flight (no contacts) as it was.
-    float implicitShare = 1.0f / (1.0f + B.posInvMass.w * (dt * C + dt * dt * K));
-    float3 v = B.velSleep.xyz + F * B.posInvMass.w * dt * implicitShare + swellPush;
-    float3 w = B.ang.xyz;
-    float3 wb = unrotate(B.quat, w);
-    float3 tb = unrotate(B.quat, T);
-    wb += B.invInertiaFire.xyz * tb * dt * implicitShare;
-    w = rotate(B.quat, wb);
-    // Explicit rotation is stiff for flat, thin blocks: keep them slower than they could spin.
-    float spin = length(w);
-    if (spin > 14.0f) w *= 14.0f / spin;
-    // A touch of drag keeps flying blocks from spinning for ever.
-    w *= 0.9992f;
-    float speed = length(v);
-    if (speed > 45.0f) { v *= 45.0f / speed; speed = 45.0f; }
-    // A body held up by contact, moving slowly, is damped toward rest: explicit contact has no
-    // static friction and creeps otherwise.
-    float3 contact = F + float3(0, 0, u.gravity / B.posInvMass.w);
-    float supported = length(contact) * B.posInvMass.w / u.gravity;
-    if (supported > 0.35f && speed < 0.6f) {
-        float keep = exp(-dt * 14.0f);
-        v *= keep;
-        w *= keep;
-    }
-    float3 pos = B.posInvMass.xyz + v * dt;
-    float4 q = B.quat;
-    float4 omega = float4(w, 0.0f);
-    float4 dq = 0.5f * float4(
-        omega.w * q.x + omega.x * q.w + omega.y * q.z - omega.z * q.y,
-        omega.w * q.y - omega.x * q.z + omega.y * q.w + omega.z * q.x,
-        omega.w * q.z + omega.x * q.y - omega.y * q.x + omega.z * q.w,
-        omega.w * q.w - omega.x * q.x - omega.y * q.y - omega.z * q.z);
-    q = normalize(q + dq * dt);
-    float sleep = B.velSleep.w;
-    if (speed < u.sleepSpeed && length(w) < u.sleepSpin) sleep += dt; else sleep = 0.0f;
-    if (B.pad == 0u) sleep = 0.0f;
-    if (sleep > u.sleepTime) { B.state = 2u; v = float3(0); w = float3(0); sleep = 0.0f; }
-    B.posInvMass.xyz = pos;
-    B.quat = q;
-    B.velSleep = float4(v, sleep);
-    B.ang = float4(w, 0.0f);
-    bodies[b] = B;
-    pose[2 * b] = float4(pos, float(B.state));
-    pose[2 * b + 1] = q;
-}
-
 // --- Rendering ---
 
-struct HillsideCamera {
+struct QuarryCamera {
     float4x4 viewProjection;
     float4x4 shadow;
     float4 eye;
@@ -288,7 +28,7 @@ struct HillsideCamera {
     float4 misc;
 };
 
-struct HillsideBlockVertex {
+struct QuarryBlockVertex {
     packed_float3 local;
     uint normalKind;
     uint body;
@@ -328,11 +68,11 @@ static inline float3 unpackNormal(uint packed) {
 }
 
 vertex RasterOut blockVertex(uint vid [[vertex_id]],
-                             const device HillsideBlockVertex *vertices [[buffer(0)]],
+                             const device QuarryBlockVertex *vertices [[buffer(0)]],
                              const device float4 *pose [[buffer(1)]],
-                             constant HillsideCamera &cam [[buffer(2)]],
+                             constant QuarryCamera &cam [[buffer(2)]],
                              const device float4 *rest [[buffer(3)]]) {
-    HillsideBlockVertex v = vertices[vid];
+    QuarryBlockVertex v = vertices[vid];
     float3 pos = pose[2 * v.body].xyz;
     float4 q = pose[2 * v.body + 1];
     float3 local = float3(v.local);
@@ -349,10 +89,10 @@ vertex RasterOut blockVertex(uint vid [[vertex_id]],
 }
 
 vertex float4 blockShadowVertex(uint vid [[vertex_id]],
-                                const device HillsideBlockVertex *vertices [[buffer(0)]],
+                                const device QuarryBlockVertex *vertices [[buffer(0)]],
                                 const device float4 *pose [[buffer(1)]],
-                                constant HillsideCamera &cam [[buffer(2)]]) {
-    HillsideBlockVertex v = vertices[vid];
+                                constant QuarryCamera &cam [[buffer(2)]]) {
+    QuarryBlockVertex v = vertices[vid];
     float3 w = pose[2 * v.body].xyz + rotate(pose[2 * v.body + 1], float3(v.local));
     return cam.shadow * float4(w, 1.0f);
 }
@@ -362,7 +102,7 @@ struct TerrainOut { float4 position [[position]]; float3 world; float3 normal; }
 
 vertex TerrainOut terrainVertex(uint vid [[vertex_id]],
                                 const device TerrainVertex *vertices [[buffer(0)]],
-                                constant HillsideCamera &cam [[buffer(2)]]) {
+                                constant QuarryCamera &cam [[buffer(2)]]) {
     TerrainOut o;
     o.world = float3(vertices[vid].p);
     o.normal = float3(vertices[vid].n);
@@ -372,11 +112,11 @@ vertex TerrainOut terrainVertex(uint vid [[vertex_id]],
 
 vertex float4 terrainShadowVertex(uint vid [[vertex_id]],
                                   const device TerrainVertex *vertices [[buffer(0)]],
-                                  constant HillsideCamera &cam [[buffer(2)]]) {
+                                  constant QuarryCamera &cam [[buffer(2)]]) {
     return cam.shadow * float4(float3(vertices[vid].p), 1.0f);
 }
 
-static inline float shadowAt(float3 world, float3 normal, constant HillsideCamera &cam, depth2d<float> map, sampler s) {
+static inline float shadowAt(float3 world, float3 normal, constant QuarryCamera &cam, depth2d<float> map, sampler s) {
     float3 w = world + normal * 0.25f;
     float4 c = cam.shadow * float4(w, 1.0f);
     float3 q = c.xyz / c.w;
@@ -390,7 +130,7 @@ static inline float shadowAt(float3 world, float3 normal, constant HillsideCamer
     return sum / 9.0f;
 }
 
-static inline float3 skyColor(float3 dir, constant HillsideCamera &cam) {
+static inline float3 skyColor(float3 dir, constant QuarryCamera &cam) {
     float h = saturate(dir.z * 2.6f + 0.02f);
     float3 horizon = float3(0.98f, 0.72f, 0.46f);
     float3 mid = float3(0.55f, 0.56f, 0.62f);
@@ -400,7 +140,7 @@ static inline float3 skyColor(float3 dir, constant HillsideCamera &cam) {
     return base + float3(1.0f, 0.74f, 0.42f) * sunGlow * 0.8f;
 }
 
-static inline float dustShadow(float3 world, constant HillsideCamera &cam, texture3d<float> dustLight) {
+static inline float dustShadow(float3 world, constant QuarryCamera &cam, texture3d<float> dustLight) {
     if (cam.dustHigh.w < 0.5f) return 1.0f;
     float3 uvw = (world - cam.dustLow.xyz) / (cam.dustHigh.xyz - cam.dustLow.xyz);
     if (any(uvw < 0.0f) || any(uvw > 1.0f)) return 1.0f;
@@ -408,7 +148,7 @@ static inline float dustShadow(float3 world, constant HillsideCamera &cam, textu
     return exp(-dustLight.sample(s, uvw).r * 0.045f);
 }
 
-static inline float3 shade(float3 albedo, float3 world, float3 n, constant HillsideCamera &cam, float shadow, float dust) {
+static inline float3 shade(float3 albedo, float3 world, float3 n, constant QuarryCamera &cam, float shadow, float dust) {
     float3 sun = cam.sun.xyz;
     float nl = max(dot(n, sun), 0.0f);
     float3 sunColor = float3(1.0f, 0.74f, 0.47f) * 3.4f;
@@ -449,7 +189,7 @@ static inline float3 bedColour(float3 p) {
 }
 
 fragment float4 blockFragment(RasterOut in [[stage_in]],
-                              constant HillsideCamera &cam [[buffer(0)]],
+                              constant QuarryCamera &cam [[buffer(0)]],
                               depth2d<float> shadowMap [[texture(0)]],
                               texture3d<float> dustLight [[texture(1)]],
                               sampler s [[sampler(0)]]) {
@@ -510,7 +250,7 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
 }
 
 fragment float4 terrainFragment(TerrainOut in [[stage_in]],
-                                constant HillsideCamera &cam [[buffer(0)]],
+                                constant QuarryCamera &cam [[buffer(0)]],
                                 depth2d<float> shadowMap [[texture(0)]],
                                 texture3d<float> dustLight [[texture(1)]],
                                 sampler s [[sampler(0)]]) {
@@ -551,7 +291,7 @@ fragment float4 terrainFragment(TerrainOut in [[stage_in]],
 
 // Decorative chips and gravel: instanced little polyhedra, not rigid bodies. Attached to their
 // block until it has gone, then ballistic over the top-down height of the scene.
-struct HillsideChip {
+struct QuarryChip {
     float4 posSize;
     float4 velAge;
     float4 offsetDelay;
@@ -561,7 +301,7 @@ struct HillsideChip {
     float tint;
 };
 
-struct HillsideChipUniforms {
+struct QuarryChipUniforms {
     float dt;
     float gravity;
     float time;
@@ -570,13 +310,13 @@ struct HillsideChipUniforms {
     float4 size;
 };
 
-kernel void chipUpdate(device HillsideChip *chips [[buffer(0)]],
+kernel void chipUpdate(device QuarryChip *chips [[buffer(0)]],
                        const device float4 *pose [[buffer(1)]],
                        const device float4 *previous [[buffer(2)]],
                        depth2d<float> height [[texture(0)]],
-                       constant HillsideChipUniforms &u [[buffer(3)]],
+                       constant QuarryChipUniforms &u [[buffer(3)]],
                        uint i [[thread_position_in_grid]]) {
-    HillsideChip C = chips[i];
+    QuarryChip C = chips[i];
     if (C.state == 3u) return;
     constexpr sampler s(filter::linear, address::clamp_to_edge);
     float dt = u.dt;
@@ -635,7 +375,7 @@ struct ChipOut {
     float seed;
 };
 
-static inline float4 chipPosition(HillsideChip c, uint vid, uint instance, constant HillsideCamera &cam, float4x4 m, thread float3 &world) {
+static inline float4 chipPosition(QuarryChip c, uint vid, uint instance, constant QuarryCamera &cam, float4x4 m, thread float3 &world) {
     uint corner = icoFaces[vid % 60];
     float3 v = icoCorners[corner];
     float h = fract(c.seed * (float(corner) * 3.17f + 1.3f)) * 0.75f + 0.45f;
@@ -650,9 +390,9 @@ static inline float4 chipPosition(HillsideChip c, uint vid, uint instance, const
 }
 
 vertex ChipOut chipVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
-                          const device HillsideChip *chips [[buffer(0)]],
-                          constant HillsideCamera &cam [[buffer(2)]]) {
-    HillsideChip c = chips[instance];
+                          const device QuarryChip *chips [[buffer(0)]],
+                          constant QuarryCamera &cam [[buffer(2)]]) {
+    QuarryChip c = chips[instance];
     ChipOut o;
     o.position = chipPosition(c, vid, instance, cam, cam.viewProjection, o.world);
     o.tint = c.tint;
@@ -661,15 +401,15 @@ vertex ChipOut chipVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
 }
 
 vertex float4 chipShadowVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
-                               const device HillsideChip *chips [[buffer(0)]],
-                               constant HillsideCamera &cam [[buffer(2)]]) {
-    HillsideChip c = chips[instance];
+                               const device QuarryChip *chips [[buffer(0)]],
+                               constant QuarryCamera &cam [[buffer(2)]]) {
+    QuarryChip c = chips[instance];
     float3 w;
     return chipPosition(c, vid, instance, cam, cam.shadow, w);
 }
 
 fragment float4 chipFragment(ChipOut in [[stage_in]],
-                             constant HillsideCamera &cam [[buffer(0)]],
+                             constant QuarryCamera &cam [[buffer(0)]],
                              depth2d<float> shadowMap [[texture(0)]],
                              texture3d<float> dustLight [[texture(1)]],
                              sampler s [[sampler(0)]]) {
@@ -701,7 +441,7 @@ static inline float3 aces(float3 x) {
 }
 
 // Screen-space ambient occlusion: multiplied into the frame before the dust goes on it.
-static inline float3 aoWorld(float2 uv, depth2d<float> depth, constant HillsideCamera &cam) {
+static inline float3 aoWorld(float2 uv, depth2d<float> depth, constant QuarryCamera &cam) {
     constexpr sampler s(filter::nearest, address::clamp_to_edge);
     float d = depth.sample(s, uv);
     float2 ndc = float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f);
@@ -711,7 +451,7 @@ static inline float3 aoWorld(float2 uv, depth2d<float> depth, constant HillsideC
 
 fragment float4 aoFragment(FullscreenOut in [[stage_in]],
                            depth2d<float> depth [[texture(0)]],
-                           constant HillsideCamera &cam [[buffer(0)]]) {
+                           constant QuarryCamera &cam [[buffer(0)]]) {
     constexpr sampler s(filter::nearest, address::clamp_to_edge);
     float z = depth.sample(s, in.uv);
     if (z >= 1.0f) return float4(1.0f);
@@ -752,7 +492,7 @@ vertex SkyOut skyVertex(uint vid [[vertex_id]]) {
     o.ndc = p;
     return o;
 }
-fragment float4 skyFragment(SkyOut in [[stage_in]], constant HillsideCamera &cam [[buffer(0)]]) {
+fragment float4 skyFragment(SkyOut in [[stage_in]], constant QuarryCamera &cam [[buffer(0)]]) {
     float4 far = cam.inverseViewProjection * float4(in.ndc, 1.0f, 1.0f);
     float3 dir = normalize(far.xyz / far.w - cam.eye.xyz);
     float3 color = skyColor(dir, cam);
@@ -767,7 +507,7 @@ fragment float4 skyFragment(SkyOut in [[stage_in]], constant HillsideCamera &cam
 fragment float4 tonemap(FullscreenOut in [[stage_in]],
                         texture2d<float> hdr [[texture(0)]],
                         sampler s [[sampler(0)]],
-                        constant HillsideCamera &cam [[buffer(0)]]) {
+                        constant QuarryCamera &cam [[buffer(0)]]) {
     float3 c = hdr.sample(s, in.uv).rgb;
     c *= 0.62f;
     float2 centre = in.uv - 0.5f;
@@ -790,3 +530,130 @@ fragment float4 presentFragment(FullscreenOut in [[stage_in]],
                                 sampler s [[sampler(0)]]) {
     return frame.sample(s, in.uv);
 }
+
+
+// The dust ray-marched over the frame.
+
+struct QuarryDustUniforms {
+    float4 low;
+    float4 hdtsteps; // h, dt
+    int4 dims;
+    float4 wind;
+    float4 sun;
+    float4 high;
+};
+
+constexpr sampler triSampler(filter::linear, address::clamp_to_edge, coord::normalized);
+
+static inline float hash31d(float3 p) {
+    p = fract(p * 0.3183099f + 0.1f);
+    p *= 17.0f;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+static inline float noiseV(float3 x) {
+    float3 i = floor(x), f = fract(x);
+    f = f * f * (3.0f - 2.0f * f);
+    return mix(mix(mix(hash31d(i), hash31d(i + float3(1,0,0)), f.x),
+                   mix(hash31d(i + float3(0,1,0)), hash31d(i + float3(1,1,0)), f.x), f.y),
+               mix(mix(hash31d(i + float3(0,0,1)), hash31d(i + float3(1,0,1)), f.x),
+                   mix(hash31d(i + float3(0,1,1)), hash31d(i + float3(1,1,1)), f.x), f.y), f.z);
+}
+static inline float noiseFbm(float3 p) {
+    return 0.55f * noiseV(p) + 0.3f * noiseV(p * 2.07f + 5.3f) + 0.15f * noiseV(p * 4.3f + 11.1f);
+}
+
+fragment float4 dustFragment(FullscreenOut in [[stage_in]],
+                             texture3d<float, access::sample> density [[texture(0)]],
+                             texture3d<float, access::sample> light [[texture(1)]],
+                             depth2d<float, access::sample> depth [[texture(2)]],
+                             texture3d<float, access::sample> noise [[texture(3)]],
+                             constant QuarryCamera &cam [[buffer(0)]],
+                             constant QuarryDustUniforms &u [[buffer(1)]]) {
+    constexpr sampler nearest(filter::nearest, address::clamp_to_edge);
+    constexpr sampler wrap(filter::linear, address::repeat);
+    float z = depth.sample(nearest, in.uv);
+    float2 ndc = float2(in.uv.x * 2.0f - 1.0f, 1.0f - in.uv.y * 2.0f);
+    float4 far = cam.inverseViewProjection * float4(ndc, z, 1.0f);
+    float3 hit = far.xyz / far.w;
+    float3 eye = cam.eye.xyz;
+    float maxT = length(hit - eye);
+    float3 dir = (hit - eye) / max(maxT, 1e-3f);
+    float3 low = u.low.xyz, high = u.high.xyz;
+    float3 t0 = (low - eye) / dir, t1 = (high - eye) / dir;
+    float3 tmin = min(t0, t1), tmax = max(t0, t1);
+    float enter = max(max(tmin.x, tmin.y), max(tmin.z, 0.0f));
+    float leave = min(min(tmax.x, tmax.y), min(tmax.z, maxT));
+    if (leave <= enter) return float4(0);
+    float h = u.hdtsteps.x;
+    float jitter = fract(sin(dot(in.position.xy, float2(12.9898f, 78.233f))) * 43758.5453f);
+    float coarse = 2.0f;
+    float fine = h * 0.6f;
+    float t = enter + coarse * jitter;
+    float3 size = float3(u.dims.xyz) * h;
+    float3 accumulated = float3(0.0f);
+    float transmittance = 1.0f;
+    float3 albedo = float3(0.62f, 0.53f, 0.42f);
+    float mu = dot(dir, cam.sun.xyz);
+    float g = 0.45f;
+    float hgForward = (1.0f - g * g) / pow(1.0f + g * g - 2.0f * g * mu, 1.5f) * 0.25f;
+    float g2 = -0.15f;
+    float hgBack = (1.0f - g2 * g2) / pow(1.0f + g2 * g2 - 2.0f * g2 * mu, 1.5f) * 0.25f;
+    float phase = 0.75f * hgForward + 0.45f * hgBack;
+    float3 sunColor = float3(1.0f, 0.72f, 0.46f) * 5.2f;
+    float3 ambientUp = float3(0.42f, 0.5f, 0.68f) * 0.42f;
+    float3 ambientDown = float3(0.62f, 0.5f, 0.38f) * 0.42f;
+    int quiet = 0;
+    bool stepping = false;
+    float tt = cam.misc.x;
+    for (int steps = 0; steps < 900 && t < leave; ++steps) {
+        float step = stepping ? fine : coarse;
+        float3 world = eye + dir * t;
+        float3 p = (world - low) / size;
+        float d = density.sample(triSampler, p).r;
+        float shaped = 0.0f;
+        if (d > 0.004f) {
+            if (!stepping) { stepping = true; t = max(enter, t - coarse * 0.9f); quiet = 0; continue; }
+            float dn = 1.0f - exp(-d * 0.42f);
+            // Warp the lookup by a few metres so the field's own smooth shape breaks up, then cut
+            // the lumps with the noise, more where the field is thin.
+            float3 warpSample = noise.sample(wrap, world * 0.05f + float3(0.012f * tt, 0.0f, -0.02f * tt)).rgb;
+            float3 warped = (world + (warpSample * 2.0f - 1.0f) * float3(5.5f, 5.5f, 6.5f) - low) / size;
+            float dw = density.sample(triSampler, warped).r;
+            dn = 1.0f - exp(-dw * 0.42f);
+            float3 q = world * 0.022f + float3(0.0085f * tt, -0.004f * tt, -0.018f * tt);
+            float big = noise.sample(wrap, q).r;
+            float3 q2 = world * 0.05f + float3(-0.012f * tt, 0.02f * tt, 0.007f * tt);
+            float small = noise.sample(wrap, q2).g;
+            float e1 = (1.0f - big) * mix(0.95f, 0.5f, dn);
+            shaped = saturate((dn - e1) / max(1.0f - e1, 0.08f));
+            float e2 = (1.0f - small) * (1.0f - shaped * 0.7f) * 0.62f;
+            shaped = saturate((shaped - e2) / max(1.0f - e2, 0.08f));
+        } else if (stepping) {
+            if (++quiet > 3) stepping = false;
+        }
+        if (shaped > 0.001f) {
+            quiet = 0;
+            float sigma = shaped * (d * 0.12f + 0.55f);
+            float a = 1.0f - exp(-sigma * step);
+            float tau = light.sample(triSampler, p).r * 0.075f;
+            // Light scattered many times in dust is lost slowly: an octave sum of attenuations,
+            // each weaker and less extinguished, so the shadowed underside stays pale and glows.
+            float direct = exp(-tau) + 0.32f * exp(-tau * 0.25f) + 0.14f * exp(-tau * 0.06f);
+            float heightFrac = saturate(p.z * 2.0f);
+            float3 ambient = mix(ambientDown, ambientUp, heightFrac) * (0.6f + 0.4f * exp(-tau * 0.4f));
+            float3 lit = albedo * (sunColor * phase * direct + ambient);
+            accumulated += transmittance * a * lit;
+            transmittance *= 1.0f - a;
+            if (transmittance < 0.01f) break;
+        }
+        t += step;
+    }
+    return float4(accumulated, 1.0f - transmittance);
+}
+
+fragment float4 dustComposite(FullscreenOut in [[stage_in]],
+                              texture2d<float> dust [[texture(0)]],
+                              sampler s [[sampler(0)]]) {
+    return dust.sample(s, in.uv);
+}
+
