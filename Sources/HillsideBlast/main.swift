@@ -25,7 +25,7 @@ let dataRoot = URL(fileURLWithPath: "/Volumes/StudioData/bombcad/hillside-blast"
 guard let command = arguments.first else {
     print("hillsideblast: an illustrative spectacle (docs/hillside-blast.md), not a blast-design aid.")
     print(
-        "hillsideblast rigid-scaling <counts...> | simulate --blocks N --seconds T --out name | render --poses name --out name [--clip] [--stills t,t,...]"
+        "hillsideblast rigid-scaling <counts...> | simulate --blocks N --seconds T --out name | render --poses name --out name [--clip] [--stills t,t,...] | clip --poses name --out name [--motion still|orbit|pullBack] [--frames t,t,...]"
     )
     exit(0)
 }
@@ -39,6 +39,8 @@ let device = MTLCreateSystemDefaultDevice()!
 var options = QuarryFace.Options()
 options.blocks = option(arguments, "--blocks").flatMap(Int.init) ?? 100_000
 options.spheres = option(arguments, "--spheres").flatMap(Int.init) ?? 5
+// `clip` is the window's Record Clip, at the window's mesh.
+if command == "clip" { options.meshDetail = 1 }
 let substepsPerSecond = option(arguments, "--hz").flatMap(Float.init) ?? 240
 let seconds = option(arguments, "--seconds").flatMap(Float.init) ?? 20
 let name = option(arguments, "--out") ?? "run"
@@ -225,6 +227,15 @@ if command == "simulate" {
     exit(0)
 }
 
+if command == "clip" {
+    hillside.buildDressing(level: 1)
+    let posesName = option(arguments, "--poses") ?? name
+    try ClipCommand.run(
+        arguments: arguments, face: hillside, firings: firings, device: device,
+        posesURL: dataRoot.appendingPathComponent(posesName).appendingPathComponent("poses.bin"), dir: dir)
+    exit(0)
+}
+
 if command == "render" {
     let posesName = option(arguments, "--poses") ?? name
     let posesURL = dataRoot.appendingPathComponent(posesName).appendingPathComponent("poses.bin")
@@ -238,16 +249,18 @@ if command == "render" {
     if !arguments.contains("--no-dressing") { hillside.buildDressing() }
     var eyes = (SIMD3<Float>(-46, -74, 3.6), SIMD3<Float>(-33, -66, 3.4))
     var targets = (SIMD3<Float>(80, 18, 21), SIMD3<Float>(86, 16, 21))
-    if let ridge = hillside.ridge {
+    if hillside.ridge != nil {
         // The window's default view of a ridge cut, drifting a little closer.
-        let ((yaw, pitch, distance), focus) = QuarrySession.ridgeView(ridge)
+        let orbit = QuarrySession.defaultOrbit(hillside)
         func eye(_ d: Float, _ yaw: Float) -> SIMD3<Float> {
-            var e = focus + SIMD3(sin(yaw) * cos(pitch), -cos(yaw) * cos(pitch), sin(pitch)) * d
+            var o = orbit
+            (o.distance, o.yaw) = (d, yaw)
+            var e = o.eye
             e.z = max(e.z, hillside.height(hillside.terrain.heights, e.x, e.y) + 2)
             return e
         }
-        eyes = (eye(distance, yaw), eye(distance * 0.88, yaw + 0.08))
-        targets = (focus, focus + SIMD3(0, 0, 1))
+        eyes = (eye(orbit.distance, orbit.yaw), eye(orbit.distance * 0.88, orbit.yaw + 0.08))
+        targets = (orbit.focus, orbit.focus + SIMD3(0, 0, 1))
     }
     let start = option(arguments, "--eye").map(parseVector) ?? eyes.0
     let end = option(arguments, "--eye-end").map(parseVector) ?? eyes.1

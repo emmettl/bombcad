@@ -73,12 +73,16 @@ public final class QuarryClipWriter {
     }
 }
 
-/// Where a clip looks from: the window's orbit as it stands, held still or turned slowly round
-/// its focus over the clip.
+/// Where a clip looks from: the window's orbit as it stands, held still, turned slowly round its
+/// focus over the clip, or pulled back to it from close in as the rock lets go.
 public struct QuarryClipCamera: Sendable, Equatable {
     public enum Motion: String, CaseIterable, Sendable {
         case still = "This view"
         case orbit = "Slow orbit"
+        /// Close in on what the view looks at until just after the first firing, then back to this
+        /// view as the rock spills (`QuarryPullBack`), by event time, so at any speed it is the same
+        /// moment.
+        case pullBack = "Pull back"
     }
     public var focus: SIMD3<Float>
     public var yaw: Float
@@ -88,6 +92,8 @@ public struct QuarryClipCamera: Sendable, Equatable {
     public var motion = Motion.still
     /// The turn over the whole clip when orbiting (radians).
     public var turn: Float = 0.6
+    /// The event's first firing (s), which a pull-back is timed from.
+    public var firstFiring: Float = 1.8
 
     public init(focus: SIMD3<Float>, yaw: Float, pitch: Float, distance: Float, fovDegrees: Float) {
         self.focus = focus
@@ -97,11 +103,18 @@ public struct QuarryClipCamera: Sendable, Equatable {
         self.fovDegrees = fovDegrees
     }
 
-    /// The view `share` of the way through the clip, its eye kept above the ground as the
-    /// window's orbit keeps it.
-    public func view(at share: Float, face: QuarryFace) -> (
+    /// The view `share` of the way through the clip, at event time `time`, its eye kept above the
+    /// ground as the window's orbit keeps it.
+    public func view(at share: Float, time: Float = 0, face: QuarryFace) -> (
         eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float
     ) {
+        if motion == .pullBack {
+            var v = QuarryPullBack.view(
+                orbit: QuarryOrbit(focus: focus, yaw: yaw, pitch: pitch, distance: distance),
+                fovY: fovDegrees * .pi / 180, time: time, firstFiring: firstFiring)
+            v.eye.z = max(v.eye.z, face.height(face.terrain.heights, v.eye.x, v.eye.y) + 2)
+            return v
+        }
         let s = max(0, min(1, share))
         // Eased at both ends, so the turn starts and stops gently.
         let eased = s * s * (3 - 2 * s)
@@ -299,7 +312,7 @@ public final class QuarryClipRecorder: @unchecked Sendable {
                 guard k >= leadSteps else { return }
                 if k == leadSteps { leadIn = Date().timeIntervalSince(began) }
                 let share = Float(k - leadSteps) / Float(max(1, r.videoFrames - 1))
-                renderer.viewOverride = r.camera.view(at: share, face: face)
+                renderer.viewOverride = r.camera.view(at: share, time: time, face: face)
                 drawTimes.append(renderer.render(pose: pose, previous: previous, time: time) * 1000)
                 writer.append(renderer)
                 written += 1

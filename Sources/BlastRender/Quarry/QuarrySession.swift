@@ -154,18 +154,8 @@ public final class QuarrySession: @unchecked Sendable {
         sampler.minFilter = .linear
         sampler.magFilter = .linear
         presentSampler = device.makeSamplerState(descriptor: sampler)!
-        // The default view: from the floor in front of the strip's near end, toward its middle.
-        let scale = face.length / 180
-        focus = SIMD3(68 * scale, 15, face.floorLevel + 21)
-        distance = 143 * max(1, scale * 0.85)
-        if let ridge = face.ridge {
-            // A ridge cut's: from off the flank at the line's end, ahead along the ridge, a little
-            // above the cut's floor, so the notch shows against the sky and the rock comes down
-            // that flank toward the eye.
-            let (view, focus) = Self.ridgeView(ridge)
-            (yaw, pitch, distance) = view
-            self.focus = focus
-        }
+        let orbit = Self.defaultOrbit(face)
+        (yaw, pitch, distance, focus) = (orbit.yaw, orbit.pitch, orbit.distance, orbit.focus)
         if let run {
             // Made here, off the main thread, so the new event can be shown as soon as it is ready.
             pending = run
@@ -192,11 +182,15 @@ public final class QuarrySession: @unchecked Sendable {
             face: face, count: settings.count, first: 1.8, stagger: settings.stagger, order: settings.order)
     }
 
-    /// A ridge cut's default orbit (yaw, pitch, distance) and what it looks at.
-    public static func ridgeView(_ ridge: QuarryRidge) -> ((Float, Float, Float), SIMD3<Float>) {
-        let span = max(60, ridge.cutEnd - ridge.cutStart)
-        let focus = SIMD3(ridge.crestX, 4, ridge.floor + 0.25 * (ridge.crest - ridge.floor))
-        return ((1.0, 0.07, 1.6 * span + 50), focus)
+    /// The window's default orbit for `face`, as a new session of it starts with: a ridge cut's
+    /// opening view (`QuarryRidgeView`, in the cut's frame, so it follows the cut); a face's from
+    /// the floor in front of the strip's near end, toward its middle.
+    public static func defaultOrbit(_ face: QuarryFace) -> QuarryOrbit {
+        if let view = QuarryRidgeView.opening(face) { return view.orbit }
+        let scale = face.length / 180
+        return QuarryOrbit(
+            focus: SIMD3(68 * scale, 15, face.floorLevel + 21), yaw: -0.81, pitch: -0.086,
+            distance: 143 * max(1, scale * 0.85))
     }
 
     /// Starts a firing of `face` on its own thread, for a session made after it with `run:`.

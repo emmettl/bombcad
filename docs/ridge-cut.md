@@ -279,3 +279,122 @@ captures while following. Files under `$BOMBCAD_DATA/hillside-blast/ridge-dust/`
   against up to 900 on the near flank, so its skirt is faint, honest to the rock but weak to look at.
 - *Dust on the notch's floor* where the rock lands is under the pile and mostly unseen.
 - *The window's field is 1.5 m*, so its columns are coarser than the film's.
+
+## Stage 2b: an opening view that shows the heave, 12 November 2026
+
+emmettl/bombcad-work#133, approved by the user on 12 November. Same standing: illustrative, for the
+eye. Only the camera, its default and the backdrop changed; the cut, the firings, the launch, the
+solver and the dust are as they were (the dust is stage 2a's, emmettl/bombcad-work#132, which
+landed while this was checked: the frames below were made first with stage 1's dust, then again with
+2a's).
+
+**What a user gets.** A ridge cut now opens close on its crest: about 94 m off (stage 1's was 189 m),
+off the cut's steeper flank and a little to its side, with the eye 2 m under the crest's height. So
+the crest and, later, the notch stand against the sky in the upper third of the frame; the near
+flank the rock comes down is below them; and the cut's wall that faces the eye is in the sun. It is
+still an ordinary view, orbited and zoomed as before. Record Clip's *Camera* has a third choice,
+*Pull back*: it starts close in on what the view looks at and holds there until just after the
+first firing, then eases back to the view as it stands over five seconds of the event while the
+rock spills. The far plain seen through the notch now fades into the backdrop's distant hills.
+
+**How the view is chosen** (`QuarryRidgeView.opening`, BlastModel). Everything is in the cut's own
+frame (x along its line, y across it), worked out from the cut and the ground:
+- *Which flank.* The steeper one (the old ground's drop over 30 m from the crest along the line):
+  the rock runs furthest down it, toward the eye. On the built-in ridge that is past the line's end.
+- *Which side.* The line's right when the eye is off its end, its left when off its start, so a
+  line drawn either way is seen from the same place on the ground, in the same light.
+- *Where it looks.* On the line, 15% of the way from the crest to where the cut runs out on the far
+  flank (the notch shows in the skyline between the two), at 65% of the cut's depth above its floor.
+- *How far.* 1.5 times the notch's width at its top (the floor's plus its two walls') plus the
+  cut's depth, at least 80 m: 94.3 m for the default cut, 122.7 m for the sliders' largest (40 m
+  wide, 30 m deep), 80 m for a small one. At 32° that frame is about 96 m across where it looks.
+- *Yaw and height.* 0.95 rad off the line (stage 1's was 1.0), the eye 2 m under the crest.
+- *Nothing in the way.* The eye must be 4 m clear of the ground and see, over the ground after the
+  cut, where it looks and the crest's top either side of the cut. If not, the view is turned 0.2
+  and 0.4 rad either way, then raised by 6, 12, 20 and 32 m, then tried from the other side and the
+  other flank; failing all of them, from high above the near flank.
+- *The sun* is stage 1's for this view (low, 18°, along the ridge from the eye's side and a little
+  behind it), mirrored with the flank and side, so it stays where it was relative to the cut and
+  the eye. The renderer takes it from the same function, so the dust is lit to match.
+A new cut makes a new session, which starts at this view, so moving the cut (on the map or in the 3-D
+view), changing its width or depth, or using a file's or the project's ground frames the new cut. The
+window's default view stays a still one.
+
+**The pull-back** (`QuarryPullBack`, BlastModel; `QuarryClipCamera.Motion.pullBack`, BlastRender).
+At its start the eye is at 0.7 of the view's distance on the same line, the field is 0.55 of the
+view's (32° to 17.6°) and it aims higher by a tenth of the distance (9.4 m by default), so the crest
+fills the frame with sky above it. It holds that until 0.7 s after the first firing (2.5 s at the
+default 1.8 s), then eases (smoothstep) to the view over 5 s of the event, so the move is the same
+moment at real time, half or quarter speed, and a clip started later than 7.5 s is simply the view.
+It is a dolly and a zoom together: a dolly alone from that close put the eye down on the steep flank
+grazing the rock (tried first, at 0.42 of the distance), and a zoom alone has no parallax. The
+first firing's time is passed from the event's firings.
+
+**The far plain in the notch.** Stage 1's pale strip was partly the backdrop: past about 1 km the
+ground was fogged toward the bare sky's horizon colour (a warm pale peach), but the sky draws its
+distant hills, darker and greyer, just above the horizon, so the far plain read as a bright band
+under darker hills. A ridge cut's far ground now fades toward the backdrop as drawn at that azimuth,
+hills included (the sky's hills moved into a `backdrop` function that the sky and the fog share;
+`QuarryCamera.fogColor.w` is 2 for a ridge cut, 1 for a face, which keeps its fog as it was). The
+rest is terrain: the built-in ridge's plain is flat bare ground with only a metre or two of relief,
+evenly lit by the low sun, so through the notch it reads as an empty pale plain. From the new view,
+nearer and lower, it is seen as ground running out to the hills, its far edge now the hills'
+grey rather than a pale band (with 2a's dust the notch is clear from 7 s, so this shows for most of
+the event); from stage 1's view (kept for comparison below) a lighter
+band still shows at the bottom of the notch, now greyer at its far edge. Not changed: the plain
+itself (texture, scrub, a farther ridge behind) would be the terrain's next step.
+
+**Checked by eye**, from the same stored poses as stage 1 (`ridge/final/poses`, 96,987 blocks, 20 s):
+- With a new `hillsideblast clip` command, which runs the window's own Record Clip
+  (`QuarryClipRecorder`: its renderer, dust, camera and writer, at the window's mesh) from stored
+  poses offscreen and takes frames from the movie file itself. New default, held still, and stage
+  1's view (yaw 1.0, pitch 0.07, 189.2 m, focus (81, 4, 20.6)), 20 s each, frames at 1, 2.3, 2.6, 3,
+  4.5, 7, 12 and 19.9 s; the pull-back over 12 s at real time (frames at 0.5 to 11.9 s) and over 1.5
+  to 5.5 s at quarter speed (16 s of movie). Each 1920 x 1080 clip took 21.6 to 24.1 ms a movie frame.
+- Film stills (`hillsideblast render --ridge`, supersampled) at the same times, at the new default
+  and at stage 1's camera path.
+- What they show. From stage 1's view the crest is a thin band at a third of the frame's height, the
+  plain fills the lower half and the heave is a few pixels of churn. From the new view, half as far, the crest is
+  twice the size in the frame and stands against the sky: at 2.3 to 2.6 s its surface visibly breaks up and blocks
+  lift off its top against the sky, the first dust puffs rise from it, by 4.5 s the notch is open in
+  the skyline with rock tumbling down the near flank toward the eye, and at 19.9 s the notch with
+  its rock and the pile on its far shoulder fill the middle of the frame. The pull-back opens on the
+  crest's broken top with sky above, shows blocks thrown up from it at 2.2 s, and pulls back through
+  the dust to the notch by 7.5 s.
+- With stage 2a's dust (the new default held still, and the pull-back, again from the file): the
+  firings' columns rise from the crest in order at 2.3 to 3.3 s against the sky, the notch is open
+  and clear by 7 s, and from then to the end the whole notch, its rock and the tongue down the near
+  flank are in view, the far plain through the notch running out to the hills. In the pull-back the
+  close shot fills with the columns at 2.6 to 4 s, so its view of the crest breaking is 2.2 to 2.6 s.
+- Files: `$BOMBCAD_DATA/hillside-blast/ridge-view/final/` (stage 1's dust: `new-still.mp4`,
+  `new-pullback.mp4`, `new-pullback-quarter.mp4`, `old-still.mp4`, their frames, `film-new/` and
+  `film-old/`) and `final-2a/` (2a's dust: `new-still.mp4`, `new-pullback.mp4` and their frames).
+
+**Quarry Face unchanged.** The face's view, sun, fog and clip cameras take the same arithmetic as
+before (its default orbit now comes from the same `QuarrySession.defaultOrbit`, with the same numbers).
+Stills from the face poses of stage 1's check (`ridge/facecheck/poses`, `render --blocks 110000
+--stills 1.0,3.5,5.9`) with this build are byte-identical to main's.
+
+**Tests.** `QuarryRidgeViewTests` (BlastModel, Linux): the built-in cut is seen from off its steeper
+flank, 85 to 105 m off, 2 m under the crest, with nothing in the way and stage 1's sun; a cut moved
+150 m along the ridge is framed on its own crest, and one drawn the other way is seen from the same
+place on the ground (within 2 m) in the same sun; a turned copy of the ridge gives the same view in
+the cut's frame, as does the cut a terrain starts with; the largest cut is seen from further off and
+a small one from the nearest; a knoll put in front of the default eye turns or raises the view
+until it is clear; the pull-back holds until 0.7 s after the first firing and only moves out, along
+the view's own line, ending at the view.
+
+**The look, frankly.**
+- *The heave itself is weak in the event,* not just far away: even from 94 m, and in the
+  pull-back's close shot, the crest's top breaks up and churns rather than visibly rising as a
+  whole before its blocks are thrown, and from about 2.6 s the firings' dust covers the crest
+  until the notch clears. The pull-back shows the break-up best. A heave that reads as a whole would need
+  a stronger, slower swell in the launch, which is the event's look, not the camera's; not tried.
+- *The near flank fills the lower half of the frame* in the new view: its render-only slabs and
+  the plain tan ground below the rocky crest (listed in stage 1) are now close and large, and
+  the tongue of rock down the flank is cut by the frame's bottom in a 16:9 clip (the window, taller,
+  shows more of it). Raising the eye shows more tongue but puts the far plain behind the crest.
+- *The pull-back's opening* is the near crest's surface, all render-only dressing and blocks of one
+  texture, close enough for the blocks' small size (0.57 m median) to read as gravel.
+- *The far plain* through the notch is flat and bare (above).
+- Not looked at on a screen: all of it was made offscreen.

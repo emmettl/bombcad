@@ -244,6 +244,9 @@
                 focus: session.focus, yaw: session.yaw, pitch: session.pitch, distance: session.distance,
                 fovDegrees: session.fovDegrees)
             camera.motion = clipMotion
+            let run = session.run
+            let firings = run?.firings ?? session.firings
+            camera.firstFiring = firings.map(\.time).min() ?? camera.firstFiring
             var request = QuarryClipRequest(url: url, camera: camera)
             request.start = clipFromShown ? Float(session.frame) / QuarrySession.frameRate : 0
             request.seconds = max(
@@ -251,9 +254,8 @@
             request.speed = clipSpeed
             request.width = clipSize.x
             request.height = clipSize.y
-            let run = session.run
             let recorder = QuarryClipRecorder(
-                device: device, face: session.face, cache: cache, firings: run?.firings ?? session.firings,
+                device: device, face: session.face, cache: cache, firings: firings,
                 request: request, stillComing: { [weak run] in run?.isSimulating == true })
             self.recorder = recorder
             clipShare = 0
@@ -1263,7 +1265,9 @@
             Picker("Camera", selection: $model.clipMotion) {
                 ForEach(QuarryClipCamera.Motion.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
-            .help("The view as it is now, held still or turned slowly round what it looks at")
+            .help(
+                "The view as it is now: held still, turned slowly round what it looks at, or pulled back to it from close in as the rock lets go"
+            )
             Picker("From", selection: $model.clipFromShown) {
                 Text("The event's start").tag(false)
                 Text("The time shown").tag(true)

@@ -13,6 +13,7 @@ public struct QuarryCameraUniforms {
     public var shadow: simd_float4x4
     public var eye: SIMD4<Float>
     public var sun: SIMD4<Float>
+    /// xyz unused; w 2 when the far ground fades into the backdrop's hills (a ridge cut), else 1.
     public var fogColor: SIMD4<Float>
     public var terrainOrigin: SIMD4<Float>
     public var inverseViewProjection: simd_float4x4
@@ -472,16 +473,16 @@ public final class QuarryRenderer {
         camera = QuarryCameraUniforms(
             viewProjection: matrix_identity_float4x4, shadow: ortho * lightView, eye: .zero,
             sun: SIMD4(sun, 0),
-            fogColor: SIMD4(0.6, 0.55, 0.5, 1), terrainOrigin: .zero,
+            fogColor: SIMD4(0.6, 0.55, 0.5, hillside.ridge == nil ? 1 : 2), terrainOrigin: .zero,
             inverseViewProjection: matrix_identity_float4x4,
             dustLow: .zero, dustHigh: .zero, misc: .zero)
     }
 
     /// The scene's own low sun, in the strip's frame: a face's rakes along it from in front; a
-    /// ridge cut's comes along the ridge from the side the default view looks from, so that the
-    /// near flank and the cut's far wall are lit and the flanks are raked.
+    /// ridge cut's is its opening view's (`QuarryRidgeView`), along the ridge from the side the view
+    /// looks from, so that the cut's wall facing the eye is lit and the flanks are raked.
     public static func sun(_ face: QuarryFace) -> SIMD3<Float> {
-        face.ridge == nil ? SIMD3(0.86, -0.42, 0.26) : SIMD3(-0.3, -0.88, 0.3)
+        QuarryRidgeView.opening(face)?.sun ?? SIMD3(0.86, -0.42, 0.26)
     }
 
     /// The targets of a frame `width` by `height`: the scene's colour and depth (supersampled) and

@@ -20,7 +20,7 @@ struct QuarryCamera {
     float4x4 shadow;
     float4 eye;
     float4 sun;
-    float4 fogColor;
+    float4 fogColor;    // xyz unused; w 2 when the far ground fades into the backdrop's hills (a ridge cut), else 1
     float4 terrainOrigin;
     float4x4 inverseViewProjection;
     float4 dustLow;
@@ -189,6 +189,17 @@ static inline float3 skyColor(float3 dir, constant QuarryCamera &cam) {
     return base + float3(1.0f, 0.74f, 0.42f) * sunGlow * 0.8f;
 }
 
+// The backdrop: the sky with its distant hills in haze, low on the horizon all round.
+static inline float3 backdrop(float3 dir, constant QuarryCamera &cam) {
+    float3 color = skyColor(dir, cam);
+    float azimuth = atan2(dir.x, dir.y);
+    float ridge = 0.045f + 0.03f * fbm3(float3(azimuth * 6.0f, 2.0f, 0.0f), 4) + 0.012f * fbm3(float3(azimuth * 25.0f, 5.0f, 0.0f), 3);
+    float near = 0.02f + 0.05f * fbm3(float3(azimuth * 11.0f, 9.0f, 3.0f), 4);
+    if (dir.z < ridge) color = mix(float3(0.46f, 0.44f, 0.47f), color, 0.55f);
+    if (dir.z < near) color = mix(float3(0.34f, 0.3f, 0.31f), color, 0.4f);
+    return color;
+}
+
 static inline float dustShadow(float3 world, constant QuarryCamera &cam, texture3d<float> dustLight) {
     if (cam.dustHigh.w < 0.5f) return 1.0f;
     float3 uvw = (world - cam.dustLow.xyz) / (cam.dustHigh.xyz - cam.dustLow.xyz);
@@ -208,6 +219,10 @@ static inline float3 shade(float3 albedo, float3 world, float3 n, constant Quarr
     float distance = length(world - cam.eye.xyz);
     float fog = 1.0f - exp(-distance * distance * 0.7e-6f);
     float3 dir = (world - cam.eye.xyz) / max(distance, 1.0f);
+    // A ridge cut's far plain is seen past the ridge, under the backdrop's hills: it fades into
+    // them, not into the bare sky's paler horizon, which showed as a pale strip under darker hills
+    // (emmettl/bombcad-work#133). A face's view keeps its fog as it was.
+    if (cam.fogColor.w > 1.5f) return mix(lit, backdrop(float3(dir.x, dir.y, 0.0f), cam) * 0.95f, fog);
     return mix(lit, skyColor(float3(dir.x, dir.y, 0.03f), cam) * 0.95f, fog);
 }
 
@@ -805,13 +820,7 @@ vertex SkyOut skyVertex(uint vid [[vertex_id]]) {
 fragment float4 skyFragment(SkyOut in [[stage_in]], constant QuarryCamera &cam [[buffer(0)]]) {
     float4 far = cam.inverseViewProjection * float4(in.ndc, 1.0f, 1.0f);
     float3 dir = normalize(far.xyz / far.w - cam.eye.xyz);
-    float3 color = skyColor(dir, cam);
-    float azimuth = atan2(dir.x, dir.y);
-    float ridge = 0.045f + 0.03f * fbm3(float3(azimuth * 6.0f, 2.0f, 0.0f), 4) + 0.012f * fbm3(float3(azimuth * 25.0f, 5.0f, 0.0f), 3);
-    float near = 0.02f + 0.05f * fbm3(float3(azimuth * 11.0f, 9.0f, 3.0f), 4);
-    if (dir.z < ridge) color = mix(float3(0.46f, 0.44f, 0.47f), color, 0.55f);
-    if (dir.z < near) color = mix(float3(0.34f, 0.3f, 0.31f), color, 0.4f);
-    return float4(color, 1.0f);
+    return float4(backdrop(dir, cam), 1.0f);
 }
 
 fragment float4 tonemap(FullscreenOut in [[stage_in]],
