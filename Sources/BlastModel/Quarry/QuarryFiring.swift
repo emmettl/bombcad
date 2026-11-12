@@ -101,6 +101,21 @@ public struct QuarryLaunch: Sendable {
     public var lift: Float = 0.55
     /// Speed of the break through the rock, for each block's release (m/s). Visual only.
     public var front: Float = 200
+    /// A ridge cut's heave (`applyRidge`), by eye: up to `ridgeSwell` metres over `ridgeRise`
+    /// seconds (a little longer away from the firings), the same through a column within
+    /// `ridgeSwellReach` in plan of a firing, easing to nothing over `ridgeShoulder` from the
+    /// cut's walls; `ridgeCarried` of a swelling block's weight held up meanwhile; and at release
+    /// `ridgeBreak` of the law's launch on top of the swell's velocity.
+    public var ridgeSwell: Float = 4.5
+    public var ridgeRise: Float = 1.5
+    public var ridgeSwellReach: Float = 30
+    public var ridgeShoulder: Float = 8
+    public var ridgeCarried: Float = 1
+    public var ridgeBreak: Float = 0.5
+    /// A ridge cut's rolling resistance in the solver: the spin of a block held up by contact
+    /// decays at this rate (1/s). A clump of spheres has none, and blocks thrown high by the heave
+    /// rolled on down the flanks at a metre or two a second.
+    public var ridgeRollDrag: Float = 2.5
 
     public init() {}
 

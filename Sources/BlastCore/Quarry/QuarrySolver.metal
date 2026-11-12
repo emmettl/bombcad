@@ -26,6 +26,9 @@ struct QuarryUniforms {
     uint bodyCount, sphereCount, cellCount;
     // Below this speed a supported body is damped toward rest (m/s).
     float creepSpeed;
+    // The spin of a body held up by contact decays at this rate (1/s): rolling resistance, a
+    // ridge cut's; none at a face.
+    float rollDrag;
 };
 
 static inline float3 rotate(float4 q, float3 v) {
@@ -232,6 +235,12 @@ kernel void integrate(device QuarryBody *bodies [[buffer(0)]],
     // damping keeps them still, and leaves free flight (no contacts) as it was.
     float implicitShare = 1.0f / (1.0f + B.posInvMass.w * (dt * C + dt * dt * K));
     float3 v = B.velSleep.xyz + F * B.posInvMass.w * dt * implicitShare + swellPush;
+    // A ridge cut's swelling rock is held up (launchSwell.w of its weight; none at a face), so
+    // the crest heaves as a mass: uncarried, gravity took back more than the swell gave.
+    bool carried = B.pad == 0u && B.launchSwell.w > 0.0f;
+    if (carried) {
+        v.z += u.gravity * B.launchSwell.w * dt * implicitShare;
+    }
     float3 w = B.ang.xyz;
     float3 wb = unrotate(B.quat, w);
     float3 tb = unrotate(B.quat, T);
@@ -249,10 +258,16 @@ kernel void integrate(device QuarryBody *bodies [[buffer(0)]],
     // a ridge's flanks, rounded blocks rolled on at a metre a second, so its threshold is higher).
     float3 contact = F + float3(0, 0, u.gravity / B.posInvMass.w);
     float supported = length(contact) * B.posInvMass.w / u.gravity;
-    if (supported > 0.35f && speed < u.creepSpeed) {
+    // (Not rock that is swelling while carried: it is starting to move, not coming to rest.)
+    if (supported > 0.35f && speed < u.creepSpeed && !carried) {
         float keep = exp(-dt * 14.0f);
         v *= keep;
         w *= keep;
+    }
+    // A ridge cut's rolling resistance: a clump of spheres has none, and blocks thrown high by
+    // the heave rolled on down the flanks at a metre or two a second.
+    if (u.rollDrag > 0.0f && supported > 0.35f) {
+        w *= exp(-dt * u.rollDrag);
     }
     float3 pos = B.posInvMass.xyz + v * dt;
     float4 q = B.quat;

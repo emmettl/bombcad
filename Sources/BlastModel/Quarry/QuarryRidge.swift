@@ -283,6 +283,7 @@ extension QuarryLaunch {
             fire: [Float], velocity: [SIMD3<Float>], spin: [SIMD3<Float>], swell: [SIMD4<Float>]
         )
     {
+        guard let ridge = hillside.ridge else { return apply(to: &blocks, firings: firings, face: hillside) }
         var random = QuarryRandom(seed: 77)
         var fire = [Float](repeating: .greatestFiniteMagnitude, count: blocks.count)
         var velocity = [SIMD3<Float>](repeating: .zero, count: blocks.count)
@@ -331,13 +332,28 @@ extension QuarryLaunch {
             direction.z += Self.ridgeLift * (0.6 + 0.4 * random.float())
             direction = simd_normalize(direction + 0.18 * random.unit())
             fire[n] = nearest.time + r / front
-            let reach = r / swellReach
-            let amplitude = swellAmplitude * exp(-reach * reach) + 0.2
-            let thisRise = rise + 0.45 * min(1, r / 25)
-            // The crest heaves: the swell is mostly up.
-            let swellDirection = simd_normalize(0.35 * outward + SIMD3<Float>(0, 0, 0.85) + 0.2 * radial)
-            swell[n] = SIMD4(swellDirection * amplitude / (0.5 * thisRise), thisRise)
-            velocity[n] = direction * max(0.25, speed * random.float(0.7, 1.2))
+            // The heave (stage 3a): the rock over the cut swells up as a mass before it breaks. A
+            // column swells together (by its distance in plan to the nearest firing, over a wide
+            // reach), less toward the cut's walls, so the crest rises as a dome; slowly, and
+            // carried while it swells (the solver holds up `ridgeCarried` of a swelling block's
+            // weight): uncarried, gravity took back more than the swell gave, and the crest's top
+            // only sank before it broke.
+            let plan = SIMD2(c.x - nearest.position.x, c.y - nearest.position.y)
+            let reach = simd_length(plan) / ridgeSwellReach
+            let wall = ridge.halfWidth(at: c.x) + max(0, c.z - ridge.floor) / ridge.wallSlope - abs(c.y)
+            let shoulder = min(1, max(0, wall / ridgeShoulder))
+            let amplitude = ridgeSwell * exp(-reach * reach) * shoulder * shoulder * (3 - 2 * shoulder) + 0.2
+            let thisRise = ridgeRise + 0.3 * min(1, r / 25)
+            // Mostly up, and a little out down the flank.
+            let swellVelocity =
+                simd_normalize(0.3 * outward + SIMD3<Float>(0, 0, 1)) * amplitude / (0.5 * thisRise)
+            swell[n] = SIMD4(swellVelocity, thisRise)
+            // It lets go moving as it swelled, and breaks: part of the law's launch on top, no more
+            // than the law's fastest in all.
+            var launch = swellVelocity + ridgeBreak * direction * max(0.25, speed * random.float(0.7, 1.2))
+            let most = speed0 * 1.2
+            if simd_length(launch) > most { launch *= most / simd_length(launch) }
+            velocity[n] = launch
             spin[n] =
                 random.unit()
                 * min(9, simd_length(velocity[n]) * random.float(0.3, 1.5) / max(block.size, 0.3))

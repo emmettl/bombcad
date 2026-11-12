@@ -54,6 +54,9 @@ public final class QuarrySimulation {
         public var cellCount: UInt32
         /// Below this speed a body held up by contact is damped toward rest (m/s).
         public var creepSpeed: Float
+        /// The spin of a body held up by contact decays at this rate (1/s): a ridge cut's rolling
+        /// resistance; none at a face.
+        public var rollDrag: Float
     }
 
     public let device: MTLDevice
@@ -106,7 +109,10 @@ public final class QuarrySimulation {
                     invInertiaFire: SIMD4(
                         1 / max(mass * inertiaFloor(b).x, 1e-3), 1 / max(mass * inertiaFloor(b).y, 1e-3),
                         1 / max(mass * inertiaFloor(b).z, 1e-3), launchState.fire[n]),
-                    launchSwell: SIMD4(launchState.velocity[n], 0),
+                    // w: the share of its weight held up while it swells (a ridge cut's heave; none
+                    // at a face).
+                    launchSwell: SIMD4(
+                        launchState.velocity[n], hillside.ridge == nil ? 0 : launch.ridgeCarried),
                     spinRise: SIMD4(launchState.spin[n], launch.rise),
                     swell: launchState.swell[n],
                     first: UInt32(b.firstSphere), count: UInt32(b.sphereCount), state: 0, pad: 0))
@@ -155,7 +161,10 @@ public final class QuarrySimulation {
             bodyCount: UInt32(bodyCount), sphereCount: UInt32(sphereCount), cellCount: UInt32(cellCount),
             // A face's floor is level; a ridge's flanks are not, and rounded blocks rolled on down
             // them (emmettl/bombcad-work#131).
-            creepSpeed: hillside.ridge == nil ? 0.6 : 1.0)
+            creepSpeed: hillside.ridge == nil ? 0.6 : 1.0,
+            // A clump of spheres has no rolling resistance: on a ridge's flanks the rock thrown
+            // highest by the heave (emmettl/bombcad-work#134) rolled on at 1 to 2 m/s for ever.
+            rollDrag: hillside.ridge == nil ? 0 : launch.ridgeRollDrag)
         print(
             "grid: cell \(String(format: "%.2f", cell)) m, \(dims.x)x\(dims.y)x\(dims.z) = \(cellCount), dt \(dt) s"
         )

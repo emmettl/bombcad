@@ -1,0 +1,3 @@
+kind: changed
+
+**A ridge cut's crest now heaves as a mass before it breaks.** In the Quarry Face window's ridge cut, the rock over the cut swells up as a dome against the sky over about a second and a half, some 3 m as it swells and about 7 m in all as it breaks apart, vents its dust and spills down into the notch and the flanks. Before, the crest's top only churned and sank as it broke. It reads from the window's opening view and, best, in Record Clip's *Pull back*, whose close shot now watches the crest rise. The Quarry Face scene is unchanged. Illustrative, as before: a stylised firing for the eye, not a blast-design aid ([docs/ridge-cut.md](../../ridge-cut.md)).

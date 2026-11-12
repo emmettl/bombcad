@@ -185,6 +185,11 @@ struct QuarryRidgeTests {
         }
         // (Those below a firing go down onto the floor.)
         #expect(Float(up) > 0.75 * Float(released.count), "\(up) of \(released.count) up")
+        // The heave: every released block swells up, and most let go still rising at least as
+        // fast as they swelled, so the crest goes on rising as a mass as it breaks.
+        #expect(released.allSatisfy { state.swell[$0].z > 0 && state.swell[$0].w >= law.ridgeRise })
+        let rising = released.filter { state.velocity[$0].z >= 0.9 * state.swell[$0].z }.count
+        #expect(Float(rising) > 0.75 * Float(released.count), "\(rising) of \(released.count) rising")
         #expect(Float(outward) > 0.6 * Float(sided))
         // Down the flank: out of the start's side toward the start, out of the end's toward the end.
         #expect(face.outward(at: SIMD3(ridge.cutStart + 3, 0, 0)).x < 0)

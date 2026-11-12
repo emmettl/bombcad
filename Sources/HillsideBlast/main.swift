@@ -64,7 +64,13 @@ let firings = QuarryFiringPattern.pattern(
     face: hillside, count: option(arguments, "--firings").flatMap(Int.init) ?? 16,
     stagger: option(arguments, "--stagger").flatMap(Float.init) ?? 0.1,
     order: option(arguments, "--order").flatMap { QuarryFiringOrder(rawValue: $0) } ?? .leftToRight)
-let launch = QuarryLaunch()
+var launch = QuarryLaunch()
+// A ridge cut's heave, for trying values (QuarryLaunch's ridge settings).
+if let v = option(arguments, "--swell").flatMap(Float.init) { launch.ridgeSwell = v }
+if let v = option(arguments, "--rise").flatMap(Float.init) { launch.ridgeRise = v }
+if let v = option(arguments, "--carried").flatMap(Float.init) { launch.ridgeCarried = v }
+if let v = option(arguments, "--break").flatMap(Float.init) { launch.ridgeBreak = v }
+if let v = option(arguments, "--roll").flatMap(Float.init) { launch.ridgeRollDrag = v }
 
 func writeReport(_ text: String) {
     print(text)

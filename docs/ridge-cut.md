@@ -398,3 +398,146 @@ the view's own line, ending at the view.
   texture, close enough for the blocks' small size (0.57 m median) to read as gravel.
 - *The far plain* through the notch is flat and bare (above).
 - Not looked at on a screen: all of it was made offscreen.
+
+## Stage 3a: a heave that reads, 12 November 2026
+
+emmettl/bombcad-work#134, approved by the user on 12 November. Same standing: illustrative, a
+stylised firing for the eye; nothing here is a load, a blast design or a claim about how real rock
+heaves. Only the ridge cut's launch and two of the solver's ridge-only terms changed; the firings,
+their times and order, the dust, the view and the renderer are as they were.
+
+**What was wrong.** Stage 2b said the crest "churns rather than visibly rising"; measured from the
+poses (`tools/heave.py` below: the 13,770 moving blocks within 3 m of the old surface over the
+cut), it never rose at all. On main the top layer only sank: its median height change was −0.07 m
+at 1.8 s, −1.2 m at 2.5 s, −2.8 m at 3.0 s, and no block of it rose a metre before it broke. Two
+reasons:
+- *Gravity took back the swell.* The swell is dynamic (hillside-blast.md, stage 3): a swelling
+  block is awake and pushed along its swell's velocity, under gravity like any other. At a face the
+  swell is mostly outward along the floor, which holds the rock up. A ridge's is mostly up: at the
+  crest's top, about 12 m from the nearest firing, 2.6 m over about a second, against the 4.9 m a
+  free fall takes in that second. So it never lifted off what lay under it.
+- *The launch slowed it.* A block lets go with the law's launch less the swell's velocity. At the
+  crest's top the law gives about 3.75 m/s (jittered by 0.7 to 1.2), less than the swell's 5 m/s
+  there, so what little
+  lift there was stopped when the rock let go, and the top was thrown about by the launches of the
+  rock under it: the churn.
+
+**What changed** (`QuarryLaunch.applyRidge`, BlastModel; `QuarrySolver.metal`, BlastCore; a ridge
+cut only).
+- *The swell is carried.* While a ridge cut's block swells, the solver holds up its weight (the gas
+  under the burden, stylised): `launchSwell.w` of a body, 1 for a ridge's blocks and 0 at a face,
+  is the share of gravity cancelled until it lets go, and the creep damper leaves a swelling,
+  carried block alone (it is starting to move, not coming to rest). Still dynamic: contact keeps
+  swelling blocks apart, the cure for stage 3's burst blocks is untouched.
+- *Slower, larger, and the same through a column.* Up to 4.5 m (it was 3.4 m, falling off with
+  distance in 3-D to 20 m) over 1.5 s (0.8 s), a little longer away from the firings (+0.3 s at
+  25 m); by the distance in plan to the nearest firing over 30 m, so a column swells together
+  rather than its top least; easing to nothing over 8 m from the cut's walls, so the crest rises
+  as a dome between them; mostly up, 0.3 of it out down the flank, no part of it down.
+- *It lets go still rising.* At release a block keeps its swell's velocity and takes half the
+  law's launch on top (`ridgeBreak` 0.5), capped at the law's fastest (18 m/s). So the dome goes on
+  rising after it lets go, as it breaks apart, and falls back and spills.
+- *Rolling resistance on a ridge.* With the rock thrown higher, more blocks rolled on down the
+  flanks at 1 to 2 m/s for the rest of the event (4 to 19 over 10 cm in the last second in the
+  trials). A clump of spheres has no rolling resistance, so a ridge cut's solver now gives it
+  some: the spin of a block held up by contact decays at 2.5 a second (`rollDrag`, a new uniform,
+  0 at a face). The face's creep threshold and everything else in the solver are as they were.
+- The settings live on `QuarryLaunch` (`ridgeSwell`, `ridgeRise`, `ridgeSwellReach`,
+  `ridgeShoulder`, `ridgeCarried`, `ridgeBreak`, `ridgeRollDrag`); `hillsideblast simulate` takes
+  `--swell`, `--rise`, `--carried`, `--break` and `--roll` for trying others.
+- *Tried and not kept* (each a 20 s run at 100,000 blocks, judged from the poses and from clips):
+  5 m over 1.25 s with 0.7 of the law at release threw the crest 11 m up and 14 m at the
+  90th percentile, a volcano of loose blocks filling the frame by 4.5 s, and left 9 blocks moving
+  in the last second (worst 4.7 m); 4 m and 0.4, and 3.5 m over 1.5 s and 0.5, rose 6 to 7 m but
+  without rolling resistance left 7 to 19 moving (worst 2.3 to 5 m); 3.5 m with rolling resistance
+  1.5 settled well (one block, 0.38 m) but its dome was hard to see from the opening view, about
+  3 m when the dust came; 4.5 m with 1.5 left four moving (2.3 m); 4.5 m with 0.35 of the law rose
+  a little less and left two.
+
+**Measured** (release build, M4 Max Studio, 96,987 blocks, the window's and the film's 240 Hz).
+- *The heave* (top layer, median height change; in brackets the share risen more than a metre):
+  0.16 m at 1.5 s (10%), 1.4 m at 2.1 s (65%), 3.1 m at 2.5 s (89%), 5.3 m at 2.9 s, 6.9 m at
+  3.3 s and at most 7.5 m at 3.7 s (the 90th percentile of blocks 8.9 m), back at the old height
+  by 4.9 s as the rock falls. As a mass: within each 4 m square of the top layer the spread of the
+  rise (interquartile) is 0.11 m at 2.1 s, 0.33 m at 2.5 s and 0.6 m at 2.9 s, against a rise of 3
+  to 5 m; the old churn had 0.33 m of spread at 2.5 s with the rock sinking. The crest begins to
+  move at about 0.7 s and is seen to rise from about 1.6 s, so the calm ridge is on view for a
+  second and a half (it was nearly 2).
+- *Stable.* No NaNs in any run. Fastest block 26.3 m/s (28.6 before; the cap at release is the
+  law's 18 m/s, the rest is falling). The last second's moves (each block's distance from 19 to 20 s),
+  after: worst 1.84 m with one block over 10 cm, and in a second run 1.52 m with two (median and
+  99th percentile 0 in both); the same block both times, from the top of the crest by the start's
+  wall, rolling at about 1.5 m/s on the start's flank. Before, with main's build on the same
+  machine: 1.60 m and two, 0.01 m and none, 2.09 m and two (stage 1's figure: 1.16 m and one). The
+  same as before, within run-to-run spread (the solver's sums are not in a fixed order).
+- *Physics cost* (`simulate --ridge --blocks 100000 --seconds 20`, GPU time, before and after
+  interleaved, other sessions' jobs running beside them in some): a frame of 1/30 s in the event's
+  busy stretch (1 to 10 s), median, 41.1 and 41.4 ms before, 49.4 and 50.4 ms after (65.7 and
+  69.3 ms in a loaded pair): about a fifth more. The whole 20 s event, 15.9 and 17.4 s of GPU
+  before, 17.3 and 18.5 s after (25.6 and 27.5 loaded): 6 to 9% more. More of the rock is moving
+  for longer: more than 5% of the blocks awake from 0.67 to 10.5 s, where it was from 1.3 to 7.6 s.
+- *The window* (`hillsideblast play --ridge --self-test NAME --offscreen`, before, after, after,
+  before) ran while other sessions' GPU jobs ran, and their load swamps the difference: following
+  the first firing as it is simulated, playback at 0.51 and 0.31 times real time in the median
+  before, 0.49 and 0.46 after; the whole event simulated in 23.9 and 28.1 s before, 20.9 and 20.7 s
+  after; work a frame 66.9 and 82.7 ms before, 34.2 and 34.8 ms after (stage 1, on a quiet
+  machine: 18 ms and 0.77 times real time). Expect following to be a little slower than before on
+  a quiet machine, by the fifth more physics above; not measured quietly.
+
+**Quarry Face unchanged.** A face's blocks carry 0 in `launchSwell.w` and its solver 0 in
+`rollDrag`, so neither new term runs for it, and the face's launch is not touched. Stills from the
+same face poses (`ridge-heave/face-before/poses`, 110,000 blocks, `render --stills 1.0,3.5,5.9`)
+with main's `hillsideblast` and with this one are byte-identical PNGs. The face's simulation itself
+cannot be compared byte for byte: two runs of main's own build part at 0.9 s (frame 27), and main's
+against this one part at the same frame, by the same amounts after (at 6 s a median block 0.17 m
+apart in both pairs, 99th percentile 2.25 m).
+
+**Checked by eye**, before (main's build, its own 20 s run) and after, same camera and times, with
+`hillsideblast clip` (the window's own Record Clip from stored poses, frames taken from the movie
+files): the opening view held still over 20 s, frames at 1.0, 1.6, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0,
+3.3, 3.6, 4.5, 7.0, 12.0 and 19.9 s; *Pull back* over 12 s (frames 0.5 to 11.9 s); and *Pull back*
+at quarter speed from 1.2 s (3 s of the event in 12 s of movie). What they show:
+- *From the opening view* (94 m), on main the crest's skyline stays where it is and goes ragged
+  from 2.0 s, and by 3.3 s the crest is behind the firings' columns. Now the skyline over the cut
+  rises from about 2.0 s, by about 2.5 m at 2.4 s and 5 m at 2.8 s, a smooth swelling dome with
+  the old surface still on it; at 2.8 s it opens, the dust coming out of it, and at 3.3 s a mound
+  of breaking rock stands over the old crest against the sky with the columns beside it rather than
+  over it; by 4.5 s it spills down into the notch and the near flank. The end is much as before:
+  the notch in the skyline with rock in it and down the near flank (at 7 and 19.9 s, a little more
+  rock on the near flank and on top of the far shoulder's pile).
+- *In Pull back's close shot* the change is plainest: the crest's top rises into the sky as one
+  surface from 1.6 to 2.4 s, then breaks into blocks with the dust venting through, where main's
+  was a flat field of loose pieces under the columns. At quarter speed the dome's rise and its
+  breaking take about 6 s of movie.
+- Files: `$BOMBCAD_DATA/hillside-blast/ridge-heave/`: `before/clips/` (main: `still2.mp4`,
+  `pullback2.mp4`, `pullback-quarter.mp4` and their frames) and `after/clips/` (`still.mp4`,
+  `pullback.mp4`, `pullback-quarter.mp4` and frames), crops of the crest at the same times in
+  `crops/`, the poses in `before/poses` and `after/poses`, the trials in `v1` to `v7`, the cost
+  runs in `cost/`, the face check in `face-before/`, `face-stills-main/` and `face-stills-new/`;
+  `tools/heave.py` (the heave from a poses file) and `tools/settle.py` (the last second, fastest,
+  NaNs and cost from a run).
+
+**Tests.** `QuarryRidgeTests/launch` (BlastModel, Linux) also asks that every released block swell
+up over at least the ridge's rise and that most let go still rising at least as fast as they
+swelled. `QuarrySimulationTests/ridgeHeaves` (BlastCore, GPU): on the built-in ridge at 20,000
+blocks, the top of the rock, watched when its first block lets go, has risen by its median more
+than 0.8 m and by its 10th percentile more than 0.3 m among the blocks 0.7 of the way through their
+swell; with the carry turned off (`ridgeCarried` 0) it fails, the median at −2.85 m.
+
+**What still looks wrong.**
+- *From the opening view the dome is modest until it breaks*: 2 to 3 m of rise on a crest 25 m
+  above the cut's floor, 94 m off, is a slow swelling of the skyline that a still barely shows; it
+  reads in motion, and best in Pull back. The big rise (5 to 7.5 m) comes as it breaks apart, so
+  the most striking moment is a mound of loose rock rather than an intact dome. A larger swell made
+  a volcano and threw rock far down the flanks (above).
+- *The heave runs along the cut with the firings* (1.8 to 3.3 s, from the far flank over the crest
+  to the near one), so it is a travelling bulge, not one dome: the part nearest the camera rises
+  last, toward the eye, while the far part is already falling.
+- *The firings' dust is still born where the old ground was*, now inside the risen rock: it shows
+  as dust venting from the mound, which reads well in the close shot, but a column can also appear
+  out of the middle of the breaking rock rather than from its top.
+- *The calm ridge before the event is shorter* (about 1.6 s on view, from nearly 2).
+- *More rock moving for longer* costs about a fifth more physics a frame while it moves and keeps
+  the solver busy to about 10.5 s; the window's following of a firing is correspondingly slower.
+- One block still rolls at the end, as before.
+- Not looked at on a screen: all of it was made offscreen.

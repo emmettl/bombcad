@@ -52,4 +52,44 @@ struct QuarrySimulationTests {
         let start = face.blocks.map(\.centre)
         #expect(zip(start, after).filter { simd_distance($0, $1) > 1 }.count > bodies / 4)
     }
+
+    @Test(
+        "A ridge cut's crest heaves as a mass before it breaks: the rock over the cut rises while it swells")
+    func ridgeHeaves() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        var options = QuarryFace.Options()
+        options.blocks = 20000
+        options.meshDetail = 1
+        var face = try QuarryFace(site: .builtIn(.ridgeCut), options: options)
+        face.generate()
+        let firings = QuarryFiringPattern.pattern(face: face)
+        let launch = QuarryLaunch()
+        var blocks = face.blocks
+        let state = launch.apply(to: &blocks, firings: firings, face: face)
+        let simulation = try QuarrySimulation(
+            device: device, face: face, launch: launch, firings: firings, dt: 1 / 240)
+        // The rock nearest the old ground over the cut, fired.
+        let top = (0..<blocks.count).filter {
+            let c = face.blocks[$0].centre
+            return state.fire[$0] < .greatestFiniteMagnitude && face.height(face.original, c.x, c.y) - c.z < 2
+        }
+        #expect(top.count > 200)
+        // Watched when the first of it lets go, among those that have swelled for 0.7 of their rise
+        // and not yet let go.
+        let first = top.map { state.fire[$0] }.min()!
+        let frames = Int((first * 30).rounded(.down))
+        for _ in 0..<frames { simulation.advance(substeps: 8) }
+        let now = Float(frames) / 30
+        let swelling = top.filter {
+            state.fire[$0] > now && state.fire[$0] - state.swell[$0].w < now - 0.7 * state.swell[$0].w
+        }
+        #expect(swelling.count > 20, "\(swelling.count) swelling at \(now) s")
+        let p = simulation.pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * blocks.count)
+        let rise = swelling.map { p[2 * $0].z - face.blocks[$0].centre.z }.sorted()
+        // At 0.7 of its rise the swell has moved a block 0.45 of its amplitude (up to 4.5 m;
+        // less by the walls): uncarried, the crest's top only sank before it broke.
+        #expect(rise[rise.count / 2] > 0.8, "median rise \(rise[rise.count / 2]) m")
+        // As a mass: most of it rises together.
+        #expect(rise[rise.count / 10] > 0.3, "10th percentile \(rise[rise.count / 10]) m")
+    }
 }
