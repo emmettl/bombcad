@@ -131,7 +131,9 @@ public enum QuarryRock {
         let p2 = (a.x - q) * (a.x - q) + (b.y - q) * (b.y - q) + (c.z - q) * (c.z - q) + 2 * p1
         let p = sqrt(p2 / 6)
         let bm = (m - simd_float3x3(diagonal: SIMD3(repeating: q))) * (1 / p)
-        let r = max(-1, min(1, simd_determinant(bm) / 2))
+        // The determinant as the columns' triple product: Linux's simd has no float 3 x 3 one.
+        let determinant = simd_dot(bm.columns.0, simd_cross(bm.columns.1, bm.columns.2))
+        let r = max(-1, min(1, determinant / 2))
         let phi = acos(r) / 3
         let e1 = q + 2 * p * cos(phi)
         let e3 = q + 2 * p * cos(phi + 2 * .pi / 3)
