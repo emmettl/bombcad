@@ -48,6 +48,28 @@ No single effect is universally dominant. The useful model depends on the event,
 environment and the question. A thermal exposure study and a study of structural collapse
 need different detail and different evidence.
 
+## Landscapes and a wider audience
+
+Explosions in terrain are a strand of their own: a quarry face fired in sequence, a charge on
+or in a slope, a cut through a ridge. Rock breaking along its bedding, a face slumping away
+and dust rising in low light have a visual appeal that the simplified building
+representations lack, and they need no engineering background to enjoy. They make the
+product more approachable and interesting to people who are not engineers, and they widen
+what “great and small” covers, from a charge in a room to a hillside.
+
+The [Quarry Face scene](hillside-blast.md) is the first of these: a hillside broken into
+rigid blocks and fired by a stylised ripple, to watch, scrub and fire again. Further scenes
+could include a charge on a slope that throws out a crater, a cut through a ridge, and a
+quarry event joined to the air blast, so that the shock and the dust are seen together as
+one event.
+
+These scenes are illustrative. Their layouts are stylised rather than blast designs, and
+they make no claims about fragmentation, flyrock or safe distances. The
+[credibility](#credibility-as-a-product-feature) principle applies to them as to everything
+else: each scene states its standing. Any part later offered as a modelled result, as
+crater formation is beginning to be, must earn that standing separately, with its own
+evidence.
+
 ## What would distinguish BombCAD
 
 Tools already illustrate explosions and weapons effects at geographic scales.
@@ -137,6 +159,8 @@ scales within one coherent environment and learn something meaningful at each sc
 - Larger scenes remain practical to construct, run and inspect.
 - Comparisons and exports preserve the model assumptions and evidential standing.
 - New physical effects enter the product with explicit scope and relevant validation.
+- Landscape scenes engage someone with no engineering background, and say plainly that
+  they are illustrative.
 
 “All explosions great and small” expresses the ambition. Delivering it means building an
 environment in which the physics, the experience and the evidence grow together.
