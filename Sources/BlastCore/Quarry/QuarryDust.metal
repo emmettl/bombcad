@@ -5,7 +5,7 @@ using namespace metal;
 
 struct QuarryDustUniforms {
     float4 low;
-    float4 hdtsteps; // h, dt
+    float4 hdtsteps; // h, dt, what velocity and density keep a step
     int4 dims;
     float4 wind;
     float4 sun;
@@ -49,7 +49,7 @@ kernel void dustAdvectVelocity(texture3d<float, access::sample> vIn [[texture(0)
     float3 s = vIn.sample(triSampler, back).xyz;
     float4 carried = vIn.sample(triSampler, back);
     // Heat cools with an e-folding time of about three seconds.
-    vOut.write(float4(s * 0.995f, carried.w * exp(-u.hdtsteps.y / 1.6f)), id);
+    vOut.write(float4(s * u.hdtsteps.z, carried.w * exp(-u.hdtsteps.y / 1.6f)), id);
 }
 
 kernel void dustForces(texture3d<float, access::read> vIn [[texture(0)]],
@@ -150,7 +150,7 @@ kernel void dustAdvectDensity(texture3d<float, access::sample> dIn [[texture(0)]
     v += u.wind.xyz + float3(0.0f, 0.0f, -0.05f);
     float3 size = float3(u.dims.xyz);
     float3 back = (pos - v * u.hdtsteps.y / u.hdtsteps.x) / size;
-    float d = dIn.sample(triSampler, back).r * 0.9992f;
+    float d = dIn.sample(triSampler, back).r * u.hdtsteps.w;
     dOut.write(float4(d), id);
 }
 
@@ -199,7 +199,7 @@ kernel void dustCorrect(texture3d<float, access::sample> d0 [[texture(0)]],
         lo = min(lo, value);
         hi = max(hi, value);
     }
-    dOut.write(float4(clamp(corrected, lo, hi) * 0.9992f * deposit), id);
+    dOut.write(float4(clamp(corrected, lo, hi) * u.hdtsteps.w * deposit), id);
 }
 
 // A tileable noise volume for shaping the cloud: inverted Worley at three frequencies.

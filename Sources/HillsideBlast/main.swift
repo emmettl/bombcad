@@ -298,8 +298,9 @@ if command == "render" {
         stillFrames = [:]
     }
     if clip {
-        let writer = try ClipWriter(
-            url: dir.appendingPathComponent("clip.mp4"), width: 1920, height: 1080, fps: fps)
+        let writer = try QuarryClipWriter(
+            url: dir.appendingPathComponent("clip.mp4"), width: 1920, height: 1080, fps: fps,
+            bitrate: option(arguments, "--bitrate").flatMap(Int.init) ?? 10_000_000)
         let start = Date()
         for i in 0..<frames {
             advance(to: i)

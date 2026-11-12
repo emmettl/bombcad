@@ -1,3 +1,4 @@
+import BlastModel
 import Observation
 import SwiftUI
 
@@ -39,6 +40,8 @@ final class ProjectSession {
         /// user last chose, the explorer until then; a saved or made project in the workbench.
         @State private var mode = WindowMode.workbench
         @State private var explorer: ExplorerModel?
+        /// This window's place among the terrains File ▸ New Quarry Face can break.
+        @State private var quarryTerrain = UUID()
 
         var body: some View {
             Group {
@@ -73,8 +76,19 @@ final class ProjectSession {
                 if mode == .explore, explorer?.scene != nil { return }
                 if let snapshot, snapshot != document { document = snapshot }
             }
-            .onDisappear { session?.suspend() }
+            .onDisappear {
+                session?.suspend()
+                QuarryProjectTerrains.shared.remove(quarryTerrain)
+            }
+            .onChange(of: document.scenario.terrain, initial: true) { _, terrain in offerTerrain(terrain) }
+            .onChange(of: fileURL) { _, _ in offerTerrain(document.scenario.terrain) }
             .onChange(of: document) { _, incoming in session?.receive(incoming) }
+        }
+
+        /// The project's terrain, offered to the quarry face while this window is open.
+        private func offerTerrain(_ terrain: Terrain?) {
+            let name = fileURL?.deletingPathExtension().lastPathComponent ?? document.scenario.name
+            QuarryProjectTerrains.shared.set(quarryTerrain, name: name, terrain: terrain)
         }
 
         /// Shows the explorer or the workbench, and remembers the choice for new windows.

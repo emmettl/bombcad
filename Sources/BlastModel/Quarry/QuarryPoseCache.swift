@@ -196,4 +196,49 @@ public final class QuarryPoseCache: @unchecked Sendable {
             }
         }
     }
+
+    /// The pose at `position`, a frame number with a fraction, into `pose`: between stored
+    /// frames as `decode(frame:into:)` interpolates, so a slow-motion clip can show the moments
+    /// between the event's frames. Held below `available`. A block shows as released from the
+    /// frame it was released at (emmettl/bombcad-work#128).
+    public func decode(at position: Double, into pose: UnsafeMutablePointer<SIMD4<Float>>) {
+        let u = max(0, min(Double(max(0, available - 1)), position))
+        let whole = Int(u.rounded(.down))
+        let a = whole / stride
+        let frameA = a * stride
+        let frameB = min(frameA + stride, frames - 1)
+        // Stored index a + 1 is frame a·stride + stride, or the last frame when it comes sooner.
+        let (b, t): (Int, Float) =
+            frameB > frameA && u > Double(frameA)
+            ? (a + 1, Float((u - Double(frameA)) / Double(frameB - frameA))) : (a, 0)
+        nonisolated(unsafe) let pa = positions + a * moving * 3
+        nonisolated(unsafe) let pb = positions + b * moving * 3
+        nonisolated(unsafe) let oa = orientations + a * moving
+        nonisolated(unsafe) let ob = orientations + b * moving
+        nonisolated(unsafe) let target = pose
+        let (slots, rest) = (slot, rest)
+        nonisolated(unsafe) let released = UnsafePointer(releaseFrames)
+        let (low, scale) = (low, simd_max(high - low, SIMD3(repeating: 1e-3)) / 65535)
+        let chunk = 8192
+        DispatchQueue.concurrentPerform(iterations: (bodies + chunk - 1) / chunk) { c in
+            for n in (c * chunk)..<min(slots.count, (c + 1) * chunk) {
+                let s = Int(slots[n])
+                let w: Float = released[n] != UInt16.max && Int(released[n]) <= whole ? 1 : 0
+                guard s >= 0 else {
+                    target[2 * n] = SIMD4(rest[2 * n].x, rest[2 * n].y, rest[2 * n].z, w)
+                    target[2 * n + 1] = rest[2 * n + 1]
+                    continue
+                }
+                func position(_ p: UnsafeMutablePointer<UInt16>) -> SIMD3<Float> {
+                    low + SIMD3(Float(p[3 * s]), Float(p[3 * s + 1]), Float(p[3 * s + 2])) * scale
+                }
+                let x = position(pa) + (position(pb) - position(pa)) * t
+                var q0 = Self.unpack(oa[s])
+                let q1 = Self.unpack(ob[s])
+                if simd_dot(q0, q1) < 0 { q0 = -q0 }
+                target[2 * n] = SIMD4(x, w)
+                target[2 * n + 1] = simd_normalize(q0 + (q1 - q0) * t)
+            }
+        }
+    }
 }

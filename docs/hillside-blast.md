@@ -576,3 +576,90 @@ their large-scale relief; a band of smooth terrain still shows at the foot of th
 strip's right end, and the left end at the frame's edge is still a smooth wall; and the shape spread,
 by the numbers, hardly widened. A dust sheet like the old one was not seen again, but the dust change
 could not be shown on the old poses (the new rock is a different set of blocks).
+
+## Placing the strip, choosing the ground, and clips, 12 November 2026
+
+Proposed to the user on 12 November and in the direction they approved (emmettl/bombcad-work#128),
+done while they were away. Same standing: illustrative, stylised firing patterns, not a
+blast-design aid. The look and the event are unchanged; this is about handling the window.
+
+**The strip in the 3-D view.** *Place strip* (top right of the view) turns on placing: the event
+goes back to its first frame and pauses, so the face shows as it stood before the blast, which is
+the ground a strip is laid on. The strip is drawn over the view: the old face's line along it at half
+the face's height, the line of the new face `depth` (26 m) behind it, dashed, and a handle at each
+end. Under the cursor a ring marks the face point a drag would start from (grey, crossed, where
+nothing near is steep enough). Drag along the face to lay a new strip, or drag a handle to move one
+end; on release the rock is broken and fired as from the map, which stays as it was. Option-drag
+orbits and shift-drag pans while placing. How it works (`QuarryStripGuide`, BlastModel):
+- the ground under the cursor is the old surface along the view ray (`QuarrySession.groundPoint`), so
+  a point hidden behind a bulge of the face picks the bulge, as you see it;
+- it snaps to the face line: of the ground within 25 m steeper than a rise of 0.8 m in 2 m (about
+  22°), the nearest point, then the steepest point across the face there;
+- the lines are found as the layout finds the face (the steepest rise within 40 m across the strip,
+  smoothed), at every 3 m; the overlay is a few Core Animation layers above the Metal view, so it is
+  redrawn at once with each mouse event, not at the next frame, and follows the camera each frame.
+
+**An opened terrain's area.** Opening a GeoTIFF or ESRI ASCII grid now shows an overview of the whole
+file (a shaded relief up to 560 pixels across, gaps in grey) with a square to drag to the area to
+break, 300 m to 1.2 km across, taken at 2 m. *Choose area…* brings the same file's overview back. The
+ground then starts with a strip along its steepest face (the steepest ground over 8 m at least 60 m
+in from the edges, followed out along its line in steps), broken at once; where nothing is steep
+enough it asks for a strip to be dragged. A fix on the way: the crop was placed by its offset from
+the file's corner without the corner itself, so any file whose corner is not at (0, 0), which is
+nearly every survey, was refused as outside it.
+
+**The project's own terrain.** Each project window says what its terrain is while it is open
+(`QuarryProjectTerrains`); a flat one is not offered. *Project's terrain* (a menu when several are
+open) breaks it the same way, in the project's own coordinates.
+
+**Clips.** *Record Clip…* writes an H.264 .mp4 at 1920 × 1080 and 30 frames a second, to a place you
+choose: the view as it stands, held still or turned slowly (0.6 rad, eased) round what it looks at;
+from the event's start or from the time shown; 2 to 20 s of the event; at real time, half or quarter
+speed. Progress shows in the sidebar, with Cancel (which leaves no file); the window keeps playing,
+drawing at 15 frames a second. `QuarryClipRecorder` (BlastRender) has its own renderer and dust, so
+the window is not disturbed, and runs the dust and chips from the event's start to the clip's first.
+It reads the stored event and waits for frames not yet simulated; if the event stops (a refire), the
+clip ends there. The clip writer is the one `hillsideblast render --clip` used, moved to BlastRender.
+
+*Slow motion* draws the moments between the stored frames: `QuarryPoseCache.decode(at:)` takes a
+fractional frame, between stored frames as it already interpolated (positions linearly, orientations
+normalised), and the dust and chips step at the finer rate (120 steps a second at quarter speed). So
+that the dust is the same at any rate, the two sources that happen once (the puff as a block lets go,
+the spray of an impact) are scaled by the rate over 30, and what velocity and density keep each step
+(0.995 and 0.9992 in 1/30 s) is the same per second; at 30 frames a second all of it is the numbers
+as they were, so the window and `hillsideblast` are unchanged. Interpolated motion is linear between
+stored frames 1/15 s apart, which shows as slightly straight paths at quarter speed in fast tumbling.
+
+**Measured** (release build, M4 Max Studio, the window's own session offscreen with its 100,000
+blocks, about 108,400 made; `BOMBCAD_INTERFACE_REVIEW=dir swift test -c release -Xswiftc
+-enable-testing --filter QuarryFaceReviewTests/handling`):
+- *Strip drag:* from each mouse event's timestamp to the overlay committed with it, 0.34 ms
+  median, 0.45 ms p90, 1.24 ms worst over 60 events (picking, snapping, the lines and the
+  projection; a debug build, 2.9 ms median). The display adds up to one refresh on top; not measured
+  on the glass. Strip released → its event on view: 2.1 s, as before.
+- *Clips:* the whole 20 s event at real time from this view, 600 frames (20 s of movie) in 15.6 s, 24.7 ms a frame median; the busiest 4 s (2–6 s) at
+  quarter speed on a slow orbit, 480 frames (16 s of movie) in 14.3 s, of which 1.6 s ran the dust up to 2 s, 26.9 ms a frame median. That is faster than real time at 1080p: about 27 ms a
+  movie frame, of which about 14 ms is the draw on the GPU and 5 ms the dust step. The window was
+  offscreen and not drawing meanwhile; on screen it draws at 15 frames a second beside the clip,
+  which will slow it somewhat (not measured). While recording,
+  Metal allocated rises from 1,524 MB to at most 2,279 MB (its own renderer and dust, 0.75 GB), freed when it ends. Files at 14 Mb/s: about 1.7 MB a second.
+- Frames were taken from both files themselves at five times each (2%, 20%, 40%, 60% and 98% of the
+  way): the calm face, the rock going and the dust rising, the settled pile, and in the orbit the
+  camera turning; none blank or frozen.
+
+**Tests.** `QuarryStripGuideTests` (BlastModel, Linux): snapping from the floor and the top, none on
+the flat; the lines along the face and the new face's line 26 m in; a first strip along the built-in
+face, none on the flat; the crop kept inside the file and read from the place chosen in a projected
+file far from the origin; the overview's size and gaps; poses between frames. `QuarryFaceHandlingTests`
+(BombCAD, GPU, offscreen): a strip dragged along the face in the 3-D view lands on the face line and
+is broken, an end dragged moves only that end, the overlay leaves with placing; an area chosen on an
+overview and a project's terrain each start a strip on the face; a half-speed clip has its frames and
+length, moves, and Cancel leaves nothing.
+
+**Where it stopped.**
+- The 3-D view stretches the renderer's 16:9 frame over the view, whatever its shape (since stage 1),
+  so in the default window the rock is squeezed sideways by about a quarter; the clip, at 16:9, is
+  not. Picking allows for it. Rendering at the view's own shape was not done here.
+- Placing has not been tried by hand on a screen: the drags were synthesised offscreen.
+- The strip is laid on the ground as it was before any blast; strips do not build on each other.
+- A clip is of the window's quality (its mesh, 1.5 m dust, no supersampling), not the film's.

@@ -40,6 +40,31 @@
         private(set) var mapSize = SIMD2<Float>(1, 1)
         /// Bumped whenever the session changes or fires, for the view.
         private(set) var version = 0
+        /// Bumped whenever the ground changes, for the strip's lines drawn over the 3-D view.
+        private(set) var terrainGeneration = 0
+        /// Placing the strip in the 3-D view: dragging there lays it along the face.
+        var stripMode = false {
+            didSet {
+                // The strip is laid on the ground as it stands before the blast: show that.
+                guard stripMode, !oldValue, let session else { return }
+                session.playing = false
+                session.seek(to: 0)
+            }
+        }
+        /// An opened terrain file, while its area is chosen; the last one, to choose again.
+        var cropChoice: QuarryCropChoice?
+        private(set) var lastCropChoice: QuarryCropChoice?
+        /// The clip to record: how the camera moves, from where, how much of the event, how slowly.
+        var clipMotion = QuarryClipCamera.Motion.still
+        var clipFromShown = false
+        var clipSeconds = 10.0
+        var clipSpeed: Float = 1
+        /// The movie's size in pixels.
+        var clipSize = SIMD2<Int>(1920, 1080)
+        private(set) var recorder: QuarryClipRecorder?
+        private(set) var clipShare: Float = 0
+        private(set) var clipStatus = ""
+        private(set) var lastClip: QuarryClipRecorder.Report?
         let device: MTLDevice?
         private var keyRoot: URL
 
@@ -59,40 +84,75 @@
         func useBuiltIn() {
             site = .builtIn()
             terrainName = "Built-in hillside"
+            terrainGeneration += 1
             makeMap(around: (site.start + site.end) / 2, radius: 260)
             draftStart = nil
             draftEnd = nil
             prepare()
         }
 
+        /// Reads a terrain file and offers an overview of the whole of it to choose the area from.
         func openTerrain(_ url: URL) {
             do {
                 let grid = try ElevationGrid(contentsOf: url)
-                // A crop at 2 m round the grid's middle, up to 1.2 km across.
-                let spacingMetres = grid.spacingInMetres(near: grid.southWest)
-                let extent = SIMD2<Float>(
-                    Float(Double(grid.columns - 1) * spacingMetres.x),
-                    Float(Double(grid.rows - 1) * spacingMetres.y))
-                let size = simd_min(extent, SIMD2(repeating: 1200))
-                let corner = (extent - size) / 2
-                let origin = SIMD2(
-                    Double(corner.x / Float(spacingMetres.x)), Double(corner.y / Float(spacingMetres.y)))
-                let crop = try grid.terrain(
-                    origin: origin * grid.step + grid.southWest - grid.southWest, size: size, spacing: 2,
-                    name: url.lastPathComponent)
-                site = QuarrySite(
-                    terrain: crop.terrain, start: size * SIMD2(0.35, 0.5), end: size * SIMD2(0.65, 0.5))
-                terrainName = url.lastPathComponent
-                makeMap(around: size / 2, radius: max(size.x, size.y) / 2)
-                prepareCount += 1
-                incoming = nil
-                preparing = nil
-                session = nil
-                problem = "Drag along a face on the map to choose the strip."
-                version += 1
+                cropChoice = QuarryCropChoice(grid: grid, name: url.lastPathComponent)
             } catch {
                 problem = "Couldn't read that terrain: \(error.localizedDescription)"
             }
+        }
+
+        /// The last terrain file's overview again, to choose another area of it.
+        func chooseAreaAgain() {
+            cropChoice = lastCropChoice
+        }
+
+        /// Takes the area chosen on the overview: a 2 m crop of it becomes the ground.
+        func useCrop(_ choice: QuarryCropChoice) {
+            cropChoice = nil
+            lastCropChoice = choice
+            do {
+                let terrain = try choice.crop.terrain(from: choice.grid, name: choice.name)
+                useTerrain(terrain, name: choice.name)
+            } catch {
+                problem = "Couldn't crop that terrain: \(error)"
+            }
+        }
+
+        /// A project's own terrain, as its window has it.
+        func useProjectTerrain(_ entry: QuarryProjectTerrains.Entry) {
+            useTerrain(entry.terrain, name: entry.name)
+        }
+
+        /// Makes `terrain` the ground, with a first strip along its steepest face if it has one,
+        /// and breaks it; else asks for a strip to be dragged.
+        func useTerrain(_ terrain: Terrain, name: String) {
+            terrainName = name
+            terrainGeneration += 1
+            draftStart = nil
+            draftEnd = nil
+            let extent = SIMD2(Float(terrain.columns - 1), Float(terrain.rows - 1)) * terrain.spacing
+            let whole = extent.max() <= 1300
+            if let strip = QuarryStripGuide.suggest(terrain: terrain) {
+                site = QuarrySite(terrain: terrain, start: strip.start, end: strip.end)
+                if whole {
+                    makeMap(around: terrain.origin + extent / 2, radius: extent.max() / 2)
+                } else {
+                    makeMap(around: (strip.start + strip.end) / 2, radius: 400)
+                }
+                prepare()
+                problem = nil
+                return
+            }
+            site = QuarrySite(
+                terrain: terrain, start: terrain.origin + extent * SIMD2(0.35, 0.5),
+                end: terrain.origin + extent * SIMD2(0.65, 0.5))
+            makeMap(around: terrain.origin + extent / 2, radius: min(extent.max(), 1200) / 2)
+            prepareCount += 1
+            incoming = nil
+            preparing = nil
+            session = nil
+            problem = "Nothing steep enough for a face was found. Drag along a slope on the map."
+            version += 1
         }
 
         /// A shaded relief of the ground round `centre`, for dragging the strip on.
@@ -100,40 +160,64 @@
             let terrain = site.terrain
             let size = 360
             let low = centre - radius
-            let step = 2 * radius / Float(size)
-            var pixels = [UInt8](repeating: 0, count: size * size * 4)
-            var lowest = Float.infinity
-            var highest = -Float.infinity
-            for j in 0..<size {
-                for i in 0..<size {
-                    let h = terrain.height(at: low + SIMD2(Float(i), Float(j)) * step)
-                    lowest = min(lowest, h)
-                    highest = max(highest, h)
-                }
-            }
-            for j in 0..<size {
-                for i in 0..<size {
-                    let p = low + SIMD2(Float(i), Float(j)) * step
-                    let h = terrain.height(at: p)
-                    let n = terrain.normal(at: p)
-                    let light = max(0, simd_dot(n, simd_normalize(SIMD3(-0.6, 0.5, 0.65))))
-                    let tone = 0.35 + 0.45 * light + 0.2 * (h - lowest) / max(highest - lowest, 1)
-                    // Rows from the top, so north is up.
-                    let k = 4 * (i + size * (size - 1 - j))
-                    pixels[k] = UInt8(max(0, min(255, tone * 200)))
-                    pixels[k + 1] = UInt8(max(0, min(255, tone * 185)))
-                    pixels[k + 2] = UInt8(max(0, min(255, tone * 160)))
-                    pixels[k + 3] = 255
-                }
-            }
-            let provider = CGDataProvider(data: Data(pixels) as CFData)!
-            map = CGImage(
-                width: size, height: size, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: size * 4,
-                space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
-                provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+            let pixels = QuarryRelief.rgba(
+                width: size, height: size, metresPerPixel: 2 * radius / Float(size)
+            ) { terrain.height(at: low + $0) }
+            map = QuarryCropChoice.image(pixels, width: size, height: size)
             mapOrigin = low
             mapSize = SIMD2(repeating: 2 * radius)
+        }
+
+        /// Records a clip of the event on view to `url`, with the clip settings: the window keeps
+        /// playing, drawing less often, while it is made.
+        func recordClip(to url: URL) {
+            guard let session, let cache = session.cache, let device else { return }
+            var camera = QuarryClipCamera(
+                focus: session.focus, yaw: session.yaw, pitch: session.pitch, distance: session.distance,
+                fovDegrees: session.fovDegrees)
+            camera.motion = clipMotion
+            var request = QuarryClipRequest(url: url, camera: camera)
+            request.start = clipFromShown ? Float(session.frame) / QuarrySession.frameRate : 0
+            request.seconds = max(
+                1 / QuarrySession.frameRate, min(Float(clipSeconds), session.eventSeconds - request.start))
+            request.speed = clipSpeed
+            request.width = clipSize.x
+            request.height = clipSize.y
+            let run = session.run
+            let recorder = QuarryClipRecorder(
+                device: device, face: session.face, cache: cache, firings: run?.firings ?? session.firings,
+                request: request, stillComing: { [weak run] in run?.isSimulating == true })
+            self.recorder = recorder
+            clipShare = 0
+            clipStatus = "Starting…"
+            lastClip = nil
+            recorder.start { [weak self] share, status in
+                MainActor.assumeIsolated {
+                    guard let self, self.recorder === recorder else { return }
+                    self.clipShare = share
+                    self.clipStatus = status
+                }
+            } done: { [weak self] result in
+                MainActor.assumeIsolated {
+                    guard let self, self.recorder === recorder else { return }
+                    self.recorder = nil
+                    switch result {
+                    case .success(let report):
+                        self.lastClip = report
+                        self.clipStatus = String(
+                            format: "Saved %@: %.1f s, %d frames, made in %.0f s%@",
+                            report.url.lastPathComponent, report.videoSeconds, report.frames,
+                            report.wallSeconds,
+                            report.cutShort ? " (the event stopped before the end asked for)" : "")
+                    case .failure(let error):
+                        self.clipStatus = "\(error)"
+                    }
+                }
+            }
+        }
+
+        func cancelClip() {
+            recorder?.cancel()
         }
 
         var settings: QuarryFiringSettings {
@@ -240,26 +324,308 @@
         }
     }
 
-    /// The 3-D view: the session's frame; drag to orbit, shift-drag to pan, scroll to zoom.
+    /// The 3-D view: the session's frame; drag to orbit, shift-drag to pan, scroll to zoom. In
+    /// strip mode a drag lays the strip along the face under the cursor, or moves an end of it, with
+    /// the strip drawn over the view; option-drag orbits then.
     final class QuarryMetalView: MTKView {
         var session: QuarrySession?
+        weak var model: QuarryFaceModel?
+        let overlay = QuarryStripOverlay(frame: .zero)
+        private enum Drag {
+            case orbit, pan
+            case start, end
+            case draw
+        }
+        private var drag: Drag?
+        /// The snapped ground point under the cursor in strip mode, and whether it is on a face.
+        private var hover: (point: SIMD2<Float>, onFace: Bool)?
+        /// The strip's lines in the ground's metres, kept while the strip and ground are unchanged.
+        private var lines: (key: [Float], lines: QuarryStripGuide.Lines)?
+        /// Milliseconds from each strip drag's event to the overlay drawn with it, for the record.
+        private(set) var dragLatencies: [Double] = []
+
+        override init(frame: CGRect, device: MTLDevice?) {
+            super.init(frame: frame, device: device)
+            overlay.autoresizingMask = [.width, .height]
+            overlay.frame = bounds
+            addSubview(overlay)
+        }
+
+        @available(*, unavailable)
+        required init(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
         override var acceptsFirstResponder: Bool { true }
+
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            for area in trackingAreas { removeTrackingArea(area) }
+            addTrackingArea(
+                NSTrackingArea(
+                    rect: .zero,
+                    options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect, .mouseEnteredAndExited],
+                    owner: self))
+        }
+
+        private var stripMode: Bool { model?.stripMode == true }
+
+        /// The view's projection, as the renderer draws it (its frame is stretched over the view).
+        private func viewProjection(_ session: QuarrySession) -> simd_float4x4 {
+            let v = session.view()
+            return QuarryMatrix.perspective(fovY: v.fovY, aspect: session.renderer.aspect, near: 3, far: 1600)
+                * QuarryMatrix.lookAt(eye: v.eye, target: v.target, up: SIMD3(0, 0, 1))
+        }
+
+        /// A point of the ground (its own metres and height) on the view, or nil behind the eye.
+        private func screen(_ g: SIMD3<Float>, _ session: QuarrySession, _ vp: simd_float4x4) -> CGPoint? {
+            let l = session.face.local(SIMD2(g.x, g.y))
+            let c = vp * SIMD4(l.x, l.y, g.z + 0.3, 1)
+            guard c.w > 0.5 else { return nil }
+            return CGPoint(
+                x: CGFloat(c.x / c.w + 1) / 2 * bounds.width, y: CGFloat(c.y / c.w + 1) / 2 * bounds.height)
+        }
+
+        /// A point of the ground (its own metres and height) on the view now, for checks.
+        func onView(_ g: SIMD3<Float>) -> CGPoint? {
+            guard let session else { return nil }
+            return screen(g, session, viewProjection(session))
+        }
+
+        /// The old ground under a point of the view, in the ground's own metres.
+        func ground(at point: CGPoint) -> SIMD2<Float>? {
+            guard let session, bounds.width > 0, bounds.height > 0 else { return nil }
+            let ndc = SIMD2(Float(2 * point.x / bounds.width - 1), Float(2 * point.y / bounds.height - 1))
+            guard let p = session.groundPoint(ndc: ndc, aspect: session.renderer.aspect) else { return nil }
+            return session.face.world(SIMD2(p.x, p.y))
+        }
+
+        /// The face line nearest the ground under `point`, or the ground itself where there is none.
+        private func snapped(at point: CGPoint) -> (point: SIMD2<Float>, onFace: Bool)? {
+            guard let model, let g = ground(at: point) else { return nil }
+            if let s = QuarryStripGuide.snap(g, terrain: model.site.terrain) { return (s, true) }
+            return (g, false)
+        }
+
+        private func stripLines(_ model: QuarryFaceModel) -> QuarryStripGuide.Lines {
+            let (a, b) = model.stripOnMap
+            let key = [a.x, a.y, b.x, b.y, model.site.depth, Float(model.terrainGeneration)]
+            if let lines, lines.key == key { return lines.lines }
+            let made = QuarryStripGuide.lines(
+                terrain: model.site.terrain, start: a, end: b, depth: model.site.depth)
+            lines = (key, made)
+            return made
+        }
+
+        /// The strip's ends on the view: where its handles are drawn and picked.
+        private func handles(_ model: QuarryFaceModel, _ session: QuarrySession, _ vp: simd_float4x4)
+            -> [CGPoint?]
+        {
+            let l = stripLines(model)
+            guard let first = l.face.first, let last = l.face.last else { return [nil, nil] }
+            return [screen(first, session, vp), screen(last, session, vp)]
+        }
+
+        /// Draws the strip over the view, as it is now and with the camera as it is now.
+        func refreshOverlay() {
+            guard stripMode, let model, let session else {
+                overlay.clear()
+                return
+            }
+            let vp = viewProjection(session)
+            let l = stripLines(model)
+            let ends = handles(model, session, vp)
+            let hoverPoint =
+                drag == nil
+                ? hover.flatMap { h in
+                    screen(SIMD3(h.point, model.site.terrain.height(at: h.point)), session, vp).map {
+                        ($0, h.onFace)
+                    }
+                } : nil
+            overlay.show(
+                face: l.face.map { screen($0, session, vp) }, back: l.back.map { screen($0, session, vp) },
+                handles: ends, hover: hoverPoint)
+        }
+
+        private func point(_ event: NSEvent) -> CGPoint { convert(event.locationInWindow, from: nil) }
+
+        override func mouseMoved(with event: NSEvent) {
+            guard stripMode else { return }
+            hover = snapped(at: point(event))
+            refreshOverlay()
+        }
+
+        override func mouseExited(with event: NSEvent) {
+            hover = nil
+            refreshOverlay()
+        }
+
+        override func mouseDown(with event: NSEvent) {
+            window?.makeFirstResponder(self)
+            let p = point(event)
+            if event.modifierFlags.contains(.shift) {
+                drag = .pan
+            } else if !stripMode || event.modifierFlags.contains(.option) {
+                drag = .orbit
+            } else if let model, let session {
+                let vp = viewProjection(session)
+                let ends = handles(model, session, vp)
+                func near(_ q: CGPoint?) -> Bool { q.map { hypot($0.x - p.x, $0.y - p.y) < 14 } ?? false }
+                let (a, b) = model.stripOnMap
+                if near(ends[0]) {
+                    drag = .start
+                    (model.draftStart, model.draftEnd) = (a, b)
+                } else if near(ends[1]) {
+                    drag = .end
+                    (model.draftStart, model.draftEnd) = (a, b)
+                } else if let s = snapped(at: p) {
+                    drag = .draw
+                    (model.draftStart, model.draftEnd) = (s.point, s.point)
+                } else {
+                    drag = .orbit
+                }
+                hover = nil
+                refreshOverlay()
+            } else {
+                drag = .orbit
+            }
+        }
+
         override func mouseDragged(with event: NSEvent) {
             guard let session else { return }
-            if event.modifierFlags.contains(.shift) {
+            switch drag ?? .orbit {
+            case .pan:
                 let right = SIMD3<Float>(cos(session.yaw), sin(session.yaw), 0)
                 let scale = session.distance * 0.0016
                 session.focus +=
                     right * Float(-event.deltaX) * scale + SIMD3(0, 0, Float(event.deltaY) * scale)
-            } else {
+            case .orbit:
                 session.yaw += Float(event.deltaX) * 0.005
                 session.pitch = max(-0.2, min(1.3, session.pitch + Float(event.deltaY) * 0.004))
+            case .start, .end, .draw:
+                guard let model, let s = snapped(at: point(event)) else { return }
+                if drag == .start { model.draftStart = s.point } else { model.draftEnd = s.point }
+                refreshOverlay()
+                CATransaction.flush()
+                // From the event (system uptime) to the overlay committed with it.
+                let ms = (ProcessInfo.processInfo.systemUptime - event.timestamp) * 1000
+                if dragLatencies.count < 4096 { dragLatencies.append(ms) }
             }
         }
+
+        override func mouseUp(with event: NSEvent) {
+            defer { drag = nil }
+            switch drag {
+            case .start, .end, .draw:
+                guard let model else { return }
+                if let a = model.draftStart, let b = model.draftEnd, simd_distance(a, b) < 4 {
+                    // A click, not a drag: leave the strip as it was.
+                    model.draftStart = nil
+                    model.draftEnd = nil
+                } else {
+                    model.commitDraft()
+                }
+                drag = nil
+                refreshOverlay()
+            default: break
+            }
+        }
+
         override func scrollWheel(with event: NSEvent) {
             guard let session else { return }
             session.distance = max(25, min(800, session.distance * (1 - Float(event.scrollingDeltaY) * 0.01)))
         }
+    }
+
+    /// The strip drawn over the 3-D view: the old face's line along it, the new face's line its depth
+    /// into the hill, handles at its ends, and the face point under the cursor. Layers only, so it
+    /// is drawn at once, between the view's frames; events pass through to the view.
+    final class QuarryStripOverlay: NSView {
+        private let faceLine = CAShapeLayer()
+        private let backLine = CAShapeLayer()
+        private let handleDots = CAShapeLayer()
+        private let hoverMark = CAShapeLayer()
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            wantsLayer = true
+            let orange = NSColor.systemOrange.cgColor
+            faceLine.strokeColor = orange
+            faceLine.lineWidth = 3
+            faceLine.lineJoin = .round
+            backLine.strokeColor = NSColor.systemOrange.withAlphaComponent(0.9).cgColor
+            backLine.lineWidth = 2
+            backLine.lineDashPattern = [6, 4]
+            handleDots.fillColor = NSColor.white.cgColor
+            handleDots.strokeColor = orange
+            handleDots.lineWidth = 2.5
+            hoverMark.lineWidth = 2
+            for shape in [backLine, faceLine, handleDots, hoverMark] {
+                if shape !== handleDots { shape.fillColor = nil }
+                shape.shadowOpacity = 0.6
+                shape.shadowRadius = 1.5
+                shape.shadowOffset = .zero
+                layer?.addSublayer(shape)
+            }
+            hoverMark.fillColor = nil
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        private static func path(_ points: [CGPoint?]) -> CGPath {
+            let path = CGMutablePath()
+            var open = false
+            for p in points {
+                guard let p else {
+                    open = false
+                    continue
+                }
+                if open { path.addLine(to: p) } else { path.move(to: p) }
+                open = true
+            }
+            return path
+        }
+
+        func clear() {
+            guard faceLine.path != nil || hoverMark.path != nil else { return }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            for shape in [faceLine, backLine, handleDots, hoverMark] { shape.path = nil }
+            CATransaction.commit()
+        }
+
+        func show(face: [CGPoint?], back: [CGPoint?], handles: [CGPoint?], hover: (CGPoint, Bool)?) {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            faceLine.path = Self.path(face)
+            // The new face's line, and the strip's ends joining the two.
+            var backPoints = back
+            if let a = face.first, let b = back.first { backPoints = [a, b, nil] + backPoints }
+            if let a = face.last, let b = back.last { backPoints += [nil, b, a] }
+            backLine.path = Self.path(backPoints)
+            let dots = CGMutablePath()
+            for p in handles.compactMap({ $0 }) {
+                dots.addEllipse(in: CGRect(x: p.x - 6, y: p.y - 6, width: 12, height: 12))
+            }
+            handleDots.path = dots
+            if let (p, onFace) = hover {
+                let mark = CGMutablePath()
+                mark.addEllipse(in: CGRect(x: p.x - 7, y: p.y - 7, width: 14, height: 14))
+                if !onFace {
+                    mark.move(to: CGPoint(x: p.x - 4, y: p.y - 4))
+                    mark.addLine(to: CGPoint(x: p.x + 4, y: p.y + 4))
+                }
+                hoverMark.path = mark
+                hoverMark.strokeColor = (onFace ? NSColor.systemYellow : NSColor.systemGray).cgColor
+            } else {
+                hoverMark.path = nil
+            }
+            CATransaction.commit()
+        }
+
+        /// Whether anything is drawn, for checks.
+        var isShowing: Bool { faceLine.path.map { !$0.isEmpty } ?? false }
     }
 
     /// Draws the session each display refresh and keeps the readout.
@@ -271,7 +637,8 @@
         /// The interval between frames and the work in each, smoothed (ms).
         private(set) var interval = 0.0
         private(set) var work = 0.0
-        /// Another scene is being built and fired: draw slowly and leave the machine to it.
+        /// Another scene is being built and fired, or a clip made: draw slowly and leave the
+        /// machine to it.
         var throttled = false
         var onFrame: ((Int) -> Void)?
 
@@ -296,6 +663,8 @@
                 buffer.present(drawable)
                 buffer.commit()
             }
+            // The camera may have moved: the strip follows it.
+            view.refreshOverlay()
             let spent = Date().timeIntervalSince(now) * 1000
             interval = interval == 0 ? elapsed * 1000 : interval * 0.9 + elapsed * 100
             work = work == 0 ? spent : work * 0.9 + spent * 0.1
@@ -305,17 +674,20 @@
 
     struct QuarrySceneView: NSViewRepresentable {
         let session: QuarrySession?
+        let model: QuarryFaceModel
         let coordinator: QuarryViewCoordinator
         var throttled = false
+        var stripMode = false
 
         func makeCoordinator() -> QuarryViewCoordinator { coordinator }
 
         func makeNSView(context: Context) -> QuarryMetalView {
-            let view = QuarryMetalView(frame: .zero, device: session?.device)
+            let view = QuarryMetalView(frame: .zero, device: session?.device ?? model.device)
             view.colorPixelFormat = .bgra8Unorm
             view.framebufferOnly = true
             view.preferredFramesPerSecond = 60
             view.session = session
+            view.model = model
             view.delegate = context.coordinator
             context.coordinator.view = view
             return view
@@ -327,6 +699,10 @@
                 view.session = session
                 if view.device == nil { view.device = session?.device }
             }
+            view.model = model
+            // Strip mode switched, or the strip changed: draw it now, not at the next frame.
+            _ = stripMode
+            view.refreshOverlay()
         }
     }
 
@@ -339,6 +715,7 @@
         @State private var scrubbing = false
         @State private var readout = ""
         @State private var importing = false
+        @State private var projectTerrains = QuarryProjectTerrains.shared
         @State private var tick = 0
         /// Frames simulated so far of the event on view.
         @State private var simulated = 0.0
@@ -355,9 +732,11 @@
                 VStack(spacing: 0) {
                     ZStack(alignment: .topLeading) {
                         QuarrySceneView(
-                            session: model.session, coordinator: coordinator,
-                            throttled: model.preparing != nil
+                            session: model.session, model: model, coordinator: coordinator,
+                            throttled: model.preparing != nil || model.recorder != nil,
+                            stripMode: model.stripMode
                         )
+                        stripControls
                         if !readout.isEmpty {
                             Text(readout)
                                 .font(.system(size: 12, weight: .medium).monospacedDigit())
@@ -402,6 +781,13 @@
                 }
                 if model.session == nil, model.preparing == nil { model.prepare() }
             }
+            .sheet(item: $model.cropChoice) { choice in
+                QuarryCropSheet(choice: choice) {
+                    model.useCrop($0)
+                } cancel: {
+                    model.cropChoice = nil
+                }
+            }
             .fileImporter(
                 isPresented: $importing,
                 allowedContentTypes: [.tiff, UTType(filenameExtension: "asc") ?? .plainText, .plainText]
@@ -412,6 +798,31 @@
                     model.openTerrain(url)
                 }
             }
+        }
+
+        /// The strip mode's switch at the view's top right, and what a drag does in it.
+        private var stripControls: some View {
+            VStack(alignment: .trailing, spacing: 6) {
+                Toggle(isOn: $model.stripMode) {
+                    Label("Place strip", systemImage: "line.diagonal")
+                }
+                .toggleStyle(.button)
+                .help("Drag along a face in the view to lay the strip there, or drag one of its ends")
+                .disabled(model.session == nil)
+                if model.stripMode {
+                    Text(
+                        "Drag along a face to lay the strip, or drag an end.\nOption-drag to orbit, shift-drag to pan."
+                    )
+                    .font(.caption)
+                    .multilineTextAlignment(.trailing)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 4))
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         }
 
         private var sidebar: some View {
@@ -430,6 +841,25 @@
                     HStack {
                         Button("Built-in hillside") { model.useBuiltIn() }
                         Button("Open terrain…") { importing = true }
+                            .help("A GeoTIFF or ESRI ASCII grid; you choose the area of it on an overview")
+                    }
+                    HStack {
+                        let projects = projectTerrains.entries
+                        if projects.count == 1, let entry = projects.first {
+                            Button("Project's terrain") { model.useProjectTerrain(entry) }
+                                .help("The terrain of \(entry.name), the project open in BombCAD")
+                        } else if projects.count > 1 {
+                            Menu("Project's terrain") {
+                                ForEach(projects) { entry in
+                                    Button(entry.name) { model.useProjectTerrain(entry) }
+                                }
+                            }
+                            .fixedSize()
+                        }
+                        if model.lastCropChoice != nil {
+                            Button("Choose area…") { model.chooseAreaAgain() }
+                                .help("Choose another area of \(model.lastCropChoice?.name ?? "the file")")
+                        }
                     }
                     QuarryMapView(model: model)
                         .frame(height: 260)
@@ -442,6 +872,9 @@
                         Text("60,000").tag(60_000)
                         Text("100,000").tag(100_000)
                     }
+                }
+                Section("Clip") {
+                    QuarryClipControls(model: model)
                 }
                 Section("Firing (stylised)") {
                     if let session = model.session {
@@ -607,6 +1040,221 @@
 
         private func ground(_ p: CGPoint, _ side: CGFloat) -> SIMD2<Float> {
             model.mapOrigin + SIMD2(Float(p.x / side), Float(1 - p.y / side)) * model.mapSize
+        }
+    }
+
+    /// The clip's settings and its recording, with progress and Cancel.
+    struct QuarryClipControls: View {
+        @Bindable var model: QuarryFaceModel
+
+        var body: some View {
+            Picker("Camera", selection: $model.clipMotion) {
+                ForEach(QuarryClipCamera.Motion.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .help("The view as it is now, held still or turned slowly round what it looks at")
+            Picker("From", selection: $model.clipFromShown) {
+                Text("The event's start").tag(false)
+                Text("The time shown").tag(true)
+            }
+            LabeledContent("Length") {
+                HStack {
+                    Slider(value: $model.clipSeconds, in: 2...20, step: 1)
+                        .accessibilityLabel("Seconds of the event in the clip")
+                    Text("\(Int(model.clipSeconds)) s").monospacedDigit().frame(
+                        width: 36, alignment: .trailing)
+                }
+            }
+            Picker("Speed", selection: $model.clipSpeed) {
+                Text("Real time").tag(Float(1))
+                Text("Half speed").tag(Float(0.5))
+                Text("Quarter speed").tag(Float(0.25))
+            }
+            Text(
+                String(
+                    format: "A %d × %d movie of %.0f s of the event, %.0f s long.", model.clipSize.x,
+                    model.clipSize.y, model.clipSeconds,
+                    model.clipSeconds / Double(model.clipSpeed))
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            if model.recorder != nil {
+                HStack {
+                    ProgressView(model.clipStatus, value: Double(model.clipShare))
+                        .font(.caption)
+                    Button("Cancel") { model.cancelClip() }
+                }
+            } else {
+                HStack {
+                    Button("Record Clip…") { choose() }
+                        .disabled(model.session?.canPlay != true)
+                    if let clip = model.lastClip {
+                        Button("Show in Finder") {
+                            NSWorkspace.shared.activateFileViewerSelecting([clip.url])
+                        }
+                    }
+                }
+                if !model.clipStatus.isEmpty {
+                    Text(model.clipStatus).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                }
+            }
+        }
+
+        private func choose() {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.mpeg4Movie]
+            panel.nameFieldStringValue = "Quarry face.mp4"
+            panel.message = "Rendering can be slower than real time; the window keeps playing meanwhile."
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            model.recordClip(to: url)
+        }
+    }
+
+    /// An opened terrain file and the area of it chosen: an overview of the whole file to choose on.
+    struct QuarryCropChoice: Identifiable {
+        let id = UUID()
+        let grid: ElevationGrid
+        let name: String
+        var crop: QuarryTerrainCrop
+        let overview: CGImage?
+        /// Metres a pixel of the overview, and its size in pixels.
+        let metresPerPixel: Float
+        let pixels: SIMD2<Int>
+
+        init(grid: ElevationGrid, name: String, longest: Int = 560) {
+            self.grid = grid
+            self.name = name
+            crop = QuarryTerrainCrop(grid: grid)
+            let extent = crop.extent
+            metresPerPixel = max(extent.max(), 1) / Float(longest)
+            pixels = SIMD2(
+                max(1, Int((extent.x / metresPerPixel).rounded())),
+                max(1, Int((extent.y / metresPerPixel).rounded())))
+            let rgba = QuarryRelief.rgba(width: pixels.x, height: pixels.y, metresPerPixel: metresPerPixel) {
+                [grid] p in
+                grid.elevation(at: grid.coordinates(of: SIMD2<Double>(p), origin: grid.southWest))
+            }
+            overview = Self.image(rgba, width: pixels.x, height: pixels.y)
+        }
+
+        static func image(_ pixels: [UInt8], width: Int, height: Int) -> CGImage? {
+            guard let provider = CGDataProvider(data: Data(pixels) as CFData) else { return nil }
+            return CGImage(
+                width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        }
+    }
+
+    /// The overview of a terrain file: drag the square to the area to break, and size it.
+    struct QuarryCropSheet: View {
+        @State var choice: QuarryCropChoice
+        let use: (QuarryCropChoice) -> Void
+        let cancel: () -> Void
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Choose the area of \(choice.name)").font(.headline)
+                Text(
+                    String(
+                        format:
+                            "The file covers %.1f × %.1f km. Drag the square to the slope or face to break; the area is taken at 2 m.",
+                        choice.crop.extent.x / 1000, choice.crop.extent.y / 1000)
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                GeometryReader { geometry in
+                    let scale = min(
+                        geometry.size.width / CGFloat(choice.pixels.x),
+                        geometry.size.height / CGFloat(choice.pixels.y))
+                    let size = CGSize(
+                        width: CGFloat(choice.pixels.x) * scale, height: CGFloat(choice.pixels.y) * scale)
+                    let metres = CGFloat(choice.metresPerPixel) / scale
+                    ZStack(alignment: .topLeading) {
+                        if let overview = choice.overview {
+                            Image(decorative: overview, scale: 1).resizable().interpolation(.medium)
+                                .frame(width: size.width, height: size.height)
+                        }
+                        let side = CGFloat(choice.crop.side) / metres
+                        Rectangle()
+                            .strokeBorder(Color.orange, lineWidth: 2)
+                            .background(Color.orange.opacity(0.12))
+                            .frame(width: side, height: side)
+                            .offset(
+                                x: CGFloat(choice.crop.corner.x) / metres,
+                                y: size.height - CGFloat(choice.crop.corner.y) / metres - side
+                            )
+                            .allowsHitTesting(false)
+                    }
+                    .frame(width: size.width, height: size.height)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0).onChanged { value in
+                            let p = value.location
+                            choice.crop.move(
+                                centre: SIMD2(Float(p.x * metres), Float((size.height - p.y) * metres)))
+                        }
+                    )
+                    .accessibilityLabel("Overview of the terrain file: drag to choose the area")
+                }
+                .frame(width: 560, height: 420)
+                LabeledContent("Size") {
+                    HStack {
+                        Slider(
+                            value: Binding(
+                                get: { Double(choice.crop.side) }, set: { choice.crop.resize(Float($0)) }),
+                            in: Double(
+                                QuarryTerrainCrop.smallest)...Double(
+                                    max(
+                                        QuarryTerrainCrop.smallest + 1,
+                                        min(QuarryTerrainCrop.largest, choice.crop.extent.min())))
+                        )
+                        Text(String(format: "%.0f m", choice.crop.side)).monospacedDigit()
+                            .frame(width: 60, alignment: .trailing)
+                    }
+                }
+                HStack {
+                    Spacer()
+                    Button("Cancel", role: .cancel) { cancel() }
+                        .keyboardShortcut(.cancelAction)
+                    Button("Use This Area") { use(choice) }
+                        .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(20)
+            .frame(width: 600)
+        }
+    }
+
+    /// The terrains of the projects open in BombCAD, for the quarry face to break: each project
+    /// window says what its terrain is while it is open (none when its ground is flat).
+    @MainActor
+    @Observable
+    final class QuarryProjectTerrains {
+        static let shared = QuarryProjectTerrains()
+        struct Entry: Identifiable {
+            let id: UUID
+            var name: String
+            var terrain: Terrain
+        }
+        private(set) var entries: [Entry] = []
+
+        func set(_ id: UUID, name: String, terrain: Terrain?) {
+            guard let terrain, !terrain.isFlat, terrain.columns >= 2, terrain.rows >= 2 else {
+                remove(id)
+                return
+            }
+            if let k = entries.firstIndex(where: { $0.id == id }) {
+                entries[k].name = name
+                entries[k].terrain = terrain
+            } else {
+                entries.append(Entry(id: id, name: name, terrain: terrain))
+            }
+        }
+
+        func remove(_ id: UUID) {
+            entries.removeAll { $0.id == id }
         }
     }
 

@@ -191,12 +191,16 @@ public final class QuarryDustField {
         pointer[index] += SIMD4(v * scaled, scaled)
     }
 
-    /// One 1/30 s dust step: sources from the firings and blocks (their poses this frame and last),
-    /// then the fluid.
+    /// One dust step of 1/`frameRate` s (1/30 s for the event's own frames): sources from the
+    /// firings and blocks (their poses this frame and last), then the fluid.
     public func step(
         pose: MTLBuffer, previous: MTLBuffer, bodies: Int, time: Float, restSize: [Float], frameRate: Float
     ) -> Double {
         let dt = 1 / frameRate
+        // The sources are rates, which the shader multiplies by dt; the puffs at release and the
+        // spray of an impact happen once, so at finer steps (a slow-motion clip) they are scaled
+        // to give the same dust as one 1/30 s step. Exactly 1 at 30 frames a second.
+        let once = frameRate / 30
         // Each firing's puff, born on the face in front of it at its own time, so the ripple runs
         // through the dust as it does through the rock.
         for firing in firings where time >= firing.time && time < firing.time + 0.3 {
@@ -222,7 +226,7 @@ public final class QuarryDustField {
             let speed = simd_length(v)
             // A block on the face lets go with a puff that travels with it.
             if exposed[n], blockFire[n] > time - dt, blockFire[n] <= time {
-                add(here, dust: 6 * size * size, velocity: v + SIMD3(0, -4, 3), heat: 0.8)
+                add(here, dust: 6 * size * size * once, velocity: v + SIMD3(0, -4, 3), heat: 0.8)
             }
             // A tumbling block trails dust.
             if speed > 3, p.z < 30 { add(here, dust: 0.03 * speed * size * size, velocity: v, heat: 0.2) }
@@ -232,7 +236,8 @@ public final class QuarryDustField {
                 let before = lastVelocity[n]
                 let spray = SIMD3(before.x * 0.5, before.y * 0.5, 2.5 + 0.15 * change)
                 add(
-                    here - SIMD3(0, 0, 0.4 * size), dust: 0.12 * (change - 4) * size * size, velocity: spray,
+                    here - SIMD3(0, 0, 0.4 * size), dust: 0.12 * (change - 4) * size * size * once,
+                    velocity: spray,
                     heat: 0.7)
             }
             lastVelocity[n] = v
@@ -241,6 +246,11 @@ public final class QuarryDustField {
         let encoder = buffer.makeComputeCommandEncoder()!
         var u = uniforms
         u.hdtsteps.y = dt
+        // What velocity and density keep each step: 0.995 and 0.9992 a 1/30 s step, the same
+        // a second at any rate.
+        let frames = 30 / frameRate
+        u.hdtsteps.z = frames == 1 ? 0.995 : pow(Float(0.995), frames)
+        u.hdtsteps.w = frames == 1 ? 0.9992 : pow(Float(0.9992), frames)
         encoder.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
         func run(_ name: String) {
             encoder.setComputePipelineState(pipelines[name]!)
