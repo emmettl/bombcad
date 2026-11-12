@@ -42,6 +42,11 @@ public final class QuarryDustField {
     /// Each block's release time, and whether it shows on the face, for the puffs at release.
     public let blockFire: [Float]
     public let exposed: [Bool]
+    /// Each block's swell before it lets go: how long (s, 0 for none) and how fast (m/s). A block on
+    /// the face puffs dust as its swell begins, so the dust starts as the rock first moves, not
+    /// when it lets go.
+    let swellRise: [Float]
+    let swellSpeed: [Float]
     /// A ridge cut's blocks' way out down their flank, for the puffs at release (a face's is -y).
     let outward: [SIMD3<Float>]
     /// Each block's velocity at the last step, for the impacts.
@@ -143,6 +148,8 @@ public final class QuarryDustField {
         var blocks = hillside.blocks
         let launchState = QuarryLaunch().apply(to: &blocks, firings: firings, face: hillside)
         blockFire = launchState.fire
+        swellRise = launchState.swell.map(\.w)
+        swellSpeed = launchState.swell.map { simd_length(SIMD3($0.x, $0.y, $0.z)) }
         exposed = hillside.blocks.map { hillside.exposed($0.centre) }
         outward = hillside.ridge == nil ? [] : hillside.blocks.map { hillside.outward(at: $0.centre) }
         lastVelocity = Array(repeating: .zero, count: hillside.blocks.count)
@@ -184,6 +191,12 @@ public final class QuarryDustField {
         buffer.commit()
         buffer.waitUntilCompleted()
     }
+
+    /// The puff as a block's swell begins: a rate per metre a second of swell and square metre of
+    /// block, fading over this share of the swell. A ridge's is twice a face's: its dust thins
+    /// fast and it is seen from further off.
+    var vent: Float { face.ridge == nil ? 5 : 10 }
+    static let ventShare: Float = 0.35
 
     private func add(_ p: SIMD3<Float>, dust: Float, velocity v: SIMD3<Float>, heat: Float = 0) {
         let g = (p - low) / h
@@ -255,6 +268,19 @@ public final class QuarryDustField {
             let here = SIMD3(p.x, p.y, p.z)
             let size = restSize[n]
             let speed = simd_length(v)
+            // A block on the face vents a puff of dust as its swell begins, carried with it and up:
+            // so the dust starts with the first motion of the rock around each firing (the swell
+            // begins 0.8 to 1.25 s before the block lets go), not only when it lets go.
+            if exposed[n], swellRise[n] > 0, time <= blockFire[n], time > blockFire[n] - swellRise[n] {
+                let share = (time - (blockFire[n] - swellRise[n])) / swellRise[n]
+                if share < Self.ventShare {
+                    let out = outward.isEmpty ? SIMD3<Float>(0, -1, 0) : outward[n]
+                    add(
+                        here + out * (0.5 * size),
+                        dust: vent * swellSpeed[n] * (1 - share / Self.ventShare) * size * size,
+                        velocity: v + out * 2 + SIMD3(0, 0, 2.5), heat: 0.8)
+                }
+            }
             // A block on the face lets go with a puff that travels with it.
             if exposed[n], blockFire[n] > time - dt, blockFire[n] <= time {
                 let out = outward.isEmpty ? SIMD3<Float>(0, -1, 0) : outward[n]

@@ -119,8 +119,9 @@ vertex float4 blockShadowVertex(uint vid [[vertex_id]],
 // The top-down height of the scene, for the chips to land on and the fines to fill: the top
 // surface's height, and what it is (1 a block of the pile at rest, 0.5 the ground, 0 anything
 // else: a block still held, or one moving). `cam.misc.z` is the frame rate between `pose` and
-// `previous`.
-struct HeightOut { float4 position [[position]]; float z; float what; };
+// `previous`. Also which block it is (its index plus one; 0 for the ground), for a chip landing on it
+// to ride.
+struct HeightOut { float4 position [[position]]; float z; float what; float body [[flat]]; };
 
 vertex HeightOut blockHeightVertex(uint vid [[vertex_id]],
                                    const device QuarryBlockVertex *vertices [[buffer(0)]],
@@ -136,6 +137,7 @@ vertex HeightOut blockHeightVertex(uint vid [[vertex_id]],
     o.position = cam.shadow * float4(w, 1.0f);
     o.z = w.z;
     o.what = (p.w > 0.5f && speed < 1.5f) ? 1.0f : 0.0f;
+    o.body = float(body + 1u);
     return o;
 }
 
@@ -147,10 +149,11 @@ vertex HeightOut terrainHeightVertex(uint vid [[vertex_id]],
     o.position = cam.shadow * float4(w, 1.0f);
     o.z = w.z;
     o.what = 0.5f;
+    o.body = 0.0f;
     return o;
 }
 
-fragment float4 heightFragment(HeightOut in [[stage_in]]) { return float4(in.z, in.what, 0.0f, 0.0f); }
+fragment float4 heightFragment(HeightOut in [[stage_in]]) { return float4(in.z, in.what, in.body, 0.0f); }
 
 struct TerrainOut { float4 position [[position]]; float3 world; float3 normal; };
 
@@ -638,15 +641,24 @@ struct QuarryChipUniforms {
     float dt;
     float gravity;
     float time;
-    float pad;
+    float heightDrawn; // 1 when the top-down height was drawn this step
     float4 low;
     float4 size;
 };
 
+// A chip that lands on a block rides it: its place in the block's frame is kept (in `velAge`, which
+// a lying chip does not use otherwise: xyz the place, w the block's index plus one), so rubble on
+// the moving rock is carried with it, down a flank or along the pile, rather than left hanging
+// where the rock was and dropped straight down when the rock has gone. It flies off with the
+// block's velocity when the block is thrown, or slides off with it when nothing is under it any
+// more. A chip on the ground that the rock runs over stays under it, covered, rather than being
+// lifted onto the rock.
 kernel void chipUpdate(device QuarryChip *chips [[buffer(0)]],
                        const device float4 *pose [[buffer(1)]],
                        const device float4 *previous [[buffer(2)]],
+                       const device float4 *rest [[buffer(4)]],
                        depth2d<float> height [[texture(0)]],
+                       texture2d<float, access::read> top [[texture(1)]],
                        constant QuarryChipUniforms &u [[buffer(3)]],
                        uint i [[thread_position_in_grid]]) {
     QuarryChip C = chips[i];
@@ -677,6 +689,22 @@ kernel void chipUpdate(device QuarryChip *chips [[buffer(0)]],
         C.state = 1u;
     }
     float r = C.posSize.w;
+    // Riding a block: where it has gone, and how fast.
+    uint carrier = C.state == 2u ? uint(C.velAge.w) : 0u;
+    float3 carried = float3(0.0f);
+    if (carrier > 0u) {
+        uint b = carrier - 1u;
+        float4 p = pose[2 * b];
+        carried = (p.xyz - previous[2 * b].xyz) / dt;
+        C.posSize.xyz = p.xyz + rotate(pose[2 * b + 1], C.velAge.xyz);
+        if (length(carried) > 6.0f) {
+            // Thrown: off it goes with the block.
+            float3 jitter = float3(fract(C.seed * 13.7f), fract(C.seed * 29.3f), fract(C.seed * 7.1f)) * 2.0f - 1.0f;
+            C.velAge = float4(carried + jitter * 1.5f, 0.0f);
+            C.state = 1u;
+            carrier = 0u;
+        }
+    }
     for (int sub = 0; sub < 2; ++sub) {
         float sdt = dt * 0.5f;
         if (C.state == 1u) {
@@ -690,13 +718,41 @@ kernel void chipUpdate(device QuarryChip *chips [[buffer(0)]],
     float2 uv = float2((C.posSize.x - u.low.x) / u.size.x, 1.0f - (C.posSize.y - u.low.y) / u.size.y);
     if (any(uv < 0.0f) || any(uv > 1.0f)) { C.state = 0u; C.offsetDelay.w = 1e9f; chips[i] = C; return; }
     float h = u.size.z - height.sample(s, uv) * (u.size.z - u.size.w);
-    if (C.state == 1u && C.posSize.z <= h + r * 0.6f) {
-        C.posSize.z = h + r * 0.6f;
-        C.state = 2u;
-        C.velAge.xyz = float3(0);
+    float onTop = h + r * 0.6f;
+    if (C.state == 1u && C.posSize.z <= onTop) {
+        // What it lands on: the ground, or a block still close enough to be the one under it (the
+        // height may be a few frames old, and the block gone on since: then it falls on through
+        // until the height is drawn again, rather than coming to rest in the air where the block
+        // was and dropping from there).
+        uint2 texel = min(uint2(uv * float2(top.get_width(), top.get_height())), uint2(top.get_width() - 1, top.get_height() - 1));
+        uint under = uint(top.read(texel).b + 0.5f);
+        if (under == 0u) {
+            C.posSize.z = onTop;
+            C.velAge = float4(0.0f);
+            C.state = 2u;
+        } else {
+            float4 p = pose[2 * (under - 1u)];
+            float3 at = float3(C.posSize.xy, onTop);
+            if (distance(p.xyz, at) < rest[under - 1u].w + 1.0f) {
+                C.posSize.z = onTop;
+                C.velAge = float4(unrotate(pose[2 * (under - 1u) + 1], at - p.xyz), float(under));
+                C.state = 2u;
+            }
+        }
+    } else if (C.state == 2u && carrier > 0u) {
+        // Nothing under it any more where it rides: it slides off with the block's motion.
+        if (u.heightDrawn > 0.5f && C.posSize.z > onTop + 0.8f) {
+            C.velAge = float4(carried, 0.0f);
+            C.state = 1u;
+        }
     } else if (C.state == 2u) {
-        if (C.posSize.z < h + r * 0.6f) C.posSize.z = h + r * 0.6f;
-        else if (C.posSize.z > h + r * 0.6f + 0.8f) C.state = 1u;
+        // On the ground: lifted a little where the surface has risen a little, left covered where
+        // the rock has run over it, and falling where what held it has gone.
+        if (C.posSize.z < onTop && onTop - C.posSize.z < 0.5f) C.posSize.z = onTop;
+        else if (C.posSize.z > onTop + 0.8f) {
+            C.state = 1u;
+            C.velAge = float4(0.0f);
+        }
     }
     chips[i] = C;
 }

@@ -69,6 +69,10 @@ enum PlayApp {
             let test = PlayTest(
                 session: try open(), output: dataRoot.appendingPathComponent(selfTest), present: nil)
             test.fired = opened
+            test.shotTimes = (option(arguments, "--shots-at") ?? "").split(separator: ",").compactMap {
+                Float($0)
+            }.sorted()
+            test.chipTrace = arguments.contains("--chip-trace")
             test.options = settings
             test.dataRoot = dataRoot
             try test.runOffscreen()
@@ -325,6 +329,25 @@ final class PlayTest {
     var series = "seconds,phase,frame,available,work_ms,rate,update_ms,draw_ms\n"
     var lastWork = 0.0
     var lastParts = (update: 0.0, draw: 0.0)
+    /// Event times (s) at which each followed event is captured, with its dust and without
+    /// (`--shots-at`), for when the dust shows against the rock; and those not yet taken.
+    var shotTimes: [Float] = []
+    var shotsLeft: [Float] = []
+    /// `--chip-trace`: the chips as they stood at the last frame traced, where each one last
+    /// landed, and the counts by second of the event.
+    var chipTrace = false
+    var chipLast: [QuarryDecor.Chip] = []
+    var chipLanded: [SIMD3<Float>] = []
+    /// Whether each chip's fall began from rest: left lying where it was while what held it went.
+    var chipFromRest: [Bool] = []
+    var chipFrame = -1
+    var chipLines: [String] = []
+    var chipCounts:
+        [Int: (
+            drops: Int, relands: Int, dropHeight: Float, dropAcross: Float, vanished: Int, straight: Int,
+            flying: Int
+        )] =
+            [:]
 
     init(session: QuarrySession, output: URL, present: MTKView?) {
         self.session = session
@@ -335,6 +358,94 @@ final class PlayTest {
 
     private func shot(_ name: String) {
         session.renderer.savePNG(output.appendingPathComponent(name + ".png"))
+    }
+
+    /// Reads the chips back each new frame: a chip that was lying (state 2) and falls again (state
+    /// 1) is a drop; when it lands again, how far it fell and how far it went across meanwhile.
+    private func traceChips(_ label: String) {
+        guard chipTrace, session.frame != chipFrame else { return }
+        let renderer = session.renderer
+        let count = renderer.chipCount
+        let chips = Array(
+            UnsafeBufferPointer(
+                start: renderer.chips.contents().bindMemory(to: QuarryDecor.Chip.self, capacity: count),
+                count: count))
+        if session.frame < chipFrame || chipLast.count != count {
+            chipLast = chips
+            chipLanded = Array(repeating: SIMD3(repeating: .nan), count: count)
+            chipFromRest = Array(repeating: false, count: count)
+            chipFrame = session.frame
+            return
+        }
+        let second = Int(Float(session.frame) / QuarrySession.frameRate)
+        var c = chipCounts[second] ?? (0, 0, 0, 0, 0, 0, 0)
+        for i in 0..<count {
+            let was = chipLast[i].state
+            let now = chips[i].state
+            let p = SIMD3(chips[i].posSize.x, chips[i].posSize.y, chips[i].posSize.z)
+            if was == 2, now == 1 {
+                c.drops += 1
+                let v = chips[i].velAge
+                chipFromRest[i] = simd_length(SIMD2(v.x, v.y)) < 0.5 && v.z > -1
+                chipLanded[i] = SIMD3(chipLast[i].posSize.x, chipLast[i].posSize.y, chipLast[i].posSize.z)
+            } else if was == 1, now == 2, !chipLanded[i].x.isNaN {
+                c.relands += 1
+                let from = chipLanded[i]
+                c.dropHeight += from.z - p.z
+                c.dropAcross += simd_length(SIMD2(p.x - from.x, p.y - from.y))
+                chipLanded[i] = SIMD3(repeating: .nan)
+            } else if was != 0, now == 0 {
+                c.vanished += 1
+            }
+            if now == 1 {
+                // Falling straight down: faster than 3 m/s down, slower than 0.5 m/s across.
+                let v = chips[i].velAge
+                c.flying += 1
+                if chipFromRest[i], v.z < -3, simd_length(SIMD2(v.x, v.y)) < 0.5 { c.straight += 1 }
+            }
+        }
+        chipCounts[second] = c
+        chipLast = chips
+        chipFrame = session.frame
+        chipLabel = label
+        if !session.isSimulating, !session.playing || session.frame >= session.eventFrames - 1 {
+            flushChips()
+        }
+    }
+
+    var chipLabel = ""
+    private func flushChips() {
+        for s in chipCounts.keys.sorted() {
+            let v = chipCounts[s]!
+            chipLines.append(
+                String(
+                    format:
+                        "%@ chips, second %d: %d fall again from lying, %d land again (fell %.2f m, went %.2f m across, means), %d leave the box; in the air %d chip-frames, of which falling straight down from rest %d (%.1f%%)",
+                    chipLabel, s, v.drops, v.relands, v.relands > 0 ? v.dropHeight / Float(v.relands) : 0,
+                    v.relands > 0 ? v.dropAcross / Float(v.relands) : 0, v.vanished, v.flying, v.straight,
+                    100 * Float(v.straight) / Float(max(1, v.flying))))
+        }
+        chipCounts = [:]
+    }
+
+    /// The frame as drawn, then again without its dust, at each of `shotTimes` the event passes.
+    private func timedShots(_ label: String) {
+        let shown = Float(session.frame) / QuarrySession.frameRate
+        while let next = shotsLeft.first, shown >= next - 1e-4 {
+            shotsLeft.removeFirst()
+            let name = String(format: "%@-t%05.2f", label.replacingOccurrences(of: " ", with: "-"), shown)
+            shot(name)
+            let dust = session.renderer.dust
+            session.renderer.dust = nil
+            session.draw()
+            shot(name + "-nodust")
+            session.renderer.dust = dust
+            session.draw()
+            note(
+                String(
+                    format: "%@: shot at event %.2f s (asked %.2f), %.2f s after asking", label, shown, next,
+                    Date().timeIntervalSince(fired)))
+        }
     }
 
     private func note(_ line: String) {
@@ -353,6 +464,7 @@ final class PlayTest {
         motionSeen = false
         lastFrame = 0
         lastAdvance = Date()
+        shotsLeft = shotTimes
         return true
     }
 
@@ -417,6 +529,8 @@ final class PlayTest {
             }
         case .follow:
             watchMotion("first fire")
+            timedShots("first fire")
+            traceChips("first fire")
             watchFollow()
             ticks += 1
             if ticks == 90 { shot("follow-a") }
@@ -454,6 +568,8 @@ final class PlayTest {
             }
         case .refollow:
             watchMotion("refire")
+            timedShots("refire")
+            traceChips("refire")
             watchFollow()
             ticks += 1
             if ticks == 100 { shot("after-refire") }
@@ -487,6 +603,8 @@ final class PlayTest {
             }
         case .stripFollow:
             watchMotion("moved strip")
+            timedShots("moved strip")
+            traceChips("moved strip")
             watchFollow()
             ticks += 1
             if ticks == 100 { shot("after-strip") }
@@ -533,6 +651,7 @@ final class PlayTest {
     }
 
     private func finish() {
+        flushChips()
         phase = .done
         func line(_ name: String, _ v: [Double]) -> String {
             guard !v.isEmpty else { return "\(name): no frames" }
@@ -561,6 +680,7 @@ final class PlayTest {
             }
         }
         report += memory.joined(separator: "\n") + "\n"
+        report += chipLines.joined(separator: "\n") + "\n"
         print(report)
         try? report.write(to: output.appendingPathComponent("loop.txt"), atomically: true, encoding: .utf8)
         try? series.write(to: output.appendingPathComponent("series.csv"), atomically: true, encoding: .utf8)

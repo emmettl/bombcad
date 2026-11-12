@@ -705,3 +705,9 @@ this is what they did to the ridge cut.
 - Files: `$BOMBCAD_DATA/hillside-blast/rock-closeup/` (`before/ridge-*`, `after/ridge-*` on stage 2b's
   launch, `final/ridge-*` on stage 3a's, and the debug renders `debug1/` and `debug2/` from the Pull
   back).
+
+**12 November 2026, dust and rubble** (emmettl/bombcad-work#137): the ridge's dust now starts as the
+crest heaves (puffs off the heaving rock, twice the face's), and the rubble that fell as a curtain
+into the notch now rides the rock it lands on. Details and numbers in
+[hillside-blast.md](hillside-blast.md), "The dust from the first motion, and rubble that rides the
+rock".

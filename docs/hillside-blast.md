@@ -985,3 +985,120 @@ little its own) and the rounding of every edge drew the same network again in co
   block by block on release, which was not tried. The held skin past the strip's ends is a little
   smoother and paler than the dressing beyond it. The left end of the ridge's crest in its default
   view is the render-only dressing (emmettl/bombcad-work#135's), which still shows its cells.
+
+## The dust from the first motion, and rubble that rides the rock, 12 November 2026
+
+From the user's first hands-on run of the app (emmettl/bombcad-work#137): "the smoke only appears
+long after the rocks have started to fall and does look disconnected", and in the ridge cut "the
+small rubble clearly disappears vertically down ... and not connected with the mass of rock going
+somewhere". Same standing: illustrative, stylised firing patterns, not a blast-design aid.
+
+**How it was measured.** The window's own session offscreen (`hillsideblast play --self-test NAME
+--offscreen [--ridge]`), with two new options: `--shots-at t,t,...` saves the frame at each event
+time it passes while following each event (the first fire, the refire and the moved strip), and the
+same frame again without its dust; `--chip-trace` reads the chips back every frame. The rock first
+moving on view is the first shot whose dustless frame differs from the calm first one (1% of pixels
+by more than 12 levels); the dust first showing, the first whose frame differs from its dustless
+twin (1% by more than 8). Shots every 0.2 s of event, so times are to ±0.2 s. Wall seconds come from
+a second run with neither option (`series.csv`). Built-in ground, 100,000 blocks asked.
+
+**The dust: what was found.**
+- *Not the window's stepping.* The dust is stepped once per event frame shown, in order, with that
+  frame's poses (`QuarrySession.update`), and at the same event time it is the same in the window as
+  in the film: rendered from the same stored poses and camera, dust first shows at 1.8 s on the face
+  and 2.2 s on the ridge at both the window's 1.5 m cells and the film's 1 m. Nothing waits on the
+  solver's front, and the coarser grid shows the plumes as early.
+- *The cause, shared.* Each block heaves for 0.8 to 1.25 s before it lets go (the swell of stage 2),
+  and every source of dust began only at the letting go: the firings' puffs at their time, the puff
+  as a block lets go, and trails and blows once blocks are fast. So the face moved on view at 0.8 to
+  1.0 s and the first dust came at 1.8 s; on the ridge, from this view, the rock moved at 1.2 to
+  2.0 s and the dust came 0.4 to 0.6 s later.
+- *Why the window made it worse.* While it follows the solver it plays at the solver's rate:
+  median 0.5 to 0.75 of real time over each event, 0.15 to 0.3 at the busiest seconds, which are
+  these. So the gap that lasts 0.4 to 0.8 s in the film lasted 1.5 to 3.3 s on screen.
+
+**The dust: what changed** (`QuarryDustField`). Each exposed block puffs dust as its swell begins,
+fading over the first 35% of the swell, in proportion to the swell's speed and the block's size
+squared, carried with the block's own velocity, a little out and 2.5 m/s up, and warm, so it rises
+off the heaving rock and the ripple of the heave shows in the dust ahead of the firings' plumes. A
+ridge's puff is twice a face's (its dust thins fast and the view is further off). The swell is read
+from the launch law (`QuarryLaunch`), so it follows the swell if that changes. Tried and not kept:
+dust through the whole swell, growing to the release (at the rate kept, invisible on the ridge; at
+twice it, a curtain across the face hiding the rock), and five times stronger early puffs (the face
+hidden by 2.2 s).
+
+| Rock on view → first dust | Before, event / on screen | After, event / on screen |
+|---|---:|---:|
+| Quarry Face, first fire | 0.8 s / 2.9 s | 0 / 0 |
+| Quarry Face, Fire again (centre out) | 0.8 s / 3.3 s | 0 / 0 |
+| Quarry Face, moved strip | 0.8 s / 2.9 s | 0 / 0 |
+| Ridge cut, first fire | 0.6 s / 1.6 s | 0.2 s / 0.8 s |
+| Ridge cut, Fire again | 0.6 s / 2.8 s | 0.2 s / 0.7 s |
+| Ridge cut, moved cut | 0.4 s / 1.5 s | 0 / 0 |
+
+How much of the frame the dust covers later is about as before on the face (21% of pixels at 3.2 s
+before, 21% after) and more on the ridge (25% before, 32% after), where the heave's puffs add to
+the firings' plumes.
+
+**The rubble: what it was.** The decorative chips (render-only stones that leave their blocks and
+are stepped beside the dust, `chipUpdate`), shown by colouring them by state in the window's frames:
+in the ridge cut at 3 s they lay on the heaving mass, at 4 s a curtain of them was falling into the
+notch. A chip that landed lay where it landed, with no velocity, on the top-down height of the scene
+(blocks and ground). When the block under it went on (sliding down the flank, or thrown), the chip
+was left in the air where the rock had been and fell straight down, into the notch or the pile, out
+of sight. The window draws that height only every sixth frame, so chips also came to rest in the air
+on rock that had gone and dropped from there. Of the chips in the air while following an event,
+those falling straight down from rest (faster than 3 m/s down, slower than 0.5 m/s across) were 29
+to 71% on the ridge and 51 to 88% on the face in the second to fourth seconds; chips that landed
+again had fallen up to 13 m straight down, none of it across.
+
+**The rubble: what changed** (`QuarryRender.metal`, `QuarryRenderer`). The top-down height now also
+records which block is on top (its colour target is RGBA, 6 MB more). A chip landing on a block
+rides it: its place in the block's frame is kept and it moves and turns with the block, so rubble on
+the moving rock goes down the flank with it. It is thrown off with the block's velocity when the
+block moves faster than 6 m/s, and slides off with the block's motion when, at a freshly drawn
+height, nothing is under it. It lands only on the ground or on a block still close enough to be the
+one under it, so it falls on through a stale height rather than resting in the air. A chip on the
+ground that rock runs over stays under it, covered, rather than being lifted onto the rock.
+
+| Chips in the air falling straight down from rest, seconds 2 / 3 / 4 | Before | After |
+|---|---|---|
+| Quarry Face, first fire | 55 / 79 / 88% | 0.2 / 0.4 / 0.8% |
+| Quarry Face, Fire again | 51 / 79 / 88% | 0.2 / 0.4 / 1.0% |
+| Ridge cut, first fire | 29 / 67 / 71% | 0.0 / 0.1 / 0.4% |
+| Ridge cut, Fire again | 57 / 75 / 75% | 0.1 / 0.1 / 0.7% |
+
+Chips that land again had fallen 0.4 to 4 m, travelling 0.2 to 2 m across. In the frames the
+curtain in the notch is gone and the rubble lies on the rock; on the face the haze of falling chips
+over the pile at 4 s is gone.
+
+**Shared with the film and clips.** The dust and the chips are the same code in the window, in
+clips and in `hillsideblast render`, so both films change. Stills from the same stored poses at 1.0,
+1.4, 1.8, 2.2, 2.6, 3.0, 4.0 and 6.0 s, before and after, for both scenes, were looked at: the dust
+starts with the heave (on the face from 1.0 s, a thin veil off the top; on the ridge, puffs rising
+from the cracks of the heaving crest), and the ridge's notch is clear of the falling curtain.
+
+**Cost.** Frame cost and memory are as before, within the runs' spread on a GPU shared with other
+work (work a frame following the first fire: face 47 ms before, 38 after; ridge 31 before, 41 after;
+playing a stored event 50 and 105 before, 33 and 46 after). The puffs add a test per block a dust
+step; the chips a texel read and a block's pose. Metal allocated 6 MB more (the height's colour).
+The film's dust step: 25.0 and 16.4 ms before, 22.5 and 19.6 ms after (face, ridge; eight frames).
+
+**Tests.** `QuarryDustTests` (BlastCore, GPU): with every block awake and unmoved, no dust before any
+swell begins and some before the first firing. `QuarryChipTests` (BombCAD, GPU): a 6,000-block ridge
+cut fired for 4 s at the window's quality; under 5% of the chips in the air fall straight down from
+rest (60% with main's chips).
+
+**Where it stopped.**
+- The window still plays the busiest seconds at a quarter to a half of real time while it follows
+  the solver; the dust now starts with the rock, but the heave and the plumes are slow on screen.
+  Starting the event later, once the solver is far enough ahead to play the firings at real time,
+  would trade the 1 to 2 s wait to first motion that "Fire and watch at once" bought; not done
+  without the user's word.
+- The heave's puffs at the window's 1.5 m cells are separate soft blobs on the ridge.
+- Chips are not stepped on frames the playback skips (a draw slower than a frame of the event, once
+  the event is stored); they stand still for that frame. Seen only with the diagnostics slowing the
+  draws.
+- Files: `$BOMBCAD_DATA/hillside-blast/dust-lag/` (`diag2-*` the window's frames with and without
+  dust at each time, `clean-*` the timing runs, `film-final-*` the film stills, `tools/` the
+  measuring scripts).

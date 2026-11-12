@@ -362,7 +362,7 @@ public final class QuarryRenderer {
         shadowMap = depthTarget(quality.shadowSize, quality.shadowSize)
         heightMap = depthTarget(1000, 790)
         let colourDescriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rg32Float, width: 1000, height: 790, mipmapped: false)
+            pixelFormat: .rgba32Float, width: 1000, height: 790, mipmapped: false)
         colourDescriptor.usage = [.renderTarget, .shaderRead]
         colourDescriptor.storageMode = .private
         heightColour = device.makeTexture(descriptor: colourDescriptor)!
@@ -476,9 +476,10 @@ public final class QuarryRenderer {
         terrainShadow = try pipeline(vertex: "terrainShadowVertex", fragment: nil, color: nil)
         chipShadow = try pipeline(vertex: "chipShadowVertex", fragment: nil, color: nil)
         chipUpdate = try device.makeComputePipelineState(function: library.makeFunction(name: "chipUpdate")!)
-        blockHeight = try pipeline(vertex: "blockHeightVertex", fragment: "heightFragment", color: .rg32Float)
+        blockHeight = try pipeline(
+            vertex: "blockHeightVertex", fragment: "heightFragment", color: .rgba32Float)
         terrainHeight = try pipeline(
-            vertex: "terrainHeightVertex", fragment: "heightFragment", color: .rg32Float)
+            vertex: "terrainHeightVertex", fragment: "heightFragment", color: .rgba32Float)
         finesBuild = try device.makeComputePipelineState(function: library.makeFunction(name: "finesBuild")!)
         finesRelax = try device.makeComputePipelineState(function: library.makeFunction(name: "finesRelax")!)
         finesPipeline = try pipeline(vertex: "finesVertex", fragment: "finesFragment")
@@ -822,7 +823,8 @@ public final class QuarryRenderer {
         let redraw = heightFrame % quality.heightEvery == 1 || quality.heightEvery == 1
         if redraw { encodeHeight(buffer, pose: pose, previous: previous, rate: frameRate) }
         var chipUniforms = QuarryDecor.Uniforms(
-            dt: 1 / frameRate, gravity: 9.81, time: time, pad: 0, low: SIMD4(hillside.low, 0),
+            dt: 1 / frameRate, gravity: 9.81, time: time, heightDrawn: redraw ? 1 : 0,
+            low: SIMD4(hillside.low, 0),
             size: SIMD4(
                 hillside.high.x - hillside.low.x, hillside.high.y - hillside.low.y, heightTop, heightBottom))
         let compute = buffer.makeComputeCommandEncoder()!
@@ -830,7 +832,9 @@ public final class QuarryRenderer {
         compute.setBuffer(chips, offset: 0, index: 0)
         compute.setBuffer(pose, offset: 0, index: 1)
         compute.setBuffer(previous, offset: 0, index: 2)
+        compute.setBuffer(restCentres, offset: 0, index: 4)
         compute.setTexture(heightMap, index: 0)
+        compute.setTexture(heightColour, index: 1)
         compute.setBytes(&chipUniforms, length: MemoryLayout<QuarryDecor.Uniforms>.stride, index: 3)
         compute.dispatchThreads(
             MTLSize(width: chipCount, height: 1, depth: 1),
@@ -970,7 +974,8 @@ public enum QuarryDecor {
         public var dt: Float
         public var gravity: Float
         public var time: Float
-        public var pad: Float
+        /// 1 when the top-down height was drawn this step.
+        public var heightDrawn: Float
         public var low: SIMD4<Float>
         public var size: SIMD4<Float>
     }
