@@ -1012,7 +1012,8 @@ a second run with neither option (`series.csv`). Built-in ground, 100,000 blocks
   and every source of dust began only at the letting go: the firings' puffs at their time, the puff
   as a block lets go, and trails and blows once blocks are fast. So the face moved on view at 0.8 to
   1.0 s and the first dust came at 1.8 s; on the ridge, from this view, the rock moved at 1.2 to
-  2.0 s and the dust came 0.4 to 0.6 s later.
+  2.0 s and the dust came 0.4 to 0.6 s later, and 1.0 to 1.4 s later with the ridge's longer,
+  bigger heave of stage 3a (docs/ridge-cut.md), which landed while this was made.
 - *Why the window made it worse.* While it follows the solver it plays at the solver's rate:
   median 0.5 to 0.75 of real time over each event, 0.15 to 0.3 at the busiest seconds, which are
   these. So the gap that lasts 0.4 to 0.8 s in the film lasted 1.5 to 3.3 s on screen.
@@ -1035,6 +1036,9 @@ hidden by 2.2 s).
 | Ridge cut, first fire | 0.6 s / 1.6 s | 0.2 s / 0.8 s |
 | Ridge cut, Fire again | 0.6 s / 2.8 s | 0.2 s / 0.7 s |
 | Ridge cut, moved cut | 0.4 s / 1.5 s | 0 / 0 |
+| Ridge cut with stage 3a's heave, first fire | 1.0 s / 1.3 s | 0 / 0 |
+| the same, Fire again | 1.4 s / 1.6 s | 0.2 s / 0.3 s |
+| the same, moved cut | 1.2 s / 2.7 s | 0 / 0 |
 
 How much of the frame the dust covers later is about as before on the face (21% of pixels at 3.2 s
 before, 21% after) and more on the ridge (25% before, 32% after), where the heave's puffs add to
@@ -1067,6 +1071,8 @@ ground that rock runs over stays under it, covered, rather than being lifted ont
 | Quarry Face, Fire again | 51 / 79 / 88% | 0.2 / 0.4 / 1.0% |
 | Ridge cut, first fire | 29 / 67 / 71% | 0.0 / 0.1 / 0.4% |
 | Ridge cut, Fire again | 57 / 75 / 75% | 0.1 / 0.1 / 0.7% |
+| Ridge cut with stage 3a's heave, first fire | 1.5 / 9.7 / 61% | 0.0 / 0.1 / 0.1% |
+| the same, Fire again | 3.2 / 45 / 87% | 0.0 / 0.2 / 0.1% |
 
 Chips that land again had fallen 0.4 to 4 m, travelling 0.2 to 2 m across. In the frames the
 curtain in the notch is gone and the rubble lies on the rock; on the face the haze of falling chips
@@ -1078,10 +1084,14 @@ clips and in `hillsideblast render`, so both films change. Stills from the same 
 starts with the heave (on the face from 1.0 s, a thin veil off the top; on the ridge, puffs rising
 from the cracks of the heaving crest), and the ridge's notch is clear of the falling curtain.
 
-**Cost.** Frame cost and memory are as before, within the runs' spread on a GPU shared with other
-work (work a frame following the first fire: face 47 ms before, 38 after; ridge 31 before, 41 after;
-playing a stored event 50 and 105 before, 33 and 46 after). The puffs add a test per block a dust
-step; the chips a texel read and a block's pose. Metal allocated 6 MB more (the height's colour).
+**Cost.** On the face, as before (medians while following, the dust and chips' step then the draw:
+11.9 and 32.9 ms before, 11.3 and 25.6 after, on a GPU shared with other work). On the ridge
+somewhat more: in the quietest pair of runs (stage 3a's heave, nothing else on the GPU) 7.6 and
+13.5 ms before, 10.1 and 18.4 after following the first fire, 8.6 and 17.3 against 10.0 and 20.8
+following a refire; the noisier pair before stage 3a gave 7.1 and 23.8 against 10.5 and 28.8. So
+about 2.5 ms more for the step and 3 to 5 ms more for the draw while the ridge fires, most likely the
+march through the heave's extra dust (the ridge's puff is twice the face's; halving it would give
+some back). Memory as before; Metal allocated 6 MB more (the height's colour).
 The film's dust step: 25.0 and 16.4 ms before, 22.5 and 19.6 ms after (face, ridge; eight frames).
 
 **Tests.** `QuarryDustTests` (BlastCore, GPU): with every block awake and unmoved, no dust before any
