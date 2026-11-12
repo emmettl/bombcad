@@ -1210,6 +1210,7 @@
                                         QuarryTerrainCrop.smallest + 1,
                                         min(QuarryTerrainCrop.largest, choice.crop.extent.min())))
                         )
+                        .accessibilityLabel("Size of the area, metres across")
                         Text(String(format: "%.0f m", choice.crop.side)).monospacedDigit()
                             .frame(width: 60, alignment: .trailing)
                     }
