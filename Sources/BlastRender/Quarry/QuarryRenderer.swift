@@ -15,6 +15,7 @@ public struct QuarryCameraUniforms {
     public var sun: SIMD4<Float>
     /// xyz unused; w 2 when the far ground fades into the backdrop's hills (a ridge cut), else 1.
     public var fogColor: SIMD4<Float>
+    /// A ridge cut's flank cover map's domain (low x, y, span x, y; `QuarryFlank`); zero for a face.
     public var terrainOrigin: SIMD4<Float>
     public var inverseViewProjection: simd_float4x4
     public var dustLow: SIMD4<Float>
@@ -88,6 +89,14 @@ public final class QuarryRenderer {
     public let terrainVertices: MTLBuffer
     public let terrainIndices: MTLBuffer
     public let terrainIndexCount: Int
+    /// A ridge cut's flanks (`QuarryFlank`): the ground's cover as a texture, and the scree's
+    /// stones and the scrub as render-only instances. Nil and empty for a face.
+    public let flank: QuarryFlank?
+    public let flankCover: MTLTexture
+    public let flankStones: MTLBuffer
+    public let flankStoneCount: Int
+    public let flankStonePipeline: MTLRenderPipelineState
+    public let flankStoneShadow: MTLRenderPipelineState
     public let shadowMap: MTLTexture
     public private(set) var hdr: MTLTexture
     public private(set) var hdrDepth: MTLTexture
@@ -192,6 +201,33 @@ public final class QuarryRenderer {
         pristineChips = chipData.withUnsafeBytes {
             device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)!
         }
+        // A ridge cut's flanks, built from its layout alone.
+        let flankStart = Date()
+        let flank = QuarryFlank(face: hillside)
+        self.flank = flank
+        let stones = flank?.stones() ?? []
+        flankStoneCount = stones.count
+        flankStones =
+            stones.isEmpty
+            ? device.makeBuffer(length: 48)!
+            : stones.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
+        let coverDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm, width: flank?.columns ?? 1, height: flank?.rows ?? 1, mipmapped: false)
+        coverDescriptor.usage = [.shaderRead]
+        let coverTexture = device.makeTexture(descriptor: coverDescriptor)!
+        flankCover = coverTexture
+        if let flank {
+            flank.packed().withUnsafeBytes {
+                coverTexture.replace(
+                    region: MTLRegionMake2D(0, 0, flank.columns, flank.rows), mipmapLevel: 0,
+                    withBytes: $0.baseAddress!, bytesPerRow: 4 * flank.columns)
+            }
+            print(
+                String(
+                    format: "flanks: %d ledges, %d stones and scrub, %.2f s", flank.ledges.count,
+                    stones.count,
+                    Date().timeIntervalSince(flankStart)))
+        }
         // Terrain mesh.
         let t = hillside.terrain
         var vertices = [Float]()
@@ -209,8 +245,9 @@ public final class QuarryRenderer {
                         (h(i, j - 1) - h(i, j + 1)) / (2 * t.spacing), 1
                     ))
                 // The steep ground sits behind the render-only rock, not through it: set back along
-                // its normal (straight down left a near-vertical face where it was).
-                let inset: Float = n.z < 0.8 ? 1.8 : 0
+                // its normal (straight down left a near-vertical face where it was). A ridge cut's
+                // flanks only where that rock is.
+                let inset: Float = n.z < 0.8 ? 1.8 * (flank?.setBack(x, y) ?? 1) : 0
                 let p = SIMD3(x, y, h(i, j)) - n * inset
                 vertices += [p.x, p.y, p.z, n.x, n.y, n.z]
             }
@@ -255,7 +292,7 @@ public final class QuarryRenderer {
                 let dx = extHeight(x + 1, y) - extHeight(x - 1, y)
                 let dy = extHeight(x, y + 1) - extHeight(x, y - 1)
                 let n = simd_normalize(SIMD3<Float>(-dx * 0.5, -dy * 0.5, 1))
-                let inset: Float = n.z < 0.8 ? 1.8 : 0
+                let inset: Float = n.z < 0.8 ? 1.8 * (flank?.setBack(x, y) ?? 1) : 0
                 let p = SIMD3(x, y, z) - n * inset
                 vertices += [p.x, p.y, p.z, n.x, n.y, n.z]
             }
@@ -429,7 +466,11 @@ public final class QuarryRenderer {
             return try device.makeRenderPipelineState(descriptor: d)
         }
         blockPipeline = try pipeline(vertex: "blockVertex", fragment: "blockFragment")
-        terrainPipeline = try pipeline(vertex: "terrainVertex", fragment: "terrainFragment")
+        // A ridge cut's ground is shaded as its flanks' cover says; a face's as before.
+        terrainPipeline = try pipeline(
+            vertex: "terrainVertex", fragment: flank == nil ? "terrainFragment" : "ridgeTerrainFragment")
+        flankStonePipeline = try pipeline(vertex: "flankStoneVertex", fragment: "flankStoneFragment")
+        flankStoneShadow = try pipeline(vertex: "flankStoneShadowVertex", fragment: nil, color: nil)
         chipPipeline = try pipeline(vertex: "chipVertex", fragment: "chipFragment")
         blockShadow = try pipeline(vertex: "blockShadowVertex", fragment: nil, color: nil)
         terrainShadow = try pipeline(vertex: "terrainShadowVertex", fragment: nil, color: nil)
@@ -473,7 +514,13 @@ public final class QuarryRenderer {
         camera = QuarryCameraUniforms(
             viewProjection: matrix_identity_float4x4, shadow: ortho * lightView, eye: .zero,
             sun: SIMD4(sun, 0),
-            fogColor: SIMD4(0.6, 0.55, 0.5, hillside.ridge == nil ? 1 : 2), terrainOrigin: .zero,
+            fogColor: SIMD4(0.6, 0.55, 0.5, hillside.ridge == nil ? 1 : 2),
+            terrainOrigin: flank.map {
+                // The texels' outer edges, so a texel's centre is its point of the grid.
+                SIMD4(
+                    $0.low.x - $0.spacing / 2, $0.low.y - $0.spacing / 2, Float($0.columns) * $0.spacing,
+                    Float($0.rows) * $0.spacing)
+            } ?? .zero,
             inverseViewProjection: matrix_identity_float4x4,
             dustLow: .zero, dustHigh: .zero, misc: .zero)
     }
@@ -591,6 +638,15 @@ public final class QuarryRenderer {
         shadow.setVertexBuffer(chipShapes, offset: 0, index: 5)
         shadow.drawPrimitives(
             type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices, instanceCount: chipCount)
+        if flankStoneCount > 0 {
+            shadow.setRenderPipelineState(flankStoneShadow)
+            shadow.setVertexBuffer(flankStones, offset: 0, index: 0)
+            var shapeInfo = SIMD2<UInt32>(UInt32(QuarryChipShapes.count), UInt32(QuarryChipShapes.vertices))
+            shadow.setVertexBytes(&shapeInfo, length: 8, index: 6)
+            shadow.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices,
+                instanceCount: flankStoneCount)
+        }
         shadow.endEncoding()
         // Scene.
         let scenePass = MTLRenderPassDescriptor()
@@ -631,6 +687,7 @@ public final class QuarryRenderer {
         scene.setRenderPipelineState(terrainPipeline)
         scene.setCullMode(.none)
         scene.setVertexBuffer(terrainVertices, offset: 0, index: 0)
+        if flank != nil { scene.setFragmentTexture(flankCover, index: 2) }
         scene.drawIndexedPrimitives(
             type: .triangle, indexCount: terrainIndexCount, indexType: .uint32, indexBuffer: terrainIndices,
             indexBufferOffset: 0)
@@ -648,6 +705,15 @@ public final class QuarryRenderer {
         scene.setVertexBuffer(chipShapes, offset: 0, index: 5)
         scene.drawPrimitives(
             type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices, instanceCount: chipCount)
+        if flankStoneCount > 0 {
+            scene.setRenderPipelineState(flankStonePipeline)
+            scene.setVertexBuffer(flankStones, offset: 0, index: 0)
+            var shapeInfo = SIMD2<UInt32>(UInt32(QuarryChipShapes.count), UInt32(QuarryChipShapes.vertices))
+            scene.setVertexBytes(&shapeInfo, length: 8, index: 6)
+            scene.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices,
+                instanceCount: flankStoneCount)
+        }
         scene.setRenderPipelineState(sky)
         scene.setDepthStencilState(skyDepth)
         scene.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)

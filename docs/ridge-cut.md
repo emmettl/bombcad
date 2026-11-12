@@ -541,3 +541,138 @@ swell; with the carry turned off (`ridgeCarried` 0) it fails, the median at −2
   the solver busy to about 10.5 s; the window's following of a firing is correspondingly slower.
 - One block still rolls at the end, as before.
 - Not looked at on a screen: all of it was made offscreen.
+
+## Stage 3b: flanks that read as ground, 12 November 2026
+
+emmettl/bombcad-work#135, approved by the user on 12 November. Same standing: illustrative, for the
+eye. Everything here is render-only and procedural, chosen by eye: no third-party assets, nothing
+reaches the solver, and the ground cover is no survey of any real hillside. This stage changes none
+of the cut, its blocks, the firings, the launch (stage 3a's, which landed beside it) or the dust; it
+was made and checked on the stored stage 1 poses, from before stage 3a's heave.
+
+**What was wrong.** Stage 1 paved the ridge with the face's render-only bedded cells from its crest
+down to about the cut's floor, and on the steepest ground below. Each cell was clipped to the
+slope's tangent planes a few decimetres above the ground, so the paving was flagstones lying on the
+slope, with the ground showing through wherever a cell of a recessed bed dipped below it. From
+stage 2b's view, 94 m off, that paving filled the lower left of the frame and read as cut-outs;
+below it the flanks were plain tan ground with scattered slabs.
+
+**What a user gets.** The ridge outside the cut is now grassy ground with crags. Dry grass and low
+scrub cover the gentler slopes and the crest; bedded ledges of the harder beds stand out of the
+steeper slopes in broken clusters; scree lies in fans below the ledges and below the rock round the
+cut; and the ground's gravel, tussocks and soil keep their detail down to a few centimetres a
+pixel. Dense rock is only the cut's and a ragged margin round it, so before the blast the cut still
+sits in rock. The far plain, through the notch and round the ridge, is patchy grassland with
+paler bare ground and darker scrub rather than one flat pale colour.
+
+**How** (`QuarryFlank`, BlastModel; `ridgeTerrainFragment` and `flankStone*`, BlastRender).
+- *A cover map.* On a 1 m grid over the dressing's area (440 by 341 m round the cut), from the ground
+  after the cut: the cut (where the old ground stands 0.3 m above it), the distance from it, and the
+  slope. Built in about 0.03 s, by the dressing's thread and again by each renderer.
+- *Dense rock* (`paving`): the cut and a margin 2.5 to 7.5 m wide round it (its edge wandering by
+  noise), down to 3 m below the floor. The face's dressing code places its cells only there now,
+  and they dip under the ground over the margin's last 3 m (their tangent clip lowered by up to
+  0.9 m), so the rock ends by going under the ground rather than in slabs standing proud of it. The
+  steep ground behind the rock is set back as before, but only inside the dense rock, tapering over
+  its last 3 m (it was set back 1.8 m wherever the ground was steeper than about 37°).
+- *Ledges.* Where the ground going uphill crosses the top of a bed that crops out (every limestone
+  bed, half the sandstone and ironstone beds by a hash of the bed's index, never shale), on slopes
+  steeper than 0.3 and inside clusters of noise about 34 m across, broken into runs by finer noise,
+  one ledge every 3.2 m or so along its bed. Each is a slab of its bed standing out of the slope on
+  its downhill side: its top the bed's top (tilted and lowered a little each), its front 1.2 to 3.2 m
+  downhill from where the bed meets the ground (no further than keeps its front about as tall as the
+  bed is thick), leaning back or overhanging a little, reaching down 1.2 m below the bed so it never
+  stands on its underside, cut from its neighbours along the bed by tight joints (a quarter of them
+  open a few decimetres), its top front edge worn round, tessellated and displaced like the
+  dressing. 660 ledges on the built-in ridge's default cut, 11,800 triangles in the window.
+- *Scree.* Sources at each ledge's front, below the dense rock and, weakly, on ground steeper than
+  0.7; spread a little across the slope, then carried down it, each texel taking the largest source
+  up to 14 m uphill along the slope's gradient, fading over 2 m on gentle ground and 8 m on steep,
+  streaked by noise.
+- *Grass* on ground gentler than about 0.35 to 0.85, away from scree and rock, in patches.
+- *Stones and scrub.* About 3.5 stones a square metre where the scree is full, sized from 9 cm on
+  a power law to 1.1 m, larger at a fan's thin toe (where the large ones roll to), each turned to
+  the ground and sunk into it; scrub in clumps on the grass, each two or three rounded masses 0.5 to
+  1.4 m across. Drawn as instances of the chips' 32 stone shapes (read only, from
+  `QuarryChipShapes`) in the shadow pass and the scene: about 16,000 on the default cut. Stones are
+  the beds' weathered colours with lichen; scrub is dark olive and brown, lit as a rounded mass of
+  leaves.
+- *The ground's shading* (`ridgeTerrainFragment`, a separate fragment function for a ridge cut, so
+  the face's `terrainFragment` is not touched). Soil, grass, scree and rock mixed by the cover map,
+  its 1 m texels broken up by noise. Scree is gravel and grit streaked down the slope with packed
+  stones at two sizes (domed, darker in the crevices); grass is tussocks with soil between and
+  blades as speckle; soil carries grit, mottling and fine gravel. The fine detail fades with the
+  pixel's footprint (from 3 to 11 cm), so it does not shimmer. Past the map the far ground's own
+  cover: grass in broad patches, paler bare ground, darker scrub, a little scree on steeper slopes.
+
+**Measured** (release build, M4 Max Studio; the GPU was shared with two other sessions' checks and
+self-tests throughout, so every timing here is loaded and noisy, and stage 2b's quiet 21.6 to 24.1
+ms a clip frame is not comparable).
+- *Geometry.* The window's dressing for the default cut: 3,510,747 triangles before, 443,259 of dense
+  rock and 11,755 of ledges after (82,320 cells to 11,517, and 660 ledges); 16,107 stones and scrub
+  of up to 12 triangles each, drawn in the shadow pass and the scene (at most 0.19 M triangles a
+  pass). The cover map and the stones are built in 0.03 to 0.04 s.
+- *The window's Record Clip* of the default view from the stored poses (`hillsideblast clip`, 600
+  frames at 1920 x 1080, before and after in turn, three times each): 36.3, 39.4, 35.8 ms a frame
+  median before; 36.8, 33.2, 33.2 ms after.
+- *The window's own session* (`play --ridge --self-test NAME --offscreen`, two runs each,
+  interleaved): playing a stored event 27.0 and 30.5 ms of work a frame before, 44.4 and 24.3 after;
+  following the first firing 52.1 and 69.9 before, 48.6 and 33.9 after. These swung by a factor of
+  two between runs of the same build with the other jobs, so they say only that nothing grew by
+  much; the clip pairs above are the steadier measure.
+- *Memory*, the same self-tests: Metal allocated 932 MB before, 724 MB after, at the first firing
+  (the dressing's buffers); footprint after the first firing 3.62 and 3.77 GB before, 3.07 and 3.06
+  GB after.
+
+**Quarry Face unchanged.** A face has no `QuarryFlank`, so its dressing, its ground's mesh, its
+pipelines' functions and its draws are as they were (the ridge's ground is a separate fragment
+function; the stones are drawn only when there are some). Stills from the face poses of stage 1's
+check (`ridge/facecheck/poses`, `render --blocks 110000 --stills 1.0,3.5,5.9`), and frames at 1.0
+and 3.5 s taken from a clip made by the window's recorder on the same poses (`clip --blocks
+110000`), are byte-identical between main's build and this one.
+
+**Checked by eye**, on the stored stage 1 poses (`ridge/final/poses`), with the window's recorder
+(`hillsideblast clip`) and frames taken from the movie files: the default view held still, 20 s,
+frames at 1, 2.6, 4.5, 7, 12 and 19.9 s; the pull-back over 12 s, frames at 0.5, 2.2, 4, 6.5, 8 and
+11.9 s; and three other cameras at 1 s and the end of the event: close on the near flank (focus
+(112, -42, 18), 38 m, yaw 1.1, pitch 0.25), a wide view from 260 m and pitch 0.22, and the default
+view. Before and after at the same cameras and times. Files under
+`$BOMBCAD_DATA/hillside-blast/ridge-flanks/`: `before/` and `after/` (`still.mp4`, `pullback.mp4`
+and their frames), `quick-before/` and `after-quick/` (the other cameras), `face-before/`,
+`face-after/`, `faceclip-before/`, `faceclip-after/`; the steps on the way in `try1/` to `try4/`.
+The tools are in `$BOMBCAD_DATA/ridge-flanks-tools/`.
+- *What they show.* From the default view the lower left, which was flagstones with olive ground in
+  their gaps, is now a slope of grey scree with ledges standing out of it, under a grassy crest
+  with scrub on its skyline; the rock round the cut now ends by going under the scree rather than
+  in slabs. In the wide view the ridge reads as a grassy ridge with crags and grey talus fans below
+  them on its steep flank, the cut's rocky margin, and the tongue of broken rock running out onto
+  the grass. Through the notch, and from the wide view, the plain is patchy dry grassland. Close
+  in, the grass is tussocks with soil between and the scree gravel and stones, without shimmer.
+
+**The look, frankly.**
+- *The ledges are boxy.* Each is a slab of one bed with a flat top and a near-vertical front, so a
+  run of them reads as a row of squared blocks, a little like a ruined wall, more than as bedrock
+  breaking through the ground; they carry the dressing's weathered face, whose large dark blotches
+  (the shared block shading, emmettl/bombcad-work#136's) are as strong on them as on the crest.
+  Real outcrops would want rounder, more uneven tops, partly under soil and grass, and fallen
+  blocks below them.
+- *Scree aprons have straight edges* in places: they follow the 1 m map, the march down the slope
+  and the ledges' rows, so some fans are strips with soft but straight sides.
+- *The near flank is more scree than grass* in the default view: it is the steep flank below the
+  rock round the cut, which feeds scree all the way down. That is plausible below a crag, but it
+  leaves the frame's lower left grey.
+- *The stones are small and few* against the shaded gravel (16,000 over the whole area), and the
+  scrub is single dark lumps from the chips' hull shapes; at the default distance both read as
+  texture, not as things.
+- *The dense rock round the cut* is still the stage 1 paving close up, and the cut's own surface
+  before the blast is the blocks' (unchanged); the pull-back's opening shot is all blocks.
+- *A thin pale line* still crosses the far plain in the wide view, several hundred metres out; it
+  was there before this stage. Fading the shadow map's edge was tried and did not move it, so it is
+  more likely where the 3 m ground meets the skirt beyond it; not traced.
+- Not looked at on a screen: all of it was made offscreen.
+
+**Tests.** `QuarryFlankTests` (BlastModel, Linux): a face has no flanks, and a ridge cut's dense rock
+is the cut and its margin, with no grass in it; ledges crop out clear of it, on slopes, in beds that
+are not shale, on the ground, and each becomes rock; scree lies below the ledges more than on open
+gentle ground, and grass on the gentle ground; stones and scrub lie on the ground outside the rock,
+the same each time, fewer at a smaller scale.

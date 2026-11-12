@@ -1136,6 +1136,8 @@ public struct QuarryFace: Sendable {
         let t = terrain
         let hillside = self
         let acrossToo = ridge != nil
+        // A ridge cut's flanks: dense rock only round the cut, ledges, scree and grass elsewhere.
+        let flank = QuarryFlank(face: self)
         @Sendable func surface(_ x: Float, _ y: Float) -> Float {
             // A face's dressing reaches past the grid only along the strip; a ridge's past it across
             // the cut's line too, along the ridge.
@@ -1164,13 +1166,11 @@ public struct QuarryFace: Sendable {
         var steepCount = 0
         func surfaceWeight(_ x: Float, _ y: Float) -> Float {
             let s = slope(x, y)
-            // A ridge's crest is rock down to about the cut's floor, in an irregular edge, so the
-            // broken rock of the cut is of a piece with the ridge it is cut from.
-            // Below it only the steepest ground: the flanks are scree, not scattered slabs.
-            if let ridge {
-                let edge = ridge.floor - 6 + 4 * QuarryNoise.fbm(SIMD3(x / 25, y / 25, 4.1), octaves: 3)
-                return surface(x, y) > edge || s > 0.95 + 0.25 * r.float() ? sqrt(1 + s * s) : 0
-            }
+            // A ridge cut's dense rock is the cut's and a ragged margin round it, so its broken rock
+            // is of a piece with rock round it; the flanks are ledges, scree and grass
+            // (`QuarryFlank`; the crest down to about the floor and the steepest ground were
+            // paved, which read as flat cut-outs from close, until 12 November 2026).
+            if let flank { return flank.paves(x, y) ? sqrt(1 + s * s) : 0 }
             return s > 0.55 + 0.25 * r.float() ? sqrt(1 + s * s) : 0
         }
         for _ in 0..<trials {
@@ -1259,9 +1259,12 @@ public struct QuarryFace: Sendable {
                         ? simd_cross(foot.1, SIMD3(0, 0, 1)) : simd_cross(foot.1, SIMD3(1, 0, 0)))
                 let slope = simd_cross(foot.1, side)
                 let extent = min(polyhedron.maxDistance(from: site), cell)
+                // A ridge cut's dense rock dips under the ground toward its edge, rather than ending
+                // in slabs standing proud of it.
+                let sink = flank.map { 0.9 * max(0, 1 - $0.edgeDepth(site.x, site.y) / 3) } ?? 0
                 let recess =
                     QuarryRock.recess(QuarryRock.kind(at: site))
-                    * (0.6 + 0.8 * QuarryNoise.hash(Int32(n), 3, 5).magnitude)
+                    * (0.6 + 0.8 * QuarryNoise.hash(Int32(n), 3, 5).magnitude) + sink
                 for along: SIMD3<Float> in [.zero, side, -side, slope, -slope] {
                     let reach = foot.0 + along * (0.7 * extent)
                     let (point, normal) = along == .zero ? foot : tangentPlane(SIMD2(reach.x, reach.y))
@@ -1291,6 +1294,12 @@ public struct QuarryFace: Sendable {
         report.append(
             "dressing: \(sites.count) sites, \(dressingIndices.count / 3) triangles (\(accepted) steep samples)"
         )
+        if let flank {
+            let paved = dressingIndices.count / 3
+            let made = appendLedges(flank, level: level)
+            report.append(
+                "ledges: \(made) of \(flank.ledges.count), \(dressingIndices.count / 3 - paved) triangles")
+        }
     }
 
     /// This face without its meshes (the blocks' and the dressing's), for keeping once they are

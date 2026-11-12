@@ -976,3 +976,229 @@ fragment float4 dustComposite(FullscreenOut in [[stage_in]],
     return dust.sample(s, in.uv);
 }
 
+
+// --- A ridge cut's flanks as ground (emmettl/bombcad-work#135) ---
+// Illustrative, for the eye: the ground's cover (`QuarryFlank`: scree, grass, rock, the cut, on a
+// 1 m grid over the dressing's area in `cam.terrainOrigin`), drawn as stony, grassy or rocky ground
+// with detail that fades with the pixel's footprint; and the scree's stones and the scrub as
+// render-only instances. A face's ground keeps `terrainFragment`.
+
+// Loose stones packed on the ground: weathered rock of every bed, darker in the crevices, each
+// domed and leaning its own way. `detail` is how much of the close detail to draw.
+static inline float3 screeGround(float2 q, float3 world, float detail, thread float3 &tilt) {
+    // Talus is mostly gravel and grit, streaked paler and darker down the slope, with stones in it.
+    float streak = fbm3(world * float3(0.9f, 0.9f, 0.25f) + 3.0f, 3);
+    float3 mean = mix(float3(0.3f, 0.28f, 0.25f), float3(0.46f, 0.42f, 0.36f), streak) * (0.85f + 0.3f * fbm3(world * 0.15f + 8.0f, 2));
+    tilt = float3(0.0f);
+    if (detail <= 0.0f) return mean;
+    float2 toCobble, toPebble;
+    float3 cobble = stones(q / 0.26f, 21u, toCobble);
+    float3 pebble = stones(q / 0.09f, 23u, toPebble);
+    float cobbleGap = cobble.y - cobble.x, pebbleGap = pebble.y - pebble.x;
+    bool isCobble = cobble.z < 0.16f && cobbleGap > 0.1f;
+    bool isPebble = !isCobble && pebble.z < 0.4f && pebbleGap > 0.14f;
+    float3 matrixColour = mean * (0.7f + 0.6f * hash31(floor(world * 40.0f))) * (0.85f + 0.3f * fbm3(world * 6.0f, 2));
+    if (!isCobble && !isPebble) {
+        tilt = float3((float2(hash31(floor(world * 40.0f) + 3.0f), hash31(floor(world * 40.0f) + 9.0f)) - 0.5f) * 0.35f * detail, 0.0f);
+        return mix(mean, matrixColour, detail);
+    }
+    float id = isCobble ? cobble.z : pebble.z;
+    float2 to = isCobble ? toCobble : toPebble;
+    float gap = isCobble ? cobbleGap : pebbleGap;
+    RockColour rock = rockOfKind(kindFromShare(fract(id * 3.71f)));
+    if (rock.kind == 1) rock.patina = mix(rock.patina, float3(0.33f, 0.32f, 0.3f), 0.6f);
+    float3 stone = mix(rock.patina, rock.oxidised, 0.3f + 0.5f * fract(id * 11.3f)) * (0.85f + 0.35f * fract(id * 29.1f));
+    stone *= 0.85f + 0.3f * fbm3(world * (isCobble ? 18.0f : 40.0f) + id * 40.0f, 2);
+    float crevice = smoothstep(0.0f, isCobble ? 0.2f : 0.25f, gap);
+    stone = mix(matrixColour * 0.6f, stone, crevice);
+    float2 lean = (float2(fract(id * 47.3f), fract(id * 91.7f)) - 0.5f) * 0.7f;
+    tilt = float3((lean - to * 1.2f) * detail * crevice, 0.0f);
+    return mix(mean, stone, detail);
+}
+
+// Dry grass in tussocks with soil between, straw and olive in patches, and blades as speckle close
+// in.
+static inline float3 grassGround(float3 world, float detail, thread float3 &tilt) {
+    float patch = fbm3(world * 0.32f + 41.0f, 3);
+    float small = fbm3(world * 1.3f + 7.0f, 2);
+    float3 straw = float3(0.5f, 0.43f, 0.26f);
+    float3 olive = float3(0.27f, 0.28f, 0.13f);
+    float3 brown = float3(0.34f, 0.27f, 0.16f);
+    float3 colour = mix(mix(straw, olive, smoothstep(0.35f, 0.65f, patch)), brown, smoothstep(0.55f, 0.75f, small) * 0.5f);
+    tilt = float3(0.0f);
+    float3 mean = colour * 0.85f;
+    if (detail <= 0.0f) return mean;
+    // Tussocks a few decimetres across, irregular, with bare soil between.
+    float3 p = world * 3.4f + 17.0f;
+    float clump = fbm3(p, 3);
+    float e = 0.12f;
+    float2 slope = float2(fbm3(p + float3(e, 0.0f, 0.0f), 3) - clump, fbm3(p + float3(0.0f, e, 0.0f), 3) - clump) / e;
+    float tuft = smoothstep(0.32f, 0.55f, clump);
+    float blades = noise3(world * float3(42.0f, 42.0f, 42.0f));
+    float3 grass = colour * (0.62f + 0.55f * blades) * (0.9f + 0.25f * hash31(floor(world * 70.0f)));
+    float3 soil = float3(0.21f, 0.18f, 0.14f) * (0.8f + 0.4f * hash31(floor(world * 30.0f)));
+    float3 c = mix(soil, grass, 0.3f + 0.7f * tuft);
+    tilt = float3(-slope * 0.35f * detail, 0.0f);
+    return mix(mean, c, detail);
+}
+
+fragment float4 ridgeTerrainFragment(TerrainOut in [[stage_in]],
+                                     constant QuarryCamera &cam [[buffer(0)]],
+                                     depth2d<float> shadowMap [[texture(0)]],
+                                     texture3d<float> dustLight [[texture(1)]],
+                                     texture2d<float> cover [[texture(2)]],
+                                     sampler s [[sampler(0)]]) {
+    constexpr sampler linear(filter::linear, address::clamp_to_edge);
+    float3 world = in.world;
+    float3 n = normalize(in.normal);
+    float slope = 1.0f - n.z;
+    float2 uv = (world.xy - cam.terrainOrigin.xy) / cam.terrainOrigin.zw;
+    // The map fades out over its last 15 m into the far ground's own cover.
+    float2 edge = min(uv, 1.0f - uv) * cam.terrainOrigin.zw;
+    float inside = smoothstep(0.0f, 15.0f, min(edge.x, edge.y));
+    float4 c = inside > 0.0f ? cover.sample(linear, saturate(uv)) : float4(0.0f);
+    float broad = fbm3(world * 0.035f, 3);
+    float wander = fbm3(world * 0.45f + 13.0f, 3) - 0.45f;
+    // The far ground: dry grass in broad patches, darker scrub, paler bare ground and a little scree on
+    // the steeper slopes, so the plain is not one flat colour.
+    float far1 = fbm3(world * 0.008f + 3.0f, 4);
+    float far2 = fbm3(world * 0.05f + 1.0f, 3);
+    float farGrass = smoothstep(0.32f, 0.55f, far1 + 0.25f * far2) * smoothstep(0.55f, 0.25f, slope);
+    float farScree = smoothstep(0.3f, 0.5f, slope) * 0.6f;
+    float grassAmount = mix(farGrass, c.g, inside);
+    float screeAmount = mix(farScree, c.r, inside);
+    float rockAmount = c.b * inside;
+    float cutAmount = c.a * inside;
+    // The cover map is 1 m: its edges are broken up so they never show as squares or blurs.
+    grassAmount = smoothstep(0.2f, 0.65f, grassAmount + 0.35f * wander);
+    screeAmount = smoothstep(0.12f, 0.6f, screeAmount + 0.45f * (fbm3(world * 0.6f + 5.0f, 4) - 0.45f));
+    float2 q = world.xy;
+    float footprint = length(fwidth(q));
+    float detail = 1.0f - smoothstep(0.03f, 0.11f, footprint);
+    float3 screeTilt, grassTilt;
+    float3 scree = screeGround(q, world, detail, screeTilt);
+    float3 grassy = grassGround(world, detail, grassTilt);
+    // Bare soil with grit, and pale bare patches on the far ground.
+    float soilDetail = fbm3(world * 2.2f, 4);
+    float3 soil = mix(float3(0.2f, 0.17f, 0.13f), float3(0.34f, 0.28f, 0.2f), soilDetail * 0.8f + 0.1f);
+    soil *= 0.7f + 0.6f * broad;
+    // Mottled at a hand's breadth too, which still shows where the finer detail has faded.
+    soil *= 0.82f + 0.36f * fbm3(world * 7.0f + 4.0f, 2);
+    float grit = step(0.8f, hash31(floor(world * 9.0f))) * detail;
+    soil = mix(soil, float3(0.46f, 0.42f, 0.35f), grit * 0.4f);
+    // Close in, the soil's own fine gravel.
+    soil = mix(soil, scree * 0.85f, 0.5f * detail);
+    float bare = smoothstep(0.6f, 0.75f, fbm3(world * 0.02f + 11.0f, 3)) * (1.0f - inside);
+    soil = mix(soil, float3(0.47f, 0.41f, 0.32f), bare * 0.5f);
+    // Rock: the beds' weathered colours, dark where the steep ground stands behind the render-only
+    // rock.
+    float3 rock = mix(float3(0.17f, 0.16f, 0.13f), bedColour(world) * 0.95f, smoothstep(0.25f, 0.8f, soilDetail));
+    rock *= mix(1.0f, 0.35f, smoothstep(0.35f, 0.6f, slope) * max(rockAmount, cutAmount));
+    float3 albedo = soil;
+    float3 tilt = float3((fbm3(world * 3.0f + 2.0f, 2) - 0.45f) * 0.3f, (fbm3(world * 3.0f + 9.0f, 2) - 0.45f) * 0.3f, 0.0f) * detail;
+    albedo = mix(albedo, grassy, grassAmount);
+    tilt = mix(tilt, grassTilt, grassAmount);
+    albedo = mix(albedo, scree, screeAmount);
+    tilt = mix(tilt, screeTilt, screeAmount);
+    // Darker scrub far off, where the instances are not.
+    float scrub = smoothstep(0.62f, 0.75f, fbm3(world * 0.09f + 7.0f, 3)) * grassAmount * (1.0f - inside);
+    albedo = mix(albedo, float3(0.12f, 0.12f, 0.06f), scrub * 0.6f);
+    float rocky = max(rockAmount * 0.85f, cutAmount);
+    albedo = mix(albedo, mix(rock, scree * 0.8f, 0.35f + 0.4f * detail), rocky);
+    tilt *= 1.0f - rocky * 0.6f;
+    float fade = saturate(1.0f - length(world - cam.eye.xyz) / 600.0f);
+    float3 surface = bumped(normalize(n + tilt), world, 1.1f, 0.12f * fade, 3);
+    float shadow = shadowAt(world, n, cam, shadowMap, s);
+    float dust = dustShadow(world, cam, dustLight);
+    return float4(shade(albedo, world, surface, cam, shadow, dust), 1.0f);
+}
+
+struct FlankStone {
+    float4 posSize;
+    float4 rotation;
+    float4 look;     // x: 0 a stone, 1 scrub; y: a random value; z: its tint
+};
+
+struct FlankStoneOut {
+    float4 position [[position]];
+    float3 world;
+    float3 centre [[flat]];
+    float3 albedo [[flat]];
+    float kind [[flat]];
+    float seed [[flat]];
+    float size [[flat]];
+};
+
+// `shapeInfo` is `QuarryChipShapes`' count and the vertices of each.
+static inline float3 flankStonePoint(FlankStone stone, uint vid, const device float4 *shapes, uint2 shapeInfo) {
+    uint shape = uint(fract(stone.look.y * 61.73f) * float(shapeInfo.x)) % shapeInfo.x;
+    float3 v = shapes[shape * shapeInfo.y + vid].xyz;
+    // Scrub is rounder and taller than a stone lying on its flat side.
+    float3 stretch = stone.look.x > 0.5f ? float3(0.9f, 1.0f, 1.3f) / max(abs(v.z) + 0.6f, 1.0f) * 1.2f
+                                         : float3(1.0f, 1.0f, 0.85f);
+    return stone.posSize.xyz + rotate(stone.rotation, v * stretch * stone.posSize.w * 0.6f);
+}
+
+vertex FlankStoneOut flankStoneVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
+                                      const device FlankStone *stones [[buffer(0)]],
+                                      constant QuarryCamera &cam [[buffer(2)]],
+                                      const device float4 *shapes [[buffer(5)]],
+                                      constant uint2 &shapeInfo [[buffer(6)]]) {
+    FlankStone stone = stones[instance];
+    FlankStoneOut o;
+    o.world = flankStonePoint(stone, vid, shapes, shapeInfo);
+    o.position = cam.viewProjection * float4(o.world, 1.0f);
+    o.centre = stone.posSize.xyz;
+    o.kind = stone.look.x;
+    o.seed = stone.look.y;
+    o.size = stone.posSize.w;
+    if (stone.look.x > 0.5f) {
+        // Low scrub: dark olive and brown, a few greyer.
+        o.albedo = mix(mix(float3(0.1f, 0.11f, 0.05f), float3(0.2f, 0.19f, 0.09f), stone.look.z),
+                       float3(0.2f, 0.18f, 0.14f), step(0.8f, fract(stone.look.y * 7.3f)) * 0.6f);
+    } else {
+        // Scree: weathered rock of the beds, paler than their patina.
+        RockColour rock = rockOfKind(kindFromShare(fract(stone.look.y * 3.71f)));
+        if (rock.kind == 1) rock.patina = mix(rock.patina, float3(0.3f, 0.29f, 0.27f), 0.5f);
+        o.albedo = mix(rock.patina, rock.oxidised, 0.25f + 0.6f * stone.look.z) * (0.85f + 0.35f * fract(stone.look.y * 17.0f));
+    }
+    return o;
+}
+
+vertex float4 flankStoneShadowVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
+                                     const device FlankStone *stones [[buffer(0)]],
+                                     constant QuarryCamera &cam [[buffer(2)]],
+                                     const device float4 *shapes [[buffer(5)]],
+                                     constant uint2 &shapeInfo [[buffer(6)]]) {
+    return cam.shadow * float4(flankStonePoint(stones[instance], vid, shapes, shapeInfo), 1.0f);
+}
+
+fragment float4 flankStoneFragment(FlankStoneOut in [[stage_in]],
+                                   constant QuarryCamera &cam [[buffer(0)]],
+                                   depth2d<float> shadowMap [[texture(0)]],
+                                   texture3d<float> dustLight [[texture(1)]],
+                                   sampler s [[sampler(0)]]) {
+    float3 facet = normalize(cross(dfdx(in.world), dfdy(in.world)));
+    if (dot(facet, cam.eye.xyz - in.world) < 0.0f) facet = -facet;
+    float3 albedo = in.albedo;
+    float3 n = facet;
+    float3 local = in.world - in.centre;
+    if (in.kind > 0.5f) {
+        // A rounded mass of small leaves: lit as a ball, broken by clusters with dark gaps between.
+        float3 round = normalize(local + float3(0.0f, 0.0f, 0.25f * in.size));
+        float3 p = in.world * 6.0f + in.seed * 30.0f;
+        float3 jitter = float3(noise3(p), noise3(p + 7.1f), noise3(p + 13.3f)) - 0.5f;
+        n = normalize(mix(round, facet, 0.2f) + jitter * 1.1f);
+        float leaves = fbm3(in.world * 9.0f + in.seed * 20.0f, 3);
+        albedo *= (0.55f + 0.9f * leaves) * mix(0.4f, 1.0f, smoothstep(0.3f, 0.55f, fbm3(in.world * 3.3f + 5.0f, 2)));
+    } else {
+        float grain = fbm3(in.world * 9.0f + in.seed * 30.0f, 3);
+        albedo *= 0.8f + 0.4f * grain;
+        float lichen = smoothstep(0.58f, 0.72f, fbm3(in.world * 2.3f + in.seed * 11.0f, 3)) * smoothstep(0.2f, 0.8f, facet.z);
+        albedo = mix(albedo, float3(0.52f, 0.52f, 0.42f), lichen * 0.35f);
+        n = normalize(n + (float3(noise3(in.world * 7.0f), noise3(in.world * 7.0f + 3.3f), 0.5f) - 0.5f) * 0.25f);
+    }
+    float shadow = shadowAt(in.world, facet, cam, shadowMap, s);
+    float dust = dustShadow(in.world, cam, dustLight);
+    return float4(shade(albedo, in.world, n, cam, shadow, dust), 1.0f);
+}
