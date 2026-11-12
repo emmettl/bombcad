@@ -472,10 +472,13 @@ public struct QuarryFace: Sendable {
         sites.reserveCapacity(options.blocks)
         var volumeSamples = 0
         var insideSamples = 0
-        func density(_ p: SIMD3<Float>) -> Float {
+        // A copy for the parallel loops below to read (the tables and terrain they read do not
+        // change in this function).
+        let hillside = self
+        @Sendable func density(_ p: SIMD3<Float>) -> Float {
             let q = p / SIMD3<Float>(25, 18, 12)
             let broad = exp(1.8 * QuarryNoise.fbm(q, octaves: 3))
-            let across = abs(p.y - faceLine(p.x) - depth * 0.4) / 18
+            let across = abs(p.y - hillside.faceLine(p.x) - depth * 0.4) / 18
             let near = 0.6 + 1.4 * exp(-across * across)
             return broad * near
         }
@@ -561,7 +564,7 @@ public struct QuarryFace: Sendable {
             Int(ceil((hashHigh.x - hashLow.x) / cell)) + 1, Int(ceil((hashHigh.y - hashLow.y) / cell)) + 1,
             Int(ceil((hashHigh.z - hashLow.z) / cell)) + 1)
         var buckets = [[Int32]](repeating: [], count: dims.x * dims.y * dims.z)
-        func bucket(_ p: SIMD3<Float>) -> SIMD3<Int> {
+        @Sendable func bucket(_ p: SIMD3<Float>) -> SIMD3<Int> {
             let g = (p - hashLow) / cell
             return simd_clamp(SIMD3<Int>(Int(g.x), Int(g.y), Int(g.z)), .zero, dims &- 1)
         }
@@ -580,7 +583,6 @@ public struct QuarryFace: Sendable {
             var skin = false
         }
         var builtRaw = [Built?](repeating: nil, count: sites.count)
-        let hillside = self
         builtRaw.withUnsafeMutableBufferPointer { out in
             nonisolated(unsafe) let output = out
             DispatchQueue.concurrentPerform(iterations: frozenSites.count) { n in
@@ -933,7 +935,7 @@ public struct QuarryFace: Sendable {
     public mutating func buildDressing(edge: Float = 1.15, level: Int = 3) {
         let t = terrain
         let hillside = self
-        func surface(_ x: Float, _ y: Float) -> Float {
+        @Sendable func surface(_ x: Float, _ y: Float) -> Float {
             let inside = x > t.origin.x + 1 && x < t.origin.x + Float(t.columns - 2) * t.spacing
             return inside ? hillside.height(t.heights, x, y) : hillside.oldHeight(x, y)
         }
@@ -987,7 +989,7 @@ public struct QuarryFace: Sendable {
         let accepted = sites.count
         let cell = edge * 2.1
         var grid: [Int64: [Int32]] = [:]
-        func key(_ p: SIMD3<Float>) -> Int64 {
+        @Sendable func key(_ p: SIMD3<Float>) -> Int64 {
             let g = floor(p / cell)
             return Int64(g.x) &+ Int64(g.y) &* 1_000_003 &+ Int64(g.z) &* 2_000_000_011
         }
