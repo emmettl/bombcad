@@ -20,8 +20,19 @@
         var draftStart: SIMD2<Float>?
         var draftEnd: SIMD2<Float>?
         var blocks = 100_000
+        /// The stylised firing pattern, kept across strips.
+        var order = QuarryFiringOrder.leftToRight
+        var staggerMilliseconds = 100.0
+        var firingCount = 16.0
+        /// The event on view.
         private(set) var session: QuarrySession?
+        /// A new strip's scene, built and firing, until its first frames can be shown.
+        private(set) var incoming: QuarrySession?
         private(set) var preparing: String?
+        private(set) var preparingShare: Float = 0
+        /// Seconds from the strip's release to its event first shown, for the record.
+        private(set) var lastStripSeconds: Double?
+        private var prepareCount = 0
         private(set) var problem: String?
         private(set) var map: CGImage?
         /// The map's extent in the ground's metres: low corner and size.
@@ -73,6 +84,9 @@
                     terrain: crop.terrain, start: size * SIMD2(0.35, 0.5), end: size * SIMD2(0.65, 0.5))
                 terrainName = url.lastPathComponent
                 makeMap(around: size / 2, radius: max(size.x, size.y) / 2)
+                prepareCount += 1
+                incoming = nil
+                preparing = nil
                 session = nil
                 problem = "Drag along a face on the map to choose the strip."
                 version += 1
@@ -122,13 +136,36 @@
             mapSize = SIMD2(repeating: 2 * radius)
         }
 
-        /// Shows a new session and fires it.
-        private func install(_ session: QuarrySession) {
-            session.onRefireDone = { [weak self] in self?.version += 1 }
-            self.session = session
-            preparing = nil
-            version += 1
+        var settings: QuarryFiringSettings {
+            QuarryFiringSettings(
+                order: order, stagger: Float(staggerMilliseconds) / 1000, count: Int(firingCount))
+        }
+
+        /// Fires the face on view again with the settings chosen.
+        func fire() {
+            guard let session else { return }
+            session.settings = settings
             session.refire()
+            version += 1
+        }
+
+        /// Takes a new strip's scene, already firing, and puts it on view once its event starts;
+        /// the old event stays on view until then.
+        private func install(_ session: QuarrySession, started: Date) {
+            session.onRefireDone = { [weak self] in self?.version += 1 }
+            session.onEventStarted = { [weak self, weak session] in
+                guard let self, let session else { return }
+                if self.incoming === session {
+                    self.lastStripSeconds = Date().timeIntervalSince(started)
+                    self.session = session
+                    self.incoming = nil
+                    self.preparing = nil
+                }
+                self.version += 1
+            }
+            incoming = session
+            preparing = "Firing…"
+            session.follow()
         }
 
         /// The strip shown on the map: the draft while dragging, else the site's.
@@ -155,36 +192,46 @@
                 problem = "This Mac has no Metal device."
                 return
             }
-            preparing = "Breaking the rock…"
+            preparing = "Laying out the face…"
+            preparingShare = 0
             problem = nil
+            prepareCount += 1
+            let count = prepareCount
+            // A strip dragged while another is still being built replaces it.
+            incoming = nil
             let site = self.site
+            let settings = self.settings
             var options = QuarryFace.Options()
             options.blocks = blocks
             options.meshDetail = 1
             let keys = keyRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
+            let started = Date()
             Task.detached(priority: .userInitiated) {
                 do {
-                    var face = try QuarryFace(site: site, options: options)
-                    face.generate()
-                    face.buildDressing(level: 1)
-                    let built = face
-                    await MainActor.run {
-                        do {
-                            let session = try QuarrySession(
-                                device: device, face: built, width: 1600, height: 900, keyDirectory: keys)
-                            self.install(session)
-                        } catch {
-                            self.preparing = nil
-                            self.problem = "Couldn't draw the face: \(error.localizedDescription)"
+                    // The solver starts as soon as the blocks exist; the scene is drawn up meanwhile.
+                    let session = try QuarrySession.prepare(
+                        device: device, site: site, options: options, settings: settings, width: 1600,
+                        height: 900, keyDirectory: keys
+                    ) { stage, share in
+                        Task { @MainActor in
+                            guard self.prepareCount == count else { return }
+                            self.preparing = stage
+                            self.preparingShare = share
                         }
+                    }
+                    await MainActor.run {
+                        guard self.prepareCount == count else { return }
+                        self.install(session, started: started)
                     }
                 } catch QuarryFace.Failure.noFace {
                     await MainActor.run {
+                        guard self.prepareCount == count else { return }
                         self.preparing = nil
                         self.problem = "There's no face under that strip to break. Drag along a steep slope."
                     }
                 } catch {
                     await MainActor.run {
+                        guard self.prepareCount == count else { return }
                         self.preparing = nil
                         self.problem = "Couldn't lay the face out: \(error.localizedDescription)"
                     }
@@ -224,6 +271,8 @@
         /// The interval between frames and the work in each, smoothed (ms).
         private(set) var interval = 0.0
         private(set) var work = 0.0
+        /// Another scene is being built and fired: draw slowly and leave the machine to it.
+        var throttled = false
         var onFrame: ((Int) -> Void)?
 
         init(device: MTLDevice?) {
@@ -235,7 +284,8 @@
 
         func draw(in view: MTKView) {
             guard let view = view as? QuarryMetalView, let session = view.session else { return }
-            view.preferredFramesPerSecond = session.refireProgress == nil ? 60 : QuarrySession.firingDrawRate
+            view.preferredFramesPerSecond =
+                throttled ? QuarrySession.firingDrawRate : session.preferredDrawRate
             let now = Date()
             let elapsed = now.timeIntervalSince(last)
             last = now
@@ -256,6 +306,7 @@
     struct QuarrySceneView: NSViewRepresentable {
         let session: QuarrySession?
         let coordinator: QuarryViewCoordinator
+        var throttled = false
 
         func makeCoordinator() -> QuarryViewCoordinator { coordinator }
 
@@ -271,6 +322,7 @@
         }
 
         func updateNSView(_ view: QuarryMetalView, context: Context) {
+            context.coordinator.throttled = throttled
             if view.session !== session {
                 view.session = session
                 if view.device == nil { view.device = session?.device }
@@ -280,7 +332,7 @@
 
     /// The window.
     struct QuarryFaceView: View {
-        @State private var model = QuarryFaceModel()
+        @State private var model: QuarryFaceModel
         @State private var coordinator = QuarryViewCoordinator(device: MTLCreateSystemDefaultDevice())
         @State private var shownFrame = 0
         @State private var scrub = 0.0
@@ -288,6 +340,13 @@
         @State private var readout = ""
         @State private var importing = false
         @State private var tick = 0
+        /// Frames simulated so far of the event on view.
+        @State private var simulated = 0.0
+
+        /// `model`, for a review of the window offscreen; else one of its own.
+        init(model: QuarryFaceModel? = nil) {
+            _model = State(initialValue: model ?? QuarryFaceModel())
+        }
 
         var body: some View {
             HSplitView {
@@ -295,7 +354,10 @@
                     .frame(minWidth: 300, idealWidth: 320, maxWidth: 380)
                 VStack(spacing: 0) {
                     ZStack(alignment: .topLeading) {
-                        QuarrySceneView(session: model.session, coordinator: coordinator)
+                        QuarrySceneView(
+                            session: model.session, coordinator: coordinator,
+                            throttled: model.preparing != nil
+                        )
                         if !readout.isEmpty {
                             Text(readout)
                                 .font(.system(size: 12, weight: .medium).monospacedDigit())
@@ -307,10 +369,16 @@
                                 .accessibilityLabel("Frame time")
                         }
                         if let preparing = model.preparing {
-                            ProgressView(preparing)
+                            // Over the old event, which stays on view until the new one starts.
+                            ProgressView(preparing, value: Double(model.preparingShare))
+                                .frame(width: 260)
                                 .padding()
                                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .frame(
+                                    maxWidth: .infinity, maxHeight: .infinity,
+                                    alignment: model.session == nil ? .center : .bottom
+                                )
+                                .padding(.bottom, 12)
                         }
                     }
                     timeline
@@ -326,6 +394,10 @@
                         readout = String(
                             format: "%5.1f ms  %3.0f fps   work %4.1f ms", coordinator.interval,
                             1000 / max(coordinator.interval, 1e-3), coordinator.work)
+                        if let session = model.session, session.isSimulating {
+                            readout += "\n" + session.playbackStatus
+                        }
+                        simulated = model.session.map { Double($0.availableFrames) } ?? 0
                     }
                 }
                 if model.session == nil, model.preparing == nil { model.prepare() }
@@ -373,7 +445,7 @@
                 }
                 Section("Firing (stylised)") {
                     if let session = model.session {
-                        QuarryFiringControls(session: session, version: model.version)
+                        QuarryFiringControls(model: model, session: session, version: model.version)
                     } else {
                         Text("Breaking the rock first…").foregroundStyle(.secondary)
                     }
@@ -408,21 +480,30 @@
                 .accessibilityLabel(model.session?.playing == true ? "Pause" : "Play")
                 .help("Play or pause")
                 .keyboardShortcut(.space, modifiers: [])
-                .disabled(model.session?.isReady != true)
-                Slider(
-                    value: Binding(
-                        get: { Double(shownFrame) },
-                        set: { value in
-                            scrubbing = true
-                            shownFrame = Int(value)
-                            model.session?.playing = false
-                            model.session?.seek(to: Int(value))
-                            scrubbing = false
-                        }),
-                    in: 0...Double(max(1, (model.session?.eventFrames ?? 2) - 1))
-                )
-                .disabled(model.session?.isReady != true)
-                .accessibilityLabel("Timeline")
+                .disabled(model.session?.canPlay != true)
+                VStack(spacing: 2) {
+                    Slider(
+                        value: Binding(
+                            get: { Double(shownFrame) },
+                            set: { value in
+                                scrubbing = true
+                                shownFrame = Int(value)
+                                model.session?.playing = false
+                                model.session?.seek(to: Int(value))
+                                scrubbing = false
+                            }),
+                        in: 0...Double(max(1, (model.session?.eventFrames ?? 2) - 1))
+                    )
+                    .disabled(model.session?.canPlay != true)
+                    .accessibilityLabel("Timeline")
+                    // How much of the event is simulated: the timeline scrubs over that much.
+                    if let session = model.session, session.isSimulating {
+                        ProgressView(value: simulated / Double(session.eventFrames))
+                            .controlSize(.mini)
+                            .tint(.secondary)
+                            .accessibilityLabel("Simulated so far")
+                    }
+                }
                 Text(String(format: "%.1f s", Float(shownFrame) / QuarrySession.frameRate))
                     .monospacedDigit()
                     .frame(width: 48, alignment: .trailing)
@@ -434,50 +515,47 @@
 
     /// Order, ripple and count, and Fire again with its progress.
     struct QuarryFiringControls: View {
+        @Bindable var model: QuarryFaceModel
         let session: QuarrySession
         let version: Int
-        @State private var order = QuarryFiringOrder.leftToRight
-        @State private var stagger = 100.0
-        @State private var count = 16.0
         @State private var progress: Float?
         @State private var status = ""
 
         var body: some View {
-            Picker("Order", selection: $order) {
+            Picker("Order", selection: $model.order) {
                 ForEach(QuarryFiringOrder.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             LabeledContent("Ripple") {
                 HStack {
-                    Slider(value: $stagger, in: 20...400)
+                    Slider(value: $model.staggerMilliseconds, in: 20...400)
                         .accessibilityLabel("Ripple, milliseconds between firings")
-                    Text("\(Int(stagger)) ms").monospacedDigit().frame(width: 56, alignment: .trailing)
+                    Text("\(Int(model.staggerMilliseconds)) ms").monospacedDigit()
+                        .frame(width: 56, alignment: .trailing)
                 }
             }
             LabeledContent("Firings") {
                 HStack {
-                    Slider(value: $count, in: 6...30, step: 1)
+                    Slider(value: $model.firingCount, in: 6...30, step: 1)
                         .accessibilityLabel("Number of firings")
-                    Text("\(Int(count))").monospacedDigit().frame(width: 28, alignment: .trailing)
+                    Text("\(Int(model.firingCount))").monospacedDigit().frame(width: 28, alignment: .trailing)
                 }
             }
             HStack {
-                Button("Fire again") {
-                    session.settings = QuarryFiringSettings(
-                        order: order, stagger: Float(stagger) / 1000, count: Int(count))
-                    session.refire()
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-                .disabled(progress != nil)
-                if let progress {
-                    ProgressView(value: Double(progress)).frame(width: 120)
+                // Firing again while an event is still simulated replaces it.
+                Button("Fire again") { model.fire() }
+                    .keyboardShortcut(.return, modifiers: [.command])
+                    .disabled(model.incoming != nil)
+                if progress != nil {
+                    ProgressView().controlSize(.small)
+                    Text("Starting…").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Text(status).font(.caption).foregroundStyle(.secondary)
+                    Text(status).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
             .task(id: version) {
                 while !Task.isCancelled {
                     progress = session.refireProgress
-                    status = session.refireStatus
+                    status = session.playbackStatus
                     try? await Task.sleep(for: .milliseconds(200))
                 }
             }

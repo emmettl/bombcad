@@ -17,13 +17,38 @@ struct QuarryFaceSceneTests {
         let model = QuarryFaceModel(blocks: 12000)
         model.prepare()
         var waited = 0.0
+        // The event is shown as soon as its first frames are simulated, before the rest.
+        while model.session?.canPlay != true, waited < 240 {
+            try await Task.sleep(for: .milliseconds(20))
+            waited += 0.02
+        }
+        let first = try #require(model.session)
+        #expect(first.availableFrames <= first.eventFrames)
+        first.update(elapsed: 0.1)
+        #expect(first.frame < first.availableFrames)
         while model.session?.isReady != true, waited < 240 {
             try await Task.sleep(for: .milliseconds(100))
             waited += 0.1
         }
         let session = try #require(model.session)
         #expect(session.isReady)
+        #expect(!session.isSimulating)
         #expect(model.problem == nil)
+        // Fired again: the old event stays on view until the new one's first frames are stored.
+        let old = try #require(session.cache)
+        model.fire()
+        #expect(session.cache === old)
+        #expect(session.isStarting)
+        while session.cache === old, waited < 240 {
+            try await Task.sleep(for: .milliseconds(20))
+            waited += 0.02
+        }
+        #expect(session.cache !== old)
+        while !session.isReady, waited < 240 {
+            try await Task.sleep(for: .milliseconds(100))
+            waited += 0.1
+        }
+        #expect(session.isReady)
         // The last second of the event: still.
         session.seek(to: session.eventFrames - 31)
         session.update(elapsed: 0)

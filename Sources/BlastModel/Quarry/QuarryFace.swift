@@ -436,8 +436,8 @@ public struct QuarryFace: Sendable {
         guard cut > 2000 else { throw Failure.noFace }
     }
 
-    /// Generate the blocks.
-    public mutating func generate(timing: Bool = true) {
+    /// Generate the blocks. `progress`, if given, is told the share done after each stage.
+    public mutating func generate(timing: Bool = true, progress: ((Float) -> Void)? = nil) {
         let options = self.options
         let length = self.length
         let depth = self.depth
@@ -572,6 +572,7 @@ public struct QuarryFace: Sendable {
             let b = bucket(p)
             buckets[b.x + dims.x * (b.y + dims.y * b.z)].append(Int32(n))
         }
+        progress?(0.1)
         let frozenSites = sites
         let frozenStripCount = sites.count - skinSites
         let frozenBuckets = buckets
@@ -659,6 +660,7 @@ public struct QuarryFace: Sendable {
             }
         }
         let cells = builtRaw.compactMap { $0 }
+        progress?(0.4)
         // Bedding and joints cut each coarse cell into slabs and wedges, and more where the rock
         // is more broken, so large blocks stand among fines.
         let referenceVolume = cells.reduce(0) { $0 + $1.volume } / Float(max(cells.count, 1))
@@ -678,6 +680,7 @@ public struct QuarryFace: Sendable {
             }
         }
         let built = cutOut.flatMap { $0 }
+        progress?(0.6)
         let meanVolume = built.reduce(0) { $0 + $1.volume } / Float(max(built.count, 1))
         let keep = built.filter { $0.volume > 0.02 * meanVolume }
         report.append(
@@ -721,9 +724,12 @@ public struct QuarryFace: Sendable {
                 output[n] = (vertices, indices, anchors)
             }
         }
+        progress?(0.75)
+        let meshed = Date()
         var blocks: [Block] = []
         blocks.reserveCapacity(keep.count)
         for (body, cell) in keep.enumerated() {
+            if body % 20_000 == 19_999 { progress?(0.75 + 0.25 * Float(body) / Float(keep.count)) }
             let c = cell.centroid
             var localBounds = (SIMD3<Float>(repeating: .infinity), SIMD3<Float>(repeating: -.infinity))
             for polygon in cell.polyhedron.faces {
@@ -816,6 +822,7 @@ public struct QuarryFace: Sendable {
                     size: cbrt(cell.volume), skin: cell.skin))
         }
         self.blocks = blocks
+        report.append(String(format: "meshes and spheres: %.1f s", Date().timeIntervalSince(meshed)))
         maxRadius = spheres.reduce(0) { max($0, $1.radius) }
         report.append(
             "blocks \(blocks.count), spheres \(spheres.count) (\(String(format: "%.2f", Float(spheres.count) / Float(max(blocks.count, 1)))) per block), max radius \(String(format: "%.2f", maxRadius)) m, vertices \(vertices.count), triangles \(indices.count / 3), \(String(format: "%.1f", Date().timeIntervalSince(start))) s in all"

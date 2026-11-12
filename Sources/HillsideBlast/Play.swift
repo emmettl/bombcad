@@ -51,20 +51,29 @@ enum PlayApp {
         print("Illustrative only: a stylised ripple for the eye, not a blast-design aid.")
         var settings = options
         settings.meshDetail = 1
-        var live = try QuarryFace(site: .builtIn(), options: settings)
-        live.generate()
-        live.buildDressing(level: 1)
-        let session = try QuarrySession(
-            device: device, face: live, width: 1600, height: 900,
-            keyDirectory: dataRoot.appendingPathComponent(
-                "play-dust-\(ProcessInfo.processInfo.processIdentifier)"))
+        let opened = Date()
+        func open() throws -> QuarrySession {
+            let session = try QuarrySession.prepare(
+                device: device, site: .builtIn(), options: settings, settings: QuarryFiringSettings(),
+                width: 1600, height: 900,
+                keyDirectory: dataRoot.appendingPathComponent(
+                    "play-dust-\(ProcessInfo.processInfo.processIdentifier)"),
+                timings: { print($0) }, progress: { _, _ in })
+            session.follow()
+            return session
+        }
         let selfTest = option(arguments, "--self-test")
         if let selfTest, arguments.contains("--offscreen") {
+            // The test alone holds the session, so a moved strip's scene replaces it in memory too.
             let test = PlayTest(
-                session: session, output: dataRoot.appendingPathComponent(selfTest), present: nil)
+                session: try open(), output: dataRoot.appendingPathComponent(selfTest), present: nil)
+            test.fired = opened
+            test.options = settings
+            test.dataRoot = dataRoot
             try test.runOffscreen()
             return
         }
+        let session = try open()
         let app = NSApplication.shared
         app.setActivationPolicy(selfTest == nil ? .regular : .accessory)
         let controller = PlayController(session: session)
@@ -74,6 +83,7 @@ enum PlayApp {
             controller.test = PlayTest(
                 session: session, output: dataRoot.appendingPathComponent(selfTest),
                 present: controller.metalView)
+            controller.test?.fired = opened
             // Behind other windows the view's own display link stops: drive its draw from a timer.
             controller.metalView.isPaused = true
             controller.metalView.enableSetNeedsDisplay = false
@@ -85,7 +95,6 @@ enum PlayApp {
                 NSApp.terminate(nil)
             }
         }
-        session.refire()
         app.run()
     }
 }
@@ -216,6 +225,7 @@ final class PlayController: NSObject, MTKViewDelegate, NSWindowDelegate {
     }
 
     @objc func timelineMoved() {
+        // Over what is simulated so far; the slider spans the whole event.
         session.playing = false
         session.seek(to: Int(timeline.doubleValue * Double(session.eventFrames - 1)))
         scrubbing = true
@@ -241,8 +251,8 @@ final class PlayController: NSObject, MTKViewDelegate, NSWindowDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     func draw(in view: MTKView) {
-        // While the physics runs, the window draws slowly and leaves the GPU to it.
-        view.preferredFramesPerSecond = session.refireProgress == nil ? 60 : QuarrySession.firingDrawRate
+        // While the physics runs, the window draws no faster than the event and shares the GPU.
+        view.preferredFramesPerSecond = session.preferredDrawRate
         let now = Date()
         let elapsed = now.timeIntervalSince(last)
         last = now
@@ -259,13 +269,11 @@ final class PlayController: NSObject, MTKViewDelegate, NSWindowDelegate {
         }
         scrubbing = false
         playButton.title = session.playing ? "Pause" : "Play"
-        progress.doubleValue = Double(session.refireProgress ?? 0)
-        fireButton.isEnabled = session.refireProgress == nil
+        progress.doubleValue = Double(session.availableFrames) / Double(session.eventFrames)
         let seconds = Float(session.frame) / QuarrySession.frameRate
         status.stringValue = String(
             format: "%.1f s  %.0f fps  %@", seconds, fps,
-            session.refireProgress != nil
-                ? "firing \(Int((session.refireProgress ?? 0) * 100))%" : session.refireStatus)
+            session.refireProgress != nil ? "starting…" : session.playbackStatus)
         let work = Date().timeIntervalSince(now) * 1000
         interval = interval == 0 ? elapsed * 1000 : interval * 0.9 + elapsed * 100
         workTime = workTime == 0 ? work : workTime * 0.9 + work * 0.1
@@ -276,25 +284,46 @@ final class PlayController: NSObject, MTKViewDelegate, NSWindowDelegate {
     }
 }
 
-/// Scripted use of the session, measuring the loop the window really runs.
+/// Scripted use of the session, measuring the loop the window really runs: the first firing and
+/// a refire watched as they are simulated, scrubbing, and (offscreen) a new strip.
 final class PlayTest {
-    let session: QuarrySession
+    var session: QuarrySession
     let output: URL
     weak var present: MTKView?
-    enum Phase { case waiting, play, scrub, firing, after, done }
+    enum Phase { case waiting, follow, scrub, refire, refollow, strip, stripFollow, done }
     var phase = Phase.waiting
     var phaseName: String { "\(phase)" }
+    /// Intervals between drawn frames (ms), by phase.
     var frames: [Phase: [Double]] = [:]
     /// Each drawn frame's own work on the main thread (ms), apart from the wait for the next one.
     var works: [Phase: [Double]] = [:]
-    func work(_ ms: Double) { works[phase, default: []].append(ms) }
+    func work(_ ms: Double) {
+        works[phase, default: []].append(ms)
+        lastWork = ms
+    }
     var ticks = 0
-    var firstRefire: Double?
-    var secondRefire: Double?
-    let start = Date()
     var random = QuarryRandom(seed: 9)
-    var shots: Set<Int> = []
     var memory: [String] = []
+    var lines: [String] = []
+    /// When the firing (or strip) being waited on was asked for, and the rest poses it starts from.
+    var fired = Date()
+    var rest: [SIMD3<Float>] = []
+    var motionSeen = true
+    var startedEvent: ObjectIdentifier?
+    var lastFrame = 0
+    var lastAdvance = Date()
+    var stalls = 0
+    var backward = 0
+    var rates: [Double] = []
+    var footprintPeak = 0
+    var options = QuarryFace.Options()
+    var dataRoot = URL(fileURLWithPath: "/tmp")
+    var incoming: QuarrySession?
+    var stripError: String?
+    /// Each tick while following: when, the phase, the frame shown, frames stored, work, rate.
+    var series = "seconds,phase,frame,available,work_ms,rate,update_ms,draw_ms\n"
+    var lastWork = 0.0
+    var lastParts = (update: 0.0, draw: 0.0)
 
     init(session: QuarrySession, output: URL, present: MTKView?) {
         self.session = session
@@ -307,107 +336,261 @@ final class PlayTest {
         session.renderer.savePNG(output.appendingPathComponent(name + ".png"))
     }
 
+    private func note(_ line: String) {
+        print(line)
+        lines.append(line)
+    }
+
+    /// Waits for `session`'s new event: notes when it starts and when its rock first moves on view.
+    private func watchStart(_ label: String) -> Bool {
+        guard let cache = session.cache, ObjectIdentifier(cache) != startedEvent else { return false }
+        startedEvent = ObjectIdentifier(cache)
+        note(
+            String(
+                format: "%@: first frame shown %.2f s after asking", label, Date().timeIntervalSince(fired)))
+        rest = session.face.blocks.map(\.centre)
+        motionSeen = false
+        lastFrame = 0
+        lastAdvance = Date()
+        return true
+    }
+
+    private func watchMotion(_ label: String) {
+        guard !motionSeen else { return }
+        let poses = session.shownPoses
+        for n in rest.indices {
+            let p = poses[2 * n]
+            if simd_distance(SIMD3(p.x, p.y, p.z), rest[n]) > 0.02 {
+                motionSeen = true
+                note(
+                    String(
+                        format: "%@: rock first moves on view %.2f s after asking (event time %.2f s)", label,
+                        Date().timeIntervalSince(fired), Float(session.frame) / QuarrySession.frameRate))
+                shot(label.replacingOccurrences(of: " ", with: "-") + "-first-motion")
+                return
+            }
+        }
+    }
+
+    /// Playback while the event is simulated: never backward, and how often it holds still.
+    private func watchFollow() {
+        if session.frame < lastFrame { backward += 1 }
+        if session.frame != lastFrame {
+            lastAdvance = Date()
+        } else if session.playing, Date().timeIntervalSince(lastAdvance) > 0.1 {
+            stalls += 1
+            lastAdvance = Date()
+        }
+        lastFrame = session.frame
+        if session.isSimulating, session.playing { rates.append(session.playbackRate) }
+        series += String(
+            format: "%.3f,%@,%d,%d,%.1f,%.3f,%.1f,%.1f\n", Date().timeIntervalSince(fired), "\(phase)",
+            session.frame, session.availableFrames, lastWork, session.playbackRate, lastParts.update,
+            lastParts.draw)
+        footprintPeak = max(footprintPeak, PlayApp.footprintMB())
+    }
+
+    private func followReport(_ label: String) {
+        let gpu = session.run?.frameGPUSeconds ?? []
+        note(
+            String(
+                format:
+                    "%@: simulated in %.1f s (solver built in %.2f s); solver %.1f ms a frame median, %.1f p90; playback rate while following median %.2f, lowest %.2f; held still >0.1 s %d times; backward %d",
+                label, session.run?.secondsToFinish ?? -1, session.run?.secondsToBuild ?? -1,
+                percentile(gpu, 0.5) * 1000, percentile(gpu, 0.9) * 1000, percentile(rates, 0.5),
+                rates.min() ?? 1, stalls, backward))
+        rates = []
+        stalls = 0
+        backward = 0
+    }
+
     func tick(elapsed: Double) {
+        frames[phase, default: []].append(elapsed * 1000)
         switch phase {
         case .waiting:
-            if session.refireProgress == nil, session.cache != nil {
-                firstRefire = session.lastRefireSeconds
+            if watchStart("first fire") {
                 memory.append(
-                    "after first fire: \(session.memoryReport); footprint \(PlayApp.footprintMB()) MB")
-                session.seek(to: 0)
-                session.playing = true
-                phase = .play
+                    "first fire started: \(session.memoryReport); footprint \(PlayApp.footprintMB()) MB")
+                phase = .follow
                 ticks = 0
-                print("first fire \(firstRefire ?? -1) s")
             }
-        case .play:
-            frames[.play, default: []].append(elapsed * 1000)
+        case .follow:
+            watchMotion("first fire")
+            watchFollow()
             ticks += 1
-            if ticks == 90 { shot("play-a") }
-            if ticks > 240 {
-                session.playing = false
+            if ticks == 90 { shot("follow-a") }
+            if !session.isSimulating, !session.playing {
+                followReport("first fire")
+                memory.append(
+                    "after first fire: \(session.memoryReport); footprint \(PlayApp.footprintMB()) MB, peak \(footprintPeak) MB"
+                )
+                shot("follow-end")
                 phase = .scrub
                 ticks = 0
-                shot("play-b")
             }
         case .scrub:
-            frames[.scrub, default: []].append(elapsed * 1000)
             ticks += 1
             session.yaw += 0.01
             session.seek(to: Int(random.float() * Float(session.eventFrames - 1)))
             if ticks > 150 {
-                phase = .firing
-                ticks = 0
-                session.settings = QuarryFiringSettings(order: .centreOut, stagger: 0.06, count: 22)
                 session.yaw = -0.81
-                session.refire()
-                session.onRefireDone = { [weak self] in
-                    guard let self else { return }
-                    self.secondRefire = self.session.lastRefireSeconds
-                    self.memory.append(
-                        "after refire: \(self.session.memoryReport); footprint \(PlayApp.footprintMB()) MB")
-                    self.phase = .after
-                    self.ticks = 0
-                }
+                session.seek(to: 0)
+                session.playing = true
+                phase = .refire
+                ticks = 0
             }
-        case .firing:
-            frames[.firing, default: []].append(elapsed * 1000)
-        case .after:
-            frames[.after, default: []].append(elapsed * 1000)
+        case .refire:
+            // Fire again a second and a half into watching the old event; it stays on view meanwhile.
+            ticks += 1
+            if ticks == 45 {
+                session.settings = QuarryFiringSettings(order: .centreOut, stagger: 0.06, count: 22)
+                fired = Date()
+                session.refire()
+            }
+            if ticks > 45, watchStart("refire") {
+                phase = .refollow
+                ticks = 0
+            }
+        case .refollow:
+            watchMotion("refire")
+            watchFollow()
             ticks += 1
             if ticks == 100 { shot("after-refire") }
-            if ticks > 180 { finish() }
+            if !session.isSimulating, !session.playing {
+                followReport("refire")
+                memory.append(
+                    "after refire: \(session.memoryReport); footprint \(PlayApp.footprintMB()) MB, peak \(footprintPeak) MB"
+                )
+                if present == nil {
+                    startStrip()
+                    phase = .strip
+                } else {
+                    finish()
+                }
+                ticks = 0
+            }
+        case .strip:
+            // The old event plays on while the new strip is broken and fired.
+            if !session.playing { session.playing = true }
+            if session.frame >= session.eventFrames - 1 { session.seek(to: 0) }
+            if let stripError {
+                note("strip failed: \(stripError)")
+                finish()
+            }
+            if let incoming, incoming.canPlay {
+                session = incoming
+                self.incoming = nil
+                _ = watchStart("moved strip")
+                phase = .stripFollow
+                ticks = 0
+            }
+        case .stripFollow:
+            watchMotion("moved strip")
+            watchFollow()
+            ticks += 1
+            if ticks == 100 { shot("after-strip") }
+            if ticks > 180 {
+                note("moved strip: played 180 frames while simulating")
+                memory.append(
+                    "after a moved strip: \(session.memoryReport); footprint \(PlayApp.footprintMB()) MB, peak \(footprintPeak) MB"
+                )
+                finish()
+            }
         case .done:
             break
+        }
+    }
+
+    /// A strip 40 m along and 10 m in from the first, built and fired off the main thread.
+    private func startStrip() {
+        var site = QuarrySite.builtIn()
+        let along = simd_normalize(site.end - site.start)
+        site.start += along * 40
+        site.end += along * 40
+        let options = self.options
+        let device = session.device
+        let keys = dataRoot.appendingPathComponent(
+            "play-dust-strip-\(ProcessInfo.processInfo.processIdentifier)")
+        fired = Date()
+        nonisolated(unsafe) let test = self
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let made = try QuarrySession.prepare(
+                    device: device, site: site, options: options, settings: QuarryFiringSettings(),
+                    width: 1600,
+                    height: 900, keyDirectory: keys, timings: { print("strip: \($0)") },
+                    progress: { stage, share in print(String(format: "strip: %@ %.0f%%", stage, share * 100))
+                    })
+                made.follow()
+                DispatchQueue.main.async { test.incoming = made }
+            } catch {
+                DispatchQueue.main.async { test.stripError = "\(error)" }
+            }
         }
     }
 
     private func finish() {
         phase = .done
         func line(_ name: String, _ v: [Double]) -> String {
-            String(
+            guard !v.isEmpty else { return "\(name): no frames" }
+            return String(
                 format: "%@: %d frames, median %.1f ms (%.0f fps), p90 %.1f ms (%.0f fps), worst %.0f ms",
                 name, v.count,
                 percentile(v, 0.5), 1000 / percentile(v, 0.5), percentile(v, 0.9), 1000 / percentile(v, 0.9),
                 v.max() ?? 0)
         }
         var report =
-            "mode: \(present == nil ? "offscreen, no vsync" : "real window and drawables, behind other windows, paced by a 60 Hz timer")\n"
-        report += String(format: "first fire %.1f s; refire %.1f s\n", firstRefire ?? -1, secondRefire ?? -1)
-        report += line("playing", frames[.play] ?? []) + "\n"
-        report += line("scrubbing and orbiting every frame", frames[.scrub] ?? []) + "\n"
-        report += line("while refiring", frames[.firing] ?? []) + "\n"
-        report += line("playing after refire", frames[.after] ?? []) + "\n"
-        for (name, phase) in [("playing", Phase.play), ("scrubbing", .scrub), ("while refiring", .firing)] {
+            "mode: \(present == nil ? "offscreen, no vsync, paced to the session's draw rate" : "real window and drawables, behind other windows, paced by a 60 Hz timer")\n"
+        report += lines.joined(separator: "\n") + "\n"
+        let named: [(String, Phase)] = [
+            ("waiting for the first fire", .waiting), ("following the first fire", .follow),
+            ("scrubbing and orbiting every frame", .scrub),
+            ("playing the old event, then waiting for the refire", .refire),
+            ("following the refire", .refollow), ("old event while a strip is built", .strip),
+            ("following the moved strip", .stripFollow),
+        ]
+        for (name, phase) in named {
+            report += line("interval, " + name, frames[phase] ?? []) + "\n"
             if let v = works[phase], !v.isEmpty {
                 report += String(
-                    format: "main-thread work a frame, %@: median %.1f ms (ceiling %.0f fps), p90 %.1f ms\n",
-                    name,
+                    format: "work a frame, %@: median %.1f ms (ceiling %.0f fps), p90 %.1f ms\n", name,
                     percentile(v, 0.5), 1000 / percentile(v, 0.5), percentile(v, 0.9))
             }
         }
         report += memory.joined(separator: "\n") + "\n"
         print(report)
         try? report.write(to: output.appendingPathComponent("loop.txt"), atomically: true, encoding: .utf8)
+        try? series.write(to: output.appendingPathComponent("series.csv"), atomically: true, encoding: .utf8)
         try? FileManager.default.removeItem(at: session.keyDirectory)
         if present != nil { NSApp.terminate(nil) }
     }
 
-    /// The same loop as the window's, with nothing on screen and no vsync.
+    /// The same loop as the window's, with nothing on screen and no vsync, paced to the rate the
+    /// window would draw at.
     func runOffscreen() throws {
-        session.refire()
         var last = Date()
         while phase != .done {
+            autoreleasepool { offscreenFrame(&last) }
+        }
+    }
+
+    private func offscreenFrame(_ last: inout Date) {
+        do {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0))
             let now = Date()
             let elapsed = now.timeIntervalSince(last)
             last = now
             session.update(elapsed: elapsed)
+            let updated = Date()
             session.draw()
+            let spent = Date().timeIntervalSince(now)
+            lastParts = (updated.timeIntervalSince(now) * 1000, Date().timeIntervalSince(updated) * 1000)
+            work(spent * 1000)
             tick(elapsed: elapsed)
-            if session.refireProgress != nil {
-                Thread.sleep(forTimeInterval: 1.0 / Double(QuarrySession.firingDrawRate))
-            }
+            let rate =
+                incoming == nil && phase != .strip ? session.preferredDrawRate : QuarrySession.firingDrawRate
+            let wait = 1 / Double(rate) - Date().timeIntervalSince(now)
+            if wait > 0 { Thread.sleep(forTimeInterval: wait) }
         }
     }
 }

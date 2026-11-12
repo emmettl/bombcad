@@ -384,3 +384,96 @@ is unchanged in its numbers: no frame at the cap, and none over 10 cm in the las
   own terrain is not offered.
 - Dragging is on a 2-D map, not in the 3-D view.
 - A dragged strip regenerates in about 5 to 10 s at 100,000 blocks, plus the firing.
+
+## Fire and watch at once, 12 November 2026
+
+On the user's word of 12 November (emmettl/bombcad-work#126). Same standing: illustrative,
+stylised firing patterns, not a blast-design aid. The look is unchanged; this is about waiting.
+
+**What changed.**
+- *The event plays as it is simulated.* Each firing is a `QuarryRun` (BlastCore) on its own
+  thread, storing every frame into the packed pose cache as it goes. The cache can be read while
+  it fills: any frame up to the last stored keyframe can be decoded (`available`). The solver is not
+  bit-reproducible, so what is shown is this one run, kept as it is computed, not a second
+  simulation.
+- *When it starts.* Once 9 frames (0.3 s of the event) are stored and the new dust field is
+  made, the window swaps to the new event. Until then the old event stays on view, and a refire
+  asked for during a stream replaces it.
+- *How playback follows.* At real time while the solver keeps more than 0.4 s ahead. Otherwise it
+  slows to the solver's own rate, a little below it while the gap is short, so the gap grows back.
+  While drawing takes longer than a frame of the event, it shows every frame once rather than
+  skipping frames to keep real time: slower and smooth. It never goes past the last stored frame,
+  and never backward. The readout says "Simulating 45%, playing at 0.52× real time to keep up"
+  while it does. The timeline scrubs over what is stored, with a bar under it for how much that
+  is, and over the whole event once done.
+- *Sharing the GPU.* The solver's frame of 8 substeps was one command buffer of about 40–55 ms at
+  the busiest part. The window's render, chips and dust each wait for the GPU, so they queued
+  behind it: 100–280 ms a drawn frame. Now each substep is its own command buffer, with only one on
+  the GPU at a time. The same kernels run in the same order (`advance(substeps:buffers:)`, default
+  one buffer, so `hillsideblast simulate` is as it was). While an event is simulated, the window
+  draws at 30 frames a second, the event's own rate.
+- *A moved strip.* The render-only dressing past the strip is built beside the rock (it needs only
+  the layout). The solver starts as soon as the blocks exist. The renderer and dust are made while
+  it runs, off the main thread (they were made on it before). Progress names each stage and its
+  share. The old event stays on view, drawn at 15 frames a second, until the new one starts.
+- *Smaller things.* The quarry's Metal is compiled once a process, not on every refire. The run's
+  thread and the session's background work drain an autorelease pool. Without that, each solver
+  stayed alive until its thread ended: 1.3 to 2.9 GB of Metal allocated in the first streaming
+  runs, against 0.8 to 0.9 GB with it. The firing settings now carry over to a new strip; before,
+  a new strip fired with the defaults while the controls showed your choice.
+
+**Measured** with `hillsideblast play --self-test NAME --offscreen`. It is the same session the
+window uses, with nothing on screen, paced to the rate the window would draw at. Built-in hillside,
+108,720 blocks, M4 Max Studio. Another agent's render shared the GPU during the baseline.
+
+| | Before (stage 1 code, today) | After |
+|---|---:|---:|
+| Fire again → first frame of the new event | 16.6 s (the whole physics) | 0.12–0.18 s |
+| Fire again → rock first moves on view | about 17.4 s | 0.8–1.0 s (the event's own calm lead-in: the swell starts at 0.77 s) |
+| Strip released → first frame | about 22 s (5.2 s to break the rock, then the physics) | 3.0–3.1 s |
+| Strip released → rock first moves | about 23 s | 3.8–3.9 s |
+| Window opened → first frame | about 17 s (5.2 + 12.1) | 3.2 s |
+| Rock broken (100,000 asked, about 108,800 made) | 3.5 s, then 1.3 s of dressing | 2.8–3.0 s with the dressing beside it |
+| Whole 20 s event simulated | 12–17 s | 13–14 s, while being watched |
+
+**Playing while it simulates** (work on the main thread a drawn frame, by event second):
+- 0 to 1 s: 33–36 ms;
+- 1 to 5 s, the busiest part: 49–63 ms (16 to 20 frames a second on screen), every frame shown,
+  playback at 0.47–0.65× real time;
+- 6 s on: 26 ms, at real time, the solver by then 2 to 9 s ahead.
+
+The whole of each followed event: median 22 ms, p90 55 ms, worst 122–126 ms. No hold of more than
+0.1 s and no step backward in three followed events. The solver itself ran at 9.5–9.9 ms a frame
+median and 56–57 ms p90. Before the split command buffers and the one-frame-a-draw rule, the
+busiest seconds drew at 5 to 14 frames a second, 100–280 ms each, while playback held real time by
+skipping frames.
+
+**Playing a finished event** is as before: 21–22 ms of work a frame. Scrubbing and orbiting every
+frame: 44 ms.
+
+**Memory** (footprint): 2.9 GB after the first event, 2.6–3.2 GB after a refire. Peak 3.4 GB
+while a moved strip's scene is built beside the old one, which is freed when the new one starts.
+Before: 2.9 GB and 3.1 GB. Dust kept on disk reaches 511 MB once a whole event has been played.
+
+**Checked.**
+- Frames from the self-test's own files: the first motion of each event, mid-event during the
+  refire and the moved strip, and the end of a followed event (a settled pile, dust drifting).
+- The window was captured offscreen (`BOMBCAD_INTERFACE_REVIEW=dir swift test --filter
+  QuarryFaceReview`): preparing, following ("Simulating 20%, playing as it is computed"), "Starting…"
+  after Fire again, and done.
+- Tests: `QuarryRunTests` (BlastCore) and `QuarryFaceSceneTests` (BombCAD: shown before it is all
+  simulated; a refire keeps the old event until the new one starts). The cache filling while read
+  is in `QuarryFaceTests` (BlastModel, Linux).
+
+**Where it stopped.**
+- The busiest seconds play at about half speed. Physics (about 50 ms a frame there) and drawing (about
+  20 ms of GPU) do not fit in 33 ms on this GPU. Making them fit would mean a cheaper solver
+  (fewer substeps, a grid not cleared every substep) or a cheaper draw while streaming. Neither
+  was tried, so as not to change the look.
+- Rock generation, about 2.8 s at 100,000 blocks on the CPU, is now most of a moved strip's wait.
+  Breaking the first firings' rock first was not done. The solver takes all its blocks when it
+  starts, and blocks meet across the whole strip, so the solver would have to take blocks while
+  running.
+- The frame rate on screen is still not measured on the glass. The numbers are work per frame
+  offscreen, and the window's controls were checked offscreen only. The bar under the timeline
+  advances with the view's own frames, so it reads 0 in an offscreen capture.

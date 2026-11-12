@@ -181,58 +181,78 @@ public final class QuarrySimulation {
             threadsPerThreadgroup: MTLSize(width: max(encoder.deviceWidth, 1), height: 1, depth: 1))
     }
 
-    /// Advances `substeps` substeps on one command buffer; returns the GPU time (s).
+    /// Advances `substeps` substeps, on one command buffer or split over `buffers` of them with
+    /// only one on the GPU at a time (the next encoded while it runs), so other work on the GPU,
+    /// such as a window drawing the event while it is simulated, waits a few substeps at most
+    /// rather than a whole frame; returns the GPU time (s). The same kernels run in the same order
+    /// either way.
     @discardableResult
-    public func advance(substeps: Int) -> Double {
-        let buffer = queue.makeCommandBuffer()!
-        let encoder = buffer.makeComputeCommandEncoder(dispatchType: .serial)!
+    public func advance(substeps: Int, buffers: Int = 1) -> Double {
+        let parts = max(1, min(buffers, substeps))
+        var inFlight: MTLCommandBuffer?
+        var gpu = 0.0
         var u = uniforms
-        for _ in 0..<substeps {
-            u.time += u.dt
-            substepCount += 1
-            encodeUpdate(encoder)
-            // Grid.
-            encoder.setComputePipelineState(pipelines["clearGrid"]!)
-            encoder.setBuffer(heads, offset: 0, index: 0)
-            dispatch(encoder, Int(u.cellCount))
-            encoder.memoryBarrier(scope: .buffers)
-            encoder.setComputePipelineState(pipelines["insertSpheres"]!)
-            encoder.setBuffer(world, offset: 0, index: 0)
-            encoder.setBuffer(heads, offset: 0, index: 1)
-            encoder.setBuffer(next, offset: 0, index: 2)
-            encoder.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 3)
-            dispatch(encoder, sphereCount)
-            encoder.memoryBarrier(scope: .buffers)
-            // Forces.
-            encoder.setComputePipelineState(pipelines["forces"]!)
-            encoder.setBuffer(bodies, offset: 0, index: 0)
-            encoder.setBuffer(world, offset: 0, index: 1)
-            encoder.setBuffer(velocity, offset: 0, index: 2)
-            encoder.setBuffer(sphereBody, offset: 0, index: 3)
-            encoder.setBuffer(heads, offset: 0, index: 4)
-            encoder.setBuffer(next, offset: 0, index: 5)
-            encoder.setBuffer(heights, offset: 0, index: 6)
-            encoder.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 7)
-            encoder.setBuffer(forces, offset: 0, index: 8)
-            encoder.setBuffer(torques, offset: 0, index: 9)
-            encoder.setBuffer(wake, offset: 0, index: 10)
-            dispatch(encoder, sphereCount)
-            encoder.memoryBarrier(scope: .buffers)
-            encoder.setComputePipelineState(pipelines["integrate"]!)
-            encoder.setBuffer(bodies, offset: 0, index: 0)
-            encoder.setBuffer(forces, offset: 0, index: 1)
-            encoder.setBuffer(torques, offset: 0, index: 2)
-            encoder.setBuffer(wake, offset: 0, index: 3)
-            encoder.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 4)
-            encoder.setBuffer(pose, offset: 0, index: 5)
-            dispatch(encoder, bodyCount)
-            encoder.memoryBarrier(scope: .buffers)
+        for part in 0..<parts {
+            let count = substeps * (part + 1) / parts - substeps * part / parts
+            let buffer = queue.makeCommandBuffer()!
+            let encoder = buffer.makeComputeCommandEncoder(dispatchType: .serial)!
+            for _ in 0..<count { encodeSubstep(encoder, &u) }
+            encoder.endEncoding()
+            if let inFlight {
+                inFlight.waitUntilCompleted()
+                gpu += max(0, inFlight.gpuEndTime - inFlight.gpuStartTime)
+            }
+            buffer.commit()
+            inFlight = buffer
         }
         uniforms = u
-        encoder.endEncoding()
-        buffer.commit()
-        buffer.waitUntilCompleted()
-        return buffer.gpuEndTime - buffer.gpuStartTime
+        if let inFlight {
+            inFlight.waitUntilCompleted()
+            gpu += max(0, inFlight.gpuEndTime - inFlight.gpuStartTime)
+        }
+        return gpu
+    }
+
+    private func encodeSubstep(_ encoder: MTLComputeCommandEncoder, _ u: inout Uniforms) {
+        u.time += u.dt
+        substepCount += 1
+        encodeUpdate(encoder)
+        // Grid.
+        encoder.setComputePipelineState(pipelines["clearGrid"]!)
+        encoder.setBuffer(heads, offset: 0, index: 0)
+        dispatch(encoder, Int(u.cellCount))
+        encoder.memoryBarrier(scope: .buffers)
+        encoder.setComputePipelineState(pipelines["insertSpheres"]!)
+        encoder.setBuffer(world, offset: 0, index: 0)
+        encoder.setBuffer(heads, offset: 0, index: 1)
+        encoder.setBuffer(next, offset: 0, index: 2)
+        encoder.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 3)
+        dispatch(encoder, sphereCount)
+        encoder.memoryBarrier(scope: .buffers)
+        // Forces.
+        encoder.setComputePipelineState(pipelines["forces"]!)
+        encoder.setBuffer(bodies, offset: 0, index: 0)
+        encoder.setBuffer(world, offset: 0, index: 1)
+        encoder.setBuffer(velocity, offset: 0, index: 2)
+        encoder.setBuffer(sphereBody, offset: 0, index: 3)
+        encoder.setBuffer(heads, offset: 0, index: 4)
+        encoder.setBuffer(next, offset: 0, index: 5)
+        encoder.setBuffer(heights, offset: 0, index: 6)
+        encoder.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 7)
+        encoder.setBuffer(forces, offset: 0, index: 8)
+        encoder.setBuffer(torques, offset: 0, index: 9)
+        encoder.setBuffer(wake, offset: 0, index: 10)
+        dispatch(encoder, sphereCount)
+        encoder.memoryBarrier(scope: .buffers)
+        encoder.setComputePipelineState(pipelines["integrate"]!)
+        encoder.setBuffer(bodies, offset: 0, index: 0)
+        encoder.setBuffer(forces, offset: 0, index: 1)
+        encoder.setBuffer(torques, offset: 0, index: 2)
+        encoder.setBuffer(wake, offset: 0, index: 3)
+        encoder.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 4)
+        encoder.setBuffer(pose, offset: 0, index: 5)
+        dispatch(encoder, bodyCount)
+        encoder.memoryBarrier(scope: .buffers)
     }
 
     /// Awake bodies, the fastest speed, and any NaN seen.
@@ -266,15 +286,25 @@ public final class QuarrySimulation {
     }
 }
 
-/// The quarry's Metal, each file compiled on its own, copied to the bundle as a resource.
+/// The quarry's Metal, each file compiled on its own, copied to the bundle as a resource. Compiled
+/// once a process for each device and file: every refire builds a solver and a dust field, and the
+/// compile was part of the wait before anything moved (emmettl/bombcad-work#126).
 public enum QuarryShaders {
+    nonisolated(unsafe) private static var compiled: [String: MTLLibrary] = [:]
+    private static let lock = NSLock()
+
     public static func library(device: MTLDevice, file: String, bundle: Bundle? = nil) throws -> MTLLibrary {
         guard
             let url = (bundle ?? Bundle.module).url(forResource: file, withExtension: "metal")
         else { throw BlastError.missingShader("\(file).metal") }
+        let key = "\(device.registryID) \(url.path)"
+        if let library = lock.withLock({ compiled[key] }) { return library }
         let options = MTLCompileOptions()
         options.languageVersion = .version3_1
-        return try device.makeLibrary(source: try String(contentsOf: url, encoding: .utf8), options: options)
+        let library = try device.makeLibrary(
+            source: try String(contentsOf: url, encoding: .utf8), options: options)
+        lock.withLock { compiled[key] = library }
+        return library
     }
 }
 

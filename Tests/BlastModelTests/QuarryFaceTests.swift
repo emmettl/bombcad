@@ -143,4 +143,43 @@ struct QuarryFaceTests {
         #expect(out[14] == SIMD4(frames[0][14].x, frames[0][14].y, frames[0][14].z, 1))
         #expect(cache.bytes < 3 * bodies * 32)
     }
+
+    @Test("A pose cache can be decoded while it fills: only frames already stored are shown")
+    func poseCacheFillsWhileRead() async {
+        let bodies = 3000
+        let frames = 61
+        let low = SIMD3<Float>(-90, -190, -6)
+        let high = SIMD3<Float>(290, 110, 110)
+        // Block n sits at x = frame; it lets go at frame 10.
+        func pose(_ f: Int) -> [SIMD4<Float>] {
+            (0..<bodies).flatMap { n -> [SIMD4<Float>] in
+                [SIMD4(Float(f), Float(n % 100), 5, f >= 10 ? 1 : 0), SIMD4(0, 0, 0, 1)]
+            }
+        }
+        let cache = QuarryPoseCache(
+            rest: pose(0), still: [Bool](repeating: false, count: bodies), frames: frames, low: low,
+            high: high, stride: 2)
+        #expect(cache.available == 0)
+        let writer = Task.detached {
+            for f in 0..<frames {
+                pose(f).withUnsafeBufferPointer { cache.store(frame: f, pose: $0.baseAddress!) }
+            }
+        }
+        var out = [SIMD4<Float>](repeating: .zero, count: 2 * bodies)
+        var shown = 0
+        while !cache.isComplete || shown < frames - 1 {
+            let available = cache.available
+            // Never more than the frames stored; a frame between keyframes waits for the next.
+            #expect(available <= cache.filled)
+            #expect(available == frames || available % 2 == 1 || available == 0)
+            guard available > 0 else { continue }
+            shown = available - 1
+            out.withUnsafeMutableBufferPointer { cache.decode(frame: shown, into: $0.baseAddress!) }
+            #expect(abs(out[0].x - Float(shown)) < 0.01)
+            #expect(out[0].w == (shown >= 10 ? 1 : 0))
+        }
+        await writer.value
+        #expect(cache.available == frames)
+        #expect(cache.release(0) == 10)
+    }
 }

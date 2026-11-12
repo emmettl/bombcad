@@ -6,6 +6,10 @@ import simd
 /// 16-bit fractions of the domain (6 mm over 380 m) and its orientation as the smallest three of
 /// its quaternion in 10 bits each. Blocks that never move (the held skin) are not stored. A
 /// block's release frame is kept apart, for the renderer's shading of moved rock.
+///
+/// One thread may store frames in order while another decodes: the cache fills as the event is
+/// simulated, and any frame below `available` can be decoded while later ones are still being
+/// stored (emmettl/bombcad-work#126).
 public final class QuarryPoseCache: @unchecked Sendable {
     public let bodies: Int
     public let frames: Int
@@ -18,8 +22,12 @@ public final class QuarryPoseCache: @unchecked Sendable {
     private let moving: Int
     private let positions: UnsafeMutablePointer<UInt16>
     private let orientations: UnsafeMutablePointer<UInt32>
-    public private(set) var release: [UInt16]
-    public private(set) var filled = 0
+    /// Each block's release frame, or `UInt16.max` while held. Written only by `store`, for frames
+    /// past `available`; a reader compares it with a frame it may decode, so a value being written
+    /// reads as "not yet" either way.
+    private let releaseFrames: UnsafeMutablePointer<UInt16>
+    private let lock = NSLock()
+    private var storedFrames = 0
 
     /// `rest` gives each block's starting pose (pairs: position with w unused, then orientation);
     /// `still` marks the blocks that never move.
@@ -44,12 +52,33 @@ public final class QuarryPoseCache: @unchecked Sendable {
         let stored = Self.storedCount(frames: frames, stride: self.stride)
         positions = .allocate(capacity: max(1, stored * moving * 3))
         orientations = .allocate(capacity: max(1, stored * moving))
-        release = Array(repeating: UInt16.max, count: still.count)
+        releaseFrames = .allocate(capacity: max(1, still.count))
+        releaseFrames.initialize(repeating: UInt16.max, count: max(1, still.count))
     }
 
     deinit {
         positions.deallocate()
         orientations.deallocate()
+        releaseFrames.deallocate()
+    }
+
+    /// Frames stored so far: frame `filled - 1` was the last.
+    public var filled: Int { lock.withLock { storedFrames } }
+
+    /// Frames from the first that can be decoded now: all of them once the event is stored, else
+    /// up to the last stored keyframe (the frames after it wait for the next one).
+    public var available: Int {
+        let filled = self.filled
+        if filled >= frames { return frames }
+        return filled == 0 ? 0 : (filled - 1) / stride * stride + 1
+    }
+
+    /// Whether every frame has been stored.
+    public var isComplete: Bool { filled >= frames }
+
+    /// The frame a block was released at, or nil if it is held at every frame stored so far.
+    public func release(_ n: Int) -> Int? {
+        releaseFrames[n] == UInt16.max ? nil : Int(releaseFrames[n])
     }
 
     static func storedCount(frames: Int, stride: Int) -> Int { (frames - 1) / stride + 2 }
@@ -97,9 +126,12 @@ public final class QuarryPoseCache: @unchecked Sendable {
     }
 
     /// Stores frame `f` from `pose` (pairs of float4; w of the first is the block's state, 0 held).
+    /// Frames are stored in order, from one thread at a time.
     public func store(frame f: Int, pose: UnsafePointer<SIMD4<Float>>) {
-        for n in 0..<bodies where release[n] == UInt16.max && pose[2 * n].w >= 0.5 { release[n] = UInt16(f) }
-        filled = max(filled, f + 1)
+        for n in 0..<bodies where releaseFrames[n] == UInt16.max && pose[2 * n].w >= 0.5 {
+            releaseFrames[n] = UInt16(f)
+        }
+        defer { lock.withLock { storedFrames = max(storedFrames, f + 1) } }
         guard let k = storedIndex(f) else { return }
         nonisolated(unsafe) let p = positions + k * moving * 3
         nonisolated(unsafe) let o = orientations + k * moving
@@ -121,9 +153,9 @@ public final class QuarryPoseCache: @unchecked Sendable {
         }
     }
 
-    /// Frame `f` into `pose`, interpolated between stored frames.
+    /// Frame `f` into `pose`, interpolated between stored frames. `f` is held below `available`.
     public func decode(frame f: Int, into pose: UnsafeMutablePointer<SIMD4<Float>>) {
-        let f = max(0, min(frames - 1, f))
+        let f = max(0, min(available - 1, f))
         let a = f / stride
         let b: Int
         let t: Float
@@ -139,7 +171,8 @@ public final class QuarryPoseCache: @unchecked Sendable {
         nonisolated(unsafe) let oa = orientations + a * moving
         nonisolated(unsafe) let ob = orientations + b * moving
         nonisolated(unsafe) let target = pose
-        let (slots, rest, released) = (slot, rest, release)
+        let (slots, rest) = (slot, rest)
+        nonisolated(unsafe) let released = UnsafePointer(releaseFrames)
         let (low, scale) = (low, simd_max(high - low, SIMD3(repeating: 1e-3)) / 65535)
         let chunk = 8192
         DispatchQueue.concurrentPerform(iterations: (bodies + chunk - 1) / chunk) { c in
