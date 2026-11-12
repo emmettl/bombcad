@@ -221,7 +221,7 @@ public struct QuarryFace: Sendable {
     public struct Options: Sendable {
         public var blocks = 100_000
         /// Coarse Voronoi cells as a share of `blocks`: the bedding and joints cut them further.
-        public var siteShare: Float = 0.23
+        public var siteShare: Float = 0.17
         /// 0 for the film's full mesh, 1 for the live window's (fewer triangles).
         public var meshDetail = 0
         public var spheres = 5
@@ -288,6 +288,10 @@ public struct QuarryFace: Sendable {
     public var dressingIndices: [UInt32] = []
     /// What the generator made, line by line (counts and times).
     public var report: [String] = []
+    /// Which generated rock this is, the same in every copy of it: a renderer of a face kept
+    /// without its meshes (`withoutMesh()`) finds them on the GPU by it, where another renderer of
+    /// the same rock put them. 0 before `generate()`.
+    public var meshID: UInt64 = 0
     /// The domain of the hash grid (m).
     public let low: SIMD3<Float>
     public let high: SIMD3<Float>
@@ -438,6 +442,7 @@ public struct QuarryFace: Sendable {
 
     /// Generate the blocks. `progress`, if given, is told the share done after each stage.
     public mutating func generate(timing: Bool = true, progress: ((Float) -> Void)? = nil) {
+        meshID = UInt64.random(in: 1...UInt64.max)
         let options = self.options
         let length = self.length
         let depth = self.depth
@@ -616,8 +621,12 @@ public struct QuarryFace: Sendable {
                 for (_, other) in near {
                     let extent = polyhedron.maxDistance(from: site)
                     let q = frozenSites[other]
-                    let normal = Self.beddedNormal(q - site)
                     let middle = (q + site) * 0.5
+                    // Each pair of cells meets in the metric of the bed between them, so neighbours
+                    // share their face and cells never overlap: massive limestone breaks blockier,
+                    // shale flatter.
+                    let normal = Self.beddedNormal(
+                        q - site, stretch: QuarryRock.stretch(QuarryRock.kind(at: middle)))
                     if simd_dot(normal, middle - site) > extent { continue }
                     polyhedron.clip(normal: normal, offset: simd_dot(normal, middle), kind: 0)
                 }
@@ -696,9 +705,34 @@ public struct QuarryFace: Sendable {
         let built = cutOut.flatMap { $0 }
         progress?(0.6)
         let meanVolume = built.reduce(0) { $0 + $1.volume } / Float(max(built.count, 1))
-        let keep = built.filter { $0.volume > 0.02 * meanVolume }
+        // A piece under the excavated ground or out in front of the old face is no part of the cut:
+        // where the surfaces bend, their tangent planes clip a coarse cell only roughly, and with
+        // the larger cells of massive beds (12 November 2026) a few pieces hung metres below the
+        // floor (to be pushed up through it when fired) or stood out of the face.
+        var stray = 0
+        let keep = built.filter { piece in
+            guard piece.volume > 0.02 * meanVolume else { return false }
+            guard !piece.skin else { return true }
+            let c = piece.centroid
+            let margin = 0.25 * cbrt(piece.volume)
+            let out = height(hNew, c.x, c.y) - c.z > margin || c.z - height(hOld, c.x, c.y) > margin
+            if out { stray += 1 }
+            return !out
+        }
+        report.append("left out \(stray) pieces under the floor or out of the face")
         var shapes: [QuarryRock.Shape: Int] = [:]
-        for piece in keep where !piece.skin { shapes[QuarryRock.shape(piece.polyhedron), default: 0] += 1 }
+        var elongations: [Float] = []
+        var flatnesses: [Float] = []
+        var byKind: [QuarryRock.Kind: [QuarryRock.Shape: Int]] = [:]
+        for piece in keep where !piece.skin {
+            let (shape, ratios) = QuarryRock.shapeAndRatios(piece.polyhedron)
+            shapes[shape, default: 0] += 1
+            byKind[QuarryRock.kind(at: piece.centroid), default: [:]][shape, default: 0] += 1
+            elongations.append(ratios.x)
+            flatnesses.append(ratios.y)
+        }
+        elongations.sort()
+        flatnesses.sort()
         let shapeCount = max(1, shapes.values.reduce(0, +))
         let sizes = keep.filter { !$0.skin }.map { cbrt($0.volume) }.sorted()
         if !sizes.isEmpty {
@@ -714,6 +748,23 @@ public struct QuarryFace: Sendable {
                 + QuarryRock.Shape.allCases.map {
                     "\($0.rawValue) \(Int((Float(shapes[$0] ?? 0) / Float(shapeCount) * 100).rounded()))%"
                 }.joined(separator: ", "))
+        for kind in QuarryRock.Kind.allCases {
+            let counts = byKind[kind] ?? [:]
+            let total = max(1, counts.values.reduce(0, +))
+            report.append(
+                "shapes, \(kind) (\(total) pieces): "
+                    + QuarryRock.Shape.allCases.map {
+                        "\($0.rawValue) \(Int((Float(counts[$0] ?? 0) / Float(total) * 100).rounded()))%"
+                    }.joined(separator: ", "))
+        }
+        if !elongations.isEmpty {
+            func spread(_ v: [Float]) -> String {
+                [0.1, 0.5, 0.9].map { String(format: "%.2f", v[min(v.count - 1, Int(Float(v.count) * $0))]) }
+                    .joined(separator: " / ")
+            }
+            report.append(
+                "spread (10% / median / 90%): b/a \(spread(elongations)), c/b \(spread(flatnesses))")
+        }
         report.append(
             "built \(built.count) cells, kept \(keep.count) (dropped slivers); mean volume \(String(format: "%.2f", meanVolume)) m3, took \(String(format: "%.1f", Date().timeIntervalSince(start))) s"
         )
@@ -911,10 +962,11 @@ public struct QuarryFace: Sendable {
         return simd_length_squared(d) + (beddingStretch * beddingStretch - 1) * along * along
     }
 
-    /// The plane normal between sites `d` apart, in the bedded metric.
-    public static func beddedNormal(_ d: SIMD3<Float>) -> SIMD3<Float> {
+    /// The plane normal between sites `d` apart, in the bedded metric (`stretch` along the
+    /// bedding's normal).
+    public static func beddedNormal(_ d: SIMD3<Float>, stretch: Float = beddingStretch) -> SIMD3<Float> {
         let along = simd_dot(d, beddingNormal)
-        return simd_normalize(d + (beddingStretch * beddingStretch - 1) * along * beddingNormal)
+        return simd_normalize(d + (stretch * stretch - 1) * along * beddingNormal)
     }
 
     /// Surface displacement, a function of world position alone so that neighbouring blocks stay
@@ -1068,6 +1120,9 @@ public struct QuarryFace: Sendable {
         let wanted = Int(area * 2.7 / (edge * edge * edge))
         var sites: [SIMD3<Float>] = []
         sites.reserveCapacity(wanted)
+        // The point on the surface each site was put under, for its clipping.
+        var footings: [SIMD2<Float>] = []
+        footings.reserveCapacity(wanted)
         let maxWeight = sqrt(1 + 8 * 8 as Float)
         var attemptsMade = 0
         while sites.count < wanted && attemptsMade < 40_000_000 {
@@ -1083,6 +1138,7 @@ public struct QuarryFace: Sendable {
             // skin's cells are mostly clipped away by the planes of the floor in front of them, and
             // the terrain's own smooth wall showed there (12 November 2026).
             sites.append(SIMD3(x, y, surface(x, y)) + n * (0.3 - 2.7 * r.float()))
+            footings.append(SIMD2(x, y))
         }
         let accepted = sites.count
         let cell = edge * 2.1
@@ -1093,6 +1149,7 @@ public struct QuarryFace: Sendable {
         }
         for (n, p) in sites.enumerated() { grid[key(p), default: []].append(Int32(n)) }
         let frozen = sites
+        let frozenFootings = footings
         let frozenGrid = grid
         var meshes = [(vertices: [Vertex], indices: [UInt32])](repeating: ([], []), count: sites.count)
         meshes.withUnsafeMutableBufferPointer { out in
@@ -1119,20 +1176,33 @@ public struct QuarryFace: Sendable {
                     if simd_dot(normal, middle - site) > polyhedron.maxDistance(from: site) { continue }
                     polyhedron.clip(normal: normal, offset: simd_dot(normal, middle), kind: 0)
                 }
-                let extent = min(polyhedron.maxDistance(from: site), cell)
-                for offset: SIMD2<Float> in [.zero, [0.7, 0], [-0.7, 0], [0, 0.7], [0, -0.7]] {
-                    let p = SIMD2(site.x, site.y) + offset * extent
+                // Clipped to the surface by its tangent planes at the point the site was put under
+                // and at points around it along the surface itself (not across the ground in plan,
+                // which on a steep face reached the floor in front and the brow behind, and cut the
+                // lower face's cells away: it was bare terrain past the strip's ends until 12
+                // November 2026). A neighbour's plane the site stands well outside of is across a
+                // hollow and is left out (applying it cut the cell away; never applying it left
+                // spikes standing on the brow).
+                @Sendable func tangentPlane(_ q: SIMD2<Float>) -> (SIMD3<Float>, SIMD3<Float>) {
                     let e: Float = 0.5
-                    let z = surface(p.x, p.y)
-                    let dx = (surface(p.x + e, p.y) - surface(p.x - e, p.y)) / (2 * e)
-                    let dy = (surface(p.x, p.y + e) - surface(p.x, p.y - e)) / (2 * e)
-                    let normal = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
-                    let recess =
-                        QuarryRock.recess(QuarryRock.kind(at: site))
-                        * (0.6 + 0.8 * QuarryNoise.hash(Int32(n), 3, 5).magnitude)
-                    polyhedron.clip(
-                        normal: normal, offset: simd_dot(normal, SIMD3<Float>(p.x, p.y, z)) + 0.35 - recess,
-                        kind: 1)
+                    let dx = (surface(q.x + e, q.y) - surface(q.x - e, q.y)) / (2 * e)
+                    let dy = (surface(q.x, q.y + e) - surface(q.x, q.y - e)) / (2 * e)
+                    return (SIMD3(q.x, q.y, surface(q.x, q.y)), simd_normalize(SIMD3<Float>(-dx, -dy, 1)))
+                }
+                let foot = tangentPlane(frozenFootings[n])
+                let side = simd_normalize(
+                    abs(foot.1.z) < 0.9
+                        ? simd_cross(foot.1, SIMD3(0, 0, 1)) : simd_cross(foot.1, SIMD3(1, 0, 0)))
+                let slope = simd_cross(foot.1, side)
+                let extent = min(polyhedron.maxDistance(from: site), cell)
+                let recess =
+                    QuarryRock.recess(QuarryRock.kind(at: site))
+                    * (0.6 + 0.8 * QuarryNoise.hash(Int32(n), 3, 5).magnitude)
+                for along: SIMD3<Float> in [.zero, side, -side, slope, -slope] {
+                    let reach = foot.0 + along * (0.7 * extent)
+                    let (point, normal) = along == .zero ? foot : tangentPlane(SIMD2(reach.x, reach.y))
+                    if along != .zero, simd_dot(normal, site - point) > 0.6 { continue }
+                    polyhedron.clip(normal: normal, offset: simd_dot(normal, point) + 0.35 - recess, kind: 1)
                 }
                 let (volume, centroid) = polyhedron.volumeAndCentroid
                 guard polyhedron.faces.count >= 4, polyhedron.faces.count < 40, volume > 0.02 else { return }
@@ -1157,6 +1227,20 @@ public struct QuarryFace: Sendable {
         report.append(
             "dressing: \(sites.count) sites, \(dressingIndices.count / 3) triangles (\(accepted) steep samples)"
         )
+    }
+
+    /// This face without its meshes (the blocks' and the dressing's), for keeping once they are
+    /// on the GPU: the solver, the dust and the session read only the layout, the blocks and their
+    /// spheres, and another renderer of it finds the meshes by `meshID`. Kept whole, the meshes
+    /// were held twice over, on the CPU and the GPU: 0.63 GB of the window's footprint until 12
+    /// November 2026.
+    public func withoutMesh() -> QuarryFace {
+        var face = self
+        face.vertices = []
+        face.indices = []
+        face.dressingVertices = []
+        face.dressingIndices = []
+        return face
     }
 
     /// Packs a unit normal in 10:10:10 and the face kind in the top two bits.

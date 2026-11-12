@@ -48,11 +48,16 @@ public enum QuarryFracture {
     public static func bedCoordinate(_ s: Float) -> Float { coordinate(s, families[0]) }
 
     /// Close steep joints that cut sandstone beds into elongated pieces, nearly parallel to the
-    /// first steep set.
+    /// first steep set, and a cross set at right angles in plan that makes them blocks and
+    /// columns (the cross set and the closer spacing, 1.25 to 0.9 m, from 12 November 2026).
     public static let closeJoints = Family(
-        normal: simd_normalize(SIMD3<Float>(0.95, 0.3, 0.02)), spacing: 1.25, amplitude1: 0.3,
+        normal: simd_normalize(SIMD3<Float>(0.95, 0.3, 0.02)), spacing: 0.9, amplitude1: 0.3,
         frequency1: 0.7,
         phase1: 0.3, amplitude2: 0.15, frequency2: 1.9, phase2: 1.1, persistence: 0.8)
+    public static let crossJoints = Family(
+        normal: simd_normalize(SIMD3<Float>(-0.3, 0.95, 0.03)), spacing: 1.4, amplitude1: 0.3,
+        frequency1: 0.7,
+        phase1: 2.1, amplitude2: 0.15, frequency2: 1.9, phase2: 1.1, persistence: 0.8)
 
     /// The offset (along `normal`) where family `f`'s coordinate is `value`, between `low` and `high`.
     private static func offset(_ f: Family, value: Float, low: Float, high: Float) -> Float {
@@ -131,7 +136,7 @@ public enum QuarryFracture {
                         // A bedding plane: closed between two limestone beds, open against shale.
                         let (under, over) = (QuarryRock.kind(bed: k - 1), QuarryRock.kind(bed: k))
                         if under == .limestone && over == .limestone {
-                            chance *= 0.4
+                            chance *= 0.25
                         } else if under == .shale || over == .shale {
                             chance = max(chance, 0.9)
                         }
@@ -171,15 +176,16 @@ public enum QuarryFracture {
                     parts = split(parts, normal: bedding.normal, offset: at)
                 }
             case .sandstone:
-                let joints = closeJoints
-                let (low, high) = piece.extent(along: joints.normal)
-                for (m, at) in planes(joints, low: low + 0.02, high: high - 0.02) {
-                    let patch = QuarryNoise.value(centre * 0.2 + SIMD3(Float(m) * 1.3, 4.1, Float(k) * 0.7))
-                    guard
-                        (patch * 0.5 + 0.5) * (0.7 + 0.6 * hash(31, m)) < joints.persistence
-                            * min(1, scale + 0.2)
-                    else { continue }
-                    parts = split(parts, normal: joints.normal, offset: at)
+                for (setIndex, joints) in [closeJoints, crossJoints].enumerated() {
+                    let (low, high) = piece.extent(along: joints.normal)
+                    let threshold = joints.persistence * min(1, scale + 0.2)
+                    for (m, at) in planes(joints, low: low + 0.02, high: high - 0.02) {
+                        let patch = QuarryNoise.value(
+                            centre * 0.2 + SIMD3(Float(m) * 1.3, 4.1 + Float(setIndex) * 5.3, Float(k) * 0.7))
+                        let present = (patch * 0.5 + 0.5) * (0.7 + 0.6 * hash(31 + setIndex * 7, m))
+                        guard present < threshold else { continue }
+                        parts = split(parts, normal: joints.normal, offset: at)
+                    }
                 }
             default: break
             }

@@ -237,4 +237,107 @@ struct QuarryFaceTests {
         let chipped = piece.volumeAndCentroid.volume
         #expect(chipped < 1 && chipped > 0.88)
     }
+
+    @Test("Neighbouring cells meet in one face in each bed's metric, so they never overlap")
+    func bedMetricsShareFaces() {
+        // The plane two sites see between them is the same from either side.
+        let a = SIMD3<Float>(1, 2, 3)
+        let b = SIMD3<Float>(2.1, 1.4, 3.9)
+        for kind in QuarryRock.Kind.allCases {
+            let stretch = QuarryRock.stretch(kind)
+            let n = QuarryFace.beddedNormal(b - a, stretch: stretch)
+            let m = QuarryFace.beddedNormal(a - b, stretch: stretch)
+            #expect(simd_distance(n, -m) < 1e-5)
+        }
+        #expect(QuarryRock.stretch(.limestone) < QuarryRock.stretch(.shale))
+    }
+
+    @Test("The chips' shapes are closed convex stones of 4 to 12 triangles, not all alike")
+    func chipShapes() {
+        let all = QuarryChipShapes.make()
+        #expect(all.count == QuarryChipShapes.count * QuarryChipShapes.vertices)
+        var flatness: [Float] = []
+        for shape in 0..<QuarryChipShapes.count {
+            let v = (0..<QuarryChipShapes.vertices).map {
+                let p = all[shape * QuarryChipShapes.vertices + $0]
+                return SIMD3(p.x, p.y, p.z)
+            }
+            var area = SIMD3<Float>.zero
+            var volume: Float = 0
+            var triangles = 0
+            for t in 0..<(v.count / 3) {
+                let (a, b, c) = (v[3 * t], v[3 * t + 1], v[3 * t + 2])
+                let cross = simd_cross(b - a, c - a)
+                guard simd_length(cross) > 1e-7 else { continue }
+                triangles += 1
+                area += cross
+                volume += simd_dot(a, simd_cross(b, c)) / 6
+            }
+            #expect(triangles >= 4 && triangles <= 12)
+            #expect(simd_length(area) < 1e-4, "closed")
+            #expect(volume > 0.01, "outward and solid")
+            let extent = v.reduce(SIMD3<Float>.zero) { simd_max($0, simd_abs($1)) }
+            flatness.append(extent.min() / extent.max())
+        }
+        #expect((flatness.min() ?? 1) < 0.35 && (flatness.max() ?? 0) > 0.55, "\(flatness)")
+    }
+
+    @Test("A face kept without its meshes keeps the layout, the blocks and their spheres")
+    func withoutMesh() throws {
+        let face = try Self.small()
+        let kept = face.withoutMesh()
+        #expect(kept.vertices.isEmpty && kept.indices.isEmpty && kept.dressingVertices.isEmpty)
+        #expect(kept.meshID == face.meshID && face.meshID != 0)
+        #expect(kept.chipAnchors.count == face.chipAnchors.count)
+        #expect(kept.blocks.map(\.centre) == face.blocks.map(\.centre))
+        #expect(kept.spheres.count == face.spheres.count && kept.terrain.heights == face.terrain.heights)
+    }
+
+    @Test("The dressing covers the steep face past both ends of the strip, its foot as well")
+    func dressingCoversTheEnds() throws {
+        var face = try Self.small()
+        face.buildDressing(level: 1)
+        let points = face.dressingVertices.map { SIMD3($0.x, $0.y, $0.z) }
+        // Cells on a 2 m grid, for the nearest dressing to a point on the face.
+        var grid: [SIMD3<Int32>: [Int32]] = [:]
+        func key(_ p: SIMD3<Float>) -> SIMD3<Int32> { SIMD3<Int32>(p / 2, rounding: .down) }
+        for (n, p) in points.enumerated() { grid[key(p), default: []].append(Int32(n)) }
+        func nearest(_ p: SIMD3<Float>) -> Float {
+            var best = Float.infinity
+            let k = key(p)
+            for dz: Int32 in -1...1 {
+                for dy: Int32 in -1...1 {
+                    for dx: Int32 in -1...1 {
+                        for n in grid[k &+ SIMD3(dx, dy, dz)] ?? [] {
+                            best = min(best, simd_distance(points[Int(n)], p))
+                        }
+                    }
+                }
+            }
+            return best
+        }
+        var far: [String] = []
+        var checked = 0
+        let xs =
+            Array(stride(from: Float(-60), through: -15, by: 5))
+            + Array(stride(from: face.length + 15, through: face.length + 60, by: 5))
+        for x in xs {
+            let line = face.faceLine(x)
+            let floor = face.oldHeight(x, line - 12)
+            let top = face.oldHeight(x, line + 12)
+            guard top - floor > 10 else { continue }
+            // From the foot to near the brow: the point on the old surface at each height.
+            for share: Float in [0.15, 0.3, 0.5, 0.7] {
+                let z = floor + share * (top - floor)
+                var y = line - 12
+                while y < line + 12, face.oldHeight(x, y) < z { y += 0.1 }
+                let p = SIMD3(x, y, z)
+                checked += 1
+                let d = nearest(p)
+                if d > 1.5 { far.append(String(format: "(%.0f, %.1f, %.1f) %.1f m", x, y, z, d)) }
+            }
+        }
+        #expect(checked > 40)
+        #expect(far.count <= checked / 20, "bare face at \(far)")
+    }
 }

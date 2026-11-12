@@ -74,6 +74,8 @@ public final class QuarryRenderer {
     public private(set) var width: Int
     public private(set) var height: Int
     public let supersample: Int
+    /// The meshes on the GPU, shared with any other renderer of the same rock.
+    public let meshes: QuarryMeshBuffers
     public let blockVertices: MTLBuffer
     public let blockIndices: MTLBuffer
     public let indexCount: Int
@@ -127,6 +129,9 @@ public final class QuarryRenderer {
     public let restCentres: MTLBuffer
     public let chips: MTLBuffer
     public let chipCount: Int
+    /// The chips' shapes: `QuarryChipShapes.count` small convex stones, each as
+    /// `QuarryChipShapes.vertices` vertices of unindexed triangles.
+    public let chipShapes: MTLBuffer
     public var camera: QuarryCameraUniforms
     public let cameraPath: QuarryCameraPath
     /// A view that replaces the path, for the play window.
@@ -155,27 +160,22 @@ public final class QuarryRenderer {
         self.library = library
         dustPass = try QuarryDustPass(
             device: device, library: library, width: width * supersample, height: height * supersample)
-        self.hillside = hillside
+        // The meshes go to the GPU here, or are found there for a face kept without them; the
+        // copy kept here does without them.
+        self.hillside = hillside.withoutMesh()
         self.width = width
         self.height = height
         self.supersample = supersample
         self.cameraPath = path
         self.frameRate = frameRate
         queue = device.makeCommandQueue()!
-        blockVertices = hillside.vertices.withUnsafeBytes {
-            device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)!
-        }
-        blockIndices = hillside.indices.withUnsafeBytes {
-            device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)!
-        }
-        indexCount = hillside.indices.count
-        dressingVertices = hillside.dressingVertices.withUnsafeBytes {
-            device.makeBuffer(bytes: $0.baseAddress!, length: max($0.count, 20))!
-        }
-        dressingIndices = hillside.dressingIndices.withUnsafeBytes {
-            device.makeBuffer(bytes: $0.baseAddress!, length: max($0.count, 12))!
-        }
-        dressingCount = hillside.dressingIndices.count
+        meshes = QuarryMeshBuffers.of(hillside, device: device)
+        blockVertices = meshes.blockVertices
+        blockIndices = meshes.blockIndices
+        indexCount = meshes.indexCount
+        dressingVertices = meshes.dressingVertices
+        dressingIndices = meshes.dressingIndices
+        dressingCount = meshes.dressingCount
         let identity: [SIMD4<Float>] = [SIMD4(0, 0, 0, 0), SIMD4(0, 0, 0, 1)]
         identityPose = device.makeBuffer(bytes: identity, length: 32)!
         let identityR: [SIMD4<Float>] = [.zero]
@@ -185,6 +185,8 @@ public final class QuarryRenderer {
         let chipData = QuarryDecor.make(face: hillside, scale: quality.decorScale)
         chips = chipData.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
         chipCount = chipData.count
+        let shapeData = QuarryChipShapes.make()
+        chipShapes = device.makeBuffer(bytes: shapeData, length: 16 * shapeData.count)!
         pristineChips = chipData.withUnsafeBytes {
             device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)!
         }
@@ -204,9 +206,11 @@ public final class QuarryRenderer {
                         (h(i - 1, j) - h(i + 1, j)) / (2 * t.spacing),
                         (h(i, j - 1) - h(i, j + 1)) / (2 * t.spacing), 1
                     ))
-                // The steep ground sits behind the render-only rock, not through it.
+                // The steep ground sits behind the render-only rock, not through it: set back along
+                // its normal (straight down left a near-vertical face where it was).
                 let inset: Float = n.z < 0.8 ? 1.8 : 0
-                vertices += [x, y, h(i, j) - inset, n.x, n.y, n.z]
+                let p = SIMD3(x, y, h(i, j)) - n * inset
+                vertices += [p.x, p.y, p.z, n.x, n.y, n.z]
             }
         }
         var indices = [UInt32]()
@@ -226,11 +230,12 @@ public final class QuarryRenderer {
         let extColumns = 570
         let extRows = 296
         let (extX, extY): (Float, Float) = (-610, t.origin.y + 1)
-        func extHeight(_ x: Float, _ y: Float) -> Float {
-            let main =
-                x > t.origin.x + 1 && x < t.origin.x + Float(t.columns - 2) * t.spacing
+        func inMain(_ x: Float, _ y: Float) -> Bool {
+            x > t.origin.x + 1 && x < t.origin.x + Float(t.columns - 2) * t.spacing
                 && y < t.origin.y + Float(t.rows - 2) * t.spacing
-            if main { return hillside.height(t.heights, x, y) - 2.2 }
+        }
+        func extHeight(_ x: Float, _ y: Float) -> Float {
+            if inMain(x, y) { return hillside.height(t.heights, x, y) - 2.2 }
             return hillside.oldHeight(x, y)
         }
         for j in 0..<extRows {
@@ -241,11 +246,20 @@ public final class QuarryRenderer {
                 let dy = extHeight(x, y + 1) - extHeight(x, y - 1)
                 let n = simd_normalize(SIMD3<Float>(-dx * 0.5, -dy * 0.5, 1))
                 let inset: Float = n.z < 0.8 ? 1.8 : 0
-                vertices += [x, y, z - inset, n.x, n.y, n.z]
+                let p = SIMD3(x, y, z) - n * inset
+                vertices += [p.x, p.y, p.z, n.x, n.y, n.z]
             }
         }
         for j in 0..<(extRows - 1) {
             for i in 0..<(extColumns - 1) {
+                // Not over the main grid: at 3 m its chords stood in front of a steep face's foot
+                // and showed as a smooth wall past the strip's ends (12 November 2026).
+                let (x0, y0) = (extX + Float(i) * extSpacing, extY + Float(j) * extSpacing)
+                if inMain(x0, y0), inMain(x0 + extSpacing, y0), inMain(x0, y0 + extSpacing),
+                    inMain(x0 + extSpacing, y0 + extSpacing)
+                {
+                    continue
+                }
                 let a = extBase + UInt32(i + j * extColumns)
                 let b = a + 1
                 let c = a + UInt32(extColumns)
@@ -524,7 +538,9 @@ public final class QuarryRenderer {
         shadow.setCullMode(.none)
         shadow.setRenderPipelineState(chipShadow)
         shadow.setVertexBuffer(chips, offset: 0, index: 0)
-        shadow.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 60, instanceCount: chipCount)
+        shadow.setVertexBuffer(chipShapes, offset: 0, index: 5)
+        shadow.drawPrimitives(
+            type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices, instanceCount: chipCount)
         shadow.endEncoding()
         // Scene.
         let scenePass = MTLRenderPassDescriptor()
@@ -578,7 +594,10 @@ public final class QuarryRenderer {
             indexBufferOffset: 0)
         scene.setRenderPipelineState(chipPipeline)
         scene.setVertexBuffer(chips, offset: 0, index: 0)
-        scene.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 60, instanceCount: chipCount)
+        scene.setVertexBuffer(restCentres, offset: 0, index: 3)
+        scene.setVertexBuffer(chipShapes, offset: 0, index: 5)
+        scene.drawPrimitives(
+            type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices, instanceCount: chipCount)
         scene.setRenderPipelineState(sky)
         scene.setDepthStencilState(skyDepth)
         scene.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -731,6 +750,53 @@ public final class QuarryRenderer {
             else { return }
             CGImageDestinationAddImage(destination, image, nil)
             CGImageDestinationFinalize(destination)
+        }
+    }
+}
+
+/// A face's meshes on the GPU: the blocks' and the dressing's. Made once for a generated rock and
+/// shared by every renderer of it while one holds them, so the session can keep its face without
+/// the meshes (`QuarryFace.withoutMesh()`) and a clip recorded from the session's face still has
+/// them. Illustrative scene's plumbing.
+public final class QuarryMeshBuffers: @unchecked Sendable {
+    public let blockVertices: MTLBuffer
+    public let blockIndices: MTLBuffer
+    public let indexCount: Int
+    public let dressingVertices: MTLBuffer
+    public let dressingIndices: MTLBuffer
+    public let dressingCount: Int
+
+    init(_ face: QuarryFace, device: MTLDevice) {
+        func buffer<T>(_ array: [T], minimum: Int) -> MTLBuffer {
+            array.isEmpty
+                ? device.makeBuffer(length: minimum)!
+                : array.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
+        }
+        blockVertices = buffer(face.vertices, minimum: 20)
+        blockIndices = buffer(face.indices, minimum: 12)
+        indexCount = face.indices.count
+        dressingVertices = buffer(face.dressingVertices, minimum: 20)
+        dressingIndices = buffer(face.dressingIndices, minimum: 12)
+        dressingCount = face.dressingIndices.count
+    }
+
+    private final class Weak {
+        weak var meshes: QuarryMeshBuffers?
+        init(_ meshes: QuarryMeshBuffers) { self.meshes = meshes }
+    }
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var made: [String: Weak] = [:]
+
+    /// `face`'s meshes: made from its arrays when it has them, else those another renderer of the
+    /// same rock made, while it still holds them (empty, drawing nothing, if none does).
+    static func of(_ face: QuarryFace, device: MTLDevice) -> QuarryMeshBuffers {
+        let key = "\(device.registryID)-\(face.meshID)"
+        return lock.withLock {
+            made = made.filter { $0.value.meshes != nil }
+            if face.vertices.isEmpty, face.meshID != 0, let shared = made[key]?.meshes { return shared }
+            let meshes = QuarryMeshBuffers(face, device: device)
+            if !face.vertices.isEmpty, face.meshID != 0 { made[key] = Weak(meshes) }
+            return meshes
         }
     }
 }

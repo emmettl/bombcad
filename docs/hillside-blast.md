@@ -706,3 +706,166 @@ the overlay's, so a point of the face lands where it is drawn (within 0.5 point)
 it is the point itself (within 1.5 m); the frame matches the 16:9 frame at horizontal scale 1 (within
 0.03) and the old stretched one at the view's shape over 16:9. The existing drag test runs in the
 default window, which is not 16:9.
+
+## Stage 3b: what stage 2b left, and the footprint, 12 November 2026
+
+On the user's word of 12 November (emmettl/bombcad-work#129), after stage 2b's stills. Same
+standing: illustrative, stylised firing patterns and stylised beds, not a blast-design aid. This
+works through stage 2b's own list of what still looked wrong, and traces the footprint rise it left
+untraced.
+
+**The footprint.** Traced in the window's own session offscreen (`play --self-test NAME
+--offscreen`), with `footprint`, `vmmap` and `heap` taken at the self-test's milestones and
+`footprint` sampled every second. After the first fire the process held about 3.5 GB in four parts
+of roughly 0.6 GB each: Metal's mapped buffers (0.58 GB, the meshes, poses, chips and fields the GPU
+reads), its private textures and buffers (0.61 GB), the heap (0.85 GB), and 0.62 to 1.24 GB that
+`footprint` calls "owned physical footprint (unmapped)", untagged, in 128 KB pieces.
+- *The meshes on the CPU as well as the GPU (waste, cut).* The heap held the blocks' and the
+  dressing's vertex and index arrays, 0.63 GB (two 256 MB vertex arrays at their grown capacity and
+  two 64 MB index arrays), long after the renderer had copied them into Metal buffers. The session's
+  face, the renderer's and the dust field's all held them. Each now keeps the face without its
+  meshes (`QuarryFace.withoutMesh()`): the solver, the dust and the session read only the layout,
+  the blocks and their spheres. The window's clip recorder (stage 3a, landed beside this) makes a
+  renderer from the session's face, so the meshes on the GPU are shared by every renderer of the
+  same rock (`QuarryMeshBuffers`, found by the face's `meshID`) rather than uploaded again. The
+  pose cache (0.29 GB) is most of what is left in the heap's large part, and is what streaming
+  needs.
+- *The unmapped pieces (the driver's, not cut).* 618 MB in 4,945 pieces of 128 KB from the first
+  frame, the same in every run, before and after; about 13 s into the first event it doubles to 1.24
+  GB (9,890 pieces), and it drops back to 0.62 GB and doubles again now and then (during a moved
+  strip, for one). That doubling is 0.62 GB of the rise between "first fire started" and "after
+  first fire" in every self-test (the pose cache and the dust kept on disk fill the rest). It is not
+  in the heap and not in Metal's allocated size. A small program made memory of exactly this kind,
+  in 128 KB pieces, by drawing triangles: about 11 bytes a vertex drawn in one pass (71 MB for 6 M
+  vertices, 139 MB for 12 M, 274 MB for 24 M), whatever the vertex's outputs, kept afterwards, and
+  not added to by a second pass or a second command buffer. So it is the GPU driver's per-triangle
+  working memory for tiling, sized by the most geometry drawn at once (an inference: the driver does
+  not name it). Cutting the chips' and blocks' triangles (below) did not move it: 618 MB looks like
+  a size it grows in, not one this scene's triangles fill, and I did not find what makes it take a
+  second one. Not traced further.
+- *Why the rise came with stage 2b and fire and watch together* is therefore not established: the
+  copies of the meshes were held before either, and the driver's doubling is in every run I made.
+
+The window's self-test, built-in hillside, four runs interleaved on a quiet GPU (stage 2b's code
+from today's main, then this stage's, twice), footprint as the self-test reads it:
+
+| | Before | After |
+|---|---:|---:|
+| First fire started | 2.17, 2.17 GB | 2.11, 2.11 GB |
+| After the first fire | 3.52, 2.90 GB | 3.03, 3.09 GB |
+| After a refire | 3.83, 3.83 GB | 2.93, 3.42 GB |
+| After a moved strip | 3.61, 3.61 GB | 2.93, 2.99 GB |
+| Peak | 3.91, 3.92 GB | 3.57, 3.57 GB |
+| Metal allocated | 824 MB | 807 MB |
+| Poses | 278 MB | 296 MB (more of the rock moves) |
+
+The 2.90 GB before and the 3.42 GB after are the driver's 0.62 GB caught halved or doubled at that
+moment; the rest of each column is steady. So the cut is about 0.5 to 0.6 GB at every point and 0.35
+GB at the peak, which comes with the driver's doubling during the first event. The scene's budget
+beside the app's runs is about 3 to 3.6 GB; the streaming is as it was.
+
+**What stage 2b's list said, and what changed.**
+- *The smooth wall past both ends of the strip.* Traced with a debug render that painted the terrain
+  magenta and the dressing blue: past both ends most of the lower face was the terrain's own
+  surface. Two causes. The 3 m skirt of terrain that carries the hillside past the view's edge was
+  drawn over the main 1 m grid as well, and on a steep face its chords stood in front of the face's
+  foot; it is now left out where the main grid is. And each dressing cell was clipped by the
+  ground's tangent planes at points around it in plan, which on a steep face reached the floor in
+  front and cut the lower face's cells away (the same fault stage 2b found in the held skin). The
+  cells are now clipped at the surface point each was put under, and at points around it along the
+  surface itself; a neighbour's plane the cell's site stands well outside of (across a hollow) is
+  left out. The steep terrain behind the rock is set back along its normal rather than straight
+  down, and drawn as dark as a deep crack where a gap still shows it. In the frames at 1.0 s the
+  left edge and the panel at the right end's foot are rock.
+- *The gravel.* From the default camera it read only as dark gaps: its stones were darker than the
+  blocks by design, and the surface lay 0.35 m below the blocks' mean top, in their shade under a
+  sun 15 degrees up. Its mean colour is now about as light as the blocks' faces in shade, and it
+  lies 0.2 m below their top once gathered. Up close it looked like terrazzo: flat-tinted discs of
+  one tone each. The stones are now packed angular cells with grit in the gaps, each mottled, darker
+  into the crevices between them, and domed and tilted its own way, so each has a lit side and a
+  shaded one under the sky as well as the sun.
+- *The decorative chips.* Every one was the same icosahedron, turned only about the vertical, and
+  coloured from a random bed. They are now 32 convex stones, each the hull of 5 to 8 points in an
+  ellipsoid running from chunky to slab, rod and flake (`QuarryChipShapes`, BlastModel, tested on
+  Linux), turned any way and tumbling in the air, lying flat side down once landed, and coloured
+  from the bed of the block they broke from.
+- *Ironstone and weathered faces too orange.* Ironstone is now a dark purplish brown, rusty only
+  where weathered; sandstone's and limestone's weathered colours are less saturated, and the iron
+  staining on old joints and the reddest blocks' tint are weaker.
+- *The block shapes' spread.* Each pair of coarse cells now meets in the metric of the bed between
+  them (flatter in shale, 2.4; isotropic in limestone, 1.0; 1.6 in sandstone; 1.3 in ironstone,
+  against 1.7 for all), so neighbours still share a face and cells never overlap. Limestone is cut
+  less (joints 0.7 to 0.45 of the families' persistence, closed bedding between limestone beds 0.4
+  to 0.25 of it), shale's joints less (1.35 to 0.7) so its partings leave plates, and sandstone
+  takes close joints 0.9 m apart (from 1.25) and a cross set 1.4 m apart at right angles in plan.
+  Coarse cells 0.23 to 0.17 of the blocks, for the same count. With the larger coarse cells a few
+  pieces hung below the excavated floor or stood out of the old face, where the surfaces' tangent
+  planes clip a cell only roughly (the quarry test at 3,000 blocks found them); pieces whose middle
+  lies more than a quarter of their size under the floor or out of the face are left out, 52 of
+  about 116,300 at `--blocks 110000`.
+
+The generator's report at `--blocks 110000`, the old parameters against the new (the broken rock
+only; the shape measure is stage 2b's, the principal lengths of each piece's corners):
+
+| | Before | After |
+|---|---|---|
+| Blocks, spheres | 116,105, 552,403 (4.76 a block) | 116,276, 528,460 (4.54) |
+| Zingg's classes | equant 5%, disc 26%, rod 20%, blade 49% | equant 13%, disc 29%, rod 20%, blade 39% |
+| b/a (10%, median, 90%) | 0.33, 0.57, 0.81 | 0.38, 0.63, 0.84 |
+| c/b (10%, median, 90%) | 0.27, 0.52, 0.79 | 0.26, 0.57, 0.82 |
+| Limestone | 14,224 pieces, equant 8%, blade 40% | 9,356 pieces, equant 22%, blade 28% |
+| Sandstone | 42,849 pieces, equant 6%, rod 27%, blade 48% | 68,396 pieces, equant 15%, rod 24%, blade 34% |
+| Shale | 29,152 pieces, disc 29%, blade 57% | 15,626 pieces, disc 34%, blade 61% |
+| Sizes (cube root of volume, 10%, median, 90%, 99%, largest) | 0.45, 0.83, 1.42, 2.00, 3.09 m | 0.47, 0.74, 1.40, 2.10, 3.37 m |
+
+(The "before" shape spread is from this stage's report with the old parameters, which gives stage
+2b's classes exactly: 116,852 blocks, the ironstone metric being new.) So the spread did widen, but
+not by much: the classes are more even (blades 49 to 39%, equant 5 to 13%) and the sizes wider at
+both ends, while rods did not gain and shale makes more blades, not fewer. Most of the change is
+that limestone breaks into fewer, larger, blockier pieces and sandstone into many small blocky ones;
+sandstone is now more than half the pieces (it was 37%), so by count the pile is more buff than it
+was. Further widening would need different breakage, not other numbers in this one (for rods,
+columns that break along the joints' intersection; for discs, shale that parts before it joints).
+
+**Not done.** The faces' soft dappled shadows from their large-scale relief (stage 2b's list) are as
+they were. The chips on the upper slope are still a carpet; they no longer look alike.
+
+**Measured.**
+- *Frame cost*, the same self-test runs, medians of the work a frame: playing a stored event 20.4,
+  20.2 to 17.8, 17.7 ms; following the first firing as it is simulated 24.9, 23.5 to 20.5, 20.3 ms;
+  following a refire 23.5, 23.6 to 20.5, 20.2 ms; scrubbing and orbiting every frame 47.3, 46.7 to
+  44.4, 44.3 ms; a firing simulated in 14.4 to 15.2 s, to 13.8 to 14.3 s. Cheaper because the chips
+  draw up to 12 triangles where they drew 20 (at most 7.7 M a pass in the window, from 12.7 M) and
+  the blocks' meshes are 5.3 M triangles from 6.0 M (more small pieces, meshed more coarsely); the
+  dressing is 1.62 M from 1.42 M. An earlier pair of runs, made while another agent's check shared
+  the GPU, gave 62 to 64 ms scrubbing for both, so the scrubbing numbers above are the quiet ones.
+- *The film*: 44.1 to 37.8 ms median to draw a 4K-internal frame (14.6 M block triangles against
+  16.3 M), dust step 18.8 to 18.6 ms; physics 45.9 to 44.0 ms median and 63.5 to 59.7 ms p90 a frame
+  while more than 5% are awake.
+- *Stability*, the 20 s event at 240 Hz: no NaNs; over the last second the median and 99th
+  percentile block moved 0, the worst 2.1 cm (1.6 cm before, both from the poses at 19 and 20 s),
+  none over 10 cm; the fastest block 29.7 m/s (30.3 m/s before), within the GPU test's bound.
+- *Checked by eye*: the stills at every time above and the close view, before and after, and frames
+  taken from the clip file itself at 1.0, 2.5, 4.0, 8.0, 12.0 and 17.0 s (it plays in order: the
+  calm face, the ripple, the pile and the drifting dust); a debug render with the terrain magenta
+  for the ends.
+
+**Run:** `hillsideblast simulate --blocks 110000 --seconds 20 --out look2/poses`, then `render
+--blocks 110000 --poses look2/poses --out look2/after --clip --bitrate 9000000 --stills
+1.0,3.5,6.5,8.0,9.0,10.0,19.9`, and the close view with `--eye 50,-38,5 --eye-end 50,-38,5 --target
+75,0,3 --target-end 75,0,3 --fov 30`. The before images are stage 2b's (`quarry-rock/after`,
+`quarry-rock/after-close`), at the same cameras and times; before and after cannot share poses, as
+the new rock is a different set of blocks.
+
+**The look, frankly.** The ends are the clearest gain: at 1.0 s the face is rock from the left edge
+to the far right, with no smooth wall or panel. The chips are stones of different shapes and
+colours, and the close view no longer has a field of identical little polyhedra. The gravel now
+shows as gravel in the front of the pile and at its foot, and up close reads as crushed stone rather
+than terrazzo, though its stones are rounder than broken rock should be (domed cells, more like
+river gravel). The pile is chunkier and the limestone blocks larger. Ironstone and the weathered
+faces are brown rather than orange. What is still wrong: from the default camera most of the fines
+between the blocks in the middle of the pile are still in shadow and read as dark gaps; the chips on
+the upper slope are still a carpet, only a varied one; the faces still carry soft dappled shadows
+from their relief; the held skin of rounded limestone blocks along the new face reads a little like
+loaves; the shape spread widened only modestly, and the pile is now mostly sandstone by count; and
+the driver's memory doubling, about 0.6 GB, is untraced.

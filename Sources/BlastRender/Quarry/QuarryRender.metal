@@ -246,20 +246,22 @@ static inline RockColour rockOfKind(int kind) {
     r.lamination = 1.0f;
     if (kind == 0) {
         r.fresh = float3(0.56f, 0.545f, 0.5f);
-        r.oxidised = float3(0.58f, 0.5f, 0.39f);
+        r.oxidised = float3(0.57f, 0.51f, 0.42f);
         r.patina = float3(0.42f, 0.4f, 0.36f);
     } else if (kind == 1) {
         r.fresh = float3(0.2f, 0.2f, 0.21f);
         r.oxidised = float3(0.3f, 0.25f, 0.2f);
         r.patina = float3(0.14f, 0.13f, 0.12f);
     } else if (kind == 2) {
-        r.fresh = float3(0.58f, 0.48f, 0.33f);
-        r.oxidised = float3(0.56f, 0.41f, 0.26f);
-        r.patina = float3(0.38f, 0.31f, 0.23f);
+        r.fresh = float3(0.57f, 0.5f, 0.38f);
+        r.oxidised = float3(0.54f, 0.44f, 0.32f);
+        r.patina = float3(0.38f, 0.33f, 0.26f);
     } else {
-        r.fresh = float3(0.36f, 0.23f, 0.16f);
-        r.oxidised = float3(0.42f, 0.25f, 0.15f);
-        r.patina = float3(0.3f, 0.2f, 0.14f);
+        // Ironstone: a dark purplish brown, rusty only where it has weathered (it read orange
+        // under the warm low sun until 12 November 2026).
+        r.fresh = float3(0.31f, 0.24f, 0.21f);
+        r.oxidised = float3(0.37f, 0.27f, 0.2f);
+        r.patina = float3(0.28f, 0.22f, 0.18f);
     }
     // Weathering brings the beds' faces toward one grey-buff.
     r.patina = mix(r.patina, float3(0.36f, 0.33f, 0.28f), 0.15f);
@@ -325,7 +327,7 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
         // An old joint or parting: stained, more where the rock is weathered, with rusty patches.
         float iron = smoothstep(0.35f, 0.7f, fbm3(rest * 0.9f + 11.0f + in.faceRandom * 20.0f, 4));
         albedo = mix(rock.fresh * 0.82f, rock.oxidised * 0.8f, 0.25f + 0.65f * w);
-        albedo = mix(albedo, float3(0.4f, 0.26f, 0.15f) * (0.8f + 0.5f * detail), iron * (0.2f + 0.55f * w));
+        albedo = mix(albedo, float3(0.38f, 0.28f, 0.2f) * (0.8f + 0.5f * detail), iron * (0.15f + 0.45f * w));
         albedo *= 0.9f + 0.2f * in.faceRandom;
     } else {
         // A fresh break: pale and cool deep in the rock, buff in the weathered rock near the surface.
@@ -334,7 +336,7 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
         float fleck = smoothstep(0.62f, 0.7f, fbm3(rest * 9.0f + h2 * 30.0f, 3));
         albedo = mix(albedo, albedo * 1.3f + 0.04f, fleck * 0.45f);
     }
-    if (h3 > 0.9f) albedo = mix(albedo, albedo * float3(1.05f, 0.82f, 0.68f), 0.5f);
+    if (h3 > 0.9f) albedo = mix(albedo, albedo * float3(1.03f, 0.9f, 0.8f), 0.5f);
     albedo *= shade1 * rock.lamination * (0.84f + 0.32f * grain);
     // Dust settled on the upper faces of rock that has moved, gathering as the cloud comes down:
     // a pale coat in broad patches.
@@ -386,6 +388,9 @@ fragment float4 terrainFragment(TerrainOut in [[stage_in]],
     float crest = smoothstep(14.0f, 21.0f, in.world.z) * (1.0f - smoothstep(0.08f, 0.25f, slope));
     float3 scrub = mix(float3(0.13f, 0.13f, 0.07f), float3(0.3f, 0.26f, 0.13f), detail * 0.6f + broad * 0.4f);
     scrub = mix(scrub, float3(0.22f, 0.19f, 0.11f), smoothstep(0.45f, 0.7f, fbm3(in.world * 0.11f + 3.0f, 3)));
+    // The steep ground stands behind the render-only rock: where it shows between the cells it
+    // is the shade of a deep crack, not a smooth wall.
+    rock *= mix(1.0f, 0.35f, smoothstep(0.35f, 0.6f, slope));
     float3 albedo = mix(ground, rock, smoothstep(0.12f, 0.45f, slope));
     albedo = mix(albedo, scrub, crest * smoothstep(0.32f, 0.5f, broad + 0.12f * fine));
     float fade = saturate(1.0f - length(in.world - cam.eye.xyz) / 600.0f);
@@ -447,7 +452,9 @@ kernel void finesBuild(texture2d<float, access::read> height [[texture(0)]],
     float apron = g - 0.5f + present * (0.55f + 0.3f * wide);
     float surface = apron;
     if (pile > 1e-3f) {
-        float filled = top / pile - mix(1.1f, 0.35f, fill);
+        // Up to 0.2 m below the blocks' mean top once gathered (0.35 m until 12 November 2026,
+        // which left the fines in the blocks' shade under the low sun: dark gaps, not gravel).
+        float filled = top / pile - mix(1.1f, 0.2f, fill);
         surface = mix(apron, max(filled, apron), smoothstep(0.3f, 0.6f, cover) * smoothstep(0.3f, 0.6f, wide));
     }
     fines.write(float4(surface), id);
@@ -526,8 +533,7 @@ static inline float3 stoneColour(float id) {
     // Crushed shale is paler than its beds: its grit is grey, not black.
     if (rock.kind == 1) rock.fresh = mix(rock.fresh, float3(0.36f, 0.35f, 0.34f), 0.6f);
     float3 c = mix(rock.fresh, rock.oxidised, smoothstep(0.6f, 0.95f, fract(id * 11.3f)));
-    // Small stones sit in one another's shade: darker than the faces of the blocks.
-    return c * (0.5f + 0.35f * fract(id * 29.1f));
+    return c * (0.78f + 0.3f * fract(id * 29.1f));
 }
 
 fragment float4 finesFragment(FinesOut in [[stage_in]],
@@ -542,27 +548,39 @@ fragment float4 finesFragment(FinesOut in [[stage_in]],
     float2 q = in.world.xy;
     float footprint = length(fwidth(q));
     float detail = 1.0f - smoothstep(0.035f, 0.12f, footprint);
-    // Gravel at three sizes, cobbles and pebbles among grit, each stone domed so the low sun
-    // lights one side.
-    float2 toCobble, toPebble, toGrit;
-    float3 cobble = stones(q / 0.2f, 5u, toCobble);
-    float3 pebble = stones(q / 0.075f, 3u, toPebble);
-    float3 grain = stones(q / 0.03f, 11u, toGrit);
-    float3 albedo = float3(0.3f, 0.27f, 0.23f);
+    // Far off, the stones' mean: crushed rock of every bed, about as light as the blocks' faces
+    // in shade (until 12 November 2026 it was a dark brown, and from the default camera the
+    // fines read only as dark gaps between the blocks). Broad patches of paler and darker grit.
+    float patches = fbm3(in.world * 0.35f + 19.0f, 3);
+    float3 mean = float3(0.44f, 0.41f, 0.36f) * (0.85f + 0.3f * patches);
+    float3 albedo = mean;
     float3 bumpedN = n;
     if (detail > 0.0f) {
-        bool isCobble = cobble.z < 0.28f && cobble.x < 0.4f;
-        bool isPebble = !isCobble && pebble.z < 0.75f && pebble.x < 0.42f;
-        float3 stone = isCobble ? stoneColour(cobble.z) : isPebble ? stoneColour(pebble.z) : stoneColour(grain.z) * 0.8f;
-        float edge = isCobble ? cobble.x / 0.4f : isPebble ? pebble.x / 0.42f : grain.x;
-        // Broken stones, not pebbles: each one a facet tilted its own way.
+        // Crushed rock at three sizes, packed: angular cells of a jittered grid with grit in the
+        // gaps between them, each stone domed and tilted its own way, so that it has a lit side
+        // and a shaded one under the sky as well as the sun (flat-tinted discs read as terrazzo).
+        float2 toCobble, toPebble, toGrit;
+        float3 cobble = stones(q / 0.22f, 5u, toCobble);
+        float3 pebble = stones(q / 0.08f, 3u, toPebble);
+        float3 grain = stones(q / 0.03f, 11u, toGrit);
+        float cobbleGap = cobble.y - cobble.x, pebbleGap = pebble.y - pebble.x;
+        bool isCobble = cobble.z < 0.3f && cobbleGap > 0.1f;
+        bool isPebble = !isCobble && pebble.z < 0.8f && pebbleGap > 0.12f;
+        bool isStone = isCobble || isPebble;
         float id = isCobble ? cobble.z : isPebble ? pebble.z : grain.z;
-        float2 lean = (float2(fract(id * 47.3f), fract(id * 91.7f)) - 0.5f) * (isCobble || isPebble ? 1.3f : 0.5f);
-        // Grit between the stones, darker in their shade.
-        float rim = smoothstep(0.75f, 1.0f, edge);
-        float3 near = mix(stone, stone * 0.7f, rim * (isCobble || isPebble ? 1.0f : 0.3f));
-        albedo = mix(albedo, near, detail);
-        bumpedN = normalize(n + float3(lean, 0.0f) * detail);
+        float2 to = isCobble ? toCobble : isPebble ? toPebble : toGrit;
+        float gap = isCobble ? cobbleGap : isPebble ? pebbleGap : grain.y - grain.x;
+        // Each stone mottled within, as rock is.
+        float mottle = fbm3(in.world * (isCobble ? 22.0f : 50.0f) + id * 40.0f, 2);
+        float3 stone = stoneColour(id) * (0.8f + 0.4f * mottle);
+        if (!isStone) stone *= 0.8f;
+        // Darker into the crevices between stones.
+        float crevice = isStone ? smoothstep(0.0f, isCobble ? 0.22f : 0.25f, gap) : 0.7f + 0.3f * smoothstep(0.0f, 0.3f, gap);
+        stone *= 0.5f + 0.5f * crevice;
+        float2 lean = (float2(fract(id * 47.3f), fract(id * 91.7f)) - 0.5f) * (isStone ? 0.9f : 0.4f);
+        float2 dome = -to * (isStone ? 1.7f : 0.7f);
+        albedo = mix(mean, stone, detail);
+        bumpedN = normalize(n + float3((lean + dome) * detail, 0.0f));
     }
     float3 bumped = bumpedN;
     // Dust settles over the fines as the cloud comes down.
@@ -643,32 +661,39 @@ kernel void chipUpdate(device QuarryChip *chips [[buffer(0)]],
     chips[i] = C;
 }
 
-constant float3 icoCorners[12] = {
-    float3(-0.526f, 0.851f, 0.0f), float3(0.526f, 0.851f, 0.0f), float3(-0.526f, -0.851f, 0.0f), float3(0.526f, -0.851f, 0.0f),
-    float3(0.0f, -0.526f, 0.851f), float3(0.0f, 0.526f, 0.851f), float3(0.0f, -0.526f, -0.851f), float3(0.0f, 0.526f, -0.851f),
-    float3(0.851f, 0.0f, -0.526f), float3(0.851f, 0.0f, 0.526f), float3(-0.851f, 0.0f, -0.526f), float3(-0.851f, 0.0f, 0.526f)
-};
-constant uint icoFaces[60] = {
-    0,11,5, 0,5,1, 0,1,7, 0,7,10, 0,10,11, 1,5,9, 5,11,4, 11,10,2, 10,7,6, 7,1,8,
-    3,9,4, 3,4,2, 3,2,6, 3,6,8, 3,8,9, 4,9,5, 2,4,11, 6,2,10, 8,6,7, 9,8,1
-};
-
 struct ChipOut {
     float4 position [[position]];
     float3 world;
-    float tint;
-    float seed;
+    float3 albedo [[flat]];
 };
 
-static inline float4 chipPosition(QuarryChip c, uint vid, uint instance, constant QuarryCamera &cam, float4x4 m, thread float3 &world) {
-    uint corner = icoFaces[vid % 60];
-    float3 v = icoCorners[corner];
-    float h = fract(c.seed * (float(corner) * 3.17f + 1.3f)) * 0.75f + 0.45f;
-    float3 stretch = float3(1.0f + 0.7f * fract(c.seed * 91.0f), 1.0f + 0.5f * fract(c.seed * 53.0f), 0.55f + 0.5f * fract(c.seed * 37.0f));
+// A unit quaternion from three values in 0...1, uniform over rotations.
+static inline float4 randomRotation(float3 u) {
+    float a = sqrt(1.0f - u.x), b = sqrt(u.x);
+    return float4(a * sin(6.2832f * u.y), a * cos(6.2832f * u.y), b * sin(6.2832f * u.z), b * cos(6.2832f * u.z));
+}
+
+// Each chip is one of `QuarryDecor.shapeCount` small convex stones (`chipShapes`, 36 vertices of
+// up to 12 triangles each), turned its own way: tumbling while it flies, lying with its flat side
+// more or less down once it has landed.
+static inline float4 chipPosition(QuarryChip c, uint vid, constant QuarryCamera &cam, float4x4 m,
+                                  const device float4 *shapes, thread float3 &world) {
+    uint shape = uint(fract(c.seed * 61.73f) * 32.0f) & 31u;
+    float3 v = shapes[shape * 36u + vid].xyz;
+    float3 stretch = float3(0.85f + 0.3f * fract(c.seed * 91.0f), 0.85f + 0.3f * fract(c.seed * 53.0f), 0.85f + 0.3f * fract(c.seed * 37.0f));
     float size = c.state == 0u ? 0.0f : c.posSize.w;
-    float angle = c.seed * 40.0f + c.velAge.w * 6.0f;
-    float ca = cos(angle), sa = sin(angle);
-    float3 p = v * h * stretch * size;
+    float3 p = v * stretch * size * 1.15f;
+    float yaw = c.seed * 40.0f;
+    float tilt = (fract(c.seed * 17.3f) - 0.5f) * 0.6f;
+    if (c.state == 1u) {
+        // In the air: any way round, and turning.
+        float4 q = randomRotation(float3(fract(c.seed * 7.31f), fract(c.seed * 3.17f + cam.misc.x * 0.9f), fract(c.seed * 11.9f + cam.misc.x * 0.6f)));
+        p = rotate(q, p);
+    } else {
+        float ct = cos(tilt), st = sin(tilt);
+        p = float3(p.x, ct * p.y - st * p.z, st * p.y + ct * p.z);
+    }
+    float ca = cos(yaw), sa = sin(yaw);
     p = float3(ca * p.x - sa * p.y, sa * p.x + ca * p.y, p.z);
     world = c.posSize.xyz + p;
     return m * float4(world, 1.0f);
@@ -676,21 +701,27 @@ static inline float4 chipPosition(QuarryChip c, uint vid, uint instance, constan
 
 vertex ChipOut chipVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
                           const device QuarryChip *chips [[buffer(0)]],
-                          constant QuarryCamera &cam [[buffer(2)]]) {
+                          constant QuarryCamera &cam [[buffer(2)]],
+                          const device float4 *rest [[buffer(3)]],
+                          const device float4 *shapes [[buffer(5)]]) {
     QuarryChip c = chips[instance];
     ChipOut o;
-    o.position = chipPosition(c, vid, instance, cam, cam.viewProjection, o.world);
-    o.tint = c.tint;
-    o.seed = c.seed;
+    o.position = chipPosition(c, vid, cam, cam.viewProjection, shapes, o.world);
+    // Broken off its own block, so of its bed: mostly fresh, some from the weathered rock near the
+    // surface.
+    RockColour rock = rockAt(rest[c.parent].xyz + c.offsetDelay.xyz * 0.8f);
+    if (rock.kind == 1) rock.fresh = mix(rock.fresh, float3(0.34f, 0.33f, 0.32f), 0.4f);
+    o.albedo = mix(rock.fresh, rock.oxidised, smoothstep(0.55f, 0.95f, c.tint)) * (0.75f + 0.4f * fract(c.seed * 17.0f));
     return o;
 }
 
 vertex float4 chipShadowVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
                                const device QuarryChip *chips [[buffer(0)]],
-                               constant QuarryCamera &cam [[buffer(2)]]) {
+                               constant QuarryCamera &cam [[buffer(2)]],
+                               const device float4 *shapes [[buffer(5)]]) {
     QuarryChip c = chips[instance];
     float3 w;
-    return chipPosition(c, vid, instance, cam, cam.shadow, w);
+    return chipPosition(c, vid, cam, cam.shadow, shapes, w);
 }
 
 fragment float4 chipFragment(ChipOut in [[stage_in]],
@@ -700,16 +731,8 @@ fragment float4 chipFragment(ChipOut in [[stage_in]],
                              sampler s [[sampler(0)]]) {
     float3 n = normalize(cross(dfdx(in.world), dfdy(in.world)));
     if (dot(n, cam.eye.xyz - in.world) < 0.0f) n = -n;
-    float3 albedo;
-    if (in.tint < 0.0f) {
-        albedo = float3(0.08f, 0.1f, 0.05f) * (0.6f + 1.2f * fract(in.seed * 11.0f));
-    } else {
-        // Broken bits of every bed, mostly fresh, some from the weathered rock near the surface.
-        RockColour rock = rockOfKind(kindFromShare(fract(in.seed * 7.73f)));
-        albedo = mix(rock.fresh, rock.oxidised, smoothstep(0.55f, 0.95f, in.tint)) * (0.75f + 0.4f * fract(in.seed * 17.0f));
-    }
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
-    return float4(shade(albedo, in.world, n, cam, shadow, dustShadow(in.world, cam, dustLight)), 1.0f);
+    return float4(shade(in.albedo, in.world, n, cam, shadow, dustShadow(in.world, cam, dustLight)), 1.0f);
 }
 
 // Dust advection and shading come after the blocks.

@@ -121,7 +121,8 @@ public final class QuarrySession: @unchecked Sendable {
         run: QuarryRun? = nil, settings: QuarryFiringSettings = QuarryFiringSettings()
     ) throws {
         self.device = device
-        self.face = face
+        // The meshes are the renderer's, on the GPU; held here as well they were 0.6 GB.
+        self.face = face.withoutMesh()
         self.settings = settings
         eventFrames = Int(seconds * Self.frameRate) + 1
         self.keyDirectory = keyDirectory
@@ -161,7 +162,8 @@ public final class QuarrySession: @unchecked Sendable {
             // Made here, off the main thread, so the new event can be shown as soon as it is ready.
             pending = run
             pendingDust = try QuarryDustField(
-                device: device, face: face, firings: run.firings, sun: sunDirection, gridSize: Self.dustGrid)
+                device: device, face: self.face, firings: run.firings, sun: sunDirection,
+                gridSize: Self.dustGrid)
             refireProgress = 0
             refireStatus = "Firing…"
         }
@@ -238,7 +240,7 @@ public final class QuarrySession: @unchecked Sendable {
         progress("Breaking the rock…", 0.05)
         face.generate { progress("Breaking the rock…", 0.05 + 0.8 * $0) }
         times.append(("rock (dressing beside it)", Date()))
-        let run = startRun(device: device, face: face, settings: settings)
+        let run = startRun(device: device, face: face.withoutMesh(), settings: settings)
         progress("Building the scene while it fires…", 0.85)
         dressed.wait()
         face.dressingVertices = dressing.face.dressingVertices

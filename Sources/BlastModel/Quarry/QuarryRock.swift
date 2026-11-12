@@ -54,12 +54,26 @@ public enum QuarryRock {
     }
 
     /// How much more (above 1) or less a bed's joints cut it than the families' own persistence.
+    /// Since 12 November 2026 limestone is cut less (more large, blocky pieces) and shale too, so
+    /// that its partings leave plates rather than blades; sandstone takes close joints of its own.
     public static func jointFactor(_ kind: Kind) -> Float {
         switch kind {
-        case .limestone: 0.7
-        case .shale: 1.35
+        case .limestone: 0.45
+        case .shale: 0.7
         case .sandstone: 1.05
         case .ironstone: 0.85
+        }
+    }
+
+    /// How much flatter than wide a bed's coarse cells are, along the bedding's normal: the
+    /// metric their faces are placed in (`QuarryFace.beddedNormal`). Massive limestone breaks
+    /// blockier and shale flatter than the one stretch of 1.7 all beds had before 12 November 2026.
+    public static func stretch(_ kind: Kind) -> Float {
+        switch kind {
+        case .limestone: 1.0
+        case .shale: 2.4
+        case .sandstone: 1.6
+        case .ironstone: 1.3
         }
     }
 
@@ -87,10 +101,13 @@ public enum QuarryRock {
     /// over 2/3), disc (c/b under), rod (b/a under) and blade (both under).
     public enum Shape: String, CaseIterable, Sendable { case equant, disc, rod, blade }
 
-    public static func shape(_ polyhedron: QuarryPolyhedron) -> Shape {
+    public static func shape(_ polyhedron: QuarryPolyhedron) -> Shape { shapeAndRatios(polyhedron).0 }
+
+    /// Zingg's shape and the two ratios it is read from, b/a and c/b.
+    public static func shapeAndRatios(_ polyhedron: QuarryPolyhedron) -> (Shape, SIMD2<Float>) {
         var points: [SIMD3<Float>] = []
         for polygon in polyhedron.faces { points.append(contentsOf: polygon) }
-        guard points.count >= 4 else { return .equant }
+        guard points.count >= 4 else { return (.equant, SIMD2(1, 1)) }
         let mean = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
         var c = simd_float3x3()
         for p in points {
@@ -99,9 +116,10 @@ public enum QuarryRock {
         }
         let e = eigenvalues(c).map { sqrt(max($0, 0)) }.sorted(by: >)
         let (a, b, cc) = (e[0], e[1], e[2])
-        let long = b / max(a, 1e-6) >= 2.0 / 3
-        let flat = cc / max(b, 1e-6) < 2.0 / 3
-        return long ? (flat ? .disc : .equant) : (flat ? .blade : .rod)
+        let ratios = SIMD2(b / max(a, 1e-6), cc / max(b, 1e-6))
+        let long = ratios.x >= 2.0 / 3
+        let flat = ratios.y < 2.0 / 3
+        return (long ? (flat ? .disc : .equant) : (flat ? .blade : .rod), ratios)
     }
 
     /// The eigenvalues of a symmetric 3 x 3 matrix (the trigonometric solution).
@@ -118,5 +136,67 @@ public enum QuarryRock {
         let e1 = q + 2 * p * cos(phi)
         let e3 = q + 2 * p * cos(phi + 2 * .pi / 3)
         return [e1, 3 * q - e1 - e3, e3]
+    }
+}
+
+/// The decorative chips' shapes (the renderer draws each chip as one of them, never as a body):
+/// small broken stones of every shape, for the look only.
+public enum QuarryChipShapes {
+    /// How many shapes there are, and the vertices of each: up to 12 triangles, the hull of at
+    /// most 8 points (`chipPosition` in `QuarryRender.metal` reads them so).
+    public static let count = 32
+    public static let vertices = 36
+
+    /// Small broken stones of every shape: the convex hull of 5 to 8 points in an ellipsoid whose
+    /// axes run from equal to slab and rod, each as unindexed triangles padded with degenerate
+    /// ones. Until 12 November 2026 every chip was the same icosahedron, which stood out against
+    /// the varied blocks (and cost 20 triangles where these take up to 12).
+    public static func make() -> [SIMD4<Float>] {
+        var r = QuarryRandom(seed: 4_021_977)
+        var out: [SIMD4<Float>] = []
+        out.reserveCapacity(count * vertices)
+        var made = 0
+        while made < count {
+            // Long, middle and short axes: chunky, slabby, rod-like and flaky by turns.
+            let kind = made % 4
+            let b: Float = kind == 2 ? r.float(0.3, 0.5) : r.float(0.6, 1)
+            let c: Float =
+                kind == 1 ? r.float(0.2, 0.4) : kind == 3 ? r.float(0.18, 0.3) : r.float(0.5, 0.9) * b
+            let axes = SIMD3<Float>(1, b, c)
+            let n = 5 + Int(r.float() * 3.99)
+            let points = (0..<n).map { _ in r.unit() * r.float(0.75, 1) * axes }
+            let triangles = hull(points)
+            guard triangles.count >= 4, triangles.count * 3 <= vertices else { continue }
+            let centre = points.reduce(SIMD3<Float>.zero, +) / Float(n)
+            for t in triangles {
+                for k in [t.0, t.1, t.2] { out.append(SIMD4(points[k] - centre, 0)) }
+            }
+            let last = out[out.count - 1]
+            for _ in 0..<(vertices - triangles.count * 3) { out.append(last) }
+            made += 1
+        }
+        return out
+    }
+
+    /// The faces of the convex hull of a few points, outward and wound counter-clockwise, by trying
+    /// every triple (no four of them coplanar, as random points are not).
+    public static func hull(_ p: [SIMD3<Float>]) -> [(Int, Int, Int)] {
+        var faces: [(Int, Int, Int)] = []
+        for i in p.indices {
+            for j in (i + 1)..<p.count {
+                for k in (j + 1)..<p.count {
+                    let normal = simd_cross(p[j] - p[i], p[k] - p[i])
+                    guard simd_length_squared(normal) > 1e-10 else { continue }
+                    var above = 0
+                    var below = 0
+                    for m in p.indices where m != i && m != j && m != k {
+                        let side = simd_dot(normal, p[m] - p[i])
+                        if side > 1e-6 { above += 1 } else if side < -1e-6 { below += 1 }
+                    }
+                    if above == 0 { faces.append((i, j, k)) } else if below == 0 { faces.append((i, k, j)) }
+                }
+            }
+        }
+        return faces
     }
 }
