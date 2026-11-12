@@ -25,8 +25,9 @@ struct QuarryFaceTests {
         #expect(!broken.isEmpty && broken.count < face.blocks.count)
         for block in broken {
             let c = block.centre
-            // Within a block's size of the cut, sideways too: the faces are steep.
-            let near = [-block.size, 0, block.size]
+            // Within a block's size of the cut, and two sideways: the faces are steep, and at this
+            // count the coarse cells that bedding and joints cut are several metres across.
+            let near = [-2 * block.size, -block.size, 0, block.size, 2 * block.size]
             let old = near.map { face.height(face.original, c.x, c.y + $0) }.max()!
             let new = near.map { face.height(face.terrain.heights, c.x, c.y + $0) }.min()!
             #expect(c.z > new - block.size && c.z < old + block.size, "\(c) between \(new) and \(old)")
@@ -181,5 +182,59 @@ struct QuarryFaceTests {
         await writer.value
         #expect(cache.available == frames)
         #expect(cache.release(0) == 10)
+    }
+
+    @Test("Beds take each kind of rock in about its share, and weathering and face tags stay in their bits")
+    func bedsAndWeathering() throws {
+        var counts = [Int](repeating: 0, count: QuarryRock.Kind.allCases.count)
+        for k in -2000..<2000 { counts[QuarryRock.kind(bed: k).rawValue] += 1 }
+        let shares = counts.map { Float($0) / 4000 }
+        for (share, expected) in zip(shares, [Float(0.42), 0.24, 0.22, 0.12]) {
+            #expect(abs(share - expected) < 0.04, "\(shares)")
+        }
+        #expect(QuarryRock.weathering(depth: 0) == 1)
+        #expect(QuarryRock.weathering(depth: QuarryRock.weatheredDepth) == 0)
+        #expect(QuarryRock.weathering(depth: 2) > QuarryRock.weathering(depth: 4))
+        let tag = QuarryRock.faceTag(weathering: 1, random: 1)
+        #expect(tag & QuarryRock.bodyMask == 0)
+        #expect((tag >> QuarryRock.bodyBits) & 31 == 31)
+        // Every vertex's block index survives the tag above it, and the face nearest the old
+        // surface is the most weathered.
+        let face = try Self.small()
+        for v in face.vertices { #expect(Int(v.body & QuarryRock.bodyMask) < face.blocks.count) }
+        let grades = face.vertices.map { Int(($0.body >> QuarryRock.bodyBits) & 31) }
+        #expect(grades.contains(0) && grades.contains(31))
+    }
+
+    @Test("Zingg's shapes are told apart: a cube, a slab, a rod and a blade")
+    func shapes() {
+        func box(_ x: Float, _ y: Float, _ z: Float) -> QuarryPolyhedron {
+            .box(low: .zero, high: SIMD3(x, y, z))
+        }
+        #expect(QuarryRock.shape(box(1, 1, 1)) == .equant)
+        #expect(QuarryRock.shape(box(2, 2, 0.4)) == .disc)
+        #expect(QuarryRock.shape(box(3, 0.8, 0.8)) == .rod)
+        #expect(QuarryRock.shape(box(3, 1.2, 0.3)) == .blade)
+    }
+
+    @Test("Shale beds split into thinner pieces than limestone ones, and chipped corners stay closed")
+    func bedsBreakTheirOwnWay() {
+        // A tall column through many beds, cut by the fracture with no Voronoi cell around it.
+        let column = QuarryPolyhedron.box(low: SIMD3(0, 0, -20), high: SIMD3(3, 3, 20))
+        let pieces = QuarryFracture.fracture(column, intensity: 1, minimumVolume: 0.01)
+        var thickness: [QuarryRock.Kind: [Float]] = [:]
+        for piece in pieces {
+            let (low, high) = piece.extent(along: QuarryFace.beddingNormal)
+            thickness[QuarryRock.kind(at: piece.volumeAndCentroid.centroid), default: []].append(high - low)
+        }
+        func mean(_ v: [Float]?) -> Float { (v ?? []).reduce(0, +) / Float(max(v?.count ?? 0, 1)) }
+        #expect(mean(thickness[.shale]) < mean(thickness[.limestone]), "\(thickness.mapValues { $0.count })")
+        let volume = pieces.reduce(Float(0)) { $0 + $1.volumeAndCentroid.volume }
+        #expect(abs(volume - 360) < 1, "the pieces fill the column")
+        var piece = QuarryPolyhedron.box(low: .zero, high: SIMD3(1, 1, 1))
+        var random = QuarryRandom(seed: 3)
+        QuarryFracture.chipCorners(&piece, count: 3, size: 1, random: &random)
+        let chipped = piece.volumeAndCentroid.volume
+        #expect(chipped < 1 && chipped > 0.88)
     }
 }

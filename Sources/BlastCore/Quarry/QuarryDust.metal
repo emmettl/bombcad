@@ -174,9 +174,16 @@ kernel void dustCorrect(texture3d<float, access::sample> d0 [[texture(0)]],
                         texture3d<float, access::sample> vIn [[texture(3)]],
                         texture3d<float, access::read> sIn [[texture(4)]],
                         texture3d<float, access::write> dOut [[texture(5)]],
+                        texture3d<float, access::read> clearance [[texture(6)]],
                         constant QuarryDustUniforms &u [[buffer(0)]],
                         uint3 id [[thread_position_in_grid]]) {
     if (sIn.read(id).r > 0.5f) { dOut.write(float4(0), id); return; }
+    // Cold dust low over the ground and the pile falls out: within a few metres of the ground it
+    // thins in about two seconds, so what the impacts throw up comes down again rather than
+    // lying in a flat sheet. Warm dust rises first; the plumes high up are left alone.
+    float above = clearance.read(id).r * 12.75f;
+    float cold = 1.0f - smoothstep(0.04f, 0.3f, vIn.read(id).w);
+    float deposit = exp(-u.hdtsteps.y * 0.55f * cold * (1.0f - smoothstep(3.0f, 9.0f, above)));
     float3 pos = float3(id) + 0.5f;
     float3 v = vIn.read(id).xyz + u.wind.xyz + float3(0.0f, 0.0f, -0.05f);
     float3 size = float3(u.dims.xyz);
@@ -192,7 +199,7 @@ kernel void dustCorrect(texture3d<float, access::sample> d0 [[texture(0)]],
         lo = min(lo, value);
         hi = max(hi, value);
     }
-    dOut.write(float4(clamp(corrected, lo, hi) * 0.9992f), id);
+    dOut.write(float4(clamp(corrected, lo, hi) * 0.9992f * deposit), id);
 }
 
 // A tileable noise volume for shaping the cloud: inverted Worley at three frequencies.

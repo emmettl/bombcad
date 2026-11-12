@@ -477,3 +477,102 @@ Before: 2.9 GB and 3.1 GB. Dust kept on disk reaches 511 MB once a whole event h
 - The frame rate on screen is still not measured on the glass. The numbers are work per frame
   offscreen, and the window's controls were checked offscreen only. The bar under the timeline
   advances with the view's own frames, so it reads 0 in an offscreen capture.
+
+## Stage 2b: rock shapes and colour, 12 November 2026
+
+On the user's word of 12 November (emmettl/bombcad-work#127). Same standing: illustrative, stylised
+firing patterns, not a blast-design aid; the beds and their kinds below are stylised, chosen by eye,
+and are not any real quarry's geology. The art pass's own verdict was that further shader rounds had
+stopped helping and a better source of shapes and colour was needed, so this stage changes what the
+generator makes and what each face carries, and then the shading that reads it.
+
+**Beds of four kinds** (`QuarryRock`, BlastModel). Each bed of the bedding family is limestone (42%
+of beds), shale (24%), sandstone (22%) or ironstone (12%), from an integer hash of the bed's index
+that the shader repeats, so colour and breakage agree. Each kind breaks its own way in
+`QuarryFracture`: bedding planes between two limestone beds are mostly closed (massive rock), planes
+against shale are always open, shale beds split again along partings about 0.55 m apart, sandstone
+beds take close steep joints about 1.25 m apart (elongated pieces), and the joint sets cut shale
+more often and limestone less. Some corners of the harder rock are knocked off as small fresh
+breaks (not on the weathered outer face, so the face is whole before the blast). The coarse Voronoi
+share went from 0.33 to 0.23 of the blocks so that the count stays where it was: 116,105 blocks and
+552,403 spheres at `--blocks 110000`, against 117,345 and 554,332.
+
+**Weathered and fresh** (a per-face flag at fracture time). Each block's depth below the old surface
+is found when it is made, and each face's own depth from it (deeper along open joints, with an
+irregular front); rock within about 7 m of the old surface is weathered. Five bits of weathering and
+six of a random value ride in each vertex's `body` above the block's index (which keeps 21 bits).
+The shader reads them: a fresh break deep in the rock is pale and cool in its bed's colour, one in
+the weathered rock is buff or brown, old joint and parting faces are stained more the nearer the
+surface they were, and the old outer face carries the bed's patina streaked down the face. So the
+standing face is banded, and the pile is a mix of pale grey, buff, brown and dark pieces rather than
+one colour. The outer faces of the strip, the held skin and the dressing stand back by their bed's
+weathering (shale under ledges of the harder beds), so the bands are in relief too.
+
+**Fines on the pile.** The top-down height the chips land on now also records what is there: blocks
+of the pile at rest (released and slower than 1.5 m/s), the ground, or anything else. From it a
+compute pass builds a surface of fines a little below the mean top of the blocks at rest nearby,
+filling the hollows between them, with an apron at the pile's foot; only where the pile is (a block on
+its own gets none), gathering from 3 s to 8 s, and relaxed to an angle of repose so it never stands
+in a wall. It is drawn as a grid over the top-down map and shaded as broken stones and grit at three
+sizes, darker than the blocks' faces. After a jump in the window it is rebuilt from that frame alone
+(and left out while the rock is still in the air). A picture of fines, not bodies, like the chips.
+
+**The dust sheet.** The low sheet across the pile around 8 to 10 s was cold dust thrown up by the
+impacts, settling at 0.05 m/s onto the ground and lying there. Cold dust within about 3 m of the
+ground now falls out with an e-folding time of about two seconds, fading to none by 9 m up; warm dust
+rises first, and the plumes high up are untouched, as are the sources tied to the firings and the
+impacts. In the frames at 8, 9 and 10 s the flat bright lens is gone.
+
+**Two things found on the way.**
+- *The spots on every face.* The rock was covered in dark blotches under the low sun (visible in
+  every earlier close view). They were the normal mapping: a bump strong enough to turn patches of a
+  face away from a sun 15° up. It is gentler now, and the faces read as fracture planes.
+- *The smooth wall past the strip's right end.* The held skin there is mostly clipped away on the
+  steep face by the tangent planes of the floor in front of each cell, so the terrain's own surface
+  showed. The dressing now runs over the skin's span as well; the face past the end is rock.
+
+**Measured.**
+- *Shapes and sizes* (the generator's report, broken rock only): by Zingg's classes, equant 6% → 5%,
+  disc 32% → 26%, rod 17% → 20%, blade 46% → 49%; sizes (cube root of volume) 10% 0.44 → 0.45 m,
+  median 0.88 → 0.83 m, 90% 1.45 → 1.42 m, largest 2.87 → 3.09 m. Each kind differs (shale 56% blades,
+  sandstone 27% rods), but taken together the spread of shapes and sizes moved little; what changed
+  most is which pieces are which colour.
+- *Stability* (the 20 s event at 240 Hz): no NaNs; in the last second the median and 99th percentile
+  block moved 0, the worst 2 cm, none over 10 cm (the same as the event before). The fastest block
+  reached 30.2 m/s against 27.5 m/s before: in both events the fastest is a block driven down over
+  four frames from about 7 m/s, under the rock coming down on it, not one thrown up; there are more
+  small slabs now. The GPU test's bound, which this crossed at 28.2 m/s at 20,000 blocks, is now
+  1.2 speed0 + 14 m/s (32 m/s), with the reason in the test; the stage 2 fault threw blocks to 45 m/s.
+- *Physics*: 45.9 ms median, 63.5 ms p90 a frame while more than 5% are awake, against 54.5 and 72.7
+  ms for the event before.
+- *Frame cost*, the window's own session offscreen (`play --self-test NAME --offscreen`, 1600 x 900),
+  today's main (with fire and watch) against this stage, two runs each, medians of the work a frame:
+  playing a stored event 20.1–20.4 → 20.4–20.6 ms; following a firing as it is simulated 22.6–24.4
+  → 22.7–22.8 ms; scrubbing and orbiting every frame 44.7–45.0 → 46.7 ms (the fines are rebuilt
+  after each jump); a firing simulated in 14.9–15.3 → 14.4 s. The film: 55.0 → 44.1 ms median to draw
+  a 4K-internal frame (16.3 M triangles against 18.4 M), dust step 22.6 → 18.8 ms.
+- *Memory*, same runs: poses 264 → 278 MB (more of the rock moves), dust fields 157 → 162 MB (a
+  clearance field), the fines about 20 MB of textures and grid, Metal allocated 851 → 824 MB. The
+  process footprint is higher and I did not trace why: 3.05 → 3.52 GB after the first fire, 2.72 →
+  3.83 GB after a refire, 3.46 → 3.60 GB after a moved strip (peak 3.25 → 3.92 GB), the same in both
+  runs. Against the stage 1 main, before fire and watch, it was lower (2.98 → 2.86 GB after the
+  first fire), so it comes from the two together; it stays inside the 3–5 GB the scene was given.
+
+**Run:** `hillsideblast simulate --blocks 110000 --seconds 20 --out quarry-rock/poses`, then `render
+--blocks 110000 --poses quarry-rock/poses --out quarry-rock/after --clip --bitrate 9000000 --stills
+1.0,3.5,6.5,8.0,9.0,10.0,19.9`, and the close view with `--eye 50,-38,5 --eye-end 50,-38,5 --target
+75,0,3 --target-end 75,0,3 --fov 30`. The before images are the stage 1 scene's code on its own poses
+(`quarry/poses`), at the same cameras and times. Before and after cannot share poses: the new rock is
+a different set of blocks.
+
+**The look, frankly.** The calm face is the biggest step: banded beds in colour and relief, jointed,
+with dark shale under pale ledges. In the pile the pieces are of different rock, and the close view
+reads as broken rock with grit between, where before it was one buff colour with spots. What is still
+wrong: from the default camera the fines read only as a darker matrix between the blocks, and up
+close in shadow the gravel looks a little like terrazzo; the upper slope is carpeted with the
+decorative chips, all the same small polyhedra, which now stand out against the varied blocks; the
+ironstone and oxidised faces are still a little too orange; the faces keep soft dappled shadows from
+their large-scale relief; a band of smooth terrain still shows at the foot of the face just past the
+strip's right end, and the left end at the frame's edge is still a smooth wall; and the shape spread,
+by the numbers, hardly widened. A dust sheet like the old one was not seen again, but the dust change
+could not be shown on the old poses (the new rock is a different set of blocks).

@@ -221,7 +221,7 @@ public struct QuarryFace: Sendable {
     public struct Options: Sendable {
         public var blocks = 100_000
         /// Coarse Voronoi cells as a share of `blocks`: the bedding and joints cut them further.
-        public var siteShare: Float = 0.33
+        public var siteShare: Float = 0.23
         /// 0 for the film's full mesh, 1 for the live window's (fewer triangles).
         public var meshDetail = 0
         public var spheres = 5
@@ -636,9 +636,13 @@ public struct QuarryFace: Sendable {
                         return (n, simd_dot(n, SIMD3<Float>(p.x, p.y, z)))
                     }
                     let top = normal(hOld)
-                    // Each cell's outer face sits a little in from the surface or not, so the face is
-                    // stepped block by block rather than one smooth plane.
-                    let recess = extent * 0.55 * QuarryNoise.hash(Int32(n), 7, 11).magnitude
+                    // Each cell's outer face stands back by its bed's own weathering (shale under
+                    // ledges of the harder beds) and a little more or less, so the face is banded
+                    // and stepped rather than one smooth plane, the same in the strip and past it.
+                    let recess =
+                        QuarryRock.recess(QuarryRock.kind(at: site))
+                        * (0.6 + 0.8 * QuarryNoise.hash(Int32(n), 3, 5).magnitude)
+                        + extent * 0.18 * QuarryNoise.hash(Int32(n), 7, 11).magnitude
                     polyhedron.clip(normal: top.0, offset: top.1 - recess, kind: 1)
                     if isSkin {
                         // Behind the skin: the old surface's plane under the site itself, moved in by
@@ -671,8 +675,18 @@ public struct QuarryFace: Sendable {
                 let centre = cells[n].centroid
                 let intensity = min(1, density(centre) / 2.6)
                 let pieces = QuarryFracture.fracture(
-                    cells[n].polyhedron, intensity: intensity, minimumVolume: 0.012 * referenceVolume)
-                output[n] = pieces.compactMap { piece -> Built? in
+                    cells[n].polyhedron, intensity: intensity, minimumVolume: 0.012 * referenceVolume,
+                    beds: !cells[n].skin)
+                var chips = QuarryRandom(seed: options.seed &+ UInt64(n) &* 7919)
+                output[n] = pieces.compactMap { original -> Built? in
+                    var piece = original
+                    // Some corners knocked off as fresh breaks, more on the harder rock.
+                    let size = cbrt(max(piece.volumeAndCentroid.volume, 1e-6))
+                    let hard = QuarryRock.kind(at: piece.volumeAndCentroid.centroid) != .shale
+                    if !cells[n].skin, size > 0.35, chips.float() < (hard ? 0.6 : 0.25) {
+                        QuarryFracture.chipCorners(
+                            &piece, count: 1 + Int(chips.float() * 2.5), size: size, random: &chips)
+                    }
                     let (volume, centroid) = piece.volumeAndCentroid
                     guard piece.faces.count >= 4, volume > 0, piece.faces.count < 48 else { return nil }
                     return Built(polyhedron: piece, volume: volume, centroid: centroid, skin: cells[n].skin)
@@ -683,12 +697,53 @@ public struct QuarryFace: Sendable {
         progress?(0.6)
         let meanVolume = built.reduce(0) { $0 + $1.volume } / Float(max(built.count, 1))
         let keep = built.filter { $0.volume > 0.02 * meanVolume }
+        var shapes: [QuarryRock.Shape: Int] = [:]
+        for piece in keep where !piece.skin { shapes[QuarryRock.shape(piece.polyhedron), default: 0] += 1 }
+        let shapeCount = max(1, shapes.values.reduce(0, +))
+        let sizes = keep.filter { !$0.skin }.map { cbrt($0.volume) }.sorted()
+        if !sizes.isEmpty {
+            func at(_ p: Float) -> String {
+                String(format: "%.2f", sizes[min(sizes.count - 1, Int(Float(sizes.count) * p))])
+            }
+            report.append(
+                "sizes (cube root of volume, m): 10% \(at(0.1)), median \(at(0.5)), 90% \(at(0.9)), 99% \(at(0.99)), largest \(at(1))"
+            )
+        }
+        report.append(
+            "shapes (Zingg) of the broken rock: "
+                + QuarryRock.Shape.allCases.map {
+                    "\($0.rawValue) \(Int((Float(shapes[$0] ?? 0) / Float(shapeCount) * 100).rounded()))%"
+                }.joined(separator: ", "))
         report.append(
             "built \(built.count) cells, kept \(keep.count) (dropped slivers); mean volume \(String(format: "%.2f", meanVolume)) m3, took \(String(format: "%.1f", Date().timeIntervalSince(start))) s"
         )
         let finalEdge = cbrt(meanVolume)
         let radiusCap = finalEdge * 0.55
         let meanVolumeKept = keep.reduce(0) { $0 + $1.volume } / Float(max(keep.count, 1))
+        precondition(keep.count <= Int(QuarryRock.bodyMask), "too many blocks for a vertex's body index")
+        // How deep each block lies below the old surface, and which way that surface is: rock near
+        // it is weathered, deeper rock fresh (`QuarryRock.weathering`).
+        let rings: [SIMD2<Float>] = (0..<8).map { SIMD2(cos(Float($0) * .pi / 4), sin(Float($0) * .pi / 4)) }
+        @Sendable func surfaceDepth(_ p: SIMD3<Float>) -> (depth: Float, outward: SIMD3<Float>) {
+            let top = hillside.height(hOld, p.x, p.y)
+            guard p.z < top else { return (0, SIMD3(0, 0, 1)) }
+            let e: Float = 0.5
+            let dx = (hillside.height(hOld, p.x + e, p.y) - hillside.height(hOld, p.x - e, p.y)) / (2 * e)
+            let dy = (hillside.height(hOld, p.x, p.y + e) - hillside.height(hOld, p.x, p.y - e)) / (2 * e)
+            let up = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+            var best = (top - p.z) * up.z
+            var outward = up
+            var r: Float = 0.5
+            while r < min(best, 9) {
+                for d in rings where hillside.height(hOld, p.x + d.x * r, p.y + d.y * r) < p.z {
+                    best = r
+                    outward = SIMD3(d.x, d.y, 0)
+                    break
+                }
+                r += 0.5
+            }
+            return (best, outward)
+        }
         // Each block's displaced mesh, built in parallel.
         var meshes = [(vertices: [Vertex], indices: [UInt32], anchors: [SIMD3<Float>])](
             repeating: ([], [], []), count: keep.count)
@@ -706,10 +761,26 @@ public struct QuarryFace: Sendable {
                 } else {
                     level = size < 0.55 ? 1 : size < 1.2 ? 2 : size < 2.2 ? 3 : 4
                 }
+                // Each face's weathering, by its own depth: deeper along open joints, and with an
+                // irregular front.
+                let c = keep[n].centroid
+                let (depth, outward) = surfaceDepth(c)
+                let polyhedron = keep[n].polyhedron
+                let tags = polyhedron.faces.enumerated().map { f, polygon -> UInt32 in
+                    let centre = polygon.reduce(SIMD3<Float>.zero, +) / Float(polygon.count)
+                    var d =
+                        depth - simd_dot(centre - c, outward) + 2.5 * QuarryNoise.value(centre * 0.12 + 3.3)
+                    if polyhedron.kinds[f] == 3 { d *= 0.55 }
+                    if polyhedron.kinds[f] == 1 { d = min(d, 0) }
+                    return QuarryRock.faceTag(
+                        weathering: QuarryRock.weathering(depth: d), random: localRandom.float())
+                }
+                let weathered = QuarryRock.weathering(depth: depth)
                 Self.tessellate(
-                    keep[n].polyhedron, centre: keep[n].centroid, body: UInt32(n), level: level,
-                    warp: size * 0.07, seed: Float(n) * 0.137, relief: 0.16, vertices: &vertices,
-                    indices: &indices)
+                    polyhedron, centre: c, body: UInt32(n), level: level,
+                    warp: size * 0.07, seed: Float(n) * 0.137, relief: 0.16,
+                    rounding: level >= 2 ? size * (0.03 + 0.04 * weathered) : 0, tags: tags,
+                    vertices: &vertices, indices: &indices)
                 for _ in 0..<6 {
                     let polygon = keep[n].polyhedron.faces[
                         Int(localRandom.float() * Float(keep[n].polyhedron.faces.count - 1))]
@@ -857,7 +928,8 @@ public struct QuarryFace: Sendable {
         let fine = SIMD3<Float>(
             QuarryNoise.fbm(r, octaves: 2), QuarryNoise.fbm(r + 5.3, octaves: 2),
             QuarryNoise.fbm(r + 17.9, octaves: 2))
-        return large * 0.22 + fine * 0.06
+        // The fine part is kept small: under the low sun its bumps shadowed every face in spots.
+        return large * 0.22 + fine * 0.015
     }
 
     /// A polygon's tessellated, displaced surface: each fan triangle subdivided `level` times,
@@ -865,9 +937,24 @@ public struct QuarryFace: Sendable {
     public static func tessellate(
         _ poly: QuarryPolyhedron, centre c: SIMD3<Float>, origin: SIMD3<Float>? = nil, body: UInt32,
         level n: Int,
-        warp: Float, seed: Float, relief: Float = 0, vertices: inout [Vertex], indices: inout [UInt32]
+        warp: Float, seed: Float, relief: Float = 0, rounding: Float = 0, tags: [UInt32]? = nil,
+        vertices: inout [Vertex], indices: inout [UInt32]
     ) {
         for (f, polygon) in poly.faces.enumerated() where polygon.count >= 3 {
+            let tagged = body | (tags?[f] ?? 0)
+            // In-plane distance to the polygon's edge, for rounding: the same on both faces along an
+            // edge, so the pull toward the centre keeps the block closed.
+            func edgeDistance(_ p: SIMD3<Float>) -> Float {
+                var best = Float.infinity
+                for k in polygon.indices {
+                    let a = polygon[k]
+                    let b = polygon[(k + 1) % polygon.count]
+                    let ab = b - a
+                    let t = max(0, min(1, simd_dot(p - a, ab) / max(simd_length_squared(ab), 1e-12)))
+                    best = min(best, simd_distance(p, a + ab * t))
+                }
+                return best
+            }
             for k in 1..<(polygon.count - 1) {
                 let (a, b, cc) = (polygon[0], polygon[k], polygon[k + 1])
                 var outward = simd_cross(b - a, cc - a)
@@ -881,8 +968,15 @@ public struct QuarryFace: Sendable {
                 for j in 0...n {
                     for i in 0...(n - j) {
                         let (u, v) = (Float(i) / Float(n), Float(j) / Float(n))
-                        var p = corners.0 + (corners.1 - corners.0) * u + (corners.2 - corners.0) * v
-                        p += displacement(p)
+                        let planar = corners.0 + (corners.1 - corners.0) * u + (corners.2 - corners.0) * v
+                        var p = planar + displacement(planar)
+                        if rounding > 0 {
+                            let e = edgeDistance(planar)
+                            if e < rounding {
+                                let t = 1 - e / rounding
+                                p += simd_normalize(c - planar) * (rounding * 0.5 * t * t)
+                            }
+                        }
                         if relief > 0 {
                             let w = p * 0.42 + 13
                             p +=
@@ -931,7 +1025,7 @@ public struct QuarryFace: Sendable {
                     if normal.x.isNaN { normal = SIMD3(0, 0, 1) }
                     let packed = pack(normal: normal, kind: poly.kinds[f])
                     let local = position - (origin ?? c)
-                    vertices.append(Vertex(x: local.x, y: local.y, z: local.z, normal: packed, body: body))
+                    vertices.append(Vertex(x: local.x, y: local.y, z: local.z, normal: packed, body: tagged))
                 }
             }
         }
@@ -985,12 +1079,9 @@ public struct QuarryFace: Sendable {
             let dx = (surface(x + e, y) - surface(x - e, y)) / (2 * e)
             let dy = (surface(x, y + e) - surface(x, y - e)) / (2 * e)
             let n = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
-            // The skin of blocks covers the old face near the strip; the dressing goes on past it.
-            if x > -163, x < length + 163,
-                hillside.height(original, x, y) - hillside.height(t.heights, x, y) < 0.3
-            {
-                continue
-            }
+            // The dressing runs over the held skin past the strip's ends too: on the steep face the
+            // skin's cells are mostly clipped away by the planes of the floor in front of them, and
+            // the terrain's own smooth wall showed there (12 November 2026).
             sites.append(SIMD3(x, y, surface(x, y)) + n * (0.3 - 2.7 * r.float()))
         }
         let accepted = sites.count
@@ -1036,16 +1127,24 @@ public struct QuarryFace: Sendable {
                     let dx = (surface(p.x + e, p.y) - surface(p.x - e, p.y)) / (2 * e)
                     let dy = (surface(p.x, p.y + e) - surface(p.x, p.y - e)) / (2 * e)
                     let normal = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+                    let recess =
+                        QuarryRock.recess(QuarryRock.kind(at: site))
+                        * (0.6 + 0.8 * QuarryNoise.hash(Int32(n), 3, 5).magnitude)
                     polyhedron.clip(
-                        normal: normal, offset: simd_dot(normal, SIMD3<Float>(p.x, p.y, z)) + 0.35, kind: 1)
+                        normal: normal, offset: simd_dot(normal, SIMD3<Float>(p.x, p.y, z)) + 0.35 - recess,
+                        kind: 1)
                 }
                 let (volume, centroid) = polyhedron.volumeAndCentroid
                 guard polyhedron.faces.count >= 4, polyhedron.faces.count < 40, volume > 0.02 else { return }
                 var vertices: [Vertex] = []
                 var indices: [UInt32] = []
+                var faceRandom = QuarryRandom(seed: UInt64(n) &+ 4441)
+                let tags = polyhedron.faces.map { _ in
+                    QuarryRock.faceTag(weathering: 1, random: faceRandom.float())
+                }
                 Self.tessellate(
                     polyhedron, centre: centroid, origin: .zero, body: 0, level: level, warp: 0, seed: 0,
-                    relief: 0.75, vertices: &vertices,
+                    relief: 0.75, tags: tags, vertices: &vertices,
                     indices: &indices)
                 output[n] = (vertices, indices)
             }

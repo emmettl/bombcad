@@ -32,6 +32,9 @@ public final class QuarryDustField {
     public let divergence: MTLTexture
     public let light: MTLTexture
     public let solid: MTLTexture
+    /// Each cell's height above the ground after the blast, up to 12.75 m, for the dust that falls
+    /// out near it.
+    public let clearance: MTLTexture
     public let source: MTLBuffer
     public let heatSource: MTLBuffer
     public let heatPointer: UnsafeMutablePointer<Float>
@@ -104,14 +107,18 @@ public final class QuarryDustField {
         solidDescriptor.storageMode = .shared
         let solidTexture = device.makeTexture(descriptor: solidDescriptor)!
         var solidBytes = [UInt8](repeating: 0, count: dims.x * dims.y * dims.z)
-        for k in 0..<dims.z {
-            for j in 0..<dims.y {
-                for i in 0..<dims.x {
-                    let world = low + h * (SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5)
-                    // The ground left after the blast, not the hill before it: dust must be free to
-                    // fill the space the rock leaves and to move with it.
-                    let ground = hillside.height(hillside.terrain.heights, world.x, world.y)
-                    solidBytes[i + dims.x * (j + dims.y * k)] = world.z < ground ? 255 : 0
+        var clearanceBytes = [UInt8](repeating: 0, count: dims.x * dims.y * dims.z)
+        for j in 0..<dims.y {
+            for i in 0..<dims.x {
+                let column = low + h * (SIMD3<Float>(Float(i), Float(j), 0) + 0.5)
+                // The ground left after the blast, not the hill before it: dust must be free to
+                // fill the space the rock leaves and to move with it.
+                let ground = hillside.height(hillside.terrain.heights, column.x, column.y)
+                for k in 0..<dims.z {
+                    let z = low.z + h * (Float(k) + 0.5)
+                    let index = i + dims.x * (j + dims.y * k)
+                    solidBytes[index] = z < ground ? 255 : 0
+                    clearanceBytes[index] = UInt8(max(0, min(255, (z - ground) / 12.75 * 255)))
                 }
             }
         }
@@ -119,6 +126,11 @@ public final class QuarryDustField {
             region: MTLRegionMake3D(0, 0, 0, dims.x, dims.y, dims.z), mipmapLevel: 0, slice: 0,
             withBytes: solidBytes, bytesPerRow: dims.x, bytesPerImage: dims.x * dims.y)
         solid = solidTexture
+        let clearanceTexture = device.makeTexture(descriptor: solidDescriptor)!
+        clearanceTexture.replace(
+            region: MTLRegionMake3D(0, 0, 0, dims.x, dims.y, dims.z), mipmapLevel: 0, slice: 0,
+            withBytes: clearanceBytes, bytesPerRow: dims.x, bytesPerImage: dims.x * dims.y)
+        clearance = clearanceTexture
         let cells = dims.x * dims.y * dims.z
         source = device.makeBuffer(length: 16 * cells, options: .storageModeShared)!
         memset(source.contents(), 0, 16 * cells)
@@ -300,6 +312,7 @@ public final class QuarryDustField {
         encoder.setTexture(velocity[0], index: 3)
         encoder.setTexture(solid, index: 4)
         encoder.setTexture(density[1], index: 5)
+        encoder.setTexture(clearance, index: 6)
         run("dustCorrect")
         encoder.memoryBarrier(scope: .textures)
         density.swapAt(0, 1)
@@ -378,7 +391,7 @@ public final class QuarryDustField {
 
     /// All the fields' bytes.
     public var bytes: Int {
-        (velocity + density + pressure + scratch + [divergence, light, solid, noiseVolume])
+        (velocity + density + pressure + scratch + [divergence, light, solid, clearance, noiseVolume])
             .reduce(source.length) { $0 + $1.allocatedSize }
     }
 }

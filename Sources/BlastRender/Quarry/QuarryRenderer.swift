@@ -58,8 +58,11 @@ public struct QuarryRenderQuality: Sendable {
     public var decorScale: Float = 1
     /// Frames between redraws of the top-down height the chips land on (the blocks included).
     public var heightEvery = 1
+    /// Texels of the top-down height between the fines' grid points.
+    public var finesStep = 1
     public static let film = QuarryRenderQuality()
-    public static let live = QuarryRenderQuality(shadowSize: 4096, decorScale: 0.35, heightEvery: 6)
+    public static let live = QuarryRenderQuality(
+        shadowSize: 4096, decorScale: 0.35, heightEvery: 6, finesStep: 2)
 }
 
 public final class QuarryRenderer {
@@ -86,6 +89,18 @@ public final class QuarryRenderer {
     public let hdrDepth: MTLTexture
     public let output: MTLTexture
     public let heightMap: MTLTexture
+    /// The top-down height's colour: each texel's top height and what is there (blocks of the pile
+    /// at rest, the ground, or something else).
+    public let heightColour: MTLTexture
+    /// The excavated ground's heights, and the fines' surface over the top-down grid.
+    public let groundHeights: MTLTexture
+    public let fines: MTLTexture
+    let finesScratch: MTLTexture
+    public let finesIndices: MTLBuffer
+    public let finesIndexCount: Int
+    public var finesUniforms: QuarryFinesUniforms
+    /// The event time the fines were last built for.
+    public var finesTime: Float = -.infinity
     public let noDust: MTLTexture
     public let shadowSampler: MTLSamplerState
     public let linearSampler: MTLSamplerState
@@ -96,6 +111,11 @@ public final class QuarryRenderer {
     public let terrainShadow: MTLRenderPipelineState
     public let chipShadow: MTLRenderPipelineState
     public let chipUpdate: MTLComputePipelineState
+    public let blockHeight: MTLRenderPipelineState
+    public let terrainHeight: MTLRenderPipelineState
+    public let finesBuild: MTLComputePipelineState
+    public let finesRelax: MTLComputePipelineState
+    public let finesPipeline: MTLRenderPipelineState
     public let tonemap: MTLRenderPipelineState
     public let sky: MTLRenderPipelineState
     public let aoPipeline: MTLRenderPipelineState
@@ -248,6 +268,60 @@ public final class QuarryRenderer {
         }
         shadowMap = depthTarget(quality.shadowSize, quality.shadowSize)
         heightMap = depthTarget(1000, 790)
+        let colourDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rg32Float, width: 1000, height: 790, mipmapped: false)
+        colourDescriptor.usage = [.renderTarget, .shaderRead]
+        colourDescriptor.storageMode = .private
+        heightColour = device.makeTexture(descriptor: colourDescriptor)!
+        let finesDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .r32Float, width: 1000, height: 790, mipmapped: false)
+        finesDescriptor.usage = [.shaderRead, .shaderWrite]
+        finesDescriptor.storageMode = .private
+        fines = device.makeTexture(descriptor: finesDescriptor)!
+        finesScratch = device.makeTexture(descriptor: finesDescriptor)!
+        let groundDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .r32Float, width: t.columns, height: t.rows, mipmapped: false)
+        groundDescriptor.usage = [.shaderRead]
+        let groundTexture = device.makeTexture(descriptor: groundDescriptor)!
+        groundHeights = groundTexture
+        t.heights.withUnsafeBytes {
+            groundTexture.replace(
+                region: MTLRegionMake2D(0, 0, t.columns, t.rows), mipmapLevel: 0, withBytes: $0.baseAddress!,
+                bytesPerRow: 4 * t.columns)
+        }
+        // The fines are drawn over the part of the top-down grid the pile can reach.
+        let spanXY = SIMD2(hillside.high.x - hillside.low.x, hillside.high.y - hillside.low.y)
+        func texel(_ x: Float, _ y: Float) -> SIMD2<Int> {
+            SIMD2(
+                Int((x - hillside.low.x) / spanXY.x * 1000),
+                Int((1 - (y - hillside.low.y) / spanXY.y) * 790))
+        }
+        let faceYs = stride(from: Float(-20), through: hillside.length + 20, by: 2).map {
+            hillside.faceLine($0)
+        }
+        let a = texel(-30, (faceYs.max() ?? 0) + hillside.depth + 8)
+        let b = texel(hillside.length + 30, (faceYs.min() ?? 0) - 80)
+        let first = SIMD2(max(0, min(a.x, b.x)), max(0, min(a.y, b.y)))
+        let last = SIMD2(min(999, max(a.x, b.x)), min(789, max(a.y, b.y)))
+        let step = quality.finesStep
+        let columns = (last.x - first.x) / step + 1
+        let rows = (last.y - first.y) / step + 1
+        var grid = [UInt32]()
+        grid.reserveCapacity((columns - 1) * (rows - 1) * 6)
+        for j in 0..<(rows - 1) {
+            for i in 0..<(columns - 1) {
+                let v = UInt32(i + j * columns)
+                let below = v + UInt32(columns)
+                grid += [v, below, v + 1, v + 1, below, below + 1]
+            }
+        }
+        finesIndices = device.makeBuffer(bytes: grid, length: grid.count * 4)!
+        finesIndexCount = grid.count
+        finesUniforms = QuarryFinesUniforms(
+            low: SIMD4(hillside.low.x, hillside.low.y, spanXY.x, spanXY.y),
+            ground: SIMD4(t.origin.x, t.origin.y, t.spacing, 0),
+            misc: SIMD4(0, 0, Float(first.x), Float(first.y)),
+            grid: SIMD4(Float(step), Float(columns), Float(rows), 0))
         hdrDepth = depthTarget(width * supersample, height * supersample)
         let hdrDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba16Float, width: width * supersample, height: height * supersample,
@@ -308,6 +382,12 @@ public final class QuarryRenderer {
         terrainShadow = try pipeline(vertex: "terrainShadowVertex", fragment: nil, color: nil)
         chipShadow = try pipeline(vertex: "chipShadowVertex", fragment: nil, color: nil)
         chipUpdate = try device.makeComputePipelineState(function: library.makeFunction(name: "chipUpdate")!)
+        blockHeight = try pipeline(vertex: "blockHeightVertex", fragment: "heightFragment", color: .rg32Float)
+        terrainHeight = try pipeline(
+            vertex: "terrainHeightVertex", fragment: "heightFragment", color: .rg32Float)
+        finesBuild = try device.makeComputePipelineState(function: library.makeFunction(name: "finesBuild")!)
+        finesRelax = try device.makeComputePipelineState(function: library.makeFunction(name: "finesRelax")!)
+        finesPipeline = try pipeline(vertex: "finesVertex", fragment: "finesFragment")
         tonemap = try pipeline(vertex: "fullscreen", fragment: "tonemap", depth: false, color: .bgra8Unorm)
         sky = try pipeline(vertex: "skyVertex", fragment: "skyFragment")
         aoPipeline = try pipeline(vertex: "fullscreen", fragment: "aoFragment", depth: false, multiply: true)
@@ -389,6 +469,13 @@ public final class QuarryRenderer {
                 indexBuffer: terrainIndices,
                 indexBufferOffset: 0)
         }
+        // After a jump the fines are built again from this frame alone. While the rock is still in
+        // the air its fines are left out: a jump gives no speeds to tell what has landed.
+        if abs(time - finesTime) > Float(quality.heightEvery) / frameRate + 0.02 {
+            let landed = time > 7
+            if landed { encodeHeight(buffer, pose: pose, previous: pose, rate: 0) }
+            encodeFines(buffer, time: time, gathered: landed ? Self.finesGathered(time) : 0)
+        }
         // Shadow map.
         let shadowPass = MTLRenderPassDescriptor()
         shadowPass.depthAttachment.texture = shadowMap
@@ -447,6 +534,14 @@ public final class QuarryRenderer {
         scene.drawIndexedPrimitives(
             type: .triangle, indexCount: terrainIndexCount, indexType: .uint32, indexBuffer: terrainIndices,
             indexBufferOffset: 0)
+        // The fines over the pile.
+        var fineUniforms = finesUniforms
+        scene.setRenderPipelineState(finesPipeline)
+        scene.setVertexTexture(fines, index: 0)
+        scene.setVertexBytes(&fineUniforms, length: MemoryLayout<QuarryFinesUniforms>.stride, index: 3)
+        scene.drawIndexedPrimitives(
+            type: .triangle, indexCount: finesIndexCount, indexType: .uint32, indexBuffer: finesIndices,
+            indexBufferOffset: 0)
         scene.setRenderPipelineState(chipPipeline)
         scene.setVertexBuffer(chips, offset: 0, index: 0)
         scene.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 60, instanceCount: chipCount)
@@ -483,36 +578,80 @@ public final class QuarryRenderer {
         return buffer.gpuEndTime - buffer.gpuStartTime
     }
 
-    /// One frame's step of the decorative chips, over a top-down height of the scene.
-    public func stepDecor(pose: MTLBuffer, previous: MTLBuffer, time: Float) {
-        let buffer = queue.makeCommandBuffer()!
+    /// The top-down height of the scene (blocks and ground), for the chips to land on and the
+    /// fines to fill. `rate` is the frame rate between `pose` and `previous`, for telling which
+    /// blocks are at rest; 0 counts every released block as at rest.
+    func encodeHeight(_ buffer: MTLCommandBuffer, pose: MTLBuffer, previous: MTLBuffer, rate: Float) {
         var top = camera
         top.shadow = topDown
-        heightFrame += 1
-        if heightFrame % quality.heightEvery == 1 || quality.heightEvery == 1 {
-            let heightPass = MTLRenderPassDescriptor()
-            heightPass.depthAttachment.texture = heightMap
-            heightPass.depthAttachment.loadAction = .clear
-            heightPass.depthAttachment.storeAction = .store
-            heightPass.depthAttachment.clearDepth = 1
-            let encoder = buffer.makeRenderCommandEncoder(descriptor: heightPass)!
-            encoder.setDepthStencilState(opaqueDepth)
-            encoder.setCullMode(.none)
-            encoder.setVertexBytes(&top, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
-            encoder.setRenderPipelineState(blockShadow)
-            encoder.setVertexBuffer(blockVertices, offset: 0, index: 0)
-            encoder.setVertexBuffer(pose, offset: 0, index: 1)
-            encoder.drawIndexedPrimitives(
-                type: .triangle, indexCount: indexCount, indexType: .uint32, indexBuffer: blockIndices,
-                indexBufferOffset: 0)
-            encoder.setRenderPipelineState(terrainShadow)
-            encoder.setVertexBuffer(terrainVertices, offset: 0, index: 0)
-            encoder.drawIndexedPrimitives(
-                type: .triangle, indexCount: terrainIndexCount, indexType: .uint32,
-                indexBuffer: terrainIndices,
-                indexBufferOffset: 0)
-            encoder.endEncoding()
+        top.misc = SIMD4(0, 0, rate, 0)
+        let heightPass = MTLRenderPassDescriptor()
+        heightPass.depthAttachment.texture = heightMap
+        heightPass.depthAttachment.loadAction = .clear
+        heightPass.depthAttachment.storeAction = .store
+        heightPass.depthAttachment.clearDepth = 1
+        heightPass.colorAttachments[0].texture = heightColour
+        heightPass.colorAttachments[0].loadAction = .clear
+        heightPass.colorAttachments[0].storeAction = .store
+        heightPass.colorAttachments[0].clearColor = MTLClearColor(red: -1000, green: 0, blue: 0, alpha: 0)
+        let encoder = buffer.makeRenderCommandEncoder(descriptor: heightPass)!
+        encoder.setDepthStencilState(opaqueDepth)
+        encoder.setCullMode(.none)
+        encoder.setVertexBytes(&top, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
+        encoder.setRenderPipelineState(blockHeight)
+        encoder.setVertexBuffer(blockVertices, offset: 0, index: 0)
+        encoder.setVertexBuffer(pose, offset: 0, index: 1)
+        encoder.setVertexBuffer(previous, offset: 0, index: 4)
+        encoder.drawIndexedPrimitives(
+            type: .triangle, indexCount: indexCount, indexType: .uint32, indexBuffer: blockIndices,
+            indexBufferOffset: 0)
+        encoder.setRenderPipelineState(terrainHeight)
+        encoder.setVertexBuffer(terrainVertices, offset: 0, index: 0)
+        encoder.drawIndexedPrimitives(
+            type: .triangle, indexCount: terrainIndexCount, indexType: .uint32,
+            indexBuffer: terrainIndices,
+            indexBufferOffset: 0)
+        encoder.endEncoding()
+    }
+
+    /// How far the fines have gathered on the pile at `time`: from nothing as the rock lands to
+    /// all of them as it settles.
+    public static func finesGathered(_ time: Float) -> Float { max(0, min(1, (time - 3) / 5)) }
+
+    /// The fines' surface from the top-down height as it stands.
+    func encodeFines(_ buffer: MTLCommandBuffer, time: Float, gathered: Float) {
+        var u = finesUniforms
+        u.misc.x = time
+        u.misc.y = gathered
+        let compute = buffer.makeComputeCommandEncoder()!
+        compute.setComputePipelineState(finesBuild)
+        compute.setTexture(heightColour, index: 0)
+        compute.setTexture(groundHeights, index: 1)
+        compute.setTexture(fines, index: 2)
+        compute.setBytes(&u, length: MemoryLayout<QuarryFinesUniforms>.stride, index: 0)
+        let grid = MTLSize(width: fines.width, height: fines.height, depth: 1)
+        let group = MTLSize(width: 16, height: 16, depth: 1)
+        compute.dispatchThreads(grid, threadsPerThreadgroup: group)
+        compute.setComputePipelineState(finesRelax)
+        for _ in 0..<3 {
+            for (from, to) in [(fines, finesScratch), (finesScratch, fines)] {
+                compute.memoryBarrier(scope: .textures)
+                compute.setTexture(from, index: 0)
+                compute.setTexture(to, index: 1)
+                compute.dispatchThreads(grid, threadsPerThreadgroup: group)
+            }
         }
+        compute.endEncoding()
+        finesTime = time
+    }
+
+    /// One frame's step of the decorative chips, over a top-down height of the scene, and the
+    /// fines with it.
+    public func stepDecor(pose: MTLBuffer, previous: MTLBuffer, time: Float) {
+        let buffer = queue.makeCommandBuffer()!
+        heightFrame += 1
+        let redraw = heightFrame % quality.heightEvery == 1 || quality.heightEvery == 1
+        if redraw { encodeHeight(buffer, pose: pose, previous: previous, rate: frameRate) }
         var chipUniforms = QuarryDecor.Uniforms(
             dt: 1 / frameRate, gravity: 9.81, time: time, pad: 0, low: SIMD4(hillside.low, 0),
             size: SIMD4(
@@ -528,6 +667,7 @@ public final class QuarryRenderer {
             MTLSize(width: chipCount, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 32, height: 1, depth: 1))
         compute.endEncoding()
+        if redraw { encodeFines(buffer, time: time, gathered: Self.finesGathered(time)) }
         buffer.commit()
         buffer.waitUntilCompleted()
     }
@@ -535,6 +675,7 @@ public final class QuarryRenderer {
     /// Back to the chips as built, for a jump backward.
     public func resetDecor() {
         chips.contents().copyMemory(from: pristineChips.contents(), byteCount: chips.length)
+        finesTime = -.infinity
     }
 
     public func savePNG(_ url: URL) {
@@ -558,6 +699,14 @@ public final class QuarryRenderer {
             CGImageDestinationFinalize(destination)
         }
     }
+}
+
+/// Layout matches `QuarryFinesUniforms` in `QuarryRender.metal`.
+public struct QuarryFinesUniforms {
+    public var low: SIMD4<Float>
+    public var ground: SIMD4<Float>
+    public var misc: SIMD4<Float>
+    public var grid: SIMD4<Float>
 }
 
 /// The camera over the clip: from one view to another, easing, with a long lens.

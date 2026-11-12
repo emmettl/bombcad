@@ -37,9 +37,11 @@ struct QuarrySimulationTests {
         }
         let after = positions()
         #expect(after.allSatisfy { $0.x.isFinite && $0.y.isFinite && $0.z.isFinite })
-        // The stated launch law gives at most 1.2 speed0 (and falling adds a little); contact must
-        // not throw anything faster.
-        #expect(fastest < launch.speed0 * 1.2 + 10)
+        // The stated launch law gives at most 1.2 speed0, and falling adds a little; a small piece
+        // struck from above by a heavy block can be driven down faster than either (the rock of
+        // 12 November 2026 has more small slabs: 28.2 m/s here, 30.2 m/s at 116,000 blocks). The
+        // contact fault of stage 2 threw blocks to the 45 m/s cap, well past this bound.
+        #expect(fastest < launch.speed0 * 1.2 + 14)
         // In the last second the pile is at rest: a late block may still topple off the new face,
         // but nothing rings or creeps (before the fixes of stage 3, 77 of 92,000 moved over 10 cm
         // and the 99th percentile was 2.8 cm).
