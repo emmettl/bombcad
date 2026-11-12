@@ -70,8 +70,9 @@ public final class QuarryRenderer {
     public let queue: MTLCommandQueue
     public let library: MTLLibrary
     public let hillside: QuarryFace
-    public let width: Int
-    public let height: Int
+    /// The frame's size (pixels), which `resize(width:height:)` changes.
+    public private(set) var width: Int
+    public private(set) var height: Int
     public let supersample: Int
     public let blockVertices: MTLBuffer
     public let blockIndices: MTLBuffer
@@ -85,9 +86,9 @@ public final class QuarryRenderer {
     public let terrainIndices: MTLBuffer
     public let terrainIndexCount: Int
     public let shadowMap: MTLTexture
-    public let hdr: MTLTexture
-    public let hdrDepth: MTLTexture
-    public let output: MTLTexture
+    public private(set) var hdr: MTLTexture
+    public private(set) var hdrDepth: MTLTexture
+    public private(set) var output: MTLTexture
     public let heightMap: MTLTexture
     /// The top-down height's colour: each texel's top height and what is there (blocks of the pile
     /// at rest, the ground, or something else).
@@ -136,7 +137,11 @@ public final class QuarryRenderer {
     public let topDown: simd_float4x4
     public let heightTop: Float = 130
     public let heightBottom: Float = 0
-    public let aspect: Float
+    /// The projection's width over its height: the frame's own, unless it is to be shown stretched
+    /// over a view of another shape (the window's, while its size settles).
+    public var aspect: Float
+    /// The view and projection of the frame drawn last.
+    public private(set) var lastViewProjection = matrix_identity_float4x4
     public let frameRate: Float
 
     public init(
@@ -322,17 +327,8 @@ public final class QuarryRenderer {
             ground: SIMD4(t.origin.x, t.origin.y, t.spacing, 0),
             misc: SIMD4(0, 0, Float(first.x), Float(first.y)),
             grid: SIMD4(Float(step), Float(columns), Float(rows), 0))
-        hdrDepth = depthTarget(width * supersample, height * supersample)
-        let hdrDescriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba16Float, width: width * supersample, height: height * supersample,
-            mipmapped: false)
-        hdrDescriptor.usage = [.renderTarget, .shaderRead]
-        hdrDescriptor.storageMode = .private
-        hdr = device.makeTexture(descriptor: hdrDescriptor)!
-        let outputDescriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
-        outputDescriptor.usage = [.renderTarget, .shaderRead]
-        output = device.makeTexture(descriptor: outputDescriptor)!
+        (hdr, hdrDepth, output) = Self.frameTargets(
+            device: device, width: width, height: height, supersample: supersample)
         let empty = MTLTextureDescriptor()
         empty.textureType = .type3D
         empty.pixelFormat = .r16Float
@@ -425,6 +421,43 @@ public final class QuarryRenderer {
             dustLow: .zero, dustHigh: .zero, misc: .zero)
     }
 
+    /// The targets of a frame `width` by `height`: the scene's colour and depth (supersampled) and
+    /// the frame drawn from them.
+    static func frameTargets(device: MTLDevice, width: Int, height: Int, supersample: Int) -> (
+        hdr: MTLTexture, depth: MTLTexture, output: MTLTexture
+    ) {
+        let depthDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .depth32Float, width: width * supersample, height: height * supersample,
+            mipmapped: false)
+        depthDescriptor.usage = [.renderTarget, .shaderRead]
+        depthDescriptor.storageMode = .private
+        let hdrDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba16Float, width: width * supersample, height: height * supersample,
+            mipmapped: false)
+        hdrDescriptor.usage = [.renderTarget, .shaderRead]
+        hdrDescriptor.storageMode = .private
+        let outputDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        outputDescriptor.usage = [.renderTarget, .shaderRead]
+        return (
+            device.makeTexture(descriptor: hdrDescriptor)!, device.makeTexture(descriptor: depthDescriptor)!,
+            device.makeTexture(descriptor: outputDescriptor)!
+        )
+    }
+
+    /// Makes the frame's targets again at `width` by `height` (pixels), and the projection that
+    /// shape. Everything else (the geometry, the shadow, the chips, the fines) is kept.
+    public func resize(width: Int, height: Int) {
+        guard width > 0, height > 0 else { return }
+        aspect = Float(width) / Float(height)
+        guard width != self.width || height != self.height else { return }
+        self.width = width
+        self.height = height
+        (hdr, hdrDepth, output) = Self.frameTargets(
+            device: device, width: width, height: height, supersample: supersample)
+        dustPass.resize(device: device, width: width * supersample, height: height * supersample)
+    }
+
     /// Renders one frame with block poses from `pose`, `previous` being the frame before, stepping
     /// the decorative chips by one frame. Returns the GPU time (s).
     @discardableResult
@@ -437,6 +470,7 @@ public final class QuarryRenderer {
             QuarryMatrix.perspective(fovY: view.fovY, aspect: aspect, near: 3, far: 1600)
             * QuarryMatrix.lookAt(eye: view.eye, target: view.target, up: SIMD3(0, 0, 1))
         cam.viewProjection = vp
+        lastViewProjection = vp
         cam.inverseViewProjection = vp.inverse
         cam.eye = SIMD4(view.eye, 1)
         cam.misc = SIMD4(time, 0.5 / tanHalf, 0, 0)

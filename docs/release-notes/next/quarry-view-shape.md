@@ -1,0 +1,3 @@
+kind: fixed
+
+**The Quarry Face window's 3-D view is no longer squeezed sideways.** It had drawn a 16:9 frame and stretched it over the view whatever its shape, so in the default window the rock was drawn at about 0.70 of its width. The view now draws at its own shape, with as many pixels as before, so a frame costs the same (13.0 against 13.4 ms on the GPU in the default window). A view narrower than 16:9 shows more above and below, so it still holds all that a clip from the same camera shows; resizing the window keeps the proportions right as it goes. Placing the strip in the view follows the new projection. Clips are unchanged at 1920 × 1080 ([docs/hillside-blast.md](../../hillside-blast.md), "The view at its own shape").

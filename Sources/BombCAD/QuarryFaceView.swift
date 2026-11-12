@@ -368,10 +368,31 @@
 
         private var stripMode: Bool { model?.stripMode == true }
 
-        /// The view's projection, as the renderer draws it (its frame is stretched over the view).
-        private func viewProjection(_ session: QuarrySession) -> simd_float4x4 {
-            let v = session.view()
-            return QuarryMatrix.perspective(fovY: v.fovY, aspect: session.renderer.aspect, near: 3, far: 1600)
+        /// The view's width over its height, which the frame is drawn at.
+        var viewAspect: Float {
+            bounds.height > 0 ? Float(bounds.width / bounds.height) : 16 / 9
+        }
+
+        /// The view's size in the drawable's pixels.
+        var viewPixels: SIMD2<Int> {
+            if drawableSize.width >= 1, drawableSize.height >= 1 {
+                return SIMD2(Int(drawableSize.width), Int(drawableSize.height))
+            }
+            let scale = window?.backingScaleFactor ?? 1
+            return SIMD2(Int(bounds.width * scale), Int(bounds.height * scale))
+        }
+
+        /// Fits the session's frame to the view's shape before it is drawn (see `QuarrySession.fit`).
+        @discardableResult
+        func fitFrame(now: Double = ProcessInfo.processInfo.systemUptime) -> Bool {
+            guard let session, bounds.width > 0, bounds.height > 0 else { return false }
+            return session.fit(aspect: viewAspect, pixels: viewPixels, now: now)
+        }
+
+        /// The view's projection, as the renderer draws it once fitted to the view.
+        func viewProjection(_ session: QuarrySession) -> simd_float4x4 {
+            let v = session.view(aspect: viewAspect)
+            return QuarryMatrix.perspective(fovY: v.fovY, aspect: viewAspect, near: 3, far: 1600)
                 * QuarryMatrix.lookAt(eye: v.eye, target: v.target, up: SIMD3(0, 0, 1))
         }
 
@@ -394,7 +415,7 @@
         func ground(at point: CGPoint) -> SIMD2<Float>? {
             guard let session, bounds.width > 0, bounds.height > 0 else { return nil }
             let ndc = SIMD2(Float(2 * point.x / bounds.width - 1), Float(2 * point.y / bounds.height - 1))
-            guard let p = session.groundPoint(ndc: ndc, aspect: session.renderer.aspect) else { return nil }
+            guard let p = session.groundPoint(ndc: ndc, aspect: viewAspect) else { return nil }
             return session.face.world(SIMD2(p.x, p.y))
         }
 
@@ -657,6 +678,7 @@
             let elapsed = now.timeIntervalSince(last)
             last = now
             session.update(elapsed: elapsed)
+            view.fitFrame()
             session.draw()
             if let drawable = view.currentDrawable, let buffer = queue?.makeCommandBuffer() {
                 session.blit(to: drawable.texture, buffer: buffer)

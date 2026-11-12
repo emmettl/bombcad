@@ -4,17 +4,26 @@ import Metal
 /// The quarry's dust drawn over a frame: ray-marched against the scene's depth into a target of the frame's size,
 /// then blended over. Illustrative.
 final class QuarryDustPass {
-    let target: MTLTexture
+    private(set) var target: MTLTexture
     let march: MTLRenderPipelineState
     let blend: MTLRenderPipelineState
     let sampler: MTLSamplerState
 
-    init(device: MTLDevice, library: MTLLibrary, width: Int, height: Int) throws {
+    static func makeTarget(device: MTLDevice, width: Int, height: Int) -> MTLTexture {
         let d = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba16Float, width: width, height: height, mipmapped: false)
         d.usage = [.renderTarget, .shaderRead]
         d.storageMode = .private
-        target = device.makeTexture(descriptor: d)!
+        return device.makeTexture(descriptor: d)!
+    }
+
+    /// The target made again for a frame of another size.
+    func resize(device: MTLDevice, width: Int, height: Int) {
+        target = Self.makeTarget(device: device, width: width, height: height)
+    }
+
+    init(device: MTLDevice, library: MTLLibrary, width: Int, height: Int) throws {
+        target = Self.makeTarget(device: device, width: width, height: height)
         let draw = MTLRenderPipelineDescriptor()
         draw.vertexFunction = library.makeFunction(name: "fullscreen")!
         draw.fragmentFunction = library.makeFunction(name: "dustFragment")!

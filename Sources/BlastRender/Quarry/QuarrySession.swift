@@ -41,6 +41,16 @@ public final class QuarrySession: @unchecked Sendable {
     public static let followLead = 0.4
     /// Command buffers a solver frame is split into, so the window's drawing can go between them.
     public static let solverBuffers = 8
+    /// The most pixels the window's frame is drawn with, whatever the view's shape: as many as the
+    /// 1600 by 900 it was drawn at before following the view, so a frame costs the same.
+    public static let framePixels = 1600 * 900
+    /// How long the view's size must hold before the frame is made again at it (s). Meanwhile the
+    /// projection follows the view at once and the frame is stretched back to the view's shape.
+    public static let resizeSettle = 0.25
+    /// The shape whose field of view the camera's sets: a view narrower than this keeps its width of
+    /// field and shows more above and below, so it holds all that a 16:9 clip from the same camera
+    /// shows; a wider view keeps the vertical field and shows more to the sides.
+    public static let fieldAspect: Float = 16 / 9
     public let eventFrames: Int
 
     public let device: MTLDevice
@@ -76,6 +86,10 @@ public final class QuarrySession: @unchecked Sendable {
     /// Dust steps a drawn frame may spend catching up after a scrub.
     public var catchUpSteps = 4
     private var clock = 0.0
+    /// The frame size the view asks for and since when, while it differs from the frame's own; and
+    /// whether the frame has been fitted to a view yet.
+    private var wantedSize: (size: SIMD2<Int>, since: Double)?
+    private var fitted = false
     /// Playback's speed against real time while it follows the solver (1 once the event is done),
     /// measured over about half a second; the speed the solver allows; and the solver's own.
     public private(set) var playbackRate = 1.0
@@ -504,7 +518,7 @@ public final class QuarrySession: @unchecked Sendable {
         return (start / Self.keyEvery + 1...last).contains { keyStored[$0] }
     }
 
-    /// The orbit's eye, kept above the ground.
+    /// The orbit's eye, kept above the ground, and the camera's field (as a 16:9 clip has it).
     public func view() -> (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float) {
         let direction = SIMD3<Float>(sin(yaw) * cos(pitch), -cos(yaw) * cos(pitch), sin(pitch))
         var eye = focus + direction * distance
@@ -512,10 +526,62 @@ public final class QuarrySession: @unchecked Sendable {
         return (eye, focus, fovDegrees * .pi / 180)
     }
 
+    /// The frame's size for a view `pixels` across and up: the view's own shape, with no more pixels
+    /// than `framePixels` nor than the view has; whole multiples of 8, so small changes in the view
+    /// keep the frame.
+    public static func frameSize(view pixels: SIMD2<Int>) -> SIMD2<Int> {
+        let w = Double(max(1, pixels.x))
+        let h = Double(max(1, pixels.y))
+        let scale = min(1, (Double(framePixels) / (w * h)).squareRoot())
+        func down8(_ v: Double) -> Int { max(8, Int(v / 8) * 8) }
+        return SIMD2(down8(w * scale), down8(h * scale))
+    }
+
+    /// The vertical field (radians) of a view of `aspect` (width over height) for the camera's
+    /// `fovY`: `fovY` itself for a view at least as wide as `fieldAspect`, else wider, keeping that
+    /// shape's width of field.
+    public static func fieldOfView(_ fovY: Float, aspect: Float) -> Float {
+        guard aspect > 0, aspect < fieldAspect else { return fovY }
+        return 2 * atan(tan(fovY / 2) * fieldAspect / aspect)
+    }
+
+    /// The orbit's view as a view of `aspect` shows it (see `fieldOfView`).
+    public func view(aspect: Float) -> (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float) {
+        let v = view()
+        return (v.eye, v.target, Self.fieldOfView(v.fovY, aspect: aspect))
+    }
+
+    /// Fits the frame to a view of `aspect` (its width over height) and `pixels` (its drawable's
+    /// size). The projection takes the view's shape at once. The frame is made again at the view's
+    /// shape (`frameSize`) once the size it asks for has held for `resizeSettle`, or at once the first
+    /// time: while a window is resized its frame is drawn at the size it has and stretched back to
+    /// the view's shape, rather than its targets being made each frame. Returns whether it was made
+    /// again.
+    @discardableResult
+    public func fit(
+        aspect: Float, pixels: SIMD2<Int>, now: Double = ProcessInfo.processInfo.systemUptime
+    ) -> Bool {
+        guard aspect.isFinite, aspect > 0, pixels.x > 0, pixels.y > 0 else { return false }
+        renderer.aspect = aspect
+        let size = Self.frameSize(view: pixels)
+        guard size != SIMD2(renderer.width, renderer.height) else {
+            wantedSize = nil
+            fitted = true
+            return false
+        }
+        if wantedSize?.size != size { wantedSize = (size, now) }
+        guard !fitted || now - (wantedSize?.since ?? now) >= Self.resizeSettle else { return false }
+        renderer.resize(width: size.x, height: size.y)
+        renderer.aspect = aspect
+        wantedSize = nil
+        fitted = true
+        return true
+    }
+
     /// The point on the ground under a view ray through `ndc` (x and y in -1...1, y up), in the
     /// strip's frame; nil when the ray misses the ground.
     public func groundPoint(ndc: SIMD2<Float>, aspect: Float) -> SIMD3<Float>? {
-        let v = view()
+        let v = view(aspect: aspect)
         let forward = simd_normalize(v.target - v.eye)
         let right = simd_normalize(simd_cross(forward, SIMD3(0, 0, 1)))
         let up = simd_cross(right, forward)
@@ -534,11 +600,12 @@ public final class QuarrySession: @unchecked Sendable {
     /// Draws the current frame to the renderer's target; returns the GPU time (s).
     @discardableResult
     public func draw() -> Double {
-        renderer.viewOverride = view()
+        renderer.viewOverride = view(aspect: renderer.aspect)
         return renderer.render(pose: pose, previous: previous, time: Float(frame) / Self.frameRate)
     }
 
-    /// Scales the frame into a drawable.
+    /// Scales the frame over a drawable: the frame has the view's shape, or the projection does while
+    /// the view's size settles.
     public func blit(to drawable: MTLTexture, buffer: MTLCommandBuffer) {
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable

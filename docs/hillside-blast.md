@@ -657,9 +657,52 @@ overview and a project's terrain each start a strip on the face; a half-speed cl
 length, moves, and Cancel leaves nothing.
 
 **Where it stopped.**
-- The 3-D view stretches the renderer's 16:9 frame over the view, whatever its shape (since stage 1),
-  so in the default window the rock is squeezed sideways by about a quarter; the clip, at 16:9, is
-  not. Picking allows for it. Rendering at the view's own shape was not done here.
+- The 3-D view stretched the renderer's 16:9 frame over the view, whatever its shape (since stage 1),
+  so in the default window the rock was squeezed sideways by about a quarter; the clip, at 16:9, was
+  not. Fixed since: see "The view at its own shape" below.
 - Placing has not been tried by hand on a screen: the drags were synthesised offscreen.
 - The strip is laid on the ground as it was before any blast; strips do not build on each other.
 - A clip is of the window's quality (its mesh, 1.5 m dust, no supersampling), not the film's.
+
+## The view at its own shape, 12 November 2026
+
+The window's 3-D view now draws its frame at the view's own shape (emmettl/bombcad-work#130). Before,
+the renderer drew 1600 x 900 at 16:9 and the frame was stretched over the view; the default window's
+view is about 1.24 wide to 1 high, so the rock was drawn at 0.70 of its width.
+
+- *Projection.* It takes the view's width over height. A view narrower than 16:9 keeps a 16:9
+  frame's width of field and shows more above and below (in the default window the vertical field
+  is 44.8° for the camera's 32°), so the view always holds all that a clip from the same camera
+  shows, and the default framing, made for 16:9, still has the strip's ends in it. A wider view
+  keeps the vertical field and shows more to the sides. Clips are unchanged: 1920 x 1080 at the
+  camera's own field.
+- *Frame size.* The frame has the view's shape and as many pixels as 1600 x 900 (1,440,000), or the
+  view's own if it has fewer, in multiples of 8 (`QuarrySession.frameSize`). So a frame costs the
+  same at any shape. On a 2x display the default window's view is 2038 x 1647 pixels and the frame
+  1328 x 1072, scaled up to it as the 1600 x 900 frame was before.
+- *Resizing.* The projection follows the view at once. The frame's targets (scene colour and depth,
+  dust, the frame itself; the shadow, height maps and geometry are kept) are made again only once
+  the size the view asks for has held 0.25 s (`QuarrySession.fit`). Until then the frame keeps its size
+  and is stretched back to the view's shape, so proportions stay right and nothing is allocated each
+  frame of a live resize or a sidebar drag.
+- *Picking.* The strip's overlay and picking use the view's own shape and field, the same projection
+  the frame is drawn with; they no longer allow for a stretch. No shader changed.
+
+**Measured** (release build, M4 Max Studio, offscreen, the window's own session of 108,449 blocks,
+`BOMBCAD_INTERFACE_REVIEW=dir swift test -c release -Xswiftc -enable-testing --filter
+QuarryFaceReviewTests/viewShapes`):
+- *How wide the rock is drawn,* judged against the 16:9 frame from the same camera (the horizontal
+  scale that best matches the two, by correlation of their luma): 1.000 now at the default window
+  and at a wide one (2400 x 860, view 2.45 to 1), calm, at 4 s and settled, correlation 0.986 to
+  0.997. The old stretched frame scored 0.695 in the default window and 1.380 in the wide one, its
+  shape over 16:9.
+- *GPU a frame* in the default window, medians of 40 taken in turn: calm 12.96 ms now (1328 x
+  1072) against 13.40 ms before (1600 x 900); at 4 s with the dust rising, 13.60 against 13.77 ms.
+
+**Tests.** `QuarryFaceHandlingTests` "The view draws at its own shape" (BombCAD, GPU, offscreen), at
+the default window and a wide one: a new size is taken only once it has held; the frame has the
+view's shape within 2% and no more than 1,440,000 pixels; the projection the frame was drawn with is
+the overlay's, so a point of the face lands where it is drawn (within 0.5 point) and the ground under
+it is the point itself (within 1.5 m); the frame matches the 16:9 frame at horizontal scale 1 (within
+0.03) and the old stretched one at the view's shape over 16:9. The existing drag test runs in the
+default window, which is not 16:9.

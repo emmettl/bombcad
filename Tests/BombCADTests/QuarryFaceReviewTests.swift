@@ -72,6 +72,130 @@ struct QuarryFaceReviewTests {
         try capture("4-done")
         #expect(session.isReady)
     }
+    /// The 3-D view at the default window's shape and a wide one, at the window's own 100,000
+    /// blocks (emmettl/bombcad-work#130): the frame as the view draws it now, as it was (16:9
+    /// stretched over the view), and the 16:9 frame a clip from the same camera has; how wide the
+    /// rock is drawn against that clip's frame; and a frame's GPU time at the default shape, now and
+    /// as it was. Each image is written at the view's size in points.
+    @Test("The view at two window shapes, against the 16:9 frame, and a frame's cost")
+    func viewShapes() async throws {
+        guard MTLCreateSystemDefaultDevice() != nil else { return }
+        let output = URL(
+            fileURLWithPath: try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        )
+        .appendingPathComponent("quarry-aspect")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        let model = QuarryFaceModel()
+        let (window, host, view) = try QuarryFaceHandlingTests.host(model)
+        defer { window.close() }
+        #expect(!window.isVisible)
+        var log: [String] = []
+        func note(_ line: String) {
+            print(line)
+            log.append(line)
+        }
+        model.prepare()
+        var waited = 0.0
+        while !(model.session?.isReady == true && model.preparing == nil), waited < 300 {
+            try await Task.sleep(for: .milliseconds(20))
+            model.session?.update(elapsed: 0.02)
+            waited += 0.02
+        }
+        let session = try #require(model.session)
+        #expect(session.isReady)
+        let renderer = session.renderer
+        note("blocks \(session.face.blocks.count)")
+
+        /// The renderer's frame written at `size` (points), stretched to it as the view shows it.
+        func write(_ name: String, size: CGSize) throws {
+            let frameURL = output.appendingPathComponent(name + "-frame.png")
+            renderer.savePNG(frameURL)
+            let frame = try #require(
+                NSImage(contentsOf: frameURL)?.cgImage(forProposedRect: nil, context: nil, hints: nil))
+            let context = try #require(
+                CGContext(
+                    data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
+                    bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.interpolationQuality = .high
+            context.draw(frame, in: CGRect(origin: .zero, size: size))
+            let image = try #require(context.makeImage())
+            try #require(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+                .write(to: output.appendingPathComponent(name + ".png"))
+            try? FileManager.default.removeItem(at: frameURL)
+        }
+        func median(_ values: [Double]) -> Double { values.sorted()[values.count / 2] }
+
+        for (shape, width) in [("default", 1400.0), ("wide", 2400.0)] {
+            host.frame = CGRect(x: 0, y: 0, width: width, height: 860)
+            host.layoutSubtreeIfNeeded()
+            let start = ProcessInfo.processInfo.systemUptime
+            view.fitFrame(now: start)
+            view.fitFrame(now: start + 1)
+            let aspect = view.viewAspect
+            let fitted = (renderer.width, renderer.height)
+            note(
+                String(
+                    format:
+                        "%@ window %.0f x 860: view %.0f x %.0f points (%.3f), %d x %d drawable pixels; frame %d x %d, vertical field %.1f° (the camera's %.0f°)",
+                    shape, width, view.bounds.width, view.bounds.height, aspect, view.viewPixels.x,
+                    view.viewPixels.y, fitted.0, fitted.1, session.view(aspect: aspect).fovY * 180 / .pi,
+                    session.fovDegrees))
+            for (moment, frame) in [("calm", 0), ("4s", 120), ("settled", session.eventFrames - 1)] {
+                session.seek(to: frame)
+                session.update(elapsed: 0)
+                session.draw()
+                let shown = QuarryFaceHandlingTests.luma(renderer)
+                try write("\(shape)-\(moment)-now", size: view.bounds.size)
+                // As it was: the 16:9 frame stretched over the view; and that frame itself, a clip's.
+                renderer.resize(width: 1600, height: 900)
+                session.draw()
+                let clip = QuarryFaceHandlingTests.luma(renderer)
+                try write("\(shape)-\(moment)-before", size: view.bounds.size)
+                try write("\(shape)-\(moment)-16x9", size: CGSize(width: 1600, height: 900))
+                renderer.resize(width: fitted.0, height: fitted.1)
+                renderer.aspect = aspect
+                let field = session.view().fovY
+                let now = QuarryFaceHandlingTests.horizontalScale(
+                    shown, aspect: aspect, fovY: session.view(aspect: aspect).fovY, reference: clip,
+                    referenceAspect: 16 / 9, referenceFovY: field)
+                let before = QuarryFaceHandlingTests.horizontalScale(
+                    clip, aspect: aspect, fovY: field, reference: clip, referenceAspect: 16 / 9,
+                    referenceFovY: field)
+                note(
+                    String(
+                        format:
+                            "  %@: rock drawn %.3f times as wide as it should be (correlation %.3f); before %.3f (%.3f)",
+                        moment, now.scale, now.correlation, before.scale, before.correlation))
+                #expect(abs(now.scale - 1) < 0.03)
+            }
+            guard shape == "default" else { continue }
+            // A frame's GPU time at the default shape, now against 16:9 at 1600 x 900, taken in turn.
+            for (moment, frame) in [("calm", 0), ("4s, dust rising", 120)] {
+                session.seek(to: frame)
+                session.update(elapsed: 0)
+                var times: (now: [Double], before: [Double]) = ([], [])
+                // In blocks of 10, after two draws each time the targets are made.
+                for _ in 0..<4 {
+                    for _ in 0..<2 { session.draw() }
+                    for _ in 0..<10 { times.now.append(session.draw() * 1000) }
+                    renderer.resize(width: 1600, height: 900)
+                    for _ in 0..<2 { session.draw() }
+                    for _ in 0..<10 { times.before.append(session.draw() * 1000) }
+                    renderer.resize(width: fitted.0, height: fitted.1)
+                    renderer.aspect = aspect
+                }
+                note(
+                    String(
+                        format:
+                            "  GPU a frame, %@: %.2f ms now (%d x %d), %.2f ms before (1600 x 900), medians of 40",
+                        moment, median(times.now), fitted.0, fitted.1, median(times.before)))
+            }
+        }
+        try log.joined(separator: "\n").write(
+            to: output.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
+    }
+
     /// The strip placed in the 3-D view, an opened file's overview, and clips recorded from the
     /// window, at the window's own 100,000 blocks (emmettl/bombcad-work#128). Writes composites of
     /// the view with the strip drawn over it, the window, and frames taken from the clips' files.
