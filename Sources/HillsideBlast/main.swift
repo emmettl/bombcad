@@ -51,10 +51,17 @@ if command == "play" {
     exit(0)
 }
 
-var hillside = try QuarryFace(site: .builtIn(), options: options)
+// `--ridge`: the ridge cut on the built-in ridge, with `--width` and `--depth` (m) for the cut.
+var site = QuarrySite.builtIn(arguments.contains("--ridge") ? .ridgeCut : .face)
+if let width = option(arguments, "--width").flatMap(Float.init) { site.width = width }
+if let depth = option(arguments, "--depth").flatMap(Float.init) { site.depth = depth }
+var hillside = try QuarryFace(site: site, options: options)
 hillside.generate()
 for line in hillside.report { print(line) }
-let firings = QuarryFiringPattern.row(face: hillside)
+let firings = QuarryFiringPattern.pattern(
+    face: hillside, count: option(arguments, "--firings").flatMap(Int.init) ?? 16,
+    stagger: option(arguments, "--stagger").flatMap(Float.init) ?? 0.1,
+    order: option(arguments, "--order").flatMap { QuarryFiringOrder(rawValue: $0) } ?? .leftToRight)
 let launch = QuarryLaunch()
 
 func writeReport(_ text: String) {
@@ -229,17 +236,30 @@ if command == "render" {
     precondition(bodies == hillside.blocks.count, "poses and hillside differ")
     let supersample = option(arguments, "--ss").flatMap(Int.init) ?? 2
     if !arguments.contains("--no-dressing") { hillside.buildDressing() }
-    let start = option(arguments, "--eye").map(parseVector) ?? SIMD3<Float>(-46, -74, 3.6)
-    let end = option(arguments, "--eye-end").map(parseVector) ?? SIMD3<Float>(-33, -66, 3.4)
-    let target = option(arguments, "--target").map(parseVector) ?? SIMD3<Float>(80, 18, 21)
-    let targetEnd = option(arguments, "--target-end").map(parseVector) ?? SIMD3<Float>(86, 16, 21)
+    var eyes = (SIMD3<Float>(-46, -74, 3.6), SIMD3<Float>(-33, -66, 3.4))
+    var targets = (SIMD3<Float>(80, 18, 21), SIMD3<Float>(86, 16, 21))
+    if let ridge = hillside.ridge {
+        // The window's default view of a ridge cut, drifting a little closer.
+        let ((yaw, pitch, distance), focus) = QuarrySession.ridgeView(ridge)
+        func eye(_ d: Float, _ yaw: Float) -> SIMD3<Float> {
+            var e = focus + SIMD3(sin(yaw) * cos(pitch), -cos(yaw) * cos(pitch), sin(pitch)) * d
+            e.z = max(e.z, hillside.height(hillside.terrain.heights, e.x, e.y) + 2)
+            return e
+        }
+        eyes = (eye(distance, yaw), eye(distance * 0.88, yaw + 0.08))
+        targets = (focus, focus + SIMD3(0, 0, 1))
+    }
+    let start = option(arguments, "--eye").map(parseVector) ?? eyes.0
+    let end = option(arguments, "--eye-end").map(parseVector) ?? eyes.1
+    let target = option(arguments, "--target").map(parseVector) ?? targets.0
+    let targetEnd = option(arguments, "--target-end").map(parseVector) ?? targets.1
     let fov = option(arguments, "--fov").flatMap(Float.init) ?? 31
     let path = QuarryCameraPath(
         eyes: (start, end), targets: (target, targetEnd), fovY: (fov, fov * 0.93), duration: 20)
     let renderer = try QuarryRenderer(
         device: device, face: hillside, width: 1920, height: 1080, supersample: supersample,
         path: path, frameRate: Float(fps),
-        sun: option(arguments, "--sun").map(parseVector) ?? SIMD3<Float>(0.86, -0.42, 0.26))
+        sun: option(arguments, "--sun").map(parseVector))
     if !arguments.contains("--no-dust") {
         renderer.dust = try QuarryDustField(
             device: device, face: hillside, firings: firings,

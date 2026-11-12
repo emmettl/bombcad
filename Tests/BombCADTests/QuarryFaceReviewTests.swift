@@ -389,4 +389,145 @@ struct QuarryFaceReviewTests {
         try log.joined(separator: "\n").write(
             to: output.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
     }
+
+    /// File ▸ New Ridge Cut at the window's own 100,000 blocks (emmettl/bombcad-work#131): the window
+    /// while the cut is simulated and once it has settled, the cut's line placed over the view,
+    /// a new line dragged across the ridge, and a clip recorded from the window, with frames taken
+    /// from its file.
+    @Test("The ridge cut: following, settled, placing the cut, and a clip")
+    func ridgeCut() async throws {
+        guard MTLCreateSystemDefaultDevice() != nil else { return }
+        let output = URL(
+            fileURLWithPath: try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        )
+        .appendingPathComponent("ridge-cut")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        let model = QuarryFaceModel(scene: .ridgeCut)
+        let (window, host, view) = try QuarryFaceHandlingTests.host(model)
+        defer { window.close() }
+        #expect(!window.isVisible)
+        var log: [String] = []
+        func note(_ line: String) {
+            print(line)
+            log.append(line)
+        }
+        func capture(_ name: String) throws {
+            host.layoutSubtreeIfNeeded()
+            let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            try #require(bitmap.representation(using: .png, properties: [:]))
+                .write(to: output.appendingPathComponent(name + ".png"))
+            guard let session = model.session else { return }
+            session.update(elapsed: 0)
+            view.fitFrame(now: 1e9)
+            session.draw()
+            let frameURL = output.appendingPathComponent(name + "-frame.png")
+            session.renderer.savePNG(frameURL)
+            let frame = try #require(
+                NSImage(contentsOf: frameURL)?.cgImage(forProposedRect: nil, context: nil, hints: nil))
+            let size = view.bounds.size
+            let context = try #require(
+                CGContext(
+                    data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
+                    bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(frame, in: CGRect(origin: .zero, size: size))
+            view.overlay.layer?.render(in: context)
+            let image = try #require(context.makeImage())
+            try #require(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+                .write(to: output.appendingPathComponent(name + "-view.png"))
+            try? FileManager.default.removeItem(at: frameURL)
+        }
+        func wait(_ seconds: Double, until done: () -> Bool) async throws {
+            var waited = 0.0
+            while !done(), waited < seconds {
+                try await Task.sleep(for: .milliseconds(20))
+                model.session?.update(elapsed: 0.02)
+                waited += 0.02
+            }
+        }
+
+        let opened = Date()
+        model.prepare()
+        try await wait(300) { model.session?.isSimulating == true && (model.session?.frame ?? 0) > 100 }
+        note(
+            String(
+                format: "opened → %.1f s of the event on view in %.1f s",
+                Float(model.session?.frame ?? 0) / 30, Date().timeIntervalSince(opened)))
+        try capture("1-following")
+        try await wait(300) { model.session?.isReady == true }
+        let session = try #require(model.session)
+        let ridge = try #require(session.face.ridge)
+        note(
+            "blocks \(session.face.blocks.count), cut \(Int(ridge.cutEnd - ridge.cutStart)) m along the line, floor \(ridge.floor) m, crest \(ridge.crest) m; \(session.memoryReport)"
+        )
+        session.seek(to: session.eventFrames - 1)
+        session.update(elapsed: 0)
+        try capture("2-settled")
+
+        // Placing: the cut's line and outline over the ridge as it stood.
+        model.stripMode = true
+        view.refreshOverlay()
+        try capture("3-place-cut")
+        // From high above, as a user would turn the view to see both flanks (from beside the ridge
+        // the far flank is behind the crest).
+        session.focus = SIMD3(80, -20, 10)
+        session.pitch = 1.1
+        session.distance = 330
+        let ground = model.site.terrain
+        func onView(_ p: SIMD2<Float>) throws -> CGPoint {
+            try #require(view.onView(SIMD3(p, ground.height(at: p))))
+        }
+        let a = try onView(SIMD2(-75, -35))
+        let b = try onView(SIMD2(75, -35))
+        view.mouseDown(with: QuarryFaceHandlingTests.mouse(.leftMouseDown, at: a, in: view))
+        for k in 1...40 {
+            let t = CGFloat(k) / 40
+            view.mouseDragged(
+                with: QuarryFaceHandlingTests.mouse(
+                    .leftMouseDragged, at: CGPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t),
+                    in: view))
+            if k == 30 { try capture("4-dragging") }
+        }
+        let released = Date()
+        view.mouseUp(with: QuarryFaceHandlingTests.mouse(.leftMouseUp, at: b, in: view))
+        note("new cut \(model.site.start) → \(model.site.end)")
+        try await wait(120) { model.preparing == nil && model.session !== session }
+        note(String(format: "cut released → its event on view: %.1f s", Date().timeIntervalSince(released)))
+        model.stripMode = false
+        try await wait(300) { model.session?.isReady == true }
+        model.session?.seek(to: 150)
+        model.session?.update(elapsed: 0)
+        try capture("5-new-cut-5s")
+
+        // A clip from the window: the whole event at real time, from this view.
+        let event = try #require(model.session)
+        event.seek(to: 0)
+        event.update(elapsed: 0)
+        model.clipFromShown = false
+        model.clipSeconds = 20
+        model.clipSpeed = 1
+        model.clipMotion = .orbit
+        let url = output.appendingPathComponent("window-clip.mp4")
+        model.recordClip(to: url)
+        try await wait(3000) { model.recorder == nil }
+        let report = try #require(model.lastClip, "\(model.clipStatus)")
+        note(
+            String(
+                format: "clip: %d frames (%.1f s) in %.1f s, a frame median %.1f ms; Metal at most %d MB",
+                report.frames, report.videoSeconds, report.wallSeconds, report.frameMilliseconds,
+                report.metalPeak >> 20))
+        let asset = AVURLAsset(url: url)
+        let duration = try await asset.load(.duration).seconds
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        for t in [1.0, 2.5, 4.0, 6.0, 10.0, duration - 0.1] {
+            let image = try await generator.image(at: CMTime(seconds: t, preferredTimescale: 600)).image
+            try #require(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+                .write(to: output.appendingPathComponent(String(format: "window-clip-%05.2f.png", t)))
+        }
+        try log.joined(separator: "\n").write(
+            to: output.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
+    }
 }

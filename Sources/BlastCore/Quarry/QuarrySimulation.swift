@@ -52,7 +52,8 @@ public final class QuarrySimulation {
         public var bodyCount: UInt32
         public var sphereCount: UInt32
         public var cellCount: UInt32
-        public var pad: UInt32
+        /// Below this speed a body held up by contact is damped toward rest (m/s).
+        public var creepSpeed: Float
     }
 
     public let device: MTLDevice
@@ -152,7 +153,9 @@ public final class QuarrySimulation {
             terrainDims: SIMD4(Int32(hillside.terrain.columns), Int32(hillside.terrain.rows), 0, 0),
             sleepSpeed: 0.2, sleepSpin: 0.5, sleepTime: 0.5, frictionGamma: 0.5,
             bodyCount: UInt32(bodyCount), sphereCount: UInt32(sphereCount), cellCount: UInt32(cellCount),
-            pad: 0)
+            // A face's floor is level; a ridge's flanks are not, and rounded blocks rolled on down
+            // them (emmettl/bombcad-work#131).
+            creepSpeed: hillside.ridge == nil ? 0.6 : 1.0)
         print(
             "grid: cell \(String(format: "%.2f", cell)) m, \(dims.x)x\(dims.y)x\(dims.z) = \(cellCount), dt \(dt) s"
         )

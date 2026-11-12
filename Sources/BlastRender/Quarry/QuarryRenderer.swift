@@ -152,8 +152,9 @@ public final class QuarryRenderer {
     public init(
         device: MTLDevice, face hillside: QuarryFace, width: Int, height: Int, supersample: Int,
         path: QuarryCameraPath, frameRate: Float, quality: QuarryRenderQuality = .film,
-        sun: SIMD3<Float> = SIMD3(0.86, -0.42, 0.26)
+        sun: SIMD3<Float>? = nil
     ) throws {
+        let sunGiven = sun ?? Self.sun(hillside)
         self.quality = quality
         self.device = device
         let library = try QuarryShaders.library(device: device, file: "QuarryRender", bundle: Bundle.module)
@@ -227,12 +228,20 @@ public final class QuarryRenderer {
         // The same hillside on past the broken strip's grid, so the view has no edge (render only).
         let extBase = UInt32(vertices.count / 6)
         let extSpacing: Float = 3
-        let extColumns = 570
-        let extRows = 296
-        let (extX, extY): (Float, Float) = (-610, t.origin.y + 1)
+        var extColumns = 570
+        var extRows = 296
+        var (extX, extY): (Float, Float) = (-610, t.origin.y + 1)
+        if hillside.ridge != nil {
+            // A ridge runs on both ways across the cut's line: the ground all round it.
+            extColumns = Int(
+                (t.origin.x + Float(t.columns) * t.spacing + 900 - (t.origin.x - 600)) / extSpacing)
+            extRows = 440
+            (extX, extY) = (t.origin.x - 600, -660)
+        }
         func inMain(_ x: Float, _ y: Float) -> Bool {
             x > t.origin.x + 1 && x < t.origin.x + Float(t.columns - 2) * t.spacing
                 && y < t.origin.y + Float(t.rows - 2) * t.spacing
+                && (hillside.ridge == nil || y > t.origin.y + 1)
         }
         func extHeight(_ x: Float, _ y: Float) -> Float {
             if inMain(x, y) { return hillside.height(t.heights, x, y) - 2.2 }
@@ -269,11 +278,38 @@ public final class QuarryRenderer {
         }
         // A ground beyond the grid, so the long lens sees no edge: a low skirt on four sides.
         let skirtBase = UInt32(vertices.count / 6)
-        let skirt: [(Float, Float)] = [
-            (-900, -900), (900, -900), (900, t.origin.y + 2), (-900, t.origin.y + 2),
-        ]
-        for (x, y) in skirt { vertices += [x, y, 0.1, 0, 0, 1] }
-        indices += [skirtBase, skirtBase + 2, skirtBase + 1, skirtBase, skirtBase + 3, skirtBase + 2]
+        if hillside.ridge != nil {
+            // Round the whole of it, at the height of its edge, a little below so it never shows
+            // through: a frame of four quads from the edge out to 2.5 km.
+            let (x0, y0) = (extX + extSpacing, extY + extSpacing)
+            let (x1, y1) = (extX + Float(extColumns - 2) * extSpacing, extY + Float(extRows - 2) * extSpacing)
+            var edge: [Float] = []
+            for k in 0..<64 {
+                let u = Float(k) / 63
+                edge += [
+                    extHeight(x0 + (x1 - x0) * u, y0), extHeight(x0 + (x1 - x0) * u, y1),
+                    extHeight(x0, y0 + (y1 - y0) * u), extHeight(x1, y0 + (y1 - y0) * u),
+                ]
+            }
+            let z = edge.reduce(0, +) / Float(edge.count) - 1
+            let far: Float = 2500
+            let ring: [(Float, Float)] = [
+                (x0, y0), (x1, y0), (x1, y1), (x0, y1),
+                (x0 - far, y0 - far), (x1 + far, y0 - far), (x1 + far, y1 + far), (x0 - far, y1 + far),
+            ]
+            for (x, y) in ring { vertices += [x, y, z, 0, 0, 1] }
+            for k in 0..<4 {
+                let (a, b) = (skirtBase + UInt32(k), skirtBase + UInt32((k + 1) % 4))
+                let (c, d) = (a + 4, b + 4)
+                indices += [a, c, b, b, c, d]
+            }
+        } else {
+            let skirt: [(Float, Float)] = [
+                (-900, -900), (900, -900), (900, t.origin.y + 2), (-900, t.origin.y + 2),
+            ]
+            for (x, y) in skirt { vertices += [x, y, 0.1, 0, 0, 1] }
+            indices += [skirtBase, skirtBase + 2, skirtBase + 1, skirtBase, skirtBase + 3, skirtBase + 2]
+        }
         terrainVertices = device.makeBuffer(bytes: vertices, length: vertices.count * 4)!
         terrainIndices = device.makeBuffer(bytes: indices, length: indices.count * 4)!
         terrainIndexCount = indices.count
@@ -318,8 +354,14 @@ public final class QuarryRenderer {
         let faceYs = stride(from: Float(-20), through: hillside.length + 20, by: 2).map {
             hillside.faceLine($0)
         }
-        let a = texel(-30, (faceYs.max() ?? 0) + hillside.depth + 8)
-        let b = texel(hillside.length + 30, (faceYs.min() ?? 0) - 80)
+        var a = texel(-30, (faceYs.max() ?? 0) + hillside.depth + 8)
+        var b = texel(hillside.length + 30, (faceYs.min() ?? 0) - 80)
+        if let ridge = hillside.ridge {
+            // Down both flanks along the line, and a way either side of the cut's walls.
+            let reach = ridge.halfWidth + 45
+            a = texel(-70, reach)
+            b = texel(hillside.length + 70, -reach)
+        }
         let first = SIMD2(max(0, min(a.x, b.x)), max(0, min(a.y, b.y)))
         let last = SIMD2(min(999, max(a.x, b.x)), min(789, max(a.y, b.y)))
         let step = quality.finesStep
@@ -411,7 +453,7 @@ public final class QuarryRenderer {
         opaqueDepth = device.makeDepthStencilState(descriptor: depthState)!
 
         aspect = Float(width) / Float(height)
-        let sun = simd_normalize(sun)
+        let sun = simd_normalize(sunGiven)
         let centre = (hillside.low + hillside.high) * 0.5
         let lightEye = centre + sun * 420
         let lightView = QuarryMatrix.lookAt(eye: lightEye, target: centre, up: SIMD3(0, 0, 1))
@@ -433,6 +475,13 @@ public final class QuarryRenderer {
             fogColor: SIMD4(0.6, 0.55, 0.5, 1), terrainOrigin: .zero,
             inverseViewProjection: matrix_identity_float4x4,
             dustLow: .zero, dustHigh: .zero, misc: .zero)
+    }
+
+    /// The scene's own low sun, in the strip's frame: a face's rakes along it from in front; a
+    /// ridge cut's comes along the ridge from the side the default view looks from, so that the
+    /// near flank and the cut's far wall are lit and the flanks are raked.
+    public static func sun(_ face: QuarryFace) -> SIMD3<Float> {
+        face.ridge == nil ? SIMD3(0.86, -0.42, 0.26) : SIMD3(-0.3, -0.88, 0.3)
     }
 
     /// The targets of a frame `width` by `height`: the scene's colour and depth (supersampled) and

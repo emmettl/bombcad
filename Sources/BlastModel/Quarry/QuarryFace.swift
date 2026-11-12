@@ -173,13 +173,26 @@ public struct QuarrySite: Sendable {
     public var terrain: Terrain
     public var start: SIMD2<Float>
     public var end: SIMD2<Float>
+    /// A face: how far behind the old face the new one stands. A ridge cut: how far below the
+    /// crest on its line the cut's floor lies (m).
     public var depth: Float
+    /// Which scene the site lays out: a quarry face's strip, or a cut across a ridge whose line
+    /// runs from `start` to `end` across the crest (emmettl/bombcad-work#131).
+    public var scene: QuarryScene
+    /// A ridge cut's width at its floor (m); not used by a face.
+    public var width: Float
 
-    public init(terrain: Terrain, start: SIMD2<Float>, end: SIMD2<Float>, depth: Float = 26) {
+    public init(
+        terrain: Terrain, start: SIMD2<Float>, end: SIMD2<Float>, depth: Float = 26,
+        scene: QuarryScene = .face,
+        width: Float = QuarryRidge.defaultWidth
+    ) {
         self.terrain = terrain
         self.start = start
         self.end = end
         self.depth = depth
+        self.scene = scene
+        self.width = width
     }
 
     public var length: Float { simd_distance(start, end) }
@@ -256,7 +269,8 @@ public struct QuarryFace: Sendable {
     }
 
     public enum Failure: Error, Equatable, Sendable {
-        /// The strip lies on ground with no face to break: nothing between old and new surfaces.
+        /// The strip lies on ground with no face to break: nothing between old and new surfaces. For a
+        /// ridge cut, the line does not cross a ridge: the ground does not fall away on both sides.
         case noFace
         case stripTooShort
     }
@@ -298,8 +312,11 @@ public struct QuarryFace: Sendable {
     /// The lowest floor and the highest old ground near the strip (m).
     public let floorLevel: Float
     public let topLevel: Float
+    /// A ridge cut's layout (its floor, crest and walls); nil for a face.
+    public let ridge: QuarryRidge?
     /// The old face's line (its y at each x, a metre apart from the grid's first column) and the
-    /// floor and top heights in front of and behind it.
+    /// floor and top heights in front of and behind it. For a ridge cut, the cut's centre line
+    /// (y = 0), and the ground after and before the blast along it.
     private let faceTable: [Float]
     private let floorTable: [Float]
     private let topTable: [Float]
@@ -351,6 +368,23 @@ public struct QuarryFace: Sendable {
         guard length >= 40 else { throw Failure.stripTooShort }
         origin = site.start
         along = simd_normalize(site.end - site.start)
+        if site.scene == .ridgeCut {
+            let layout = QuarryRidge.layout(site: site, origin: origin, along: along)
+            inward = layout.inward
+            terrain = layout.terrain
+            original = layout.original
+            faceTable = layout.centre
+            floorTable = layout.floor
+            topTable = layout.top
+            floorLevel = layout.floorLevel
+            topLevel = layout.topLevel
+            low = layout.low
+            high = layout.high
+            ridge = layout.ridge
+            guard layout.crossesRidge, layout.cutVolume > 2000 else { throw Failure.noFace }
+            return
+        }
+        ridge = nil
         var into = SIMD2<Float>(-along.y, along.x)
         // Into the hill: the side whose ground is higher.
         let middle = (site.start + site.end) / 2
@@ -450,8 +484,13 @@ public struct QuarryFace: Sendable {
         // Bounds of the broken strip.
         let faceLow = faceTable.min() ?? 0
         let faceHigh = faceTable.max() ?? 0
-        let boxLow = SIMD3<Float>(-1, faceLow - 15, floorLevel - 1)
-        let boxHigh = SIMD3<Float>(length + 1, faceHigh + depth + 30, topLevel + 1)
+        var boxLow = SIMD3<Float>(-1, faceLow - 15, floorLevel - 1)
+        var boxHigh = SIMD3<Float>(length + 1, faceHigh + depth + 30, topLevel + 1)
+        let ridge = self.ridge
+        if let ridge {
+            // The cut across the ridge: its line's length, as wide as its walls reach at the crest.
+            (boxLow, boxHigh) = ridge.box(topLevel: topLevel)
+        }
         var random = QuarryRandom(seed: options.seed)
         let hOld = original
         let hNew = terrain.heights
@@ -483,7 +522,9 @@ public struct QuarryFace: Sendable {
         @Sendable func density(_ p: SIMD3<Float>) -> Float {
             let q = p / SIMD3<Float>(25, 18, 12)
             let broad = exp(1.8 * QuarryNoise.fbm(q, octaves: 3))
-            let across = abs(p.y - hillside.faceLine(p.x) - depth * 0.4) / 18
+            // Finer near the firings: a face's row, a ridge cut's rows either side of its middle.
+            let across =
+                ridge == nil ? abs(p.y - hillside.faceLine(p.x) - depth * 0.4) / 18 : abs(p.y) / 18
             let near = 0.6 + 1.4 * exp(-across * across)
             return broad * near
         }
@@ -518,7 +559,11 @@ public struct QuarryFace: Sendable {
             return false
         }
         sites.append(contentsOf: boulders.map(\.0))
-        let siteTarget = Int(Float(options.blocks) * options.siteShare)
+        // A ridge cut has no held skin past its ends, which is about a third of a face's blocks:
+        // more coarse cells, so that `blocks` asks for about as many blocks in either scene.
+        var siteTarget = Int(
+            Float(options.blocks) * options.siteShare * (ridge == nil ? 1 : QuarryRidge.siteBoost))
+        if let ridge { siteTarget = ridge.coarseCells(siteTarget) }
         while sites.count < siteTarget {
             let p = SIMD3<Float>(
                 random.float(boxLow.x, boxHigh.x), random.float(boxLow.y, boxHigh.y),
@@ -542,12 +587,14 @@ public struct QuarryFace: Sendable {
                 skinRandom.float(skinLow.x, skinHigh.x), skinRandom.float(skinLow.y, skinHigh.y),
                 skinRandom.float(skinLow.z, skinHigh.z))
         }
-        for _ in 0..<400_000 {
+        // A ridge cut has no face running on past it, so no skin: the ground past its walls is the
+        // ridge itself.
+        for _ in 0..<(ridge == nil ? 400_000 : 0) {
             skinSamples += 1
             if skin(skinSample()) { skinHits += 1 }
         }
         let skinBox = (skinHigh - skinLow).x * (skinHigh - skinLow).y * (skinHigh - skinLow).z
-        let skinVolume = skinBox * Float(skinHits) / Float(skinSamples)
+        let skinVolume = skinBox * Float(skinHits) / Float(max(skinSamples, 1))
         let skinTarget = Int(2.5 * Float(siteTarget) * skinVolume / max(rockVolume, 1))
         var skinSites = 0
         while skinSites < skinTarget {
@@ -1088,8 +1135,14 @@ public struct QuarryFace: Sendable {
     public mutating func buildDressing(edge: Float = 1.15, level: Int = 3) {
         let t = terrain
         let hillside = self
+        let acrossToo = ridge != nil
         @Sendable func surface(_ x: Float, _ y: Float) -> Float {
-            let inside = x > t.origin.x + 1 && x < t.origin.x + Float(t.columns - 2) * t.spacing
+            // A face's dressing reaches past the grid only along the strip; a ridge's past it across
+            // the cut's line too, along the ridge.
+            var inside = x > t.origin.x + 1 && x < t.origin.x + Float(t.columns - 2) * t.spacing
+            if acrossToo {
+                inside = inside && y > t.origin.y + 1 && y < t.origin.y + Float(t.rows - 2) * t.spacing
+            }
             return inside ? hillside.height(t.heights, x, y) : hillside.oldHeight(x, y)
         }
         func slope(_ x: Float, _ y: Float) -> Float {
@@ -1099,14 +1152,25 @@ public struct QuarryFace: Sendable {
             return sqrt(dx * dx + dy * dy)
         }
         var r = QuarryRandom(seed: 5150)
-        let lowXY = SIMD2<Float>(low.x - 60, low.y + 3)
-        let highXY = SIMD2<Float>(620, high.y - 3)
+        var lowXY = SIMD2<Float>(low.x - 60, low.y + 3)
+        var highXY = SIMD2<Float>(620, high.y - 3)
+        if let ridge {
+            // Along the ridge both ways from the cut, as far as the view reaches it.
+            (lowXY, highXY) = ridge.dressingArea(low: low, high: high)
+        }
         // Sites at the wanted density per unit volume of a 2.7 m band under the steep ground.
         let trials = 300_000
         var weightSum: Float = 0
         var steepCount = 0
         func surfaceWeight(_ x: Float, _ y: Float) -> Float {
             let s = slope(x, y)
+            // A ridge's crest is rock down to about the cut's floor, in an irregular edge, so the
+            // broken rock of the cut is of a piece with the ridge it is cut from.
+            // Below it only the steepest ground: the flanks are scree, not scattered slabs.
+            if let ridge {
+                let edge = ridge.floor - 6 + 4 * QuarryNoise.fbm(SIMD3(x / 25, y / 25, 4.1), octaves: 3)
+                return surface(x, y) > edge || s > 0.95 + 0.25 * r.float() ? sqrt(1 + s * s) : 0
+            }
             return s > 0.55 + 0.25 * r.float() ? sqrt(1 + s * s) : 0
         }
         for _ in 0..<trials {

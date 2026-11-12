@@ -54,7 +54,8 @@ enum PlayApp {
         let opened = Date()
         func open() throws -> QuarrySession {
             let session = try QuarrySession.prepare(
-                device: device, site: .builtIn(), options: settings, settings: QuarryFiringSettings(),
+                device: device, site: .builtIn(playScene), options: settings,
+                settings: QuarryFiringSettings(),
                 width: 1600, height: 900,
                 keyDirectory: dataRoot.appendingPathComponent(
                     "play-dust-\(ProcessInfo.processInfo.processIdentifier)"),
@@ -503,10 +504,12 @@ final class PlayTest {
 
     /// A strip 40 m along and 10 m in from the first, built and fired off the main thread.
     private func startStrip() {
-        var site = QuarrySite.builtIn()
+        var site = QuarrySite.builtIn(playScene)
         let along = simd_normalize(site.end - site.start)
-        site.start += along * 40
-        site.end += along * 40
+        // Along the face, or along the ridge (across the cut's line).
+        let move = playScene == .ridgeCut ? SIMD2(-along.y, along.x) : along
+        site.start += move * 40
+        site.end += move * 40
         let options = self.options
         let device = session.device
         let keys = dataRoot.appendingPathComponent(
@@ -594,3 +597,6 @@ final class PlayTest {
         }
     }
 }
+
+/// The scene `play` opens: the quarry face, or with `--ridge` the ridge cut.
+let playScene: QuarryScene = CommandLine.arguments.contains("--ridge") ? .ridgeCut : .face

@@ -10,6 +10,9 @@ command, and it changes nothing in the solver or any existing result.
 
 emmettl/bombcad-work#122.
 
+The same window's second scene, a cut through a ridge (File ▸ New Ridge Cut), is written up in
+[ridge-cut.md](ridge-cut.md).
+
 ## The experiment, 8 November 2026
 
 The question: can BombCAD show a hillside of about 100,000 rock blocks blasted, in real time or

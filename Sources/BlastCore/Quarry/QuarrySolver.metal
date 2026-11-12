@@ -23,7 +23,9 @@ struct QuarryUniforms {
     float4 terrainOrigin;
     int4 terrainDims;
     float sleepSpeed, sleepSpin, sleepTime, frictionGamma;
-    uint bodyCount, sphereCount, cellCount, pad;
+    uint bodyCount, sphereCount, cellCount;
+    // Below this speed a supported body is damped toward rest (m/s).
+    float creepSpeed;
 };
 
 static inline float3 rotate(float4 q, float3 v) {
@@ -243,10 +245,11 @@ kernel void integrate(device QuarryBody *bodies [[buffer(0)]],
     float speed = length(v);
     if (speed > 45.0f) { v *= 45.0f / speed; speed = 45.0f; }
     // A body held up by contact, moving slowly, is damped toward rest: explicit contact has no
-    // static friction and creeps otherwise.
+    // static friction and creeps otherwise, and a clump of spheres has no rolling resistance (on
+    // a ridge's flanks, rounded blocks rolled on at a metre a second, so its threshold is higher).
     float3 contact = F + float3(0, 0, u.gravity / B.posInvMass.w);
     float supported = length(contact) * B.posInvMass.w / u.gravity;
-    if (supported > 0.35f && speed < 0.6f) {
+    if (supported > 0.35f && speed < u.creepSpeed) {
         float keep = exp(-dt * 14.0f);
         v *= keep;
         w *= keep;

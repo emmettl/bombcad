@@ -158,6 +158,14 @@ public final class QuarrySession: @unchecked Sendable {
         let scale = face.length / 180
         focus = SIMD3(68 * scale, 15, face.floorLevel + 21)
         distance = 143 * max(1, scale * 0.85)
+        if let ridge = face.ridge {
+            // A ridge cut's: from off the flank at the line's end, ahead along the ridge, a little
+            // above the cut's floor, so the notch shows against the sky and the rock comes down
+            // that flank toward the eye.
+            let (view, focus) = Self.ridgeView(ridge)
+            (yaw, pitch, distance) = view
+            self.focus = focus
+        }
         if let run {
             // Made here, off the main thread, so the new event can be shown as soon as it is ready.
             pending = run
@@ -180,8 +188,15 @@ public final class QuarrySession: @unchecked Sendable {
     }
 
     public static func firings(face: QuarryFace, settings: QuarryFiringSettings) -> [QuarryFiring] {
-        QuarryFiringPattern.row(
+        QuarryFiringPattern.pattern(
             face: face, count: settings.count, first: 1.8, stagger: settings.stagger, order: settings.order)
+    }
+
+    /// A ridge cut's default orbit (yaw, pitch, distance) and what it looks at.
+    public static func ridgeView(_ ridge: QuarryRidge) -> ((Float, Float, Float), SIMD3<Float>) {
+        let span = max(60, ridge.cutEnd - ridge.cutStart)
+        let focus = SIMD3(ridge.crestX, 4, ridge.floor + 0.25 * (ridge.crest - ridge.floor))
+        return ((1.0, 0.07, 1.6 * span + 50), focus)
     }
 
     /// Starts a firing of `face` on its own thread, for a session made after it with `run:`.
@@ -229,7 +244,7 @@ public final class QuarrySession: @unchecked Sendable {
         progress: @escaping (String, Float) -> Void
     ) throws -> QuarrySession {
         var times: [(String, Date)] = [("", Date())]
-        progress("Laying out the face…", 0)
+        progress(site.scene == .ridgeCut ? "Laying out the cut…" : "Laying out the face…", 0)
         var face = try QuarryFace(site: site, options: options)
         times.append(("layout", Date()))
         let dressing = Dressing(face)

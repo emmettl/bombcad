@@ -41,6 +41,8 @@ public final class QuarryDustField {
     /// Each block's release time, and whether it shows on the face, for the puffs at release.
     public let blockFire: [Float]
     public let exposed: [Bool]
+    /// A ridge cut's blocks' way out down their flank, for the puffs at release (a face's is -y).
+    let outward: [SIMD3<Float>]
     /// Each block's velocity at the last step, for the impacts.
     public var lastVelocity: [SIMD3<Float>]
     public let pointer: UnsafeMutablePointer<SIMD4<Float>>
@@ -63,8 +65,7 @@ public final class QuarryDustField {
         self.firings = firings
         queue = device.makeCommandQueue()!
         let h = gridSize
-        let low = SIMD3<Float>(-45, -165, hillside.floorLevel - 3)
-        let extent = SIMD3<Float>(hillside.length + 102, 237, 129)
+        let (low, extent) = hillside.dustBox
         let dims = SIMD3<Int>(Int(extent.x / h), Int(extent.y / h), Int(extent.z / h))
         let high = low + h * SIMD3<Float>(dims)
         self.h = h
@@ -141,11 +142,8 @@ public final class QuarryDustField {
         var blocks = hillside.blocks
         let launchState = QuarryLaunch().apply(to: &blocks, firings: firings, face: hillside)
         blockFire = launchState.fire
-        exposed = hillside.blocks.map { b in
-            let c = b.centre
-            return hillside.height(hillside.original, c.x, c.y) - c.z < 2.5
-                || hillside.height(hillside.original, c.x, c.y - 2.5) < c.z
-        }
+        exposed = hillside.blocks.map { hillside.exposed($0.centre) }
+        outward = hillside.ridge == nil ? [] : hillside.blocks.map { hillside.outward(at: $0.centre) }
         lastVelocity = Array(repeating: .zero, count: hillside.blocks.count)
         var map: [String: MTLComputePipelineState] = [:]
         for name in [
@@ -203,7 +201,20 @@ public final class QuarryDustField {
         let once = frameRate / 30
         // Each firing's puff, born on the face in front of it at its own time, so the ripple runs
         // through the dust as it does through the rock.
-        for firing in firings where time >= firing.time && time < firing.time + 0.3 {
+        for firing in firings where face.ridge != nil && time >= firing.time && time < firing.time + 0.3 {
+            // A ridge cut's: on the ground above the firing, mostly up and out down the flank.
+            let age = (time - firing.time) / 0.3
+            var r = QuarryRandom(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
+            let p = firing.position
+            let top = SIMD3<Float>(p.x, p.y, face.height(face.original, p.x, p.y) + 0.5)
+            let out = face.outward(at: p)
+            for _ in 0..<700 {
+                let offset = r.unit() * r.float(0.3, 7) * SIMD3<Float>(1, 1, 0.7)
+                let way = simd_normalize(SIMD3<Float>(offset.x * 0.3 + out.x * 1.2, offset.y * 0.3, 3))
+                add(top + offset, dust: 70 * (1 - age), velocity: way * 20 + r.unit() * 6, heat: 1)
+            }
+        }
+        for firing in firings where face.ridge == nil && time >= firing.time && time < firing.time + 0.3 {
             let age = (time - firing.time) / 0.3
             var r = QuarryRandom(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
             let x = firing.position.x
@@ -214,6 +225,9 @@ public final class QuarryDustField {
                 add(front + offset, dust: 70 * (1 - age), velocity: out * 22 + r.unit() * 6, heat: 1)
             }
         }
+        // Blocks trail dust and throw it up where they strike below this: a face's floor and pile,
+        // all of a ridge up to a little over its top.
+        let dustCeiling: Float = face.ridge == nil ? 30 : face.topLevel + 10
         let posePointer = pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
         let previousPointer = previous.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
         for n in 0..<bodies {
@@ -226,13 +240,16 @@ public final class QuarryDustField {
             let speed = simd_length(v)
             // A block on the face lets go with a puff that travels with it.
             if exposed[n], blockFire[n] > time - dt, blockFire[n] <= time {
-                add(here, dust: 6 * size * size * once, velocity: v + SIMD3(0, -4, 3), heat: 0.8)
+                let out = outward.isEmpty ? SIMD3<Float>(0, -1, 0) : outward[n]
+                add(here, dust: 6 * size * size * once, velocity: v + out * 4 + SIMD3(0, 0, 3), heat: 0.8)
             }
             // A tumbling block trails dust.
-            if speed > 3, p.z < 30 { add(here, dust: 0.03 * speed * size * size, velocity: v, heat: 0.2) }
+            if speed > 3, p.z < dustCeiling {
+                add(here, dust: 0.03 * speed * size * size, velocity: v, heat: 0.2)
+            }
             // A block that strikes the floor or the pile throws dust up, in proportion to the blow.
             let change = simd_length(v - lastVelocity[n])
-            if change > 4, p.z < 30 {
+            if change > 4, p.z < dustCeiling {
                 let before = lastVelocity[n]
                 let spray = SIMD3(before.x * 0.5, before.y * 0.5, 2.5 + 0.15 * change)
                 add(

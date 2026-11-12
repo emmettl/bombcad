@@ -8,14 +8,24 @@
     import UniformTypeIdentifiers
 
     /// File ▸ New Quarry Face (Experimental)…: a hillside's face broken and thrown by a stylised
-    /// ripple of firings, to play with. Illustrative: for the look of it. It is not a blast-design
-    /// aid; it takes nothing from the blast solver and gives no loads, reach or safety outputs.
+    /// ripple of firings, to play with; or, its other scene (File ▸ New Ridge Cut), a cut through a
+    /// ridge whose crest heaves and breaks and whose rock slides down both flanks
+    /// (emmettl/bombcad-work#131). The two share the rock, the solver, the dust, the streaming,
+    /// the placing, the ground and the clips; they differ in what is laid out on the ground.
+    /// Illustrative: for the look of it. It is not a blast-design aid; it takes nothing from the
+    /// blast solver and gives no loads, reach or safety outputs, and a ridge cut is no road-cut or
+    /// excavation design.
     @MainActor
     @Observable
     final class QuarryFaceModel {
-        /// The ground and the strip (in the ground's metres).
+        /// The ground and the strip, or the cut's line (in the ground's metres).
         private(set) var site: QuarrySite
         private(set) var terrainName = "Built-in hillside"
+        /// The ground is the scene's own built-in one, not a file's or a project's.
+        private(set) var builtInGround = true
+        /// A ridge cut's width at its floor and depth below the crest (m), as the sliders have them.
+        var cutWidth = Double(QuarryRidge.defaultWidth)
+        var cutDepth = Double(QuarryRidge.defaultDepth)
         /// The strip as dragged on the map, before it is broken.
         var draftStart: SIMD2<Float>?
         var draftEnd: SIMD2<Float>?
@@ -68,10 +78,14 @@
         let device: MTLDevice?
         private var keyRoot: URL
 
-        init(device: MTLDevice? = MTLCreateSystemDefaultDevice(), blocks: Int = 100_000) {
+        init(
+            device: MTLDevice? = MTLCreateSystemDefaultDevice(), blocks: Int = 100_000,
+            scene: QuarryScene = .face
+        ) {
             self.device = device
             self.blocks = blocks
-            site = .builtIn()
+            site = .builtIn(scene)
+            terrainName = Self.builtInName(scene)
             keyRoot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent("BombCAD/QuarryFace", isDirectory: true)
             // Dust kept by an earlier launch of the window is stale.
@@ -80,10 +94,46 @@
             makeMap(around: (site.start + site.end) / 2, radius: 260)
         }
 
-        /// The built-in hillside, or a terrain file read the way New District reads one.
+        /// The scene on view: a quarry face or a ridge cut.
+        var scene: QuarryScene { site.scene }
+
+        static func builtInName(_ scene: QuarryScene) -> String {
+            scene == .ridgeCut ? "Built-in ridge" : "Built-in hillside"
+        }
+
+        /// Changes the scene: on the built-in ground, to the other scene's built-in ground; on a
+        /// file's or a project's, to the same ground with the new scene laid out where it fits.
+        func useScene(_ scene: QuarryScene) {
+            guard scene != site.scene else { return }
+            stripMode = false
+            site.scene = scene
+            if builtInGround {
+                useBuiltIn()
+            } else {
+                useTerrain(site.terrain, name: terrainName)
+            }
+        }
+
+        /// The cut's width and depth from the sliders, broken and fired again.
+        func applyCut() {
+            guard scene == .ridgeCut else { return }
+            let (width, depth) = (Float(cutWidth), Float(cutDepth))
+            guard width != site.width || depth != site.depth else { return }
+            site.width = width
+            site.depth = depth
+            prepare()
+        }
+
+        /// The built-in hillside or ridge, or a terrain file read the way New District reads one.
         func useBuiltIn() {
-            site = .builtIn()
-            terrainName = "Built-in hillside"
+            let scene = site.scene
+            site = .builtIn(scene)
+            if scene == .ridgeCut {
+                site.width = Float(cutWidth)
+                site.depth = Float(cutDepth)
+            }
+            terrainName = Self.builtInName(scene)
+            builtInGround = true
             terrainGeneration += 1
             makeMap(around: (site.start + site.end) / 2, radius: 260)
             draftStart = nil
@@ -127,13 +177,19 @@
         /// and breaks it; else asks for a strip to be dragged.
         func useTerrain(_ terrain: Terrain, name: String) {
             terrainName = name
+            builtInGround = false
             terrainGeneration += 1
             draftStart = nil
             draftEnd = nil
             let extent = SIMD2(Float(terrain.columns - 1), Float(terrain.rows - 1)) * terrain.spacing
             let whole = extent.max() <= 1300
-            if let strip = QuarryStripGuide.suggest(terrain: terrain) {
-                site = QuarrySite(terrain: terrain, start: strip.start, end: strip.end)
+            let ridge = site.scene == .ridgeCut
+            let suggested =
+                ridge
+                ? QuarryStripGuide.suggestRidgeCut(terrain: terrain, depth: Float(cutDepth))
+                : QuarryStripGuide.suggest(terrain: terrain)
+            if let strip = suggested {
+                site = newSite(terrain: terrain, start: strip.start, end: strip.end)
                 if whole {
                     makeMap(around: terrain.origin + extent / 2, radius: extent.max() / 2)
                 } else {
@@ -143,7 +199,7 @@
                 problem = nil
                 return
             }
-            site = QuarrySite(
+            site = newSite(
                 terrain: terrain, start: terrain.origin + extent * SIMD2(0.35, 0.5),
                 end: terrain.origin + extent * SIMD2(0.65, 0.5))
             makeMap(around: terrain.origin + extent / 2, radius: min(extent.max(), 1200) / 2)
@@ -151,8 +207,20 @@
             incoming = nil
             preparing = nil
             session = nil
-            problem = "Nothing steep enough for a face was found. Drag along a slope on the map."
+            problem =
+                ridge
+                ? "No ridge was found to cut. Drag across a crest on the map."
+                : "Nothing steep enough for a face was found. Drag along a slope on the map."
             version += 1
+        }
+
+        /// A site of the scene on view, with its cut's width and depth for a ridge cut.
+        private func newSite(terrain: Terrain, start: SIMD2<Float>, end: SIMD2<Float>) -> QuarrySite {
+            site.scene == .ridgeCut
+                ? QuarrySite(
+                    terrain: terrain, start: start, end: end, depth: Float(cutDepth), scene: .ridgeCut,
+                    width: Float(cutWidth))
+                : QuarrySite(terrain: terrain, start: start, end: end)
         }
 
         /// A shaded relief of the ground round `centre`, for dragging the strip on.
@@ -263,10 +331,15 @@
             draftStart = nil
             draftEnd = nil
             guard simd_distance(start, end) >= 40 else {
-                problem = "Drag a longer strip: at least 40 m along the face."
+                problem =
+                    scene == .ridgeCut
+                    ? "Drag a longer line: at least 40 m across the ridge."
+                    : "Drag a longer strip: at least 40 m along the face."
                 return
             }
-            site = QuarrySite(terrain: site.terrain, start: start, end: end, depth: site.depth)
+            site = QuarrySite(
+                terrain: site.terrain, start: start, end: end, depth: site.depth, scene: site.scene,
+                width: site.width)
             prepare()
         }
 
@@ -276,7 +349,7 @@
                 problem = "This Mac has no Metal device."
                 return
             }
-            preparing = "Laying out the face…"
+            preparing = scene == .ridgeCut ? "Laying out the cut…" : "Laying out the face…"
             preparingShare = 0
             problem = nil
             prepareCount += 1
@@ -311,7 +384,10 @@
                     await MainActor.run {
                         guard self.prepareCount == count else { return }
                         self.preparing = nil
-                        self.problem = "There's no face under that strip to break. Drag along a steep slope."
+                        self.problem =
+                            site.scene == .ridgeCut
+                            ? "There's no ridge under that line to cut. Drag across a crest, or make the cut deeper."
+                            : "There's no face under that strip to break. Drag along a steep slope."
                     }
                 } catch {
                     await MainActor.run {
@@ -420,18 +496,30 @@
         }
 
         /// The face line nearest the ground under `point`, or the ground itself where there is none.
+        /// A ridge cut's line goes anywhere on the ground: the ground itself.
         private func snapped(at point: CGPoint) -> (point: SIMD2<Float>, onFace: Bool)? {
             guard let model, let g = ground(at: point) else { return nil }
+            if model.scene == .ridgeCut { return (g, true) }
             if let s = QuarryStripGuide.snap(g, terrain: model.site.terrain) { return (s, true) }
             return (g, false)
         }
 
+        /// A face's strip: the old face's line and the new face's behind it. A ridge cut's: its
+        /// line across the ridge and the outline of its floor's width.
         private func stripLines(_ model: QuarryFaceModel) -> QuarryStripGuide.Lines {
             let (a, b) = model.stripOnMap
-            let key = [a.x, a.y, b.x, b.y, model.site.depth, Float(model.terrainGeneration)]
+            let ridge = model.scene == .ridgeCut
+            let key = [
+                a.x, a.y, b.x, b.y, model.site.depth, model.site.width, ridge ? 1 : 0,
+                Float(model.terrainGeneration),
+            ]
             if let lines, lines.key == key { return lines.lines }
-            let made = QuarryStripGuide.lines(
-                terrain: model.site.terrain, start: a, end: b, depth: model.site.depth)
+            let made =
+                ridge
+                ? QuarryStripGuide.ridgeLines(
+                    terrain: model.site.terrain, start: a, end: b, width: model.site.width)
+                : QuarryStripGuide.lines(
+                    terrain: model.site.terrain, start: a, end: b, depth: model.site.depth)
             lines = (key, made)
             return made
         }
@@ -463,7 +551,7 @@
                 } : nil
             overlay.show(
                 face: l.face.map { screen($0, session, vp) }, back: l.back.map { screen($0, session, vp) },
-                handles: ends, hover: hoverPoint)
+                handles: ends, hover: hoverPoint, joinEnds: model.scene == .face)
         }
 
         private func point(_ event: NSEvent) -> CGPoint { convert(event.locationInWindow, from: nil) }
@@ -616,14 +704,19 @@
             CATransaction.commit()
         }
 
-        func show(face: [CGPoint?], back: [CGPoint?], handles: [CGPoint?], hover: (CGPoint, Bool)?) {
+        /// `joinEnds`: a face's strip, whose ends join the old face's line to the new face's; a
+        /// ridge cut's outline is closed already.
+        func show(
+            face: [CGPoint?], back: [CGPoint?], handles: [CGPoint?], hover: (CGPoint, Bool)?,
+            joinEnds: Bool = true
+        ) {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             faceLine.path = Self.path(face)
             // The new face's line, and the strip's ends joining the two.
             var backPoints = back
-            if let a = face.first, let b = back.first { backPoints = [a, b, nil] + backPoints }
-            if let a = face.last, let b = back.last { backPoints += [nil, b, a] }
+            if joinEnds, let a = face.first, let b = back.first { backPoints = [a, b, nil] + backPoints }
+            if joinEnds, let a = face.last, let b = back.last { backPoints += [nil, b, a] }
             backLine.path = Self.path(backPoints)
             let dots = CGMutablePath()
             for p in handles.compactMap({ $0 }) {
@@ -741,6 +834,8 @@
         @State private var tick = 0
         /// Frames simulated so far of the event on view.
         @State private var simulated = 0.0
+        /// File ▸ New Ridge Cut or New Quarry Face, asking this window for its scene.
+        @State private var sceneRequest = QuarrySceneRequest.shared
 
         /// `model`, for a review of the window offscreen; else one of its own.
         init(model: QuarryFaceModel? = nil) {
@@ -787,6 +882,10 @@
                 .frame(minWidth: 640)
             }
             .frame(minWidth: 1000, minHeight: 640)
+            .navigationTitle(
+                model.scene == .ridgeCut ? "Ridge Cut (Experimental)" : "Quarry Face (Experimental)"
+            )
+            .onChange(of: sceneRequest.serial) { model.useScene(sceneRequest.scene) }
             .onAppear {
                 coordinator.onFrame = { frame in
                     if !scrubbing { shownFrame = frame }
@@ -801,7 +900,14 @@
                         simulated = model.session.map { Double($0.availableFrames) } ?? 0
                     }
                 }
-                if model.session == nil, model.preparing == nil { model.prepare() }
+                if model.session == nil, model.preparing == nil {
+                    // Opened by File ▸ New Ridge Cut: the scene it asked for, from the start.
+                    if sceneRequest.serial > 0, sceneRequest.scene != model.scene {
+                        model.useScene(sceneRequest.scene)
+                    } else {
+                        model.prepare()
+                    }
+                }
             }
             .sheet(item: $model.cropChoice) { choice in
                 QuarryCropSheet(choice: choice) {
@@ -825,15 +931,22 @@
         /// The strip mode's switch at the view's top right, and what a drag does in it.
         private var stripControls: some View {
             VStack(alignment: .trailing, spacing: 6) {
+                let ridge = model.scene == .ridgeCut
                 Toggle(isOn: $model.stripMode) {
-                    Label("Place strip", systemImage: "line.diagonal")
+                    Label(ridge ? "Place cut" : "Place strip", systemImage: "line.diagonal")
                 }
                 .toggleStyle(.button)
-                .help("Drag along a face in the view to lay the strip there, or drag one of its ends")
+                .help(
+                    ridge
+                        ? "Drag across the ridge in the view to lay the cut's line there, or drag one of its ends"
+                        : "Drag along a face in the view to lay the strip there, or drag one of its ends"
+                )
                 .disabled(model.session == nil)
                 if model.stripMode {
                     Text(
-                        "Drag along a face to lay the strip, or drag an end.\nOption-drag to orbit, shift-drag to pan."
+                        ridge
+                            ? "Drag across the ridge to lay the cut, or drag an end.\nOption-drag to orbit, shift-drag to pan."
+                            : "Drag along a face to lay the strip, or drag an end.\nOption-drag to orbit, shift-drag to pan."
                     )
                     .font(.caption)
                     .multilineTextAlignment(.trailing)
@@ -852,8 +965,17 @@
                 Section {
                     Label("Experimental and illustrative", systemImage: "flask")
                         .font(.headline)
+                    Picker(
+                        "Scene",
+                        selection: Binding(get: { model.scene }, set: { model.useScene($0) })
+                    ) {
+                        ForEach(QuarryScene.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
                     Text(
-                        "A face broken and thrown by a stylised ripple of firings, for the look of it. It is not a blast-design aid: nothing here comes from the blast solver, and it gives no loads, reach or safety distances."
+                        model.scene == .ridgeCut
+                            ? "A cut through a ridge, its crest heaved and broken by a stylised pattern of firings and its rock thrown down both flanks, for the look of it. It is not a blast-design aid or a road-cut design: nothing here comes from the blast solver, and it gives no loads, reach or safety distances."
+                            : "A face broken and thrown by a stylised ripple of firings, for the look of it. It is not a blast-design aid: nothing here comes from the blast solver, and it gives no loads, reach or safety distances."
                     )
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -861,7 +983,7 @@
                 Section("Ground") {
                     LabeledContent("Terrain", value: model.terrainName)
                     HStack {
-                        Button("Built-in hillside") { model.useBuiltIn() }
+                        Button(QuarryFaceModel.builtInName(model.scene)) { model.useBuiltIn() }
                         Button("Open terrain…") { importing = true }
                             .help("A GeoTIFF or ESRI ASCII grid; you choose the area of it on an overview")
                     }
@@ -885,14 +1007,26 @@
                     }
                     QuarryMapView(model: model)
                         .frame(height: 260)
-                        .accessibilityLabel("Map: drag along a face to choose the strip")
-                    Text("Drag along a face on the map to choose the strip; the rock behind it breaks.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(
+                            model.scene == .ridgeCut
+                                ? "Map: drag across a ridge to place the cut"
+                                : "Map: drag along a face to choose the strip")
+                    Text(
+                        model.scene == .ridgeCut
+                            ? "Drag across a ridge on the map to place the cut's line; the rock above its floor breaks."
+                            : "Drag along a face on the map to choose the strip; the rock behind it breaks."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     Picker("Blocks", selection: $model.blocks) {
                         Text("30,000").tag(30_000)
                         Text("60,000").tag(60_000)
                         Text("100,000").tag(100_000)
+                    }
+                }
+                if model.scene == .ridgeCut {
+                    Section("Cut (stylised)") {
+                        QuarryCutControls(model: model)
                     }
                 }
                 Section("Clip") {
@@ -1017,6 +1151,62 @@
         }
     }
 
+    /// A ridge cut's width and depth: each applies when its slider is let go, breaking the rock
+    /// again. Stylised sizes for the look of the notch, not a design of one.
+    struct QuarryCutControls: View {
+        @Bindable var model: QuarryFaceModel
+
+        var body: some View {
+            LabeledContent("Width") {
+                HStack {
+                    Slider(
+                        value: $model.cutWidth,
+                        in: Double(QuarryRidge.widths.lowerBound)...Double(QuarryRidge.widths.upperBound),
+                        step: 1
+                    ) { editing in
+                        if !editing { model.applyCut() }
+                    }
+                    .accessibilityLabel("Width of the cut's floor, metres")
+                    Text("\(Int(model.cutWidth)) m").monospacedDigit().frame(width: 44, alignment: .trailing)
+                }
+            }
+            LabeledContent("Depth") {
+                HStack {
+                    Slider(
+                        value: $model.cutDepth,
+                        in: Double(QuarryRidge.depths.lowerBound)...Double(QuarryRidge.depths.upperBound),
+                        step: 1
+                    ) { editing in
+                        if !editing { model.applyCut() }
+                    }
+                    .accessibilityLabel("Depth of the cut's floor below the crest, metres")
+                    Text("\(Int(model.cutDepth)) m").monospacedDigit().frame(width: 44, alignment: .trailing)
+                }
+            }
+            Text(
+                "The floor's width, and its depth below the highest ground on the line. A wider or deeper cut has more rock, so its blocks are larger."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    /// File ▸ New Ridge Cut or New Quarry Face: which scene the window is asked to show. The window
+    /// is one, so the request is shared and the window takes it up as it opens or when it changes.
+    @MainActor
+    @Observable
+    final class QuarrySceneRequest {
+        static let shared = QuarrySceneRequest()
+        private(set) var scene = QuarryScene.face
+        /// Bumped with each request, so the same scene asked for again is still a change.
+        private(set) var serial = 0
+
+        func ask(_ scene: QuarryScene) {
+            self.scene = scene
+            serial += 1
+        }
+    }
+
     /// The map: the ground's relief with the strip drawn on it; drag to choose a new strip.
     struct QuarryMapView: View {
         let model: QuarryFaceModel
@@ -1124,7 +1314,7 @@
         private func choose() {
             let panel = NSSavePanel()
             panel.allowedContentTypes = [.mpeg4Movie]
-            panel.nameFieldStringValue = "Quarry face.mp4"
+            panel.nameFieldStringValue = model.scene == .ridgeCut ? "Ridge cut.mp4" : "Quarry face.mp4"
             panel.message = "Rendering can be slower than real time; the window keeps playing meanwhile."
             guard panel.runModal() == .OK, let url = panel.url else { return }
             model.recordClip(to: url)
@@ -1287,7 +1477,14 @@
 
         var body: some Commands {
             CommandGroup(after: .newItem) {
-                Button("New Quarry Face (Experimental)…") { openWindow(id: "quarry-face") }
+                Button("New Quarry Face (Experimental)…") {
+                    QuarrySceneRequest.shared.ask(.face)
+                    openWindow(id: "quarry-face")
+                }
+                Button("New Ridge Cut (Experimental)…") {
+                    QuarrySceneRequest.shared.ask(.ridgeCut)
+                    openWindow(id: "quarry-face")
+                }
             }
         }
     }

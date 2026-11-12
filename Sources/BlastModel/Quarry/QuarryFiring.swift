@@ -25,6 +25,37 @@ public enum QuarryFiringOrder: String, CaseIterable, Sendable {
 }
 
 public enum QuarryFiringPattern {
+    /// The scene's own pattern: a face's row along it, or a ridge cut's rows across the ridge
+    /// (`ridge(face:…)`).
+    public static func pattern(
+        face hillside: QuarryFace, count: Int = 16, first: Float = 1.8, stagger: Float = 0.1,
+        order: QuarryFiringOrder = .leftToRight
+    ) -> [QuarryFiring] {
+        if hillside.ridge != nil {
+            return ridge(face: hillside, count: count, first: first, stagger: stagger, order: order)
+        }
+        return row(face: hillside, count: count, first: first, stagger: stagger, order: order)
+    }
+
+    /// Each firing's place in `order` (0 first), from its position along the line (`positions`,
+    /// any units, centred where the order's centre is).
+    static func ranks(_ positions: [Float], order: QuarryFiringOrder) -> [Int] {
+        let count = positions.count
+        var ranked: [Int]
+        switch order {
+        case .leftToRight: ranked = (0..<count).sorted { positions[$0] < positions[$1] }
+        case .rightToLeft: ranked = (0..<count).sorted { positions[$0] > positions[$1] }
+        case .centreOut: ranked = (0..<count).sorted { abs(positions[$0]) < abs(positions[$1]) }
+        case .edgesIn: ranked = (0..<count).sorted { abs(positions[$0]) > abs(positions[$1]) }
+        case .scattered:
+            var r = QuarryRandom(seed: 41)
+            ranked = (0..<count).map { ($0, r.float()) }.sorted { $0.1 < $1.1 }.map(\.0)
+        }
+        var rank = [Int](repeating: 0, count: count)
+        for (place, firing) in ranked.enumerated() { rank[firing] = place }
+        return rank
+    }
+
     public static func row(
         face hillside: QuarryFace, count: Int = 16, first: Float = 1.8, stagger: Float = 0.1,
         order: QuarryFiringOrder = .leftToRight
@@ -78,6 +109,7 @@ public struct QuarryLaunch: Sendable {
             fire: [Float], velocity: [SIMD3<Float>], spin: [SIMD3<Float>], swell: [SIMD4<Float>]
         )
     {
+        if hillside.ridge != nil { return applyRidge(to: &blocks, firings: firings, face: hillside) }
         var random = QuarryRandom(seed: 77)
         var fire = [Float](repeating: 0, count: blocks.count)
         var velocity = [SIMD3<Float>](repeating: .zero, count: blocks.count)
