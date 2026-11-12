@@ -4,10 +4,10 @@
 using namespace metal;
 
 struct QuarryDustUniforms {
-    float4 low;
+    float4 low; // w: a ridge cut's thinning high up, a share a second (0 for a face)
     float4 hdtsteps; // h, dt, what velocity and density keep a step
     int4 dims;
-    float4 wind;
+    float4 wind; // w: a ridge cut's thinning near the ground
     float4 sun;
     float4 high;
 };
@@ -199,7 +199,13 @@ kernel void dustCorrect(texture3d<float, access::sample> d0 [[texture(0)]],
         lo = min(lo, value);
         hi = max(hi, value);
     }
-    dOut.write(float4(clamp(corrected, lo, hi) * u.hdtsteps.w * deposit), id);
+    float kept = clamp(corrected, lo, hi) * u.hdtsteps.w * deposit;
+    if (u.low.w > 0.0f) {
+        // A ridge cut's dust thins as it rises and spreads, so each firing's plume clears and the
+        // notch shows again: slowly near the ground, where the skirt down the flanks is fed.
+        kept *= exp(-u.hdtsteps.y * mix(u.wind.w, u.low.w, smoothstep(3.0f, 10.0f, above)));
+    }
+    dOut.write(float4(kept), id);
 }
 
 // A tileable noise volume for shaping the cloud: inverted Worley at three frequencies.

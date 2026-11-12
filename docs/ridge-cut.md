@@ -201,3 +201,81 @@ scattered at its foot is convincing, and some rock spills down the far flank too
   scattered slabs); tilted beds for the ridge; larger pieces for the same count where the camera is
   far (fewer, larger coarse cells away from the cut's middle); and a cleared notch (taking the
   rock left in the floor away after the blast), which was not tried.
+
+## Stage 2a, 12 November 2026: the dust
+
+On the user's word of 12 November (emmettl/bombcad-work#132). Same standing: illustrative, for the
+eye. The dust still comes only from the firings and the rock; nothing was added that does not
+follow the rock.
+
+**What a user gets.** Each firing throws up its own column of dust from the ground above it, so
+the firings read in their order along the cut (the default order runs from the far flank over the
+crest to the near one, 16 firings from 1.8 to 3.3 s). The columns thin as they rise. The notch
+shows again at about 5.5 s, two seconds after the last firing, and is clear by 6.5 s; before, the
+arch of dust hid it through 12 s and later. Rock running down the flanks trails a skirt of dust
+down the slope, which fades once the rock stops (gone by about 12 s).
+
+**What changed** (`QuarryDustField`, `QuarryDust.metal`; all of it only for a ridge cut).
+- *The firings' puffs.* A column rather than a ball: born within 3 m across and 9 m above or below
+  the old ground over the firing (it was 7 m across and 5 m up or down), sent mostly up with little
+  spread at 1.4 to 14 m/s each (it was 20 m/s for all, so the dust left the ground as a ball and the
+  stem was empty), for 0.35 s, 120 a particle against 70. The heat that lifts it is as before.
+- *Thinning.* A ridge's dust thins by 0.9 of itself a second from 10 m above the ground up and 0.6
+  within 3 m of it, blended between, on top of what the face's dust keeps. That is what clears the
+  notch; the face's dust only loses 2% a second high up, so its plumes hang. The two rates ride in
+  the spare `w` of two of the dust uniforms (`low.w`, `wind.w`, zero for a face), so the shader
+  struct and its copies are unchanged.
+- *The skirt.* A block moving faster than 1 m/s within 0.6 of its size plus 0.5 m of the ground,
+  where that ground is a metre or more below the cut's floor (the flanks, out of the notch), kicks
+  up dust in proportion to its speed (to 12 m/s) and the square of its size. The dust goes on with
+  0.7 of the block's velocity and 2 m/s up, warm enough to rise a little. It is born 2.5 m clear of
+  the ground and scattered by up to 2 m: born at the block, it lay behind the bedded ledges of the
+  flank and showed only as flat horizontal strips between them.
+- *Blows.* Count from a change of 3 m/s in a frame (4 at the face) and throw up about 17 times the
+  face's dust for the same blow; at the face's rate they hardly showed from 200 m.
+- *Tried and not kept.* The skirt fed from every block sliding near the ground, the notch's floor
+  included: the dust over the floor lay under the pile and showed only past the floor's lip, as a
+  flat pale lens at the notch's mouth from 4 to 10 s. A dust box reaching lower (it already reaches
+  3 m below the lowest ground in it). Hotter skirt dust: it rose into one smooth pillow over the
+  middle of the tongue.
+
+**Measured** (release build, M4 Max Studio; another session's checks were running for the second
+pair of window runs).
+- *The film's dust step* (`render --ridge … --clip`, 1 m field, GPU time): 13.9 ms median before
+  (stage 1's run), 13.5 ms rendering the stills before and after, 13.7 ms in the clip after. The
+  whole step with its sources on the CPU, timed by the wall clock over the same stills run: 16.3
+  and 17.3 ms before, 15.6 and 16.6 ms after. The extra sources (a height lookup for each block
+  moving faster than 1 m/s, a few hundred to a thousand a frame) do not show.
+- *The window's work a frame* (`hillsideblast play --ridge --self-test NAME --offscreen`, two runs
+  each, before then after, then after then before): following a firing 18.2 / 17.7 and 21.3 / 20.9 ms
+  before, 19.7 / 22.4 and 21.5 / 20.0 ms after; playing a stored event 16.8 and 17.3 ms before, 17.1
+  and 17.3 ms after. Within the runs' spread; the stage 1 figures were 18.0 / 18.4 and 16.9.
+- *Memory:* unchanged (the same fields; no new buffers).
+
+**Quarry Face unchanged.** Stills from the same face poses (`ridge/facecheck/poses`, 110,000
+blocks) at 1.0, 3.5 and 5.9 s from main's `hillsideblast` and from this one are byte-identical
+PNGs. On the way they were not: the ridge's thinning first went in as a factor on the face's own
+expression, and the shader compiler then evaluated the face's product differently (an image of the
+same look, not the same bytes). The thinning is now a separate multiply after the face's value.
+
+**Checked by eye**, from the stored stage 1 poses (`ridge/final/poses`) at the same camera and
+times, before with main's build: stills at 2.0, 2.5, 3.0, 3.5, 4.5, 6.0, 8.0 and 12.0 s, and frames
+taken from each clip file itself at 2.0, 3.0, 3.5, 4.5, 5.5, 6.5, 8.0 and 12.0 s; the far side
+(`--eye -120,-120,30 --target 81,4,17 --fov 28`) at 3.5, 4.5, 5.5 and 8.0 s; and the window's own
+captures while following. Files under `$BOMBCAD_DATA/hillside-blast/ridge-dust/`: `before/` and
+`after/` (stills, `clip.mp4` in `after/`, frames in `fromclip/`; the before clip is stage 1's
+`ridge/final/clip.mp4`), `before-far/` and `t15-far/`, `face-before/` and `face-after/`,
+`play-before*/` and `play-after*/`.
+
+**What still looks wrong.**
+- *The columns are clean, rounded billows,* brighter and smoother than dust off a real cut; there
+  is no darker fume in them, and from the default view the row of columns along the line, which
+  runs toward the camera over the crest, still draws an arch for a second or two (now of separate
+  columns, and gone in a few seconds rather than staying).
+- *The skirt reads in horizontal bands* from the default view: the flank's bedded ledges still hide
+  the dust nearest the ground behind them. It is strongest near the notch's mouth on the near flank
+  and fainter down the slope, where the rock has slowed.
+- *The far flank has little dust.* Less rock goes down it: 20 to 100 blocks a frame slide on it
+  against up to 900 on the near flank, so its skirt is faint, honest to the rock but weak to look at.
+- *Dust on the notch's floor* where the rock lands is under the pile and mostly unseen.
+- *The window's field is 1.5 m*, so its columns are coarser than the film's.

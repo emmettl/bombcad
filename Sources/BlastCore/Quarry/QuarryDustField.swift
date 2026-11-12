@@ -8,7 +8,8 @@ import simd
 /// strike the ground, ray-marched over the frame. Not the collapse's air-carried dust: that needs
 /// the compressible air solver and its element work, far from an interactive scene.
 public final class QuarryDustField {
-    /// Layout matches `QuarryDustUniforms` in `QuarryDust.metal`.
+    /// Layout matches `QuarryDustUniforms` in `QuarryDust.metal` (and its copy in the renderer's
+    /// shaders). `low.w` and `wind.w` are a ridge cut's thinning, high up and near the ground.
     public struct Uniforms {
         public var low: SIMD4<Float>
         public var hdtsteps: SIMD4<Float>
@@ -164,6 +165,13 @@ public final class QuarryDustField {
             low: SIMD4(low, 0), hdtsteps: SIMD4(h, 0, 0, 0),
             dims: SIMD4(Int32(dims.x), Int32(dims.y), Int32(dims.z), 0),
             wind: SIMD4(1.4, -0.3, 0.05, 0), sun: SIMD4(sun, 0), lowHigh: SIMD4(high, 0))
+        // A ridge cut's dust thins as it rises and spreads, a share a second: 0.9 from 10 m above
+        // the ground up, 0.6 within 3 m of it (where the skirt down the flanks is fed). None for
+        // a face, whose dust is as it was.
+        if hillside.ridge != nil {
+            uniforms.low.w = 0.9
+            uniforms.wind.w = 0.6
+        }
         // A first clear of the private textures so the first frame is defined.
         let buffer = queue.makeCommandBuffer()!
         let encoder = buffer.makeComputeCommandEncoder()!
@@ -201,17 +209,22 @@ public final class QuarryDustField {
         let once = frameRate / 30
         // Each firing's puff, born on the face in front of it at its own time, so the ripple runs
         // through the dust as it does through the rock.
-        for firing in firings where face.ridge != nil && time >= firing.time && time < firing.time + 0.3 {
-            // A ridge cut's: on the ground above the firing, mostly up and out down the flank.
-            let age = (time - firing.time) / 0.3
+        for firing in firings where face.ridge != nil && time >= firing.time && time < firing.time + 0.35 {
+            // A ridge cut's: a narrow column from the ground above the firing, mostly up and a
+            // little out down the flank, its dust at every speed from 10% to all of 14 m/s so the
+            // column stands from the ground; each firing shows as its own plume along the cut, and
+            // the plumes thin as they rise (the field's thinning, above).
+            let age = (time - firing.time) / 0.35
             var r = QuarryRandom(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
             let p = firing.position
             let top = SIMD3<Float>(p.x, p.y, face.height(face.original, p.x, p.y) + 0.5)
             let out = face.outward(at: p)
             for _ in 0..<700 {
-                let offset = r.unit() * r.float(0.3, 7) * SIMD3<Float>(1, 1, 0.7)
-                let way = simd_normalize(SIMD3<Float>(offset.x * 0.3 + out.x * 1.2, offset.y * 0.3, 3))
-                add(top + offset, dust: 70 * (1 - age), velocity: way * 20 + r.unit() * 6, heat: 1)
+                let offset = r.unit() * r.float(0.3, 3) * SIMD3<Float>(1, 1, 3)
+                let way = simd_normalize(SIMD3<Float>(offset.x * 0.15 + out.x * 0.6, offset.y * 0.15, 3))
+                add(
+                    top + offset, dust: 120 * (1 - age), velocity: way * 14 * r.float(0.1, 1) + r.unit() * 5,
+                    heat: 1)
             }
         }
         for firing in firings where face.ridge == nil && time >= firing.time && time < firing.time + 0.3 {
@@ -228,6 +241,10 @@ public final class QuarryDustField {
         // Blocks trail dust and throw it up where they strike below this: a face's floor and pile,
         // all of a ridge up to a little over its top.
         let dustCeiling: Float = face.ridge == nil ? 30 : face.topLevel + 10
+        // A ridge's flanks: the ground below the cut's floor, out of the notch.
+        let flankTop = face.ridge.map { $0.floor - 1 }
+        var scatter = QuarryRandom(seed: 0x5EED &+ UInt64(time * 1000))
+        let ground = face.terrain.heights
         let posePointer = pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
         let previousPointer = previous.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
         for n in 0..<bodies {
@@ -249,7 +266,28 @@ public final class QuarryDustField {
             }
             // A block that strikes the floor or the pile throws dust up, in proportion to the blow.
             let change = simd_length(v - lastVelocity[n])
-            if change > 4, p.z < dustCeiling {
+            if let flankTop {
+                // On a ridge's flanks a block sliding or rolling on the ground kicks up dust that
+                // goes on down the slope with it, a skirt behind the rock. It is born 2.5 m clear
+                // of the ground and a little scattered, or it lies hidden behind the flank's ledges.
+                let below = speed > 1 && p.z < dustCeiling ? face.height(ground, p.x, p.y) : -.infinity
+                if p.z - below < 0.6 * size + 0.5, below < flankTop {
+                    let spread = SIMD3(scatter.float(-2, 2), scatter.float(-2, 2), scatter.float(0, 2))
+                    add(
+                        SIMD3(p.x, p.y, max(p.z - 0.3 * size, below + 2.5)) + spread,
+                        dust: 20 * min(speed, 12) * size * size, velocity: v * 0.7 + SIMD3(0, 0, 2), heat: 0.5
+                    )
+                }
+                // A ridge's blows count from 3 m/s and throw up more dust than a face's, which
+                // otherwise hardly shows on the flanks from the distance a ridge is seen from.
+                if change > 3, p.z < dustCeiling {
+                    let before = lastVelocity[n]
+                    let spray = SIMD3(before.x * 0.5, before.y * 0.5, 2.5 + 0.15 * change)
+                    add(
+                        here - SIMD3(0, 0, 0.4 * size), dust: 2 * (change - 3) * size * size * once,
+                        velocity: spray, heat: 0.7)
+                }
+            } else if change > 4, p.z < dustCeiling {
                 let before = lastVelocity[n]
                 let spray = SIMD3(before.x * 0.5, before.y * 0.5, 2.5 + 0.15 * change)
                 add(
