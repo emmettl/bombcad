@@ -229,7 +229,8 @@ struct QuarryFaceReviewTests {
             let url = output.appendingPathComponent(name + ".mp4")
             let footprintBefore = event.memory.metal
             model.recordClip(to: url)
-            try await Task.sleep(for: .seconds(4))
+            // Under way: drawing the movie's frames, not running up to them.
+            try await wait(600) { model.recorder == nil || model.clipShare > 0.3 }
             try capture("6-recording-" + name)
             try await wait(3000) { model.recorder == nil }
             let report = try #require(model.lastClip, "\(model.clipStatus)")
