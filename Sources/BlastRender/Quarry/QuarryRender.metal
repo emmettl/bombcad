@@ -658,7 +658,7 @@ kernel void chipUpdate(device QuarryChip *chips [[buffer(0)]],
                        const device float4 *previous [[buffer(2)]],
                        const device float4 *rest [[buffer(4)]],
                        depth2d<float> height [[texture(0)]],
-                       texture2d<float, access::read> top [[texture(1)]],
+                       texture2d<float, access::read> topBlock [[texture(1)]],
                        constant QuarryChipUniforms &u [[buffer(3)]],
                        uint i [[thread_position_in_grid]]) {
     QuarryChip C = chips[i];
@@ -724,8 +724,9 @@ kernel void chipUpdate(device QuarryChip *chips [[buffer(0)]],
         // height may be a few frames old, and the block gone on since: then it falls on through
         // until the height is drawn again, rather than coming to rest in the air where the block
         // was and dropping from there).
-        uint2 texel = min(uint2(uv * float2(top.get_width(), top.get_height())), uint2(top.get_width() - 1, top.get_height() - 1));
-        uint under = uint(top.read(texel).b + 0.5f);
+        uint2 size = uint2(topBlock.get_width(), topBlock.get_height());
+        uint2 texel = min(uint2(uv * float2(size)), size - 1u);
+        uint under = uint(topBlock.read(texel).b + 0.5f);
         if (under == 0u) {
             C.posSize.z = onTop;
             C.velAge = float4(0.0f);
