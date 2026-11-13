@@ -402,6 +402,67 @@ struct QuarryFaceTests {
         #expect(cracked > limestone / 100 && cracked < limestone / 4, "\(cracked) of \(limestone)")
     }
 
+    @Test("The old joints run through several beds, so a face is not cut into courses")
+    func jointsCrossBeds() {
+        // Down a vertical line through the face's beds, how often a joint's crack, once met, goes on
+        // into the next hard bed: each bed had its own short cracks until 13 November 2026.
+        var random = QuarryRandom(seed: 11)
+        var continued = 0
+        var ended = 0
+        for _ in 0..<60000 {
+            let p = SIMD3<Float>(random.float(-60, 240), random.float(-20, 20), random.float(0, 24))
+            guard QuarryJoints.field(p, halfWidth: 0.35, line: 0.05).crack > 0.5 else { continue }
+            let bed = QuarryRock.bed(p)
+            // A point 1.5 m higher, in another bed that is not shale.
+            let q = p + SIMD3(0, 0, 1.5)
+            guard QuarryRock.bed(q) != bed, QuarryRock.kind(at: q) != .shale else { continue }
+            // The trace wanders: any crack within 0.6 m across it counts.
+            var found = false
+            for dx in stride(from: Float(-0.6), through: 0.6, by: 0.02) {
+                for (u, v): (Float, Float) in [(1, 0), (0, 1)] where !found {
+                    if QuarryJoints.field(q + SIMD3(dx * u, dx * v, 0), halfWidth: 0.35, line: 0.05).crack
+                        > 0.3
+                    {
+                        found = true
+                    }
+                }
+            }
+            if found { continued += 1 } else { ended += 1 }
+        }
+        #expect(continued + ended > 40, "\(continued + ended) cracks met")
+        #expect(continued > ended, "\(continued) went on into the next bed, \(ended) ended")
+    }
+
+    @Test("A face's talus apron runs on past the strip's ends, on the floor at the face's foot")
+    func footApron() throws {
+        var options = QuarryFace.Options()
+        options.blocks = 3000
+        let face = try QuarryFace(site: .builtIn(), options: options)
+        let apron = face.footApron()
+        #expect(!apron.vertices.isEmpty && apron.indices.count % 3 == 0)
+        #expect(apron.indices.allSatisfy { Int($0) < apron.vertices.count })
+        var tops: [Float: Float] = [:]
+        for v in apron.vertices {
+            // None over the strip, where the broken rock goes.
+            #expect(v.x < 0 || v.x > face.length, "\(v.x)")
+            #expect(v.up >= 0 && v.up <= 1 && v.nz > 0)
+            let x = (v.x * 2).rounded() / 2
+            tops[x] = max(tops[x] ?? -.infinity, v.z)
+        }
+        // A column every half metre along both ends, none missing, standing up to 3.5 m on the floor
+        // at the face's foot.
+        for range in [Float(-140)...(-2), (face.length + 2)...600] {
+            for x in stride(from: range.lowerBound, through: range.upperBound, by: 0.5) {
+                let top = try #require(tops[x], "no apron at x \(x)")
+                // The floor in front of the face: the lowest of the ground across it.
+                let floor = stride(from: Float(-40), through: 40, by: 1).map { face.oldHeight(x, $0) }.min()!
+                #expect(top > floor - 1 && top < floor + 6, "x \(x): top \(top), floor \(floor)")
+            }
+        }
+        let ridge = try QuarryFace(site: .builtIn(.ridgeCut), options: options)
+        #expect(ridge.footApron().vertices.isEmpty)
+    }
+
     @Test("A face kept without its meshes keeps the layout, the blocks and their spheres")
     func withoutMesh() throws {
         let face = try Self.small()

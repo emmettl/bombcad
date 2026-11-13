@@ -1,23 +1,34 @@
 import Foundation
 import simd
 
-/// The old joints of the rock's weathered surface: two near-vertical sets, a few metres apart, each
-/// joint wandering a little and running some metres before it dies out. They are drawn on the old
-/// surface only, as weathered grooves (`QuarryFace.weatheredRelief`) with a dark crack along them
-/// (`jointField` in `QuarryRender.metal`, which keeps a copy of this: change them together), so
-/// that unbroken rock reads as one mass with joints in it rather than as smooth slabs. They are
-/// not where the rock breaks: illustrative, for the eye.
+/// The old joints of the rock's weathered surface: three sets, two near-vertical and a sparse
+/// inclined one, each joint a long irregular trace that wanders along its strike and down its dip,
+/// runs through several beds (now and then jogging a little at a bedding plane, or stopping at
+/// one) and dies out over some metres; the spacing varies, joints come in clusters and gaps. They
+/// are drawn on the old surface only, as weathered grooves (`QuarryFace.weatheredRelief`) with a
+/// dark crack along them (`jointField` in `QuarryRender.metal`, which keeps a copy of this: change
+/// them together), so that unbroken rock reads as one mass with joints in it rather than as smooth
+/// slabs. Until 13 November 2026 each bed had its own short cracks, evenly spaced, so a face read
+/// as coursed masonry (emmettl/bombcad-work#142). They are not where the rock breaks: illustrative,
+/// for the eye.
 public enum QuarryJoints {
     struct JointSet {
         var normal: SIMD2<Float>
         var along: SIMD2<Float>
         var spacing: Float
         var lean: Float
+        /// The share of the places a joint could be that hold one.
+        var keep: Float
         var salt: UInt32
     }
     static let sets = [
-        JointSet(normal: [0.9394, 0.3429], along: [-0.3429, 0.9394], spacing: 3.7, lean: 0.08, salt: 17),
-        JointSet(normal: [-0.3090, 0.9511], along: [-0.9511, -0.3090], spacing: 5.6, lean: -0.05, salt: 29),
+        JointSet(
+            normal: [0.9394, 0.3429], along: [-0.3429, 0.9394], spacing: 3.4, lean: 0.08, keep: 0.6, salt: 17),
+        JointSet(
+            normal: [-0.3090, 0.9511], along: [-0.9511, -0.3090], spacing: 5.2, lean: -0.05, keep: 0.5,
+            salt: 29),
+        JointSet(
+            normal: [0.8090, -0.5878], along: [0.5878, 0.8090], spacing: 9, lean: 0.55, keep: 0.4, salt: 43),
     ]
 
     /// A value in 0..<1 from an integer and a salt, the same in the shader.
@@ -39,40 +50,66 @@ public enum QuarryJoints {
         return a + (hash(k &+ 1, salt) - a) * s
     }
 
+    /// Smooth value noise over a plane, in 0..<1.
+    static func noise2(_ x: Float, _ y: Float, _ salt: UInt32) -> Float {
+        let (i, j) = (floor(x), floor(y))
+        let (fx, fy) = (x - i, y - j)
+        let (sx, sy) = (fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy))
+        let (a, b) = (Int32(i), Int32(j) &* 7919)
+        let h00 = hash(a &+ b, salt)
+        let h10 = hash(a &+ 1 &+ b, salt)
+        let h01 = hash(a &+ b &+ 7919, salt)
+        let h11 = hash(a &+ 1 &+ b &+ 7919, salt)
+        let low = h00 + (h10 - h00) * sx
+        let high = h01 + (h11 - h01) * sx
+        return low + (high - low) * sy
+    }
+
     /// How deep in a joint's weathered groove `p` lies (1 on the joint's trace, falling to 0 at
     /// `halfWidth` from it), and how near it is to the open crack along the trace (1 within half
-    /// of `line`, 0 from `line`); each times how open the joint is there.
+    /// of `line`, 0 from `line`, the crack's width varying along it); each times how open the joint
+    /// is there.
     public static func field(_ p: SIMD3<Float>, halfWidth: Float, line: Float) -> (
         groove: Float, crack: Float
     ) {
         var groove: Float = 0
         var crack: Float = 0
-        // Joints run through a few beds, and some beds' are shifted along from the next one's; the
-        // shale has none of its own (its partings are along the bedding).
+        // The shale has none of its own (its partings are along the bedding).
         let bed = Int32(floor(QuarryFracture.bedCoordinate(simd_dot(p, QuarryFace.beddingNormal))))
         guard QuarryRock.kind(bed: Int(bed)) != .shale else { return (0, 0) }
         for set in sets {
             let v = simd_dot(SIMD2(p.x, p.y), set.along)
             let s = Float(set.salt)
-            let u =
+            // Wandering along the strike, and down the dip (not ruled upright); a small jog at some
+            // bedding planes.
+            var u =
                 simd_dot(SIMD2(p.x, p.y), set.normal) + set.lean * p.z + 1.1 * sin(0.11 * v + s)
                 + 0.35 * sin(0.37 * v + 0.7 * s) + 0.12 * sin(1.3 * v + 1.9 * s)
-                + (hash(bed, set.salt &+ 6) < 0.35 ? (hash(bed, set.salt &+ 5) - 0.5) * set.spacing : 0)
+                + 0.7 * (noise1(p.z * 0.33 + v * 0.05, set.salt &+ 3) - 0.5)
+                + 0.06 * (noise1(p.z * 2.3 + v * 1.7, set.salt &+ 7) - 0.5)
+                + (hash(bed, set.salt &+ 6) < 0.3 ? (hash(bed, set.salt &+ 5) - 0.5) * 0.8 : 0)
+            // The spacing varies: closer here, wider there.
+            u += 0.9 * set.spacing * (noise1(u / set.spacing * 0.45, set.salt &+ 4) - 0.5)
             let k0 = Int32(floor(u / set.spacing))
             for dk: Int32 in -1...1 {
                 let k = k0 &+ dk
-                guard hash(k, set.salt) > 0.35 else { continue }
-                let centre = (Float(k) + 0.5 + 0.7 * (hash(k, set.salt &+ 1) - 0.5)) * set.spacing
+                guard hash(k, set.salt) < set.keep else { continue }
+                let centre = (Float(k) + 0.5 + 0.8 * (hash(k, set.salt &+ 1) - 0.5)) * set.spacing
                 let d = abs(u - centre)
-                let n = noise1(v * 0.06 + Float(k) * 7.31 + Float(bed) * 3.17, set.salt &+ 2)
-                let open = max(0, min(1, (n - 0.35) / 0.3))
-                let openness = open * open * (3 - 2 * open)
+                guard d < max(halfWidth, 1.55 * line) else { continue }
+                // Open over stretches some metres long both ways, through several beds; stopping at
+                // a bedding plane here and there.
+                let n = noise2(v * 0.045 + Float(k) * 7.31, p.z * 0.07 + Float(k) * 3.7, set.salt &+ 2)
+                let open = max(0, min(1, (n - 0.38) / 0.24))
+                let confined: Float = hash(bed &* 131 &+ k, set.salt &+ 9) < 0.15 ? 0 : 1
+                let openness = open * open * (3 - 2 * open) * confined
                 if d < halfWidth {
                     let t = d / halfWidth
                     groove = max(groove, openness * (1 - t * t) * (1 - t * t))
                 }
-                if d < line {
-                    let t = max(0, min(1, (d - 0.5 * line) / (0.5 * line)))
+                let width = line * (0.45 + 1.1 * noise1(p.z * 1.4 + v * 0.6 + Float(k), set.salt &+ 8))
+                if d < width {
+                    let t = max(0, min(1, (d - 0.5 * width) / (0.5 * width)))
                     crack = max(crack, openness * (1 - t * t * (3 - 2 * t)))
                 }
             }

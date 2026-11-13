@@ -89,6 +89,13 @@ public final class QuarryRenderer {
     public let terrainVertices: MTLBuffer
     public let terrainIndices: MTLBuffer
     public let terrainIndexCount: Int
+    /// A face's talus apron past the strip's ends (`QuarryFace.footApron`), render-only; empty for a
+    /// ridge cut.
+    public let apronVertices: MTLBuffer
+    public let apronIndices: MTLBuffer
+    public let apronIndexCount: Int
+    public let apronPipeline: MTLRenderPipelineState
+    public let apronShadow: MTLRenderPipelineState
     /// A ridge cut's flanks (`QuarryFlank`): the ground's cover as a texture, and the scree's
     /// stones and the scrub as render-only instances. Nil and empty for a face.
     public let flank: QuarryFlank?
@@ -392,6 +399,16 @@ public final class QuarryRenderer {
         terrainVertices = device.makeBuffer(bytes: vertices, length: vertices.count * 4)!
         terrainIndices = device.makeBuffer(bytes: indices, length: indices.count * 4)!
         terrainIndexCount = indices.count
+        let apron = hillside.footApron()
+        apronVertices =
+            apron.vertices.isEmpty
+            ? device.makeBuffer(length: 28)!
+            : apron.vertices.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
+        apronIndices =
+            apron.indices.isEmpty
+            ? device.makeBuffer(length: 4)!
+            : apron.indices.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
+        apronIndexCount = apron.indices.count
 
         func depthTarget(_ w: Int, _ h: Int) -> MTLTexture {
             let d = MTLTextureDescriptor.texture2DDescriptor(
@@ -525,6 +542,8 @@ public final class QuarryRenderer {
         skinShadow = try pipeline(vertex: "skinShadowVertex", fragment: nil, color: nil)
         dressingShadow = try pipeline(vertex: "dressingShadowVertex", fragment: nil, color: nil)
         terrainShadow = try pipeline(vertex: "terrainShadowVertex", fragment: nil, color: nil)
+        apronPipeline = try pipeline(vertex: "apronVertex", fragment: "apronFragment")
+        apronShadow = try pipeline(vertex: "apronShadowVertex", fragment: nil, color: nil)
         chipShadow = try pipeline(vertex: "chipShadowVertex", fragment: nil, color: nil)
         chipUpdate = try device.makeComputePipelineState(function: library.makeFunction(name: "chipUpdate")!)
         blockHeight = try pipeline(
@@ -707,6 +726,13 @@ public final class QuarryRenderer {
         shadow.setVertexBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
         drawGeometry(shadow, terrain: terrainShadow)
         shadow.setCullMode(.none)
+        if apronIndexCount > 0 {
+            shadow.setRenderPipelineState(apronShadow)
+            shadow.setVertexBuffer(apronVertices, offset: 0, index: 0)
+            shadow.drawIndexedPrimitives(
+                type: .triangle, indexCount: apronIndexCount, indexType: .uint32, indexBuffer: apronIndices,
+                indexBufferOffset: 0)
+        }
         shadow.setRenderPipelineState(chipShadow)
         shadow.setVertexBuffer(chips, offset: 0, index: 0)
         shadow.setVertexBuffer(chipShapes, offset: 0, index: 5)
@@ -734,6 +760,9 @@ public final class QuarryRenderer {
         scene.setFragmentSamplerState(shadowSampler, index: 0)
         scene.setFragmentBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 0)
         scene.setVertexBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
+        // The flanks' cover, for the soil held on the rock round a ridge cut (a 1 x 1 blank for a
+        // face) and its ground.
+        scene.setFragmentTexture(flankCover, index: 2)
         // The held skin over the blocks first, on their poses: rock that has not broken, whole
         // (emmettl/bombcad-work#139). Drawn first, the blocks under it (drawn behind it) fail the
         // depth test before they are shaded.
@@ -766,10 +795,16 @@ public final class QuarryRenderer {
         scene.setRenderPipelineState(terrainPipeline)
         scene.setCullMode(.none)
         scene.setVertexBuffer(terrainVertices, offset: 0, index: 0)
-        if flank != nil { scene.setFragmentTexture(flankCover, index: 2) }
         scene.drawIndexedPrimitives(
             type: .triangle, indexCount: terrainIndexCount, indexType: .uint32, indexBuffer: terrainIndices,
             indexBufferOffset: 0)
+        if apronIndexCount > 0 {
+            scene.setRenderPipelineState(apronPipeline)
+            scene.setVertexBuffer(apronVertices, offset: 0, index: 0)
+            scene.drawIndexedPrimitives(
+                type: .triangle, indexCount: apronIndexCount, indexType: .uint32, indexBuffer: apronIndices,
+                indexBufferOffset: 0)
+        }
         // The fines over the pile.
         var fineUniforms = finesUniforms
         scene.setRenderPipelineState(finesPipeline)

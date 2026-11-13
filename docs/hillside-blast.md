@@ -1207,3 +1207,128 @@ blocks at the face, 96,386 on the ridge), so before and after share poses
   fold; and the foot of the face past the strip still ends in a row of small teeth on the floor (the
   dressing's cells, as before).
 - *The broken rock and the pile* (3.5 s on) are as before: the blocks' own look, unchanged.
+
+## Stage 3h: rock surfaces that read as rock, 13 November 2026
+
+emmettl/bombcad-work#142, on the user's word of 13 November ("keep working through the defects until
+it looks strong"). Same standing: illustrative, for the eye; render-only and procedural, no
+third-party assets, nothing reaches the solver. The rock, its blocks and their poses are unchanged
+(116,967 blocks at the face, 96,386 on the ridge), so before and after are rendered from #139's stored
+poses (`rock-strong/face-poses`, `ridge-poses`). The ridge cut's side of it is below
+([Stage 3h on the ridge cut](#stage-3h-on-the-ridge-cut)).
+
+**What was wrong** (#139's frames, `rock-strong/final/`), and what it was.
+- *The joints read as coursed masonry.* Each bed had its own short cracks: a joint's openness was a
+  noise of the bed and the joint, and 35% of beds had all their joints shifted by up to half the
+  spacing, so cracks were a bed high, upright and evenly spaced.
+- *Hatch lines on the shale and on the ridge's bands* were the beds' laminations: a ruled sine, nine
+  lines a bed (about 14 cm apart), drawn whatever the pixel's size. Close in they read as hatching (6
+  pixels apart in the face's close view); farther off they aliased into stripes. Proved by a render
+  with them off: the lines went.
+- *Dark blots along a shale band* were patches of the held skin whose normals turn away from the low
+  sun (the shale's recess folds under the bed above), lit by the sky alone on the darkest rock: a
+  render of the normal's light showed them at n·l of zero, not holes.
+- *Light squares on the floor* were the floor's grit, a hash of 14 cm cells (`hash31(floor(p * 7))`),
+  point-sampled: each cell one flat colour.
+- *Teeth at the face's foot past the strip* were the dressing cells' lower ends against the floor.
+
+**What changed.**
+- *Joints* (`QuarryJoints`, BlastModel, and its copy `jointField` in the shader). Three sets: the two
+  near-vertical ones, and a sparse inclined one (dipping about 60°). Each joint is a trace that wanders
+  along its strike and down its dip, opens and closes over stretches some metres long both ways (a
+  noise of position along the joint and height, not of the bed), so it runs through several beds; it
+  jogs 0 to 0.4 m at 30% of bedding planes and stops at 15% of them; the spacing is warped so joints
+  come in clusters and gaps, and 40 to 60% of the places hold one. The crack's width varies along it,
+  and it thins and fades as it comes under a pixel instead of widening (it widened into a grid of dark
+  lines far off). The weathered relief's grooves follow the same joints.
+- *Laminations* (`laminae`): wavy, broken bands in three sizes (3, 8 and 19 to a bed), their contrast
+  varying along the strike, each faded as it comes under a pixel; on the blocks, the skin, the face's
+  steep ground and the ridge's.
+- *Light on the weathered rock* wraps a little past the terminator (0.5 of the way on the shale, 0.1
+  on the harder beds), so the small relief turned away from the low sun shades brown, not black.
+- *The floor* (`quarryFloor`): close in, gravel and fines: stones of the beds' colours scattered in
+  grit, more off the haul roads and in drifts, each domed and leaning its own way, faded with the
+  pixel's footprint; far off their mean, a little paler.
+- *A talus apron* (`QuarryFace.footApron`, BlastModel, Linux-tested; `apronFragment`): past both ends
+  of the strip, grit and stones banked against the face's foot, its top 0.7 to 3 m up the face and
+  wandering, low toward the strip's ends, concave down to a lobed toe on the floor that dips just
+  under it, the toe's colour the floor's. About 33,000 triangles; drawn and in the shadow map. Nothing
+  over the strip, where the broken rock goes.
+- *Soil held on the rock* (`heldSoil`): on the weathered rock's gentler tops, in broad patches and
+  hollows and in the joints' grooves, soil with grit and thin turf; the steps and steeper fronts stay
+  bare. At the face only a little, mostly grit, on the ledges; on a ridge much more (below). A block
+  thrown by the blast keeps some of its own.
+
+**Measured.**
+- *The window's work a frame* (`play --self-test NAME --offscreen`, main's build and this one
+  interleaved, two runs each, medians; load average 23 to 43): the face following the
+  first firing 29.9, 31.4 ms before and 33.0, 23.6 after; scrubbing and orbiting 63.7, 57.7 before and
+  63.7, 53.2 after; playing 20.8, 18.9 before and 20.4, 18.5 after. The ridge following 30.6, 30.3
+  before and 26.4, 31.4 after; scrubbing 59.1, 57.8 before and 59.2, 41.3 after; playing 17.8, 20.1
+  before and 16.9, 16.9 after. No cost shows above the runs' spread (the shader's added work is
+  mostly close detail, skipped as it fades). Metal allocated after the first firing 807 to 808 MB
+  (face, the apron), 658 MB both (ridge).
+- *GPU draw a frame* in Record Clip of the default view (the recorder's own GPU timing, from stage
+  3f on; main's build and this one interleaved, twice): the face 14.69, 14.68 ms before and 15.29,
+  15.38 after (+0.65 ms: the floor's gravel, the apron, the laminations and the joints' third set);
+  the ridge 9.14, 9.25 before and 9.34, 9.41 after.
+- *Record Clip* of the default view (600 frames at 1920 x 1080), interleaved three times:
+  the face 30.6, 31.2, 31.8 ms a frame before and 29.1, 30.4, 30.4 after; the
+  ridge 27.4, 28.1, 27.7 before and 28.0, 27.0, 27.9 after (load 30 to 80).
+- *Checked by eye* from the stored poses with the window's recorder (`hillsideblast clip`, frames
+  from the movie files), main's build and this one: the face's default view at 0.3 (before firing),
+  1, 2, 3.5 and 4 s; the face close (focus 75,0,3, yaw -0.58, 46 m, 30°) at 0.3, 1, 2, 4 s; the strip's
+  left end (focus 0,0,8, yaw -0.7, 45 m, 30°) at 0.3, 1, 2, 4 s; the ridge's default view at 0.3, 1,
+  2.6 and 4 s and the Pull back at 0.5 to 6.5 s. Files under `$BOMBCAD_DATA/hillside-blast/rock-surface/`:
+  `before/`, `after/`, `crops/` (enlarged details), the debug renders `dbg-*` and `exp-*` (laminations
+  off, shadows off, occlusion off, n·l, soil cover), the trials `try*/`, the scripts (`scripts/`) and
+  the measurements (`measure.txt`, `st-*`, `rc-*`).
+
+**The look, frankly.**
+- *Joints*: the face no longer reads as coursed masonry: long cracks run through several beds, some
+  inclined, a few stopping or jogging at a bed, in clusters and gaps. They are still drawn lines of
+  even darkness, without the spalled, rounded edges real joints have, and past the strip's left end
+  they are few, so that stretch is plain.
+- *No hatch lines* on the shale or the ridge's bands, close or far. The shale bands are plainer for it.
+- *The dark blots* on the shale are softened to brown patches, still there where the skin folds.
+- *The floor* close in reads as gravel and fines; a soft band remains where the stones fade out
+  with distance.
+- *The talus apron* covers the teeth and reads as talus. Its top meets the face in a slightly
+  sawtoothed line where it is low, and its toe is a visible edge on the floor in places.
+
+### Stage 3h on the ridge cut
+
+The ridge cut's side of the same change (the ridge's doc is [ridge-cut.md](ridge-cut.md)).
+
+**What was wrong.** From above (the default view) the crest read as a striped table: the beds crop out
+across its gentle top as parallel bands of their own colours, the joints' two sets crossed the flat
+tops in a regular grid of dark lines, the laminations aliased into fine stripes on the bands, and the
+dense rock round the cut ended against the grass in a hard edge.
+
+**What changed.**
+- *Soil and turf held on the rock* (`heldSoil` in `QuarryRender.metal`): on the weathered rock's
+  gentler tops (slope under about 30°), on the shale's slopes (under about 45°), in broad patches
+  some ten metres across, in hollows and in the joints' grooves, soil with grit and thin turf, darker
+  and greener than the flanks' dry grass; the harder beds' steps and steeper fronts stay bare rock.
+  (Held to the laminae's treads, a first try striped the crest again, finer.)
+- *The edge of the dense rock round the cut* blends into the flanks' cover: the rock reads the
+  flanks' cover map (`QuarryFlank`, now bound to the blocks' shader too) a few metres round, and the
+  nearer the ground outside the dense rock, the more soil and turf it holds, so the rock fades into
+  the grass rather than ending at a line.
+- Rock thrown by the blast keeps some of its soil and turf on its old top.
+- The joints thin and fade with distance, so the flat tops show no grid far off.
+
+**The look, frankly** (default view at 0.3 s, and the Pull back at 0.5 s; `rock-surface/before/`,
+`after/`).
+- From above the crest reads as a grassy, soil-covered hilltop with rock steps, rather than painted
+  stripes; the cut's edge on the near side fades into the flank's grass.
+- The steps still run in parallel lines across the crest: they are the beds' outcrops, now bare rock
+  on steps between turf, but the parallel pattern remains.
+- Close in (the Pull back at 0.5 s) the soil's stones read as round domes, a little too even.
+- After the blast the thrown blocks carry patches of turf on their tops, which can read as green
+  tiles from above.
+- Judged first on #139's poses (96,386 blocks), then again on stage 3f's larger pieces (31,259 blocks,
+  poses simulated on main after emmettl/bombcad-work#140, `rock-surface/ridge140-poses`;
+  `before140/`, `after140/`): the crest before firing looks the same, and the broken crest's larger
+  slabs carry their turf in patches. GPU draw a frame in Record Clip of the default view (main's build
+  and this one interleaved, twice): 9.14, 9.25 ms before and 9.34, 9.41 after (+0.2 ms).
