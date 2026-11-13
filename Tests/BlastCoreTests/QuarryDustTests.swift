@@ -24,6 +24,85 @@ struct QuarryDustTests {
         }
     }
 
+    /// All the dust in the field and where its middle is (m), from a stored copy of it.
+    func centre(_ dust: QuarryDustField) throws -> (total: Double, middle: SIMD3<Double>) {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "quarry-dust-centre-\(ProcessInfo.processInfo.processIdentifier).bin")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try dust.save(to: url)
+        let data = try Data(contentsOf: url)
+        let (nx, ny, nz) = (dust.dims.x, dust.dims.y, dust.dims.z)
+        return data.withUnsafeBytes { raw in
+            let density = raw.baseAddress!.advanced(by: nx * ny * nz * 8).assumingMemoryBound(
+                to: Float16.self)
+            var total = 0.0
+            var sum = SIMD3<Double>.zero
+            for k in 0..<nz {
+                for j in 0..<ny {
+                    for i in 0..<nx {
+                        let d = Double(density[i + nx * (j + ny * k)])
+                        guard d > 0 else { continue }
+                        total += d
+                        sum += d * SIMD3(Double(i), Double(j), Double(k))
+                    }
+                }
+            }
+            let low = SIMD3<Double>(dust.low)
+            return (total, total > 0 ? low + Double(dust.h) * (sum / total + 0.5) : low)
+        }
+    }
+
+    @Test(
+        "A ridge cut's dust lingers and drifts with the wind: its columns merge, thin and lean, not vanish (emmettl/bombcad-work#145)"
+    )
+    func ridgeDustLingers() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        var options = QuarryFace.Options()
+        options.blocks = 3000
+        options.meshDetail = 1
+        var face = try QuarryFace(site: .builtIn(.ridgeCut), options: options)
+        face.generate()
+        let firings = QuarryFiringPattern.pattern(face: face)
+        let last = try #require(firings.map(\.time).max())
+        let dust = try QuarryDustField(
+            device: device, face: face.withoutMesh(), firings: firings,
+            sun: simd_normalize(SIMD3(0.3, -0.5, 0.8)), gridSize: 1.5)
+        // The columns differ from one another and reach their neighbours along the cut.
+        let columns = dust.columns
+        #expect(columns.count == firings.count)
+        let strengths = columns.map(\.strength)
+        #expect(strengths.max()! - strengths.min()! > 0.4, "columns of unequal strength")
+        let xs = firings.map(\.position.x).sorted()
+        let spacing = (xs.last! - xs.first!) / Float(xs.count - 1)
+        #expect(columns.allSatisfy { $0.reach.x >= 0.9 * spacing }, "each column reaches its neighbours")
+        // Blocks where they stand: only the firings' columns put dust in.
+        let bodies = face.blocks.count
+        var rest = [SIMD4<Float>]()
+        for block in face.blocks { rest += [SIMD4(block.centre, 1), SIMD4(0, 0, 0, 1)] }
+        let pose = try #require(device.makeBuffer(bytes: rest, length: 32 * bodies))
+        let previous = try #require(device.makeBuffer(bytes: rest, length: 32 * bodies))
+        let sizes = face.blocks.map(\.size)
+        var frame = 0
+        func run(to time: Float) {
+            while Float(frame + 1) / 30 <= time {
+                frame += 1
+                _ = dust.step(
+                    pose: pose, previous: previous, bodies: bodies, time: Float(frame) / 30, restSize: sizes,
+                    frameRate: 30)
+            }
+        }
+        run(to: last + 2)
+        let early = try centre(dust)
+        #expect(early.total > 0)
+        run(to: last + 10)
+        let late = try centre(dust)
+        // Stage 3f to 3j thinned all of it at 0.6 to 0.9 a second: exp(-0.6 * 8) is under 1%.
+        #expect(late.total > 0.1 * early.total, "the dust lingers: \(late.total / early.total) of it left")
+        let wind = SIMD2<Double>(Double(dust.uniforms.wind.x), Double(dust.uniforms.wind.y))
+        let drift = SIMD2(late.middle.x - early.middle.x, late.middle.y - early.middle.y)
+        #expect(simd_dot(drift, simd_normalize(wind)) > 5, "the dust drifts downwind: \(drift)")
+    }
+
     @Test("The dust starts as the rock first moves, before the first firing lets it go")
     func startsWithTheSwell() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { return }

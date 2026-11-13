@@ -1252,6 +1252,8 @@ static inline float3 ridgeDustLit(float tau, float phase, float heightFrac) {
 // (stage 3i's grain). Carried with the dust's own flow in two phases half a second apart,
 // crossfaded, so the lobes rise and roll with the cloud rather than stand while it moves through.
 constant float ridgeBillowTile = 25.6f;
+// Thin dust's extinction a metre and unit of density, as haze (stage 3k).
+constant float ridgeHaze = 0.03f;
 
 static inline float ridgeBillowAt(texture3d<float, access::sample> noise, float3 p, float lod) {
     constexpr sampler mipped(filter::linear, mip_filter::linear, address::repeat);
@@ -1359,9 +1361,13 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
         } else if (stepping) {
             if (++quiet > 3) stepping = false;
         }
-        if (shaped > 0.001f) {
+        // Haze (stage 3k, emmettl/bombcad-work#145): thin dust, which the noise's cut above leaves
+        // out, still dims and lights the ray a little, so a cloud that has thinned and spread
+        // stays on view as a haze rather than vanishing.
+        float haze = stepping ? ridgeHaze * min(d, 1.5f) * (1.0f - shaped) : 0.0f;
+        if (shaped > 0.001f || haze > 1e-4f) {
             quiet = 0;
-            float sigma = shaped * (d * 0.12f + 0.55f);
+            float sigma = shaped * (d * 0.12f + 0.55f) + haze;
             float a = 1.0f - exp(-sigma * min(step, leave - t));
             // The sun's optical depth where the dust is drawn: at the warped lookup, the same as
             // its density's, so a puff's sunward side is lit by its own shape and not by the
@@ -1386,7 +1392,8 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
     float3 seen = seenSum / max(seenWeight, 1e-5f);
     float foot = pixelAngle * length(seen - eye);
     float3 ps = (seen - low) / size;
-    float3 flow = flowField.sample(triSampler, ps).xyz + u.wind.xyz;
+    // The wind is in the flow itself (stage 3k).
+    float3 flow = flowField.sample(triSampler, ps).xyz;
     // Held to 5 m/s: faster, the flow's change across a puff smeared the lobes within a phase.
     flow *= min(1.0f, 5.0f / max(length(flow), 1e-3f));
     float lobes = ridgeBillow(noise, seen, flow, tt, foot);

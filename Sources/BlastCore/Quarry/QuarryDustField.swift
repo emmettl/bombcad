@@ -63,18 +63,52 @@ public final class QuarryDustField {
     /// The share of the first cracks' spurt put into the field (stage 3j, emmettl/bombcad-work#144).
     let crackSpurtField: Float = 0.12
     /// A ridge's broken rock's dust after it lets go, from half its exposed blocks: a rate per
-    /// square metre of block, fading over `shedTime` seconds.
-    let shed: Float = 56
+    /// square metre of block, fading over `shedTime` seconds. 36 since stage 3k (it was 56): the
+    /// dust now lingers, and at 56 the cloud hid the rock running down the near flank.
+    let shed: Float = 36
     /// A ridge's low veil off the rock running over the ground (stage 3j): a rate per square metre
     /// of block and m/s of its speed (to 10 m/s).
     let veil: Float = 32
     static let shedTime: Float = 1.5
-    /// How long a ridge's firing's column is fed (s).
+    /// How long a ridge's firing's column was fed in stage 3f (s), for its amount of dust, and
+    /// the share of that dust a column gives now (stage 3k): the dust lingers.
     static let columnTime: Float = 0.35
+    static let columnShare: Float = 0.7
+
+    /// Whether any of a ridge cut's columns is being fed at `time`.
+    func columnFed(_ time: Float) -> Bool {
+        zip(firings, columns).contains { firing, column in
+            time >= firing.time + column.delay && time < firing.time + column.delay + column.feed
+        }
+    }
     /// The ridge's heave's ramp (s), from the launch law: how far the dome has risen.
     let ridgeRamp: Float = max(QuarryLaunch().ridgeRise, 0.1)
     /// A ridge cut's rock top this frame, for where the firings' columns are born.
     var top: TopMap?
+    /// A ridge cut's firings' columns (stage 3k, emmettl/bombcad-work#145): each its own strength,
+    /// delay, length of feed, rise and place, so they rise unevenly and merge into one plume.
+    struct Column {
+        var delay: Float
+        var feed: Float
+        var strength: Float
+        var lift: Float
+        var shift: SIMD2<Float>
+        /// Half the column's footprint along the cut and across it (m).
+        var reach: SIMD2<Float>
+    }
+    var columns: [Column] = []
+    /// A ridge cut's wind at height (m/s, stage 3k): light and steady, across the opening view
+    /// from its right to its left and a little away from the eye, so the plume leans and drifts
+    /// over the far flank rather than toward the camera.
+    static let windSpeed: Float = 3
+    /// Where a ridge cut's opening view stands: its low veil is not fed within `veilClear` of it
+    /// (in plan), where the last blocks rolling toward the eye left a smudge by the camera.
+    var viewEye: SIMD2<Float>?
+    static let veilClear: Float = 45
+    /// When the rock has settled enough that the veil stops being fed: it fades over the 3 s
+    /// from `veilEnd` after the last firing.
+    static let veilEnd: Float = 2.5
+    let lastFiring: Float
 
     /// A ridge's crack jets drawn as thin spurts, finer than the field's cells (stage 3i,
     /// emmettl/bombcad-work#143): at the window's 1.5 m cells a jet's dust is three metres across
@@ -263,6 +297,20 @@ public final class QuarryDustField {
         if hillside.ridge != nil {
             top = TopMap(low: SIMD2(low.x, low.y), extent: SIMD2(high.x - low.x, high.y - low.y))
         }
+        lastFiring = firings.map(\.time).max() ?? 0
+        if let ridge = hillside.ridge {
+            columns = Self.columns(firings: firings, ridge: ridge)
+        }
+        var windAtHeight = SIMD3<Float>(1.4, -0.3, 0.05)
+        if hillside.ridge != nil, let view = QuarryRidgeView.opening(hillside) {
+            let toEye = simd_normalize(SIMD2(view.orbit.direction.x, view.orbit.direction.y))
+            // The view's left as the eye sees it, and away from the eye.
+            let left = SIMD2(toEye.y, -toEye.x)
+            let way = simd_normalize(0.85 * left - 0.5 * toEye) * Self.windSpeed
+            windAtHeight = SIMD3(way, 0)
+            let eye = view.orbit.eye
+            viewEye = SIMD2(eye.x, eye.y)
+        }
         lastVelocity = Array(repeating: .zero, count: hillside.blocks.count)
         jetBuffers = (0..<3).map { _ in
             device.makeBuffer(
@@ -272,6 +320,8 @@ public final class QuarryDustField {
         for name in [
             "dustAddSources", "dustAdvectVelocity", "dustForces", "dustDivergence", "dustJacobi",
             "dustProject", "dustAdvectDensity", "dustLight", "dustBackward", "dustCorrect", "dustBakeNoise",
+            "dustWindStart", "dustAdvectVelocityRidge", "dustForcesRidge", "dustAdvectDensityRidge",
+            "dustBackwardRidge", "dustCorrectRidge",
         ] {
             map[name] = try device.makeComputePipelineState(function: library.makeFunction(name: name)!)
         }
@@ -286,13 +336,15 @@ public final class QuarryDustField {
         uniforms = Uniforms(
             low: SIMD4(low, 0), hdtsteps: SIMD4(h, 0, 0, 0),
             dims: SIMD4(Int32(dims.x), Int32(dims.y), Int32(dims.z), 0),
-            wind: SIMD4(1.4, -0.3, 0.05, 0), sun: SIMD4(sun, 0), lowHigh: SIMD4(high, 0))
-        // A ridge cut's dust thins as it rises and spreads, a share a second: 0.9 from 10 m above
-        // the ground up, 0.6 within 3 m of it (where the skirt down the flanks is fed). None for
-        // a face, whose dust is as it was.
+            wind: SIMD4(windAtHeight, 0), sun: SIMD4(sun, 0), lowHigh: SIMD4(high, 0))
+        // A ridge cut's fines thin slowly, a share a second: 0.05 from 10 m above the ground up,
+        // 0.15 within 3 m of it; its coarse dust falls out while it is thick (`dustCorrectRidge`).
+        // Stage 3f to 3j thinned all of it at 0.9 and 0.6 a second, so the cloud had nearly gone
+        // by 7 s. None for a face, whose dust is as it was (and whose wind is the old drift added
+        // to its flow, not in it).
         if hillside.ridge != nil {
-            uniforms.low.w = 0.9
-            uniforms.wind.w = 0.6
+            uniforms.low.w = Self.finesHigh
+            uniforms.wind.w = Self.finesLow
         }
         // A first clear of the private textures so the first frame is defined.
         let buffer = queue.makeCommandBuffer()!
@@ -306,8 +358,54 @@ public final class QuarryDustField {
         let blit = buffer.makeBlitCommandEncoder()!
         blit.generateMipmaps(for: noiseVolume)
         blit.endEncoding()
+        if hillside.ridge != nil {
+            // A ridge's flow starts as the wind, which the first steps' pressure turns over the
+            // ground.
+            let start = buffer.makeComputeCommandEncoder()!
+            var u = uniforms
+            start.setBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
+            start.setComputePipelineState(pipelines["dustWindStart"]!)
+            start.setTexture(velocity[0], index: 0)
+            start.setTexture(clearance, index: 1)
+            start.setTexture(solid, index: 2)
+            start.dispatchThreads(
+                MTLSize(width: dims.x, height: dims.y, depth: dims.z),
+                threadsPerThreadgroup: MTLSize(width: 16, height: 8, depth: 8))
+            start.endEncoding()
+        }
         buffer.commit()
         buffer.waitUntilCompleted()
+    }
+
+    /// A ridge cut's fines' thinning a second, high up and near the ground (stage 3k).
+    static let finesHigh: Float = 0.05
+    static let finesLow: Float = 0.15
+
+    /// Each firing's column (stage 3k): drawn once from the firing's place in the pattern, so a
+    /// cut fires the same way every time. Stage 3f's columns were each a ball 4 m across fed for
+    /// 0.35 s, the same at every firing, so at 4.5 s they stood as an even row of separate puffs
+    /// and the low ones on the near flank were dense round balls. Now each spreads half-way or
+    /// more to its neighbours along the cut and across both rows, is fed over 0.5 to 1 s, and
+    /// differs from the next in strength, delay, rise and place.
+    static func columns(firings: [QuarryFiring], ridge: QuarryRidge) -> [Column] {
+        let xs = firings.map(\.position.x).sorted()
+        // The spacing along the cut between neighbouring firings (both rows together).
+        let spacing = xs.count > 1 ? max(2, (xs.last! - xs.first!) / Float(xs.count - 1)) : 6
+        let deepest = max(ridge.crest - ridge.floor, 1)
+        return firings.indices.map { n in
+            var r = QuarryRandom(seed: 0xC01 &+ UInt64(n) &* 7919)
+            // Toward the cut's ends, over shallower rock, a column is fainter and fed more
+            // slowly over a wider footprint: the low columns on the near flank were the densest,
+            // roundest puffs. (A firing stands half-way up the rock over it.)
+            let deep = min(1, max(0.3, 2 * (firings[n].position.z - ridge.floor) / deepest))
+            let shallow = (1 - deep) / 0.7
+            return Column(
+                delay: r.float(0, 0.3), feed: r.float(0.5, 1.0) * (1 + 0.6 * shallow),
+                strength: r.float(0.4, 1.5) * (1 - 0.5 * shallow), lift: r.float(0.7, 1.3),
+                shift: SIMD2(r.float(-0.5, 0.5) * spacing, r.float(-0.25, 0.25) * ridge.halfWidth),
+                reach: SIMD2(
+                    r.float(0.9, 1.9) * spacing * (1 + 0.5 * shallow), ridge.halfWidth * r.float(0.35, 0.7)))
+        }
     }
 
     /// The puff as a block's swell begins: a rate per metre a second of swell and square metre of
@@ -409,11 +507,13 @@ public final class QuarryDustField {
         var scatter = QuarryRandom(seed: 0x5EED &+ UInt64(time * 1000))
         let ground = face.terrain.heights
         // The rock's top is wanted only while a ridge's firing's column is being born.
-        let mapTop =
-            top != nil && firings.contains { time >= $0.time && time < $0.time + Self.columnTime }
+        let mapTop = top != nil && columnFed(time)
         if mapTop { top!.reset() }
         let posePointer = pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
         let previousPointer = previous.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
+        // A ridge's veil fades out as the rock settles (stage 3k).
+        let settling = (time - lastFiring - Self.veilEnd) / 3
+        let veilFade = 1 - min(1, max(0, settling))
         for n in 0..<bodies {
             let p = posePointer[2 * n]
             let q = previousPointer[2 * n]
@@ -508,12 +608,25 @@ public final class QuarryDustField {
                 // over it, dragged along at most of the block's own speed and hardly rising, a little
                 // warm so it neither climbs away as the skirt does nor drops out at once: a thin
                 // rolling sheet runs down with the rock's front and thins behind it.
-                if speed > 2, p.z - below < 0.6 * size + 0.5 {
-                    let spread = SIMD3(
-                        scatter.float(-1.5, 1.5), scatter.float(-1.5, 1.5), scatter.float(0, 0.8))
-                    add(
-                        SIMD3(p.x, p.y, below + 0.9) + spread, dust: veil * min(speed, 10) * size * size,
-                        velocity: SIMD3(v.x, v.y, 0) * 0.85 + SIMD3(0, 0, 0.4), heat: 0.15)
+                // Stage 3k: not from blocks nearly stopped (it eases in from 2.5 to 6 m/s), nor near
+                // the opening view's eye, and fading out as the rock settles, so the last blocks
+                // rolling toward the camera no longer leave a lump of dust by it.
+                if speed > 2.5, p.z - below < 0.6 * size + 0.5, veilFade > 0 {
+                    let moving = min(1, (speed - 2.5) / 3.5)
+                    var clear: Float = 1
+                    if let viewEye {
+                        let off = simd_distance(SIMD2(p.x, p.y), viewEye) / Self.veilClear
+                        clear = min(1, max(0, (off - 1) / 0.5))
+                    }
+                    let weight = veilFade * moving * moving * clear
+                    if weight > 0 {
+                        let spread = SIMD3(
+                            scatter.float(-1.5, 1.5), scatter.float(-1.5, 1.5), scatter.float(0, 0.8))
+                        add(
+                            SIMD3(p.x, p.y, below + 0.9) + spread,
+                            dust: weight * veil * min(speed, 10) * size * size,
+                            velocity: SIMD3(v.x, v.y, 0) * 0.85 + SIMD3(0, 0, 0.4), heat: 0.15)
+                    }
                 }
                 // A ridge's blows count from 3 m/s and throw up more dust than a face's, which
                 // otherwise hardly shows on the flanks from the distance a ridge is seen from.
@@ -535,33 +648,46 @@ public final class QuarryDustField {
             lastVelocity[n] = v
         }
         writeJets(time: time)
-        // A ridge cut's firings: a narrow column from the rock's top over each firing as it stands
-        // now (the heave has lifted it, stage 3f; it was born at the old ground, inside the risen
-        // rock), mostly up and a little out down the flank, most of its dust slow so the column
-        // stands on the rock; each firing shows as its own plume along the cut, and the plumes
-        // thin as they rise (the field's thinning, above).
-        for firing in firings
-        where face.ridge != nil && time >= firing.time && time < firing.time + Self.columnTime {
-            let age = (time - firing.time) / Self.columnTime
+        // A ridge cut's firings: a column from the rock's top over each firing as it stands now
+        // (the heave has lifted it, stage 3f), mostly up and a little out down the flank, most of
+        // its dust slow so the column stands on the rock. Stage 3k: each spreads over a footprint
+        // reaching its neighbours along the cut and across both rows, fed over 0.5 to 1 s, and
+        // differs from the next (`columns`), so the columns rise unevenly and merge into one
+        // plume rather than standing as a row of equal puffs; the same dust as stage 3f's in all.
+        for (n, firing) in firings.enumerated() where face.ridge != nil && n < columns.count {
+            let column = columns[n]
+            let start = firing.time + column.delay
+            guard time >= start, time < start + column.feed else { continue }
+            let age = (time - start) / column.feed
             var r = QuarryRandom(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
-            let p = firing.position
-            let base = max(face.height(face.original, p.x, p.y), rockTop(p.x, p.y, reach: 1)) + 0.3
-            let out = face.outward(at: p)
+            let centre = SIMD2(firing.position.x, firing.position.y) + column.shift
+            let out = face.outward(at: firing.position)
+            // Stage 3f's 120 a particle over 0.35 s, falling linearly, spread over this feed.
+            let rate =
+                Self.columnShare * 120 * column.strength * (0.5 * Self.columnTime) / (0.4 * column.feed)
+            let falling = pow(1 - age, 1.5)
             for _ in 0..<700 {
-                var offset = r.unit() * r.float(0.3, 3) * SIMD3<Float>(0.7, 0.7, 2)
-                offset.z = abs(offset.z)
-                let way = simd_normalize(SIMD3<Float>(offset.x * 0.15 + out.x * 0.6, offset.y * 0.15, 3))
-                // Most of it slow, so the column stands on the rock rather than leaving it as a puff.
+                // Denser in the middle, thinning to the footprint's edge.
+                let a = SIMD2(r.float(-1, 1) + r.float(-1, 1), r.float(-1, 1) + r.float(-1, 1)) * 0.5
+                let place = centre + a * column.reach
+                let base =
+                    max(face.height(face.original, place.x, place.y), rockTop(place.x, place.y, reach: 1))
+                    + 0.3
+                let rise = r.float(0, 1)
+                let way = simd_normalize(SIMD3<Float>(a.x * 0.25 + out.x * 0.6, a.y * 0.25, 3))
                 let speed = r.float(0.15, 1)
                 add(
-                    SIMD3(p.x, p.y, base) + offset, dust: 120 * (1 - age),
-                    velocity: way * 11 * speed * speed + r.unit() * 3, heat: 0.7)
+                    SIMD3(place.x, place.y, base + rise * rise * 4), dust: rate * falling,
+                    velocity: way * 11 * column.lift * speed * speed + r.unit() * 3, heat: 0.7)
             }
         }
         let buffer = queue.makeCommandBuffer()!
         let encoder = buffer.makeComputeCommandEncoder()!
         var u = uniforms
         u.hdtsteps.y = dt
+        // A ridge's own kernels (stage 3k): the wind in the flow, gusts, the dust's fallout.
+        let ridge = face.ridge != nil
+        if ridge { u.lowHigh.w = time }
         // What velocity and density keep each step: 0.995 and 0.9992 a 1/30 s step, the same
         // a second at any rate.
         let frames = 30 / frameRate
@@ -589,13 +715,18 @@ public final class QuarryDustField {
         encoder.setSamplerState(sampler, index: 0)
         encoder.setTexture(velocity[0], index: 0)
         encoder.setTexture(velocity[1], index: 1)
-        run("dustAdvectVelocity")
+        if ridge { encoder.setTexture(clearance, index: 2) }
+        run(ridge ? "dustAdvectVelocityRidge" : "dustAdvectVelocity")
         encoder.memoryBarrier(scope: .textures)
         velocity.swapAt(0, 1)
         encoder.setTexture(velocity[0], index: 0)
         encoder.setTexture(density[0], index: 1)
         encoder.setTexture(velocity[1], index: 2)
-        run("dustForces")
+        if ridge {
+            encoder.setTexture(noiseVolume, index: 3)
+            encoder.setTexture(clearance, index: 4)
+        }
+        run(ridge ? "dustForcesRidge" : "dustForces")
         encoder.memoryBarrier(scope: .textures)
         velocity.swapAt(0, 1)
         // Pressure.
@@ -625,12 +756,12 @@ public final class QuarryDustField {
         encoder.setTexture(velocity[0], index: 1)
         encoder.setTexture(scratch[0], index: 2)
         encoder.setTexture(solid, index: 3)
-        run("dustAdvectDensity")
+        run(ridge ? "dustAdvectDensityRidge" : "dustAdvectDensity")
         encoder.memoryBarrier(scope: .textures)
         encoder.setTexture(scratch[0], index: 0)
         encoder.setTexture(velocity[0], index: 1)
         encoder.setTexture(scratch[1], index: 2)
-        run("dustBackward")
+        run(ridge ? "dustBackwardRidge" : "dustBackward")
         encoder.memoryBarrier(scope: .textures)
         encoder.setTexture(density[0], index: 0)
         encoder.setTexture(scratch[0], index: 1)
@@ -639,7 +770,7 @@ public final class QuarryDustField {
         encoder.setTexture(solid, index: 4)
         encoder.setTexture(density[1], index: 5)
         encoder.setTexture(clearance, index: 6)
-        run("dustCorrect")
+        run(ridge ? "dustCorrectRidge" : "dustCorrect")
         encoder.memoryBarrier(scope: .textures)
         density.swapAt(0, 1)
         encoder.setTexture(density[0], index: 0)

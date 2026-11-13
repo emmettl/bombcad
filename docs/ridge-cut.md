@@ -1426,3 +1426,139 @@ and `tools/` (`iter.sh`, `try.sh`, `look.sh`, `play.sh`, `final.sh`, `face.sh`, 
 **Tests.** `QuarryRidgeViewTests/ridgePullBackAimsRight` (BlastModel, Linux): a ridge's pull-back
 opens aimed to the frame's right by its share and only across, a face's straight on; `pullBack`
 runs for both shots as before.
+
+## Stage 3k: one plume that drifts and lingers, 13 November 2026
+
+emmettl/bombcad-work#145, on the user's word of 13 November ("keep working through the defects
+list until it looks strong"). Same standing: illustrative; the rock's physics, block counts and
+motion are unchanged (every frame below is drawn from stage 3f's own 20 s run of 31,259 blocks,
+`ridge-dust-heave/a30/poses`). Nothing here is a load, a blast design, or a claim about
+fragments, dust, a dust hazard or anything's reach.
+
+**What was wrong** (stage 3j's frames at 4.5 and 7 s).
+- *A row of puffs.* At 4.5 s the firings' columns stood as an evenly spaced row of separate blobs
+  over the crest, and the low ones on the near flank were dense, roundish balls. Each column was a
+  ball 4 m across, fed for 0.35 s, the same at every firing.
+- *The dust vanished.* By 7 s the cloud had nearly gone and the heap stood clean. A ridge's field
+  thinned all its dust at 0.9 a second high up and 0.6 near the ground (e-folding in about a
+  second), and the march's noise cut leaves out thin dust, so a cloud that spread went from
+  visible to nothing.
+- *A smudge by the camera.* At 7 s a lumpy brown patch stood by the notch's near end: the low
+  veil, fed by the last blocks rolling toward the eye.
+- *The wind* (1.4 m/s along the cut, added to the flow when the dust was carried) blew mostly
+  toward the opening view's eye, and it went through the ground as well as over it; with the dust
+  gone in a second it never showed.
+
+**What changed** (`QuarryDustField`, `QuarryDust.metal`, BlastCore; `dustFragmentRidge`,
+`QuarryRender.metal`). A ridge cut's field has its own copies of the kernels it changes
+(`dustAdvectVelocityRidge`, `dustForcesRidge`, `dustAdvectDensityRidge`, `dustBackwardRidge`,
+`dustCorrectRidge`, and `dustWindStart`); the face's kernels and sources are untouched.
+- *Columns that merge* (`QuarryDustField.columns`). Each firing's column is drawn once from its
+  place in the pattern: a delay of 0 to 0.3 s, fed over 0.5 to 1 s, strength 0.4 to 1.5, rise 0.7
+  to 1.3, its middle moved by up to half the spacing along the cut and a quarter of the half-width
+  across, and a footprint 0.9 to 1.9 times the spacing along the cut and 0.35 to 0.7 of the
+  half-width across (both rows), denser in the middle, born on the rock's top over each point of
+  it. Toward the cut's ends, over shallower rock, a column is up to half as strong, fed up to 1.6
+  times as long, over up to 1.5 times the footprint: the low columns on the near flank were the
+  densest puffs. In all, 0.7 of stage 3f's dust.
+- *A light, steady wind in the flow.* 3 m/s at 12 m and more over the ground, a third of that at
+  the ground, across the opening view from its right to its left and a little away from the eye
+  (so the plume leans and drifts over the far flank, not toward the camera). The flow starts as
+  the wind and relaxes back to it as the face's relaxes to rest; across, clear of the ground, it
+  relaxes faster (0.5 a second more), as a plume takes in the air round it, so it leans within a
+  few seconds of rising. The pressure solve turns it over the ground rather than through it.
+- *Gusts.* The baked noise (features of about 16 m and 8 m), carried with the wind and turning
+  slowly, pushes the flow about by up to 0.27 m/s²; the pressure solve keeps only its swirl.
+- *Dust that thins, spreads and settles.* Thick dust's coarse part falls out (0.45 a second above
+  a density of 3.5, eased in from 0.8; up to 0.9 near the ground where it is cold), its fines
+  slowly (0.05 a second from 10 m over the ground up, 0.15 within 3 m of it). A puff drops within
+  a few seconds to a haze that drifts and clears over the next ten to fifteen.
+- *The box's sides.* Dust fades over the last 8 m before the box's sides, so a drifting plume
+  never ends on a face of the box. The box itself is as it was (45 m past the cut's ends, 100 m
+  either side of its line, at least 129 m high); the plume stays well inside it over 20 s.
+- *Haze* (`dustFragmentRidge`). Thin dust, which the march's noise cut leaves out, still dims and
+  lights the ray (0.03 a metre and unit of density, to 1.5), so a cloud that has spread stays on
+  view as haze; the billows mottle it as before. The billows' flow no longer adds the old wind,
+  which is now in the field's own flow.
+- *The veil* is no longer fed by a block slower than 2.5 m/s (it eases in to 6 m/s), within 45 m
+  (in plan) of the opening view's eye (easing in to 67 m), or from 2.5 s after the last firing
+  (fading out over 3 s). The eye is the opening view's, a fixed place, not the window's moving
+  camera, so the field does not depend on where the user looks.
+- *Shed dust* is 36 (it was 56): with the dust lingering, the cloud at 4.5 s hid the rock running
+  down the near flank.
+
+**Measured** (release build, M4 Max Studio, loaded by other sessions; `tools/` below).
+- *Record Clip* (GPU, 1920 x 1080, the opening view, interleaved, two each): while the ridge fires
+  (1.5 to 5.5 s) the draw is 8.72 and 8.90 ms main, 9.04 and 8.96 ms this (+0.2 ms); over the whole
+  20 s event 8.29 and 8.53 against 11.23 and 11.19 ms (+2.8 ms, the haze that now stays). The dust
+  step over the whole event 4.08 and 4.00 against 4.00 and 4.00 ms, and while firing 3.94 and 4.06
+  against 3.97 and 4.03 ms: unchanged (it is the grid's work, whatever the dust). The crest close
+  in, its camera inside the lingering dust, draws 17.9 ms in the median over 18 s (10.1 before).
+- *The window* (`play --ridge --self-test`, two runs each, interleaved; medians from 1 to 5 s
+  while following the first firing): draw 10.9 and 10.4 ms main, 10.5 and 11.1 this; the
+  dust-and-chips step 8.8 and 8.1 against 8.5 and 9.8 ms. Over the whole event the draw is 8.9 and
+  8.8 against 10.0 and 10.2 ms (+1.3 ms), the step 6.8 and 7.6 against 6.1 and 7.3 ms.
+- *No crawl* (`flicker.py`, the opening view's cloud at 4.50, 4.53, 4.57 s and 12.00, 12.03,
+  12.07 s): the change in fine detail between frames is 5.9 and 5.8 at 4.5 s (9.2 and 9.0 before,
+  the old puffs' sharper edges) with the fine detail itself 5.3 (7.7), and 0.48 and 0.40 at 12 s
+  (0.39 and 0.35 before, where there was no dust): the haze drifts slowly and nothing pops.
+- *The field* (`QuarryDustTests/ridgeDustLingers`): with only the columns feeding it, 8 s after the
+  first look at the dust (2 s after the last firing) more than a tenth of it is left (stage 3j's
+  thinning would leave under 1%), and its middle has moved more than 5 m downwind.
+
+**Quarry Face unchanged.** Its kernels, sources and march are untouched. From the same face poses
+(`ridge-dust-heave/face-poses`, 110,000 blocks), two runs each of main's build and this one: every
+Record Clip frame (Pull back at 0.5, 2.0, 3.5, 6.0 and 7.9 s, the opening view at 2.0, 4.0 and
+7.9 s) of this build is byte-identical to one of main's two runs; main's own two runs differ in
+some of them (up to 1.85 M pixels by up to 159 levels: the clip's runs are not repeatable on this
+loaded machine, in main as here). The film stills at 2.0, 3.5 and 5.9 s are byte-identical; at
+1.0 s main's two runs differ in 214 pixels by up to 8 levels, and this build's from main's in 3 to
+217 pixels by up to 8 (`face-check.txt`).
+
+**Checked by eye**, before (main's build) and after, from the same poses and cameras: Record
+Clip's opening view held still, Pull back and the crest close in at 2, 3, 3.6, 4.5, 6, 8, 12 and
+18 s (with 4.5 and 12 s three frames in a row), and the window's own frames while following.
+- *Merging.* At 3 s the columns already run together into one billowing bank along the crest. At
+  3.6 to 4.5 s it is one tall cloud over the breaking rock, uneven along the cut (a higher mass
+  over the crest and the far side, a lower, softer one on the near flank), torn and lobed at its
+  edges; no row of puffs, and no dense round balls on the near flank.
+- *Lingering.* At 6 s the cloud's upper part is an arch of billows drifting left over the notch,
+  its lower part thinned to a haze over the heap. At 8 s the top of the plume is leaving the frame
+  above the crest and a broad haze hangs over the notch, leaning left; at 12 s a pale haze lies
+  across the sky left of the heap and a light haze over the heap; at 18 s a faint haze remains high
+  on the left and the heap is clear. Before, the sky was clear from 6 s.
+- *The veil* no longer leaves a lump of dust by the camera at 7 s; the near flank there has only
+  the thin haze.
+- *Pull back* ends on the same view, so from 6 s it is as the opening view; at 3 to 4.5 s it shows
+  the one cloud rising over the whole crest.
+
+**What still looks wrong.**
+- *The cloud at 3.6 to 4.5 s is heavy.* It is one plume now, but tall and opaque: it fills the
+  upper right half of the opening view and hides much of the rock running down the near flank for
+  a second or two (stage 3f's heavy cloud, merged).
+- *The lean is slight.* The plume rises above the top of the opening frame (about 30 m over the
+  crest) before the wind has moved it far, so in the frame it reads as a cloud that rises and then
+  thins and drifts left as haze, more than as a leaning column. A stronger wind (tried at 10 m/s)
+  leans it more but would no longer be light.
+- *Close in, a dust fog.* The crest close shot, whose camera stands in the cut's lingering dust,
+  is fogged from 6 to 12 s (clearing by 18 s), and its draw doubles meanwhile.
+- *The thin haze's texture.* At 6 to 8 s the cloud's mid-thick parts show swirled, marbled lobes
+  (the billows carried by the gusty flow), and the haze at 12 s has a faintly patchy look.
+- *The haze costs* about 3 ms of Record Clip's draw after the firings in the opening view (more
+  close in): the march steps finely through more of the frame for longer. Not tried: coarser
+  steps in thin haze.
+- Not looked at on a screen: all of it was made offscreen.
+
+Files: `$BOMBCAD_DATA/hillside-blast/ridge-plume/`: `before/` and `after/` (`still.mp4`,
+`pullback.mp4`, `crest.mp4` and their frames), `sheet-still-ba.png`, `sheet-pullback-ba.png`,
+`sheet-crest-ba.png`, `sheet-consecutive-ba.png` (before left), `sheet-window-ba.png` (the window's
+frames), `play-before/` and `play-after/` (with `-nodust` twins), the trials `v1` to `v9` and
+`d-wind10`, `d-nocol`, `v4noshed`, the cost runs `cost-*`, `clipcost/`, `costs.txt`,
+`clipcost.txt`, `flicker.txt`, the face check `face-*` and `face-check.txt`, and `tools/`
+(`look.sh`, `try.sh`, `play.sh`, `final.sh`, `face.sh`, `clipcost.sh`, `costruns.sh`,
+`flicker.py`, `sheet.py`, `winsheet.py`).
+
+**Tests.** `QuarryDustTests/ridgeDustLingers` (BlastCore, GPU): a ridge cut's columns are of
+unequal strength and each reaches its neighbours along the cut; with only the columns feeding the
+field, more than a tenth of the dust 2 s after the last firing is left 8 s later, and its middle
+has drifted more than 5 m downwind.
