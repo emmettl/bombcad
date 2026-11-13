@@ -14,14 +14,14 @@ import simd
 /// view, and a project's terrain cut across its ridge. Offscreen: the window is never shown.
 /// Illustrative scene.
 @MainActor
-@Suite("Ridge cut scene", .serialized)
+@Suite("Ridge cut scene", .serialized, .hangLimit)
 struct RidgeCutSceneTests {
-    static func waitUntil(_ model: QuarryFaceModel, seconds: Double = 240, _ done: () -> Bool) async throws {
-        var waited = 0.0
-        while !done(), waited < seconds {
+    /// Waits until `done`, however long that takes (the suite's `hangLimit` is the only bound; a
+    /// 240 s deadline of its own until 13 November 2026, as `QuarryFaceHandlingTests` had).
+    static func waitUntil(_ model: QuarryFaceModel, _ done: () -> Bool) async throws {
+        while !done() {
             try await Task.sleep(for: .milliseconds(20))
             model.session?.update(elapsed: 0.02)
-            waited += 0.02
         }
     }
 
@@ -102,11 +102,15 @@ struct RidgeCutSceneTests {
     func dragsTheCutInTheView() async throws {
         guard MTLCreateSystemDefaultDevice() != nil else { return }
         let model = QuarryFaceModel(blocks: 8000, scene: .ridgeCut)
-        let (window, _, view) = try QuarryFaceHandlingTests.host(model)
+        let (window, host, view) = try QuarryFaceHandlingTests.host(model)
         defer { window.close() }
         #expect(!window.isVisible)
         model.prepare()
         try await Self.waitUntil(model) { model.session?.canPlay == true && model.preparing == nil }
+        // SwiftUI hands the session to the 3-D view on a later turn of the main run loop; asked
+        // before that, the view drew no overlay and placed no point (the strip test's race, fixed
+        // in d365dc82; this one failed the same way in emmettl/bombcad-work#140's ship).
+        try await QuarryFaceHandlingTests.waitForView(view, host, model)
         model.stripMode = true
         view.refreshOverlay()
         #expect(view.overlay.isShowing)
