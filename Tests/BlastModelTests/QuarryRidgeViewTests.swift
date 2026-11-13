@@ -200,4 +200,23 @@ struct QuarryRidgeViewTests {
         #expect(ridge.startField > face.startField && ridge.startDistance >= face.startDistance)
         #expect(ridge.delay < face.delay)
     }
+
+    @Test("A ridge cut's pull-back opens aimed to the frame's right, where the crest's far end runs")
+    func ridgePullBackAimsRight() {
+        let orbit = QuarryOrbit(focus: SIMD3(70, 0, 30), yaw: 0.95, pitch: 0.07, distance: 94)
+        let start = QuarryPullBack.view(
+            orbit: orbit, fovY: 0.56, time: 0, firstFiring: 1.8, shot: QuarryPullBack.ridge)
+        let forward = simd_normalize(start.target - start.eye)
+        let right = simd_normalize(simd_cross(-orbit.direction, SIMD3(0, 0, 1)))
+        let off = start.target - orbit.focus
+        #expect(simd_dot(off, right) > 4)
+        // Aimed right by about the share asked, and only right (and up).
+        #expect(abs(simd_dot(off, right) - QuarryPullBack.ridge.startAcross * 94) < 1e-3)
+        #expect(abs(simd_dot(SIMD3(off.x, off.y, 0), orbit.direction)) < 1e-3)
+        #expect(forward.z < 0.2)
+        // A face's is straight on.
+        let face = QuarryPullBack.view(
+            orbit: orbit, fovY: 0.56, time: 0, firstFiring: 1.8, shot: QuarryPullBack.face)
+        #expect(abs(simd_dot(face.target - orbit.focus, right)) < 1e-4)
+    }
 }

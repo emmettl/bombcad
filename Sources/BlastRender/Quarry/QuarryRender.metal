@@ -1244,6 +1244,35 @@ static inline float3 ridgeDustLit(float tau, float phase, float heightFrac) {
     return albedo * (sunColor * (phase * single + 0.25f * diffused) + ambient);
 }
 
+// A ridge cut's billows (stage 3j, emmettl/bombcad-work#144): lobes of the dust's own baked noise
+// (inverted Worley in three octaves, lobes of 3.2, 1.6 and 0.8 m here: rounded, bright at their
+// middles and creased between), looked up at the mip level a pixel holds (`foot`, metres a pixel
+// where they are drawn), so nothing finer than the screen can show is drawn. Looked up once a
+// pixel at the place the dust is seen, not in the march, whose 0.9 m steps alias anything finer
+// (stage 3i's grain). Carried with the dust's own flow in two phases half a second apart,
+// crossfaded, so the lobes rise and roll with the cloud rather than stand while it moves through.
+constant float ridgeBillowTile = 25.6f;
+
+static inline float ridgeBillowAt(texture3d<float, access::sample> noise, float3 p, float lod) {
+    constexpr sampler mipped(filter::linear, mip_filter::linear, address::repeat);
+    // The lobes at two sizes: 3.2 m down to 0.8 m, and three times that, so a puff's outline
+    // bulges in big lobes and those break into small ones.
+    float small = noise.sample(mipped, p / ridgeBillowTile, level(lod)).r;
+    float big = noise.sample(mipped, p / (3.0f * ridgeBillowTile) + 0.37f, level(max(lod - 1.585f, 0.0f))).r;
+    return 0.55f * small + 0.45f * big;
+}
+
+static inline float ridgeBillow(texture3d<float, access::sample> noise, float3 p, float3 flow, float time, float foot) {
+    float lod = max(0.0f, log2(foot * 1.5f / (ridgeBillowTile / 128.0f)));
+    float phase = fract(time);
+    float a = ridgeBillowAt(noise, p - flow * phase, lod);
+    float b = ridgeBillowAt(noise, p - flow * fract(phase + 0.5f) + float3(11.7f, 5.3f, 7.9f), lod);
+    float wa = 1.0f - abs(2.0f * phase - 1.0f), wb = 1.0f - wa;
+    // Crossfaded so the contrast holds through the blend; the noise's mean is about 0.55.
+    float n = 0.55f + (wa * (a - 0.55f) + wb * (b - 0.55f)) / max(sqrt(wa * wa + wb * wb), 1e-3f);
+    return saturate((n - 0.3f) / 0.5f);
+}
+
 // A ridge cut's march (stage 3f): the face's (`dustFragment`, above) with its lookup warped less,
 // 3.3 m rather than 5.5 m: warped further, its thin jets off the heaving rock showed as loose
 // patches lying over the rock. A copy rather than a shared function, because the face's march
@@ -1254,6 +1283,7 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
                                   texture3d<float, access::sample> light [[texture(1)]],
                                   depth2d<float, access::sample> depth [[texture(2)]],
                                   texture3d<float, access::sample> noise [[texture(3)]],
+                                  texture3d<float, access::sample> flowField [[texture(4)]],
                                   constant QuarryCamera &cam [[buffer(0)]],
                                   constant QuarryDustUniforms &u [[buffer(1)]]) {
     constexpr sampler nearest(filter::nearest, address::clamp_to_edge);
@@ -1265,6 +1295,9 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
     float3 eye = cam.eye.xyz;
     float maxT = length(hit - eye);
     float3 dir = (hit - eye) / max(maxT, 1e-3f);
+    // The angle a pixel spans, for the billows' finest lobes (before any return: a derivative).
+    float3 pixelRay = normalize(far.xyz / far.w - eye);
+    float pixelAngle = max(length(dfdx(pixelRay)), length(dfdy(pixelRay)));
     float3 low = u.low.xyz, high = u.high.xyz;
     float3 t0 = (low - eye) / dir, t1 = (high - eye) / dir;
     float3 tmin = min(t0, t1), tmax = max(t0, t1);
@@ -1283,6 +1316,9 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
     int quiet = 0;
     bool stepping = false;
     float tt = cam.misc.x;
+    // Where the dust is seen: its points weighted by what each gives the pixel.
+    float3 seenSum = float3(0.0f);
+    float seenWeight = 0.0f;
     for (int steps = 0; steps < 900 && t < leave; ++steps) {
         // The coarse search lands its last probe just short of the surface the ray ends on, so
         // dust lying on the rock (shed by it, or left over the heap) is found by every pixel; it
@@ -1333,12 +1369,48 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
             float tau = light.sample(triSampler, lp).r * 0.075f;
             float3 lit = ridgeDustLit(tau, phase, saturate(p.z * 2.0f));
             accumulated += transmittance * a * lit;
+            seenSum += transmittance * a * world;
+            seenWeight += transmittance * a;
             transmittance *= 1.0f - a;
             if (transmittance < 0.01f) break;
         }
         t += step;
     }
-    return float4(accumulated, 1.0f - transmittance);
+    float alpha = 1.0f - transmittance;
+    if (alpha < 0.002f) return float4(accumulated, alpha);
+    // Billows (stage 3j, emmettl/bombcad-work#144). The march's field is smooth at its 1.5 m
+    // cells, so its puffs came out as round cotton-wool balls. Here, once a pixel at the place the
+    // dust is seen, lobes of billow noise carried with the dust's flow cut the dust's depth at a
+    // puff's edges (they tear into lobes and thin into haze; the core is left), mottle thin dust,
+    // and shade thick dust (creases between lobes darker, lobes lit on their sunward side).
+    float3 seen = seenSum / max(seenWeight, 1e-5f);
+    float foot = pixelAngle * length(seen - eye);
+    float3 ps = (seen - low) / size;
+    float3 flow = flowField.sample(triSampler, ps).xyz + u.wind.xyz;
+    // Held to 5 m/s: faster, the flow's change across a puff smeared the lobes within a phase.
+    flow *= min(1.0f, 5.0f / max(length(flow), 1e-3f));
+    float lobes = ridgeBillow(noise, seen, flow, tt, foot);
+    // Across the line of sight (the seen point is only good to a step along it): toward the sun
+    // as the screen shows it, and square to that.
+    float3 across = cam.sun.xyz - dir * dot(cam.sun.xyz, dir);
+    float acrossLength = length(across);
+    float3 e1 = acrossLength > 0.05f ? across / acrossLength : normalize(cross(dir, float3(0.0f, 0.0f, 1.0f)));
+    float reach = max(0.45f, 2.0f * foot);
+    float towardSun = ridgeBillow(noise, seen + e1 * reach, flow, tt, foot);
+    // A lobe brighter on its side toward the sun, by how far across the screen the sun stands.
+    float lit = (towardSun - lobes) * saturate(acrossLength * 1.5f);
+    float opticalDepth = -log(max(transmittance, 1e-4f));
+    // The edges of thick dust tear into lobes; thin dust (a veil, or the haze round a puff) is left.
+    float cut = 2.4f * (1.0f - lobes) * smoothstep(0.5f, 2.0f, opticalDepth);
+    float kept = max(opticalDepth - cut, 0.0f) + 0.3f * min(opticalDepth, cut);
+    // Thin dust (a veil running over the rock, the haze round a puff) is mottled by the same lobes,
+    // so it rolls rather than lying as an even sheet.
+    kept *= mix(1.0f, mix(0.45f, 1.35f, lobes), 1.0f - smoothstep(0.5f, 2.0f, opticalDepth));
+    float alphaKept = 1.0f - exp(-kept);
+    float body = smoothstep(0.3f, 2.0f, opticalDepth);
+    float crease = mix(0.68f, 1.1f, smoothstep(0.15f, 0.85f, lobes));
+    float3 shaded = accumulated * (alphaKept / alpha) * mix(1.0f, crease * (1.0f - 1.6f * lit), body);
+    return float4(max(shaded, 0.0f), alphaKept);
 }
 
 
@@ -1379,7 +1451,11 @@ vertex JetOut jetVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
     out.position = cam.viewProjection * float4(p, 1.0f);
     out.world = p;
     out.uv = corner;
-    out.strength = j.base.w;
+    // Seen end on (from above, close in) a jet's streak is foreshortened to a pale fan lying on
+    // the rock (stage 3j): faded as it turns toward the eye. Constant over the jet, from its base.
+    float3 toEye = cam.eye.xyz - j.base.xyz;
+    float sideOn = length(cross(dir, toEye)) / max(length(toEye), 1e-3f);
+    out.strength = j.base.w * smoothstep(0.45f, 0.8f, sideOn);
     out.seed = j.shape.x;
     out.age = j.shape.y;
     out.length = reach;

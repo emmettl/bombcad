@@ -148,13 +148,19 @@ public enum QuarryPullBack {
         /// Event seconds after the first firing the move begins, and how long it takes.
         public var delay: Float
         public var seconds: Float
+        /// At the start, how far it aims to the frame's right, as a share of the view's distance.
+        public var startAcross: Float
 
-        public init(startDistance: Float, startField: Float, startAim: Float, delay: Float, seconds: Float) {
+        public init(
+            startDistance: Float, startField: Float, startAim: Float, delay: Float, seconds: Float,
+            startAcross: Float = 0
+        ) {
             self.startDistance = startDistance
             self.startField = startField
             self.startAim = startAim
             self.delay = delay
             self.seconds = seconds
+            self.startAcross = startAcross
         }
     }
 
@@ -163,8 +169,11 @@ public enum QuarryPullBack {
     /// A ridge cut's (stage 3i, emmettl/bombcad-work#143): the crest now heaves as one dome up to
     /// about 9 m (stage 3f), which filled the face's close, long-lens opening with rock by 1.6 s.
     /// It opens wider and a little further off, with sky over the crest, so the whole crest is
-    /// seen swelling, and moves out sooner, as the dome breaks.
-    public static let ridge = Shot(startDistance: 0.8, startField: 0.75, startAim: 0.09, delay: 0, seconds: 4)
+    /// seen swelling, and moves out sooner, as the dome breaks. Since stage 3j
+    /// (emmettl/bombcad-work#144) it aims a little to the right and lower, where the crest's far
+    /// end ran off the frame and sky filled its top half.
+    public static let ridge = Shot(
+        startDistance: 0.8, startField: 0.82, startAim: 0.06, delay: 0, seconds: 4, startAcross: 0.055)
 
     /// How far through the move it is at event time `time` (0 close in, 1 the view), eased.
     public static func progress(time: Float, firstFiring: Float, shot: Shot = face) -> Float {
@@ -181,7 +190,11 @@ public enum QuarryPullBack {
     {
         let p = progress(time: time, firstFiring: firstFiring, shot: shot)
         let distance = orbit.distance * (shot.startDistance + (1 - shot.startDistance) * p)
-        let target = orbit.focus + SIMD3(0, 0, orbit.distance * shot.startAim * (1 - p))
+        // The frame's right, level.
+        let right = simd_normalize(SIMD3(-orbit.direction.y, orbit.direction.x, 0))
+        let target =
+            orbit.focus + SIMD3(0, 0, orbit.distance * shot.startAim * (1 - p))
+            + right * (orbit.distance * shot.startAcross * (1 - p))
         return (
             orbit.focus + orbit.direction * distance, target,
             fovY * (shot.startField + (1 - shot.startField) * p)

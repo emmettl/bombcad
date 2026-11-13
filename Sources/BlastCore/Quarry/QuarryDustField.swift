@@ -60,9 +60,14 @@ public final class QuarryDustField {
     /// The share of a crack's dust put into the field (stage 3i): the rest is drawn as its jet,
     /// whose dust at the field's cells was a round puff three metres across at the least.
     let crackField: Float = 0.35
+    /// The share of the first cracks' spurt put into the field (stage 3j, emmettl/bombcad-work#144).
+    let crackSpurtField: Float = 0.12
     /// A ridge's broken rock's dust after it lets go, from half its exposed blocks: a rate per
     /// square metre of block, fading over `shedTime` seconds.
     let shed: Float = 56
+    /// A ridge's low veil off the rock running over the ground (stage 3j): a rate per square metre
+    /// of block and m/s of its speed (to 10 m/s).
+    let veil: Float = 32
     static let shedTime: Float = 1.5
     /// How long a ridge's firing's column is fed (s).
     static let columnTime: Float = 0.35
@@ -198,6 +203,9 @@ public final class QuarryDustField {
         noiseDescriptor.depth = 128
         noiseDescriptor.usage = [.shaderRead, .shaderWrite]
         noiseDescriptor.storageMode = .private
+        // Mipmapped, so a ridge's billows (stage 3j) can be looked up at the level a pixel holds;
+        // a face's march samples the base level only, as before.
+        noiseDescriptor.mipmapLevelCount = 8
         noiseVolume = device.makeTexture(descriptor: noiseDescriptor)!
         pressure = [texture(.r16Float), texture(.r16Float)]
         divergence = texture(.r16Float)
@@ -295,6 +303,9 @@ public final class QuarryDustField {
             MTLSize(width: 128, height: 128, depth: 128),
             threadsPerThreadgroup: MTLSize(width: 16, height: 8, depth: 8))
         encoder.endEncoding()
+        let blit = buffer.makeBlitCommandEncoder()!
+        blit.generateMipmaps(for: noiseVolume)
+        blit.endEncoding()
         buffer.commit()
         buffer.waitUntilCompleted()
     }
@@ -432,8 +443,11 @@ public final class QuarryDustField {
                         // rate the rising rock gives.
                         let spurt = crack[n] < 0.25 * crackShare ? crackSpurt * max(0, 1 - opened / 0.5) : 0
                         let rate = crackJet * (1.5 + rising) + spurt
+                        // The first spurts put less into the field (stage 3j): at its cells they
+                        // were the small soft puffs left over the first cracks.
+                        let field = crackField * (rate - spurt) + crackSpurtField * spurt
                         add(
-                            here + SIMD3(0, 0, 0.5 * size + 0.8), dust: crackField * rate * size * size,
+                            here + SIMD3(0, 0, 0.5 * size + 0.8), dust: field * size * size,
                             velocity: SIMD3(v.x, v.y, 0) + lean + SIMD3(0, 0, rising + 9), heat: 1)
                         noteJet(
                             n, top: here + SIMD3(0, 0, 0.5 * size), rate: rate, rising: rising, time: time)
@@ -488,6 +502,18 @@ public final class QuarryDustField {
                         SIMD3(p.x, p.y, max(p.z - 0.3 * size, below + 2.5)) + spread,
                         dust: 20 * min(speed, 12) * size * size, velocity: v * 0.7 + SIMD3(0, 0, 2), heat: 0.5
                     )
+                }
+                // A low veil that runs with the rock (stage 3j, emmettl/bombcad-work#144): a block
+                // running over the ground (the cut's floor, the heap, the flanks) sheds dust close
+                // over it, dragged along at most of the block's own speed and hardly rising, a little
+                // warm so it neither climbs away as the skirt does nor drops out at once: a thin
+                // rolling sheet runs down with the rock's front and thins behind it.
+                if speed > 2, p.z - below < 0.6 * size + 0.5 {
+                    let spread = SIMD3(
+                        scatter.float(-1.5, 1.5), scatter.float(-1.5, 1.5), scatter.float(0, 0.8))
+                    add(
+                        SIMD3(p.x, p.y, below + 0.9) + spread, dust: veil * min(speed, 10) * size * size,
+                        velocity: SIMD3(v.x, v.y, 0) * 0.85 + SIMD3(0, 0, 0.4), heat: 0.15)
                 }
                 // A ridge's blows count from 3 m/s and throw up more dust than a face's, which
                 // otherwise hardly shows on the flanks from the distance a ridge is seen from.

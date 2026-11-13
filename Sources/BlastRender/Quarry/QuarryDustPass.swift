@@ -100,6 +100,8 @@ final class QuarryDustPass {
         encoder.setFragmentTexture(dust.light, index: 1)
         encoder.setFragmentTexture(depth, index: 2)
         encoder.setFragmentTexture(dust.noiseVolume, index: 3)
+        // A ridge's billows ride its flow (stage 3j).
+        if dust.uniforms.low.w > 0 { encoder.setFragmentTexture(dust.velocity[0], index: 4) }
         encoder.setFragmentSamplerState(sampler, index: 0)
         encoder.setFragmentBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 0)
         var u = dust.uniforms

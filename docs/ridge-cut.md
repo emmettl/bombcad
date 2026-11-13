@@ -1313,3 +1313,116 @@ its coverage, `finedbg/`, `warplo/`, `warp2-*`), and `tools/` (`iter.sh`, `try.s
 **Tests.** `QuarryRidgeViewTests/pullBack` (BlastModel, Linux) runs for both shots: each holds,
 starts at its own distance and field, ends on the view and only moves out; `ridgePullBackOpensWider`:
 a ridge's opens wider and moves sooner than a face's.
+
+## Stage 3j: dust that billows, and a veil that runs with the rock, 13 November 2026
+
+emmettl/bombcad-work#144, on the user's word of 13 November ("keep working through the defects
+list until it looks strong"). Same standing: illustrative; the rock's physics, block counts and
+motion are unchanged (every frame below is drawn from stage 3f's own 20 s run of 31,259 blocks,
+`ridge-dust-heave/a30/poses`). Nothing here is a load, a blast design or a claim about fragments,
+dust or their reach.
+
+**What was wrong** (stage 3i's list).
+- *Cotton wool.* At 3.6 to 4.5 s the columns' big puffs were smooth balls with round outlines and
+  even shading: the field's own shape at its 1.5 m cells. Stage 3i had taken out the fine warp,
+  which made grain (0.3 to 0.6 m features against the march's 0.9 m steps), and finer steps cost
+  2.6 ms.
+- *Less cloud followed the rock down.*
+- *Pull back's opening* cut the crest's far end at the right of the frame.
+- *Early cracks* left small soft puffs, and near cracks seen from above in the window's following
+  view were pale smudges on the rock.
+
+**What changed.**
+- *Billows, once a pixel* (`dustFragmentRidge`, `ridgeBillow`, `QuarryRender.metal`). Detail drawn
+  in the march aliases against its steps, so it is drawn after it: the march keeps where the dust
+  it draws lies (its points weighted by what each gives the pixel), and at that point a lobe field
+  is looked up once. The lobes are the dust's own baked noise (inverted Worley in three octaves),
+  at two sizes, 3.2 m to 0.8 m and three times that, rounded, bright in the middle and creased
+  between. The noise volume is now mipmapped (`QuarryDustField`, eight levels) and the lobes are
+  looked up at the level a pixel holds (the pixel's angle times the distance), so nothing finer
+  than the screen shows. The lookup is carried with the dust's own flow (its velocity, held to
+  5 m/s) in two phases half a second apart, crossfaded with the contrast kept, so the lobes rise
+  and roll with the cloud rather than standing while it moves through them. With them:
+  - the dust's optical depth is cut where it is moderately thick (0.5 to 2), by up to 2.4 in the
+    lobes' creases, keeping 0.3 of what is cut as haze: a puff's edge tears into lobes and thins
+    into haze, its core is left whole;
+  - thin dust (a veil, the haze round a puff) is mottled by the same lobes (0.45 to 1.35 of its
+    depth), so it rolls rather than lying as an even sheet;
+  - thick dust is shaded by them: creases to 0.68, lobes to 1.1, and each lobe a little brighter
+    on the side toward the sun as the screen shows it (from a second lookup across the line of
+    sight, 0.45 m or two pixels toward the sun, not along it, since the seen point is only good to
+    a step along the ray).
+- *A low veil* (`QuarryDustField`). A block running over the ground at more than 2 m/s (the cut's
+  floor, the flanks; anywhere, not only below the floor as the skirt is) sheds dust 0.9 m over the
+  ground under it, 32 per square metre of block and m/s (to 10 m/s), dragged at 0.85 of its speed
+  across the slope, rising 0.4 m/s, a little warm (0.15) so it neither climbs away as the skirt
+  does nor drops out at once. Only 10 to 28 moving blocks are below the floor in the first 5 s, so
+  a veil from the flanks alone did not show.
+- *Early cracks.* The first cracks' spurt puts 0.12 of its dust into the field (it was 0.35, as
+  the rest of a crack's), so it no longer leaves round puffs at the field's cells; its streak is
+  drawn as before. A jet's streak is faded as it turns toward the eye (by the sine of the angle
+  between it and the line of sight, from 0.45 to 0.8): seen from above, close in, it was
+  foreshortened to a pale fan lying on the rock.
+- *Pull back* (`QuarryPullBack.ridge`, BlastModel): it opens with 0.82 of the view's field (0.75),
+  aimed 0.06 of the distance higher (0.09) and 0.055 of it to the frame's right (`startAcross`,
+  new, 0 for a face), so both ends of the crest are in the frame; a face's is as it was.
+- The face's march, sources and frames are untouched: its stills and Pull back frames from the
+  same face poses (110,000 blocks) with main's build and this one are byte-identical PNGs (its
+  march samples the noise volume's base level, as before).
+
+**Measured** (release build, M4 Max Studio, loaded by other sessions; `tools/` below).
+- *Record Clip's draw* (GPU, 1920 x 1080, 1.5 to 5.5 s of the event, interleaved): main 9.51 and
+  9.91 ms, this 10.82 and 10.62 ms (about +1.0 ms); the dust step 4.45 and 4.54 against 4.68 and
+  4.60 ms (the veil's dust).
+- *The window* (`play --ridge --self-test`, two runs each interleaved; medians from 1 to 5 s):
+  draw while following the first firing 11.7 and 11.9 ms main, 12.2 and 12.7 ms this (+0.5 to
+  0.8 ms); following Fire again 12.7 and 12.6 against 13.2 and 12.4 ms; the dust-and-chips step
+  12.3 and 13.5 against 12.3 and 12.9 ms.
+- *No crawl* (`flicker.py`, the opening view's cloud at 3.60, 3.63 and 3.67 s, frames in a row):
+  the change between frames in the detail finer than a few pixels is 5.74 and 5.84 (main) and 6.09
+  and 6.16 (this), up by the same 6% as that detail itself (6.21 to 6.61): the lobes move as the
+  cloud moves and do not boil or crawl.
+
+**Checked by eye**, before (main's build) and after, from the same poses and cameras: Record
+Clip's opening view held still, Pull back and the crest close in (0.6 to 7 s, with 3.60, 3.63 and
+3.67 s in a row), and the window's own frames while following (0.2 to 7 s).
+- *The cloud.* From 3.0 s the columns stand as lobed billows, the upper puffs of the crest's row
+  lobed with darker creases between, their edges torn into lobes and wisps against the
+  sky; at 4.5 to 5.5 s the risen puffs are clusters of lobes rather than balls. Frames in a row
+  show the same lobes moving a little with the cloud.
+- *The veil.* From 4 s a thin, mottled sheet of dust lies over the rock running down, and by 5.5 s
+  a low rolling veil runs down the near edge of the heap toward the eye.
+- *Early.* At 0.6 to 1.0 s the crest's first cracks show thin spurts with no round puffs over
+  them; the pale smudges on the near rock in the window's following view (0.6 to 1.6 s) are gone.
+- *Close on the crest* the soft puffs over the first cracks at 0.6 and 1.0 s are gone, leaving
+  their thin spurts, and the cloud in the break at 3.0 to 4.5 s is torn and lobed where it was a
+  smooth wash.
+- *Pull back* opens on the whole crest, both ends, with less empty sky, and still moves out to the
+  view; it is closer and narrower than the view.
+
+**What still looks wrong.**
+- *The two big low puffs at 3.6 to 4.5 s* (right of the opening view) are lobed inside but their
+  outlines are still roundish: they are the densest dust, whose edges go from clear to opaque in a
+  few pixels, and cutting deeper made holes in their cores. Shaping the dust's own sources (fewer,
+  hotter, more broken) would do more than the render can.
+- *The veil lingers near the eye.* The last blocks running toward the camera at 6 to 7 s keep
+  shedding it, so a lumpy patch of dust stands by the notch's near end at 7 s, where it was clear.
+- *The first dust is fainter.* With the spurts' puffs gone the first dust at 0.6 s is a faint
+  wisp; the spurts' streaks are as thin as before.
+- *The puffs' lit side.* With the low sun behind the eye, the lobes' sunward brightening is small;
+  most of the billowing reads from the creases.
+- Not looked at on a screen: all of it was made offscreen.
+
+Files: `$BOMBCAD_DATA/hillside-blast/ridge-billow/`: `before/` and `after/` (`clips/` with
+`still.mp4`, `pullback.mp4`, `crest.mp4` and their frames), `sheet-still-ba.png`,
+`sheet-pullback-ba.png`, `sheet-crest-ba.png` (Record Clip, before left),
+`sheet-still-consecutive-ba.png`, `sheet-consecutive-crop-before.png` and `-after.png` (frames in
+a row), `sheet-window-early-ba.png` and `sheet-window-late-ba.png` (the window's frames),
+`play-before/` and `play-after/` (with `-nodust` twins), the trials `v1` to `v14`, the cost runs
+`cost-*`, `clipcost/`, `costs.txt`, `clipcost.txt`, the face check `face-*` and `face-check.txt`,
+and `tools/` (`iter.sh`, `try.sh`, `look.sh`, `play.sh`, `final.sh`, `face.sh`, `clipcost.sh`,
+`costruns.sh`, `flicker.py`, `winsheet.py`, `sheet.py`).
+
+**Tests.** `QuarryRidgeViewTests/ridgePullBackAimsRight` (BlastModel, Linux): a ridge's pull-back
+opens aimed to the frame's right by its share and only across, a face's straight on; `pullBack`
+runs for both shots as before.
