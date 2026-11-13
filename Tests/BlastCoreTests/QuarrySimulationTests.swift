@@ -74,22 +74,27 @@ struct QuarrySimulationTests {
             return state.fire[$0] < .greatestFiniteMagnitude && face.height(face.original, c.x, c.y) - c.z < 2
         }
         #expect(top.count > 200)
-        // Watched when the first of it lets go, among those that have swelled for 0.7 of their rise
-        // and not yet let go.
+        // Watched when the first of it lets go, among those not yet let go over the deeper half
+        // of the cut (the dome, stage 3f, is lower toward its ends), all of them swelling since
+        // the ramp before the first firing.
         let first = top.map { state.fire[$0] }.min()!
         let frames = Int((first * 30).rounded(.down))
         for _ in 0..<frames { simulation.advance(substeps: 8) }
         let now = Float(frames) / 30
+        let ridge = try #require(face.ridge)
         let swelling = top.filter {
-            state.fire[$0] > now && state.fire[$0] - state.swell[$0].w < now - 0.7 * state.swell[$0].w
+            let c = face.blocks[$0].centre
+            let depth = face.height(face.original, c.x, c.y) - face.height(face.terrain.heights, c.x, c.y)
+            return state.fire[$0] > now && depth > 0.5 * (ridge.crest - ridge.floor)
         }
         #expect(swelling.count > 20, "\(swelling.count) swelling at \(now) s")
         let p = simulation.pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * blocks.count)
         let rise = swelling.map { p[2 * $0].z - face.blocks[$0].centre.z }.sorted()
-        // At 0.7 of its rise the swell has moved a block 0.45 of its amplitude (up to 4.5 m;
-        // less by the walls): uncarried, the crest's top only sank before it broke.
-        #expect(rise[rise.count / 2] > 0.8, "median rise \(rise[rise.count / 2]) m")
+        // At the first firing the dome has risen 0.6 of its reach (up to 10 m over the crest;
+        // less by the walls and toward the cut's ends): uncarried, the crest's top only sank
+        // before it broke.
+        #expect(rise[rise.count / 2] > 2, "median rise \(rise[rise.count / 2]) m")
         // As a mass: most of it rises together.
-        #expect(rise[rise.count / 10] > 0.3, "10th percentile \(rise[rise.count / 10]) m")
+        #expect(rise[rise.count / 10] > 0.5, "10th percentile \(rise[rise.count / 10]) m")
     }
 }

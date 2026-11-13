@@ -57,6 +57,9 @@ public final class QuarrySimulation {
         /// The spin of a body held up by contact decays at this rate (1/s): a ridge cut's rolling
         /// resistance; none at a face.
         public var rollDrag: Float
+        /// A ridge cut's dome (stage 3f): after its ramp a swell's speed eases off with this time
+        /// constant, a share of the ramp (`QuarryLaunch.ridgeHold`); 0 at a face.
+        public var heaveHold: Float
     }
 
     public let device: MTLDevice
@@ -113,7 +116,11 @@ public final class QuarrySimulation {
                     // at a face).
                     launchSwell: SIMD4(
                         launchState.velocity[n], hillside.ridge == nil ? 0 : launch.ridgeCarried),
-                    spinRise: SIMD4(launchState.spin[n], launch.rise),
+                    // w: a ridge's dome (stage 3f) carries minus its swell's ramp; a face's is unread.
+                    spinRise: SIMD4(
+                        launchState.spin[n],
+                        hillside.ridge != nil && launch.ridgeTogether && launch.ridgeHold >= 0
+                            ? -launch.ridgeRise : launch.rise),
                     swell: launchState.swell[n],
                     first: UInt32(b.firstSphere), count: UInt32(b.sphereCount), state: 0, pad: 0))
         }
@@ -164,7 +171,8 @@ public final class QuarrySimulation {
             creepSpeed: hillside.ridge == nil ? 0.6 : 1.0,
             // A clump of spheres has no rolling resistance: on a ridge's flanks the rock thrown
             // highest by the heave (emmettl/bombcad-work#134) rolled on at 1 to 2 m/s for ever.
-            rollDrag: hillside.ridge == nil ? 0 : launch.ridgeRollDrag)
+            rollDrag: hillside.ridge == nil ? 0 : launch.ridgeRollDrag,
+            heaveHold: hillside.ridge == nil ? 0 : launch.ridgeHold)
         print(
             "grid: cell \(String(format: "%.2f", cell)) m, \(dims.x)x\(dims.y)x\(dims.z) = \(cellCount), dt \(dt) s"
         )

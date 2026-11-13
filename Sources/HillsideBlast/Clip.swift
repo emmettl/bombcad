@@ -65,6 +65,7 @@ enum ClipCommand {
         request.start = option(arguments, "--start").flatMap(Float.init) ?? 0
         request.seconds = option(arguments, "--seconds").flatMap(Float.init) ?? 20
         request.speed = option(arguments, "--speed").flatMap(Float.init) ?? 1
+        request.withoutDust = arguments.contains("--no-dust")
         print(
             String(
                 format: "camera focus %.1f,%.1f,%.1f yaw %.3f pitch %.3f distance %.1f fov %.0f motion %@",
@@ -78,6 +79,10 @@ enum ClipCommand {
             String(
                 format: "clip %@: %d frames, %.1f s of movie, made in %.1f s, %.1f ms a frame median",
                 url.path, report.frames, report.videoSeconds, report.wallSeconds, report.frameMilliseconds))
+        print(
+            String(
+                format: "clip medians: draw %.2f ms (GPU), dust step %.2f ms (GPU)", report.drawMilliseconds,
+                report.dustMilliseconds))
         // Frames from the file itself, at movie times.
         let times = (option(arguments, "--frames")?.split(separator: ",").compactMap { Double($0) } ?? [])
         guard !times.isEmpty else { return }

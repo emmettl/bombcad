@@ -289,6 +289,12 @@ extension QuarryLaunch {
         var velocity = [SIMD3<Float>](repeating: .zero, count: blocks.count)
         var spin = velocity
         var swell = [SIMD4<Float>](repeating: .zero, count: blocks.count)
+        // Stage 3f: one dome. Every block's swell starts together, `ridgeRise` before the first
+        // firing (the solver eases each off after `ridgeRise`, `QuarrySimulation`), so the whole
+        // crest rises at once rather than a bulge running along the cut with the firings.
+        let together = ridgeTogether && ridgeHold >= 0
+        let start = (firings.map(\.time).min() ?? 0) - ridgeRise
+        let deepest = max(ridge.crest - ridge.floor, 1)
         let around: [SIMD2<Float>] = (0..<8).map {
             SIMD2(cos(Float($0) * .pi / 4), sin(Float($0) * .pi / 4))
         }
@@ -342,11 +348,24 @@ extension QuarryLaunch {
             let reach = simd_length(plan) / ridgeSwellReach
             let wall = ridge.halfWidth(at: c.x) + max(0, c.z - ridge.floor) / ridge.wallSlope - abs(c.y)
             let shoulder = min(1, max(0, wall / ridgeShoulder))
-            let amplitude = ridgeSwell * exp(-reach * reach) * shoulder * shoulder * (3 - 2 * shoulder) + 0.2
-            let thisRise = ridgeRise + 0.3 * min(1, r / 25)
+            // Along the cut, by the depth of rock over the floor: a dome over the crest.
+            var dome: Float = 1
+            if together, ridgeDome > 0 {
+                let depth =
+                    hillside.height(hillside.original, c.x, c.y)
+                    - hillside.height(hillside.terrain.heights, c.x, c.y)
+                let d = min(1, max(0, depth / (ridgeDome * deepest)))
+                dome = d * d * (3 - 2 * d)
+            }
+            let amplitude =
+                ridgeSwell * dome * exp(-reach * reach) * shoulder * shoulder * (3 - 2 * shoulder) + 0.2
+            let thisRise = together ? max(fire[n] - start, ridgeRise) : ridgeRise + 0.3 * min(1, r / 25)
+            // Its speed at the top: over `ridgeRise` the eased ramp gives half of it times the
+            // ramp, and the ease after (together) `ridgeHold` of it times the ramp, in all.
+            let travel = together ? ridgeRise * (0.5 + ridgeHold) : 0.5 * thisRise
             // Mostly up, and a little out down the flank.
             let swellVelocity =
-                simd_normalize(0.3 * outward + SIMD3<Float>(0, 0, 1)) * amplitude / (0.5 * thisRise)
+                simd_normalize(0.3 * outward + SIMD3<Float>(0, 0, 1)) * amplitude / travel
             swell[n] = SIMD4(swellVelocity, thisRise)
             // It lets go moving as it swelled, and breaks: part of the law's launch on top, no more
             // than the law's fastest in all.

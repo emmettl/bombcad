@@ -1216,6 +1216,100 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
     return float4(accumulated, 1.0f - transmittance);
 }
 
+// A ridge cut's march (stage 3f): the face's (`dustFragment`, above) with its lookup warped less,
+// 3.3 m rather than 5.5 m: warped further, its thin jets off the heaving rock showed as loose
+// patches lying over the rock. A copy rather than a shared function, because the face's march
+// compiled through a shared function (or with a branch in it) came out a level different in a
+// few pixels, and the face is kept byte for byte as it was.
+fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
+                                  texture3d<float, access::sample> density [[texture(0)]],
+                                  texture3d<float, access::sample> light [[texture(1)]],
+                                  depth2d<float, access::sample> depth [[texture(2)]],
+                                  texture3d<float, access::sample> noise [[texture(3)]],
+                                  constant QuarryCamera &cam [[buffer(0)]],
+                                  constant QuarryDustUniforms &u [[buffer(1)]]) {
+    constexpr sampler nearest(filter::nearest, address::clamp_to_edge);
+    constexpr sampler wrap(filter::linear, address::repeat);
+    float z = depth.sample(nearest, in.uv);
+    float2 ndc = float2(in.uv.x * 2.0f - 1.0f, 1.0f - in.uv.y * 2.0f);
+    float4 far = cam.inverseViewProjection * float4(ndc, z, 1.0f);
+    float3 hit = far.xyz / far.w;
+    float3 eye = cam.eye.xyz;
+    float maxT = length(hit - eye);
+    float3 dir = (hit - eye) / max(maxT, 1e-3f);
+    float3 low = u.low.xyz, high = u.high.xyz;
+    float3 t0 = (low - eye) / dir, t1 = (high - eye) / dir;
+    float3 tmin = min(t0, t1), tmax = max(t0, t1);
+    float enter = max(max(tmin.x, tmin.y), max(tmin.z, 0.0f));
+    float leave = min(min(tmax.x, tmax.y), min(tmax.z, maxT));
+    if (leave <= enter) return float4(0);
+    float h = u.hdtsteps.x;
+    float jitter = fract(sin(dot(in.position.xy, float2(12.9898f, 78.233f))) * 43758.5453f);
+    float coarse = 2.0f;
+    float fine = h * 0.6f;
+    float t = enter + coarse * jitter;
+    float3 size = float3(u.dims.xyz) * h;
+    float3 accumulated = float3(0.0f);
+    float transmittance = 1.0f;
+    float3 albedo = float3(0.62f, 0.53f, 0.42f);
+    float mu = dot(dir, cam.sun.xyz);
+    float g = 0.45f;
+    float hgForward = (1.0f - g * g) / pow(1.0f + g * g - 2.0f * g * mu, 1.5f) * 0.25f;
+    float g2 = -0.15f;
+    float hgBack = (1.0f - g2 * g2) / pow(1.0f + g2 * g2 - 2.0f * g2 * mu, 1.5f) * 0.25f;
+    float phase = 0.75f * hgForward + 0.45f * hgBack;
+    float3 sunColor = float3(1.0f, 0.72f, 0.46f) * 5.2f;
+    float3 ambientUp = float3(0.42f, 0.5f, 0.68f) * 0.42f;
+    float3 ambientDown = float3(0.62f, 0.5f, 0.38f) * 0.42f;
+    int quiet = 0;
+    bool stepping = false;
+    float tt = cam.misc.x;
+    for (int steps = 0; steps < 900 && t < leave; ++steps) {
+        float step = stepping ? fine : coarse;
+        float3 world = eye + dir * t;
+        float3 p = (world - low) / size;
+        float d = density.sample(triSampler, p).r;
+        float shaped = 0.0f;
+        if (d > 0.004f) {
+            if (!stepping) { stepping = true; t = max(enter, t - coarse * 0.9f); quiet = 0; continue; }
+            float dn = 1.0f - exp(-d * 0.42f);
+            // Warp the lookup by a few metres so the field's own smooth shape breaks up, then cut
+            // the lumps with the noise, more where the field is thin.
+            float3 warpSample = noise.sample(wrap, world * 0.05f + float3(0.012f * tt, 0.0f, -0.02f * tt)).rgb;
+            float3 warped = (world + (warpSample * 2.0f - 1.0f) * float3(3.3f, 3.3f, 3.9f) - low) / size;
+            float dw = density.sample(triSampler, warped).r;
+            dn = 1.0f - exp(-dw * 0.42f);
+            float3 q = world * 0.022f + float3(0.0085f * tt, -0.004f * tt, -0.018f * tt);
+            float big = noise.sample(wrap, q).r;
+            float3 q2 = world * 0.05f + float3(-0.012f * tt, 0.02f * tt, 0.007f * tt);
+            float small = noise.sample(wrap, q2).g;
+            float e1 = (1.0f - big) * mix(0.95f, 0.5f, dn);
+            shaped = saturate((dn - e1) / max(1.0f - e1, 0.08f));
+            float e2 = (1.0f - small) * (1.0f - shaped * 0.7f) * 0.62f;
+            shaped = saturate((shaped - e2) / max(1.0f - e2, 0.08f));
+        } else if (stepping) {
+            if (++quiet > 3) stepping = false;
+        }
+        if (shaped > 0.001f) {
+            quiet = 0;
+            float sigma = shaped * (d * 0.12f + 0.55f);
+            float a = 1.0f - exp(-sigma * step);
+            float tau = light.sample(triSampler, p).r * 0.075f;
+            // Light scattered many times in dust is lost slowly: an octave sum of attenuations,
+            // each weaker and less extinguished, so the shadowed underside stays pale and glows.
+            float direct = exp(-tau) + 0.32f * exp(-tau * 0.25f) + 0.14f * exp(-tau * 0.06f);
+            float heightFrac = saturate(p.z * 2.0f);
+            float3 ambient = mix(ambientDown, ambientUp, heightFrac) * (0.6f + 0.4f * exp(-tau * 0.4f));
+            float3 lit = albedo * (sunColor * phase * direct + ambient);
+            accumulated += transmittance * a * lit;
+            transmittance *= 1.0f - a;
+            if (transmittance < 0.01f) break;
+        }
+        t += step;
+    }
+    return float4(accumulated, 1.0f - transmittance);
+}
+
 fragment float4 dustComposite(FullscreenOut in [[stage_in]],
                               texture2d<float> dust [[texture(0)]],
                               sampler s [[sampler(0)]]) {

@@ -106,12 +106,24 @@ public struct QuarryLaunch: Sendable {
     /// `ridgeSwellReach` in plan of a firing, easing to nothing over `ridgeShoulder` from the
     /// cut's walls; `ridgeCarried` of a swelling block's weight held up meanwhile; and at release
     /// `ridgeBreak` of the law's launch on top of the swell's velocity.
-    public var ridgeSwell: Float = 4.5
+    public var ridgeSwell: Float = 10
     public var ridgeRise: Float = 1.5
     public var ridgeSwellReach: Float = 30
     public var ridgeShoulder: Float = 8
     public var ridgeCarried: Float = 1
     public var ridgeBreak: Float = 0.5
+    /// A ridge cut's heave as one dome (stage 3f, `ridgeTogether`): every block's swell starts
+    /// together, `ridgeRise` before the first firing, and after `ridgeRise` its speed eases off
+    /// with this time constant, a share of `ridgeRise` (0: it stops), so a block let go later is
+    /// held up near the dome's top until its firing rather than still climbing. `ridgeSwell` is
+    /// then the swell's whole reach over the cut's deepest rock, if it were never let go.
+    /// `ridgeTogether` false is stage 3a's heave, each block's swell ending at its own release.
+    public var ridgeHold: Float = 0.3
+    public var ridgeTogether = true
+    /// The dome's shape along the cut: the swell is in proportion to the depth of rock over the
+    /// floor there, full from this share of the cut's deepest, so it peaks over the crest and
+    /// dies out toward the cut's ends (0 for none, as stage 3a).
+    public var ridgeDome: Float = 1
     /// A ridge cut's rolling resistance in the solver: the spin of a block held up by contact
     /// decays at this rate (1/s). A clump of spheres has none, and blocks thrown high by the heave
     /// rolled on down the flanks at a metre or two a second.

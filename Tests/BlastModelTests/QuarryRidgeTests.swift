@@ -198,6 +198,53 @@ struct QuarryRidgeTests {
         #expect(face.outward(at: SIMD3(50, 0, 0)) == SIMD3(0, -1, 0))
     }
 
+    @Test("A ridge cut breaks into fewer, larger pieces by default; a face as it was")
+    func sceneOptions() {
+        let ridge = QuarryFace.Options(scene: .ridgeCut)
+        #expect(ridge.blocks == 30_000 && ridge.fractureScale == 0.5)
+        let face = QuarryFace.Options(scene: .face)
+        let plain = QuarryFace.Options()
+        #expect(face.blocks == plain.blocks && face.fractureScale == plain.fractureScale)
+    }
+
+    @Test("The crest heaves as one dome: every swell starts together, highest over the crest")
+    func oneDome() throws {
+        let face = try Self.small()
+        let ridge = try #require(face.ridge)
+        let firings = QuarryFiringPattern.pattern(face: face)
+        let first = try #require(firings.map(\.time).min())
+        let law = QuarryLaunch()
+        var blocks = face.blocks
+        let state = law.apply(to: &blocks, firings: firings, face: face)
+        let released = (0..<blocks.count).filter { state.fire[$0] < .greatestFiniteMagnitude }
+        // Not a bulge running with the firings: one start for all, the ramp before the first.
+        for n in released {
+            #expect(abs(state.fire[n] - state.swell[n].w - (first - law.ridgeRise)) < 1e-3)
+        }
+        // A dome: the swell over the crest is larger than toward the cut's ends.
+        func speed(_ n: Int) -> Float {
+            simd_length(SIMD3(state.swell[n].x, state.swell[n].y, state.swell[n].z))
+        }
+        func middle(_ n: Int) -> Bool { abs(face.blocks[n].centre.y) < 4 }
+        let crest = released.filter { middle($0) && abs(face.blocks[$0].centre.x - ridge.crestX) < 8 }
+        let ends = released.filter {
+            let x = face.blocks[$0].centre.x
+            return middle($0) && min(x - ridge.cutStart, ridge.cutEnd - x) < 10
+        }
+        #expect(!crest.isEmpty && !ends.isEmpty)
+        let top = crest.map(speed).reduce(0, +) / Float(max(crest.count, 1))
+        let edge = ends.map(speed).reduce(0, +) / Float(max(ends.count, 1))
+        #expect(top > 1.5 * edge, "crest \(top) m/s, ends \(edge) m/s")
+        // Stage 3a's heave, kept as a setting: each swell ends at its own release, so they start
+        // with the firings, not together.
+        var travelling = law
+        travelling.ridgeTogether = false
+        var again = face.blocks
+        let old = travelling.apply(to: &again, firings: firings, face: face)
+        let starts = released.map { old.fire[$0] - old.swell[$0].w }
+        #expect((starts.max() ?? 0) - (starts.min() ?? 0) > 0.5)
+    }
+
     @Test("A first cut is laid across the highest ridge, at right angles to it; none on a slope")
     func suggestion() throws {
         let built = Self.ridge.terrain

@@ -73,6 +73,9 @@ if let v = option(arguments, "--rise").flatMap(Float.init) { launch.ridgeRise = 
 if let v = option(arguments, "--carried").flatMap(Float.init) { launch.ridgeCarried = v }
 if let v = option(arguments, "--break").flatMap(Float.init) { launch.ridgeBreak = v }
 if let v = option(arguments, "--roll").flatMap(Float.init) { launch.ridgeRollDrag = v }
+if let v = option(arguments, "--hold").flatMap(Float.init) { launch.ridgeHold = v }
+if let v = option(arguments, "--dome").flatMap(Float.init) { launch.ridgeDome = v }
+if arguments.contains("--travelling") { launch.ridgeTogether = false }
 
 func writeReport(_ text: String) {
     print(text)
@@ -291,6 +294,8 @@ if command == "render" {
     let poseBuffer = device.makeBuffer(length: 32 * bodies, options: .storageModeShared)!
     let previousPose = device.makeBuffer(length: 32 * bodies, options: .storageModeShared)!
     var dustTimes: [Double] = []
+    /// Each dust step's wall time (ms) by event time: its sources on the CPU and the field's GPU work.
+    var dustWall: [(Float, Double)] = []
     func readFrame(_ i: Int) {
         // Runs the dust up to this frame, in order.
         previousPose.contents().copyMemory(from: poseBuffer.contents(), byteCount: 32 * bodies)
@@ -310,11 +315,13 @@ if command == "render" {
             dustFrame += 1
             readFrame(dustFrame)
             if dustFrame > 0, let dust = renderer.dust {
+                let began = Date()
                 dustTimes.append(
                     dust.step(
                         pose: poseBuffer, previous: previousPose, bodies: bodies,
                         time: Float(dustFrame) / Float(fps),
                         restSize: restSizes, frameRate: Float(fps)) * 1000)
+                dustWall.append((Float(dustFrame) / Float(fps), Date().timeIntervalSince(began) * 1000))
             }
             if dustFrame > 0 {
                 renderer.stepDecor(
@@ -358,6 +365,12 @@ if command == "render" {
         }
         writer.finish()
     }
+    let firing = dustWall.filter { $0.0 >= 1.5 && $0.0 < 5.5 }.map(\.1)
+    print(
+        String(
+            format:
+                "dust step wall time (sources and field), 1.5 to 5.5 s of the event: median %.2f ms, p90 %.2f (%d steps)",
+            percentile(firing, 0.5), percentile(firing, 0.9), firing.count))
     writeReport(
         String(
             format:

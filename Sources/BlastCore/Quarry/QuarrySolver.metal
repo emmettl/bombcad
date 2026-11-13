@@ -29,6 +29,10 @@ struct QuarryUniforms {
     // The spin of a body held up by contact decays at this rate (1/s): rolling resistance, a
     // ridge cut's; none at a face.
     float rollDrag;
+    // A ridge cut's heave as one dome (stage 3f): after its ramp a swell's speed eases off with
+    // this time constant, a share of the ramp (0: it stops). Used only by bodies whose
+    // `spinRise.w` is negative (minus the ramp); a face's is positive and unread.
+    float heaveHold;
 };
 
 static inline float3 rotate(float4 q, float3 v) {
@@ -199,7 +203,19 @@ kernel void integrate(device QuarryBody *bodies [[buffer(0)]],
     }
     // The swell's push this substep: the change of its velocity profile, eased.
     float3 swellPush = float3(0.0f);
-    if (B.pad == 0u && rise > 0.0f) {
+    if (B.pad == 0u && rise > 0.0f && B.spinRise.w < 0.0f) {
+        // A ridge's dome: every swell starts together and ramps over the same time; after it the
+        // speed eases off, so a block let go late waits near the dome's top.
+        float ramp = -B.spinRise.w;
+        float a1 = (u.time - (fire - rise)) / ramp;
+        float a0 = (u.time - dt - (fire - rise)) / ramp;
+        float hold = max(u.heaveHold, 1e-3f);
+        float f1 = a1 < 1.0f ? (a1 <= 0.0f ? 0.0f : a1 * a1 * (3.0f - 2.0f * a1))
+                             : (u.heaveHold > 0.0f ? exp(-(a1 - 1.0f) / hold) : 0.0f);
+        float f0 = a0 < 1.0f ? (a0 <= 0.0f ? 0.0f : a0 * a0 * (3.0f - 2.0f * a0))
+                             : (u.heaveHold > 0.0f ? exp(-(a0 - 1.0f) / hold) : 0.0f);
+        swellPush = B.swell.xyz * (f1 - f0);
+    } else if (B.pad == 0u && rise > 0.0f) {
         float s1 = saturate((u.time - (fire - rise)) / rise);
         float s0 = saturate((u.time - dt - (fire - rise)) / rise);
         swellPush = B.swell.xyz * (s1 * s1 * (3.0f - 2.0f * s1) - s0 * s0 * (3.0f - 2.0f * s0));

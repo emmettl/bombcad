@@ -143,6 +143,8 @@ public struct QuarryClipRequest: Sendable {
     public var bitrate = 14_000_000
     /// The window's dust cells (m), so the clip looks as the window does.
     public var dustGrid: Float = QuarrySession.dustGrid
+    /// Drawn without the dust (it still runs), for looking at the rock alone.
+    public var withoutDust = false
 
     public init(url: URL, camera: QuarryClipCamera) {
         self.url = url
@@ -257,7 +259,7 @@ public final class QuarryClipRecorder: @unchecked Sendable {
         let sun = SIMD3(renderer.camera.sun.x, renderer.camera.sun.y, renderer.camera.sun.z)
         let dust = try QuarryDustField(
             device: device, face: face, firings: firings, sun: sun, gridSize: r.dustGrid)
-        renderer.dust = dust
+        renderer.dust = r.withoutDust ? nil : dust
         let bodies = face.blocks.count
         let restSizes = face.blocks.map(\.size)
         let pose = device.makeBuffer(length: 32 * bodies, options: .storageModeShared)!

@@ -49,6 +49,63 @@ public final class QuarryDustField {
     let swellSpeed: [Float]
     /// A ridge cut's blocks' way out down their flank, for the puffs at release (a face's is -y).
     let outward: [SIMD3<Float>]
+    /// A ridge cut's (stage 3f): each block's draw for whether its top cracks open and jets dust
+    /// as it heaves (it does once the dome's rise passes the draw's threshold, up to
+    /// `crackShare` of the exposed blocks); a jet's rate per square metre of block and m/s of
+    /// rise; and the spurt the first quarter of the cracks give as the rock starts to move.
+    let crack: [Float]
+    let crackShare: Float = 0.08
+    let crackJet: Float = 6
+    let crackSpurt: Float = 200
+    /// A ridge's broken rock's dust after it lets go, from half its exposed blocks: a rate per
+    /// square metre of block, fading over `shedTime` seconds.
+    let shed: Float = 56
+    static let shedTime: Float = 1.5
+    /// How long a ridge's firing's column is fed (s).
+    static let columnTime: Float = 0.35
+    /// The ridge's heave's ramp (s), from the launch law: how far the dome has risen.
+    let ridgeRamp: Float = max(QuarryLaunch().ridgeRise, 0.1)
+    /// A ridge cut's rock top this frame, for where the firings' columns are born.
+    var top: TopMap?
+
+    /// The highest top of the moving rock in each 2 m column of the dust box, this frame.
+    struct TopMap {
+        let low: SIMD2<Float>
+        let nx: Int, ny: Int
+        var height: [Float]
+        static let cell: Float = 2
+        init(low: SIMD2<Float>, extent: SIMD2<Float>) {
+            self.low = low
+            nx = max(1, Int(extent.x / Self.cell))
+            ny = max(1, Int(extent.y / Self.cell))
+            height = Array(repeating: -.infinity, count: nx * ny)
+        }
+        mutating func reset() {
+            for i in height.indices { height[i] = -.infinity }
+        }
+        func index(_ x: Float, _ y: Float) -> (Int, Int) {
+            (Int(floor((x - low.x) / Self.cell)), Int(floor((y - low.y) / Self.cell)))
+        }
+    }
+
+    private func noteTop(_ p: SIMD3<Float>, _ size: Float) {
+        let (i, j) = top!.index(p.x, p.y)
+        guard i >= 0, j >= 0, i < top!.nx, j < top!.ny else { return }
+        top!.height[i + top!.nx * j] = max(top!.height[i + top!.nx * j], p.z + 0.5 * size)
+    }
+
+    /// The highest moving rock's top within `reach` cells of (x, y), or -inf.
+    func rockTop(_ x: Float, _ y: Float, reach: Int) -> Float {
+        guard let top else { return -.infinity }
+        let (i0, j0) = top.index(x, y)
+        var best = -Float.infinity
+        for j in max(0, j0 - reach)...min(top.ny - 1, max(0, j0 + reach)) {
+            for i in max(0, i0 - reach)...min(top.nx - 1, max(0, i0 + reach)) {
+                best = max(best, top.height[i + top.nx * j])
+            }
+        }
+        return best
+    }
     /// Each block's velocity at the last step, for the impacts.
     public var lastVelocity: [SIMD3<Float>]
     public let pointer: UnsafeMutablePointer<SIMD4<Float>>
@@ -152,6 +209,11 @@ public final class QuarryDustField {
         swellSpeed = launchState.swell.map { simd_length(SIMD3($0.x, $0.y, $0.z)) }
         exposed = hillside.blocks.map { hillside.exposed($0.centre) }
         outward = hillside.ridge == nil ? [] : hillside.blocks.map { hillside.outward(at: $0.centre) }
+        var draw = QuarryRandom(seed: 0xC4AC)
+        crack = hillside.ridge == nil ? [] : hillside.blocks.map { _ in draw.float() }
+        if hillside.ridge != nil {
+            top = TopMap(low: SIMD2(low.x, low.y), extent: SIMD2(high.x - low.x, high.y - low.y))
+        }
         lastVelocity = Array(repeating: .zero, count: hillside.blocks.count)
         var map: [String: MTLComputePipelineState] = [:]
         for name in [
@@ -222,24 +284,6 @@ public final class QuarryDustField {
         let once = frameRate / 30
         // Each firing's puff, born on the face in front of it at its own time, so the ripple runs
         // through the dust as it does through the rock.
-        for firing in firings where face.ridge != nil && time >= firing.time && time < firing.time + 0.35 {
-            // A ridge cut's: a narrow column from the ground above the firing, mostly up and a
-            // little out down the flank, its dust at every speed from 10% to all of 14 m/s so the
-            // column stands from the ground; each firing shows as its own plume along the cut, and
-            // the plumes thin as they rise (the field's thinning, above).
-            let age = (time - firing.time) / 0.35
-            var r = QuarryRandom(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
-            let p = firing.position
-            let top = SIMD3<Float>(p.x, p.y, face.height(face.original, p.x, p.y) + 0.5)
-            let out = face.outward(at: p)
-            for _ in 0..<700 {
-                let offset = r.unit() * r.float(0.3, 3) * SIMD3<Float>(1, 1, 3)
-                let way = simd_normalize(SIMD3<Float>(offset.x * 0.15 + out.x * 0.6, offset.y * 0.15, 3))
-                add(
-                    top + offset, dust: 120 * (1 - age), velocity: way * 14 * r.float(0.1, 1) + r.unit() * 5,
-                    heat: 1)
-            }
-        }
         for firing in firings where face.ridge == nil && time >= firing.time && time < firing.time + 0.3 {
             let age = (time - firing.time) / 0.3
             var r = QuarryRandom(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
@@ -258,6 +302,10 @@ public final class QuarryDustField {
         let flankTop = face.ridge.map { $0.floor - 1 }
         var scatter = QuarryRandom(seed: 0x5EED &+ UInt64(time * 1000))
         let ground = face.terrain.heights
+        // The rock's top is wanted only while a ridge's firing's column is being born.
+        let mapTop =
+            top != nil && firings.contains { time >= $0.time && time < $0.time + Self.columnTime }
+        if mapTop { top!.reset() }
         let posePointer = pose.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
         let previousPointer = previous.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * bodies)
         for n in 0..<bodies {
@@ -268,12 +316,32 @@ public final class QuarryDustField {
             let here = SIMD3(p.x, p.y, p.z)
             let size = restSize[n]
             let speed = simd_length(v)
-            // A block on the face vents a puff of dust as its swell begins, carried with it and up:
+            // A block on the face vents a puff of dust as its swell begins, carried with it and up
+            // (a ridge's jets from cracks instead):
             // so the dust starts with the first motion of the rock around each firing (the swell
             // begins 0.8 to 1.25 s before the block lets go), not only when it lets go.
             if exposed[n], swellRise[n] > 0, time <= blockFire[n], time > blockFire[n] - swellRise[n] {
                 let share = (time - (blockFire[n] - swellRise[n])) / swellRise[n]
-                if share < Self.ventShare {
+                if face.ridge != nil {
+                    // A ridge's heaving rock (stage 3f) jets dust from its cracks rather than
+                    // puffing it over its whole top (which lay on the dome like patchy fog): a few
+                    // blocks of its top at first, more as the dome rises and opens, each a thin hot
+                    // jet off its top, faster than the rock under it and densest as the rock moves
+                    // fastest.
+                    let opened = (time - (blockFire[n] - swellRise[n])) / ridgeRamp
+                    let t = min(1, max(0, (opened - 0.03) / 1.1))
+                    let lean = SIMD3(scatter.float(-0.6, 0.6), scatter.float(-0.6, 0.6), Float(0))
+                    if opened > 0.03, crack[n] < crackShare * (0.25 + 0.75 * t * t * (3 - 2 * t)) {
+                        let rising = max(0, v.z)
+                        // The first cracks spurt as the rock starts to move, then settle to the
+                        // rate the rising rock gives.
+                        let spurt = crack[n] < 0.25 * crackShare ? crackSpurt * max(0, 1 - opened / 0.5) : 0
+                        add(
+                            here + SIMD3(0, 0, 0.5 * size + 0.8),
+                            dust: (crackJet * (1.5 + rising) + spurt) * size * size,
+                            velocity: SIMD3(v.x, v.y, 0) + lean + SIMD3(0, 0, rising + 9), heat: 1)
+                    }
+                } else if share < Self.ventShare {
                     let out = outward.isEmpty ? SIMD3<Float>(0, -1, 0) : outward[n]
                     add(
                         here + out * (0.5 * size),
@@ -284,8 +352,28 @@ public final class QuarryDustField {
             // A block on the face lets go with a puff that travels with it.
             if exposed[n], blockFire[n] > time - dt, blockFire[n] <= time {
                 let out = outward.isEmpty ? SIMD3<Float>(0, -1, 0) : outward[n]
-                add(here, dust: 6 * size * size * once, velocity: v + out * 4 + SIMD3(0, 0, 3), heat: 0.8)
+                if face.ridge != nil {
+                    // A ridge's breaking dome: the dust bursts up out of the opening cracks.
+                    add(
+                        here + SIMD3(0, 0, 0.5 * size + 0.3), dust: 6 * size * size * once,
+                        velocity: v + out * 2 + SIMD3(0, 0, 6), heat: 1)
+                } else {
+                    add(here, dust: 6 * size * size * once, velocity: v + out * 4 + SIMD3(0, 0, 3), heat: 0.8)
+                }
             }
+            // A ridge's broken rock goes on shedding dust for a second and a half after it lets
+            // go, carried with it, so the cloud comes out of the breaking mass and follows it down
+            // rather than being left in the air where the dome was. Half the blocks at twice the
+            // rate: the same cloud, for half the sources (0.4 ms of the step).
+            if face.ridge != nil, exposed[n], crack[n] < 0.5, time > blockFire[n],
+                time < blockFire[n] + Self.shedTime
+            {
+                let fade = 1 - (time - blockFire[n]) / Self.shedTime
+                add(
+                    here + SIMD3(0, 0, 0.5 * size), dust: shed * fade * fade * size * size,
+                    velocity: v * 0.7 + SIMD3(0, 0, 1.5), heat: 0.5)
+            }
+            if mapTop { noteTop(here, size) }
             // A tumbling block trails dust.
             if speed > 3, p.z < dustCeiling {
                 add(here, dust: 0.03 * speed * size * size, velocity: v, heat: 0.2)
@@ -322,6 +410,29 @@ public final class QuarryDustField {
                     heat: 0.7)
             }
             lastVelocity[n] = v
+        }
+        // A ridge cut's firings: a narrow column from the rock's top over each firing as it stands
+        // now (the heave has lifted it, stage 3f; it was born at the old ground, inside the risen
+        // rock), mostly up and a little out down the flank, most of its dust slow so the column
+        // stands on the rock; each firing shows as its own plume along the cut, and the plumes
+        // thin as they rise (the field's thinning, above).
+        for firing in firings
+        where face.ridge != nil && time >= firing.time && time < firing.time + Self.columnTime {
+            let age = (time - firing.time) / Self.columnTime
+            var r = QuarryRandom(seed: UInt64(firing.position.x * 100) &+ UInt64(time * 1000))
+            let p = firing.position
+            let base = max(face.height(face.original, p.x, p.y), rockTop(p.x, p.y, reach: 1)) + 0.3
+            let out = face.outward(at: p)
+            for _ in 0..<700 {
+                var offset = r.unit() * r.float(0.3, 3) * SIMD3<Float>(0.7, 0.7, 2)
+                offset.z = abs(offset.z)
+                let way = simd_normalize(SIMD3<Float>(offset.x * 0.15 + out.x * 0.6, offset.y * 0.15, 3))
+                // Most of it slow, so the column stands on the rock rather than leaving it as a puff.
+                let speed = r.float(0.15, 1)
+                add(
+                    SIMD3(p.x, p.y, base) + offset, dust: 120 * (1 - age),
+                    velocity: way * 11 * speed * speed + r.unit() * 3, heat: 0.7)
+            }
         }
         let buffer = queue.makeCommandBuffer()!
         let encoder = buffer.makeComputeCommandEncoder()!

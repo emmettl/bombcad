@@ -985,3 +985,207 @@ event settles as well. **What it would take:** for a ridge cut only, the window'
 block count 100,000 to 30,000 and `fractureScale` 0.5 (two lines where the session's options are
 made, with the face unchanged), and a check that the heave (#134's swell, carried and released by
 block) still reads with fewer, larger blocks; it did in these clips. Left for the user's word.
+
+## Stage 3f: dust and heave that look strong, 13 November 2026
+
+emmettl/bombcad-work#140, on the user's word of 13 November ("keep working through the defects
+until it looks strong"). Same standing: illustrative, a stylised heave and its dust for the eye;
+nothing here is how real rock heaves, a load, a blast design or a claim about fragments or their
+reach. It follows stage 3a's heave (emmettl/bombcad-work#134) and the dust from the first motion
+(emmettl/bombcad-work#137), and takes up what they left. It was made and checked before stages
+3d and 3g (the flanks and crags, emmettl/bombcad-work#138 and emmettl/bombcad-work#141) landed,
+so the flanks in its frames are stage 3b's; it changes none of theirs.
+
+**What was wrong.**
+- *The firings' dust started inside the rock.* Each column was born within 9 m above or below the
+  old ground over its firing; by the firings the heave had lifted the crest 3 to 7 m, so most of a
+  column started inside the risen rock and came out of the middle of the breaking mound.
+- *The heave's puffs were fog.* Every exposed block puffed dust over the first third of its swell,
+  so at the window's 1.5 m cells the crest wore soft separate blobs that lay on it like patchy fog
+  and hid the dome (13 to 22% of the window's frame from 1.6 to 3.2 s, most of it on the rock).
+- *A small dome that ran along the cut.* Each block's swell ended at its own release, so the heave
+  followed the firings from the far flank to the near one: at the first firing (1.8 s) the top of
+  the rock had risen 0.5 m in the median, at 2.4 s it stood 7.4 m at the far end of the cut and
+  0.5 m at the near one (`tools/dome.py`, below), and the crest's skyline rose only 2 to 3 m
+  before it broke.
+
+**What changed.**
+- *One dome* (`QuarryLaunch.applyRidge`, BlastModel; `integrate`, `QuarrySolver.metal`). Every
+  ridge block's swell now starts together, `ridgeRise` (1.5 s) before the first firing, and ramps
+  up over the same 1.5 s; after it, a block not yet let go keeps rising at a speed that eases off
+  with a time constant of 0.3 of the ramp (`ridgeHold`), still carried, so it waits near the dome's
+  top until its firing breaks it. Its swell is in proportion to the depth of rock over the floor
+  where it stands (`ridgeDome`), so the dome peaks over the crest and dies out toward the cut's
+  ends, and eases to nothing toward the walls as before. `ridgeSwell`, now the swell's whole reach
+  over the deepest rock, is 10 m (it was 4.5 m over each block's own swell). The release is as
+  stage 3a's (the swell's velocity at that moment, with half the law's launch on top), so a block
+  let go late, its swell eased off, breaks away more gently: the dome slumps and spills rather than
+  being thrown up. The solver tells the dome's profile by `spinRise.w`, which carries minus the
+  ramp for a ridge's blocks (a face's carries a positive value the solver never read), and the
+  ease's time constant is a new uniform, `heaveHold`, 0 at a face; the face's swell takes the old
+  branch unchanged. `ridgeTogether` false gives back stage 3a's heave, and `hillsideblast simulate`
+  takes `--hold`, `--dome` and `--travelling` beside stage 3a's options.
+- *Dust from the rock's cracks* (`QuarryDustField`, a ridge cut only; the face's sources are as
+  they were). The heaving rock no longer puffs over its whole top. A few blocks of its top (2% at
+  first, up to 8% as the dome rises, by a fixed draw a block) are cracks: each gives a thin hot jet
+  from just above its top, rising 9 m/s faster than the rock under it, in proportion to how fast
+  the rock rises, and the first quarter of them spurt as the rock starts to move, so the dust still
+  starts with the first motion. A block's puff as it lets go now bursts up from its top (6 m/s up)
+  rather than from its middle.
+- *Dust that comes out of the breaking mass.* Half of the exposed blocks, at twice the rate, shed
+  dust for 1.5 s after they let go, carried at 0.7 of their velocity, so the cloud pours out of the
+  breaking rock and follows it down the flank instead of being left where the dome was. (Shedding
+  from every block gave the same cloud for 0.4 ms more of the step.)
+- *Columns from the rock's top.* Each firing's column is born on the rock as it now stands over
+  the firing (the highest moving block's top within 2 m columns round it, mapped only while a
+  column is fed) or the old ground if higher, and only above it; most of its dust is slow, so it
+  stands on the rock rather than leaving it as a puff, and a little less hot.
+- *The march* (`dustFragmentRidge`, `QuarryRender.metal`; `QuarryDustPass`). A ridge cut's dust is
+  drawn by its own copy of the face's march, which warps the lookup by 3.3 m rather than 5.5 m:
+  warped further, the jets showed as loose patches over the rock. A copy, not a shared function:
+  with the face's march sharing the code (inlined with a constant, or with a branch) the face's
+  frames came out one level different in a few pixels.
+- `hillsideblast clip` takes `--no-dust` (the window's recorder with the dust run but not drawn)
+  and prints the clip's median draw and dust times; `render` prints the dust step's wall time over
+  the firings.
+
+**Measured** (release build, M4 Max Studio, the built-in ridge at 100,000 blocks asked, 96,386 made,
+20 s runs; `tools/` below).
+- *The dome* (the top layer of the rock over the cut, median rise; `heave.py`): 4.9 m at the first
+  firing (1.8 s; 0.5 m before), with 87% of the top layer risen more than a metre; 6.7 m at 2.2 s;
+  at most 8.1 m at 3.0 s (before 7.5 m at 3.7 s, most of it from rock already thrown). Within each
+  4 m square the spread of the rise (interquartile) is 0.28 m at 1.8 s and 0.43 m at 2.2 s, so it
+  rises as a mass. Along the cut's line (`dome.py`, 10 m bins from x 30 to 120, |y| < 8 m), at
+  1.8 s: 0.5, 1.4, 3.8, 5.3, 6.0, 6.0, 5.0, 2.6, 0.5, 0.2 m; at 2.6 s: 0.3, 3.8, 6.7, 8.3, 9.0, 8.9,
+  7.5, 3.9, 0.8, 0.3 m: one dome over the crest, rising together. The crest (x 70 to 90) stands
+  about 9 m up when its own firings break it at about 2.7 s (about 4 m before).
+- *Stable.* No NaNs. Fastest block 25.0 m/s (26.8 before). The last second (each block's move from
+  19 to 20 s): worst 0.30 m, one block over 10 cm, on the near end's wall at 16 m up; the same
+  block and move in a second run. Main's build on the same machine: 0.002 m and none; stage 3a's
+  figures were 1.5 to 1.8 m and one or two. Tried and not kept (each a 20 s run): 4.5 m (the old
+  amplitude) on the one dome rose only 4 m by 2.8 s; 7 m and 9 m with the hold at 0.5 rose 6 and
+  8 m, read well but flat-topped, as a raised table (dome share 0.6, full depth from 60% of the
+  deepest); 10 m with the hold at 0.3 and the dome by depth is the default. All settled with no
+  block over 10 cm but this one.
+- *Dust from the first motion* (the window's own session, `play --ridge --self-test --offscreen
+  --shots-at`, frames every 0.2 s with and without dust, as #137 measured it): the rock is now on
+  view (1% of pixels by more than 12 levels) at 0.4 s, since the whole dome starts to rise then
+  (before at 1.4 s, the far flank's first blocks); dust shows at 0.6 s first firing, 0.8 s on Fire
+  again and on a moved cut: 0.2 to 0.4 s of event, about 0.5 s on screen, where it was 0. That
+  first motion is a few centimetres; the crest is plainly rising from about 1 s. The dust covers 8
+  to 11% of the window's frame from 1.6 to 2.6 s (13 to 22% before), so the dome shows, and 35 to
+  39% from 3.4 to 4.4 s as it breaks (16 to 22% before).
+- *Cost.* The dust step's wall time over the firings (`render --ridge --dust-h 1.5 --ss 1`, 1.5 to
+  5.5 s, interleaved, two each): main 6.5 and 6.9 ms; shedding from every block 7.5 and 7.7; as
+  landed 7.3 and 7.3: about 0.5 ms more. The window's recorder's draw (GPU, 1920 x 1080, the
+  firings' four seconds): 11.5 to 11.8 ms for this build and its variants on a quiet GPU, and 11.5
+  to 11.6 (main) against 12.5 to 13.3 (this) with another session's self-test running beside them.
+  The window's own session (`play --self-test`, two pairs interleaved; dust-and-chips step, then
+  draw, medians from 1 to 5 s of the event while following the first firing): 15.2 / 23.1 and 16.3
+  / 23.9 ms main, 15.8 / 24.6 and 19.7 / 25.2 this (an earlier build, shedding from every block); a
+  second set ran beside another session's GPU work and swung by half again between runs of one
+  build. Physics: the whole cut is awake from 0.3 s (from 0.7 s), so the solver works longer: 15.6
+  s of GPU over the 20 s event against 12.8 s (single runs). Memory as before but for a 2 m map of
+  the rock's top over the dust box (tens of kilobytes).
+- *Options for the dust's cost, with their look.* Halving all of this stage's dust (the jets, the
+  spurt and the shedding) changed neither the dust step's GPU time (3.92 to 3.93 ms against 3.93
+  to 3.94) nor the draw (11.5 to 11.8 ms either way), and its frames are barely thinner: the cost
+  is in the number of sources a frame and the screen the cloud covers, not in how dense it is.
+  Shedding from half the blocks at twice the rate saved 0.4 ms of the step with the same cloud
+  and is what landed. Recommendation: keep this as it is; no default to change.
+
+**Quarry Face unchanged.** Its launch, swell branch and dust sources are not touched (its march is
+the same function, not recompiled through a shared one). Stills from the same face poses
+(`face-poses`, made with main's build, 110,000 blocks, `render --stills 1.0,2.0,3.5,5.9`) with
+main's build and this one are byte-identical PNGs.
+
+**Checked by eye**, before (main's build, its own 20 s run) and after, at the same cameras and
+times, with the window's recorder (`hillsideblast clip`, frames from the movie files): the
+opening view held still (1.0 to 19.9 s), with and without dust; Pull back (0.5 to 11.9 s); and a
+close shot of the crest (`--focus 81,0,38 --distance 42 --yaw 0.95 --pitch 0.12`, 1.0 to 7.0 s);
+and the window's own frames while following (`play-before`, `play-after3`, every 0.2 s to 4.4 s).
+- *Opening view.* Before, the crest is flat under patches of fog at 1.6 to 2.6 s, its skyline
+  barely raised; the mound only stands up as it breaks into loose rock at 3.0 to 3.6 s. Now the
+  whole crest over the cut rises from about 1 s, its old surface and beds still on it, and by 1.6
+  to 2.6 s it stands as a raised mass against the sky with small jets of dust off its top; the
+  firings' columns burst from its top in their order from 2.2 s, and from 3.0 s the dome breaks
+  and a heavy cloud, shadowed dark in its core, pours out of the breaking rock and runs down the
+  near flank with it. At 4.5 s the dust follows the rock down; at 7 s the notch is clear; the end
+  is as before.
+- *Close on the crest.* The crest rises as a wall of cracking rock, the cracks between its cells
+  opening dark, wisps of dust off its top, then breaks into blocks inside its own dust at 3.0 s.
+- *The film* (`hillsideblast render --ridge`, 1 m cells, supersampled; stills at 1.6, 2.6, 3.6 and
+  4.5 s): the same story as the window's, the early jets a little finer.
+- *Pull back.* The close opening shot now fills with the rising rock by 2.2 s (the sky above the
+  crest is gone from the frame until the camera pulls back), then the break and the cloud; from
+  6 s the pull-back shows the notch as before.
+- Files: `$BOMBCAD_DATA/hillside-blast/ridge-dust-heave/`: `before/` and `after/` (`poses`, a link
+  to `v5/poses`, the after run; `clips/` with `still.mp4`, `still-nodust.mp4` (before),
+  `pullback.mp4`, `crest.mp4` and their frames; `sheet-*.png` side by side), `play-before/` and
+  `play-after3/` (the window's frames, with `-nodust` twins), `lag/` frames from the clips, the
+  film's stills in `film-before/` and `film-after/`, the trials `v1` to `v6` (`report.txt`: dome
+  and settle), the cost runs `cost-*`, `clipcost/`, `steptime/`, the face check `face-poses`, `face-main`, `face-new5`; `tools/` (`trial.sh`,
+  `look.sh`, `quick.sh`, `play.sh`, `lagclip.sh`, `dome.py`, `heave.py`, `settle.py`, `lag.py`,
+  `cost.py`, `sheet.py`).
+
+**Tests.** `QuarryRidgeTests/oneDome` (BlastModel, Linux): every released block's swell starts at
+the same moment, the ramp before the first firing; the swell over the crest is more than 1.5 times
+that toward the cut's ends; with `ridgeTogether` off the starts follow the firings again.
+`QuarrySimulationTests/ridgeHeaves` (BlastCore, GPU) now watches, when the first block of the
+top lets go, the top over the deeper half of the cut not yet let go (every block there has swelled
+since the same moment): its median rise more than 2 m and its 10th percentile more than 0.5 m (it
+asked 0.8 and 0.3 m of blocks 0.7 through their own swells; the old filter now catches the cut's
+far end, where the dome is low).
+
+**With the ridge's larger pieces, 13 November.** The user chose the piece-size proposal of stage
+3e for the ridge cut (its own commit, emmettl/bombcad-work#140): `QuarryFace.Options(scene:)`
+asks a ridge cut for 30,000 blocks with `fractureScale` 0.5, in the window (each scene's default in
+the Blocks choice), its Record Clip and `hillsideblast` alike; a face is as it was. The heave and
+dust above were judged again on it, before (main with the larger pieces, stage 3a's heave and
+#137's dust: `b30-bin`) and after (`a30-bin`), from 20 s runs of 31,259 blocks (median piece 0.82 m)
+and the window's recorder at the same three cameras.
+- *The dome* is the same as at 96,386 blocks: the top layer's median rise 4.9 m at the first
+  firing (0.6 m before), 6.6 m at 2.2 s, at most 8.1 m at 3.0 s (before 7.6 m at 3.7 s); along the
+  cut at 1.8 s 0.5, 1.4, 3.9, 5.3, 6.0, 5.9, 5.1, 2.7, 0.5, 0.2 m, where before it ran 4.2 m at
+  the far end down to 0 at the near one.
+- *Stable.* No NaNs; the last second's worst move 0.14 m, one block over 10 cm (before 0.21 m and
+  one); fastest 24.9 m/s (27.7).
+- *Physics* (the two runs side by side on the GPU): a frame while more than 5% of the blocks are
+  awake, 11.0 ms median against 10.3, and the 20 s event 5.2 s of GPU against 3.7 s, for the whole
+  cut swelling from 0.3 s. At 96,386 blocks it was about 40 ms.
+- *The window* (`play --self-test`, two runs each, interleaved): following the first firing the
+  solver took 4.0 to 4.6 ms a frame either way and the event was simulated in 5.1 to 5.3 s, so it
+  played at 0.97 to 0.99 of real time both before and after (0.4 to 0.5 at 96,386 blocks); playback
+  starts at once and is never held. The dust-and-chips step while it fires, 8.3 and 9.0 ms against
+  8.6 and 8.7; the draw 10.3 and 9.8 against 8.7 and 9.3 ms (about 1 ms more, the bigger cloud).
+- *Dust from the first motion*: with a third as many blocks a third as many crack, so the first
+  dust was thinner; the first cracks' spurt is now 200 (from 160), and dust shows at 0.6 s on the
+  first firing and a moved cut (rock on view at 0.4 s) and at 1.0 s on Fire again, whose camera
+  (turned by the self-test) sees the crest's top less. Raising the cracks' share to 0.12 brought
+  back patches on the dome's near slope, so it stays at 0.08.
+- *By eye.* The dome, its jets and the columns read as at the finer size: from the opening view the
+  crest rises as one mass, now visibly of larger slabs, with small jets off its top from 0.8 s and
+  the columns bursting from its top from 2.2 s, then the cloud pours out with the rock; close on
+  the crest the cracks between larger cells open and the top breaks into slabs; Pull back as
+  above. Before, the crest stayed flat under fog to 2.6 s and broke into a travelling heap.
+- Files: `b30/` and `a30/` (poses, `clips/` with `still.mp4`, `pullback.mp4`, `crest.mp4`,
+  `still-nodust.mp4` (after) and frames; `sheet-still-ba.png`, `sheet-crest-ba.png`,
+  `sheet-pullback-ba.png` side by side), `play-b30*`, `play-a30*` and `play-a30s-shots/`, `a30t/`
+  (the 0.12 cracks).
+
+**What still looks wrong.**
+- *A raised table more than a dome across the cut.* Along the cut it is a dome; across it the rock
+  between the walls rises nearly level and its edges stand as a step where the shoulder eases off,
+  so from the opening view the risen crest has a flat top and squared ends.
+- *The cloud at the break is heavy.* From 3.2 to 4.5 s the firings' columns and the shed dust
+  together cover the right half of the frame with a dark-cored cloud; strong, but it hides most of
+  the rock running down the near flank for a second.
+- *The first dust is puffs, not jets.* At the window's 1.5 m cells a crack's jet is three metres
+  across at the least; the early ones read as small puffs rising off the rock's top rather than
+  thin sprays.
+- *Pull back's opening shot* was framed for a small heave: the rising crest fills it.
+- *The dust starts 0.2 to 0.4 s of event after the first, few-centimetre motion*, about 0.5 s on
+  screen; it was simultaneous with stage 3a's heave, which began later.
+- *The solver works longer* (the whole cut swells from 0.3 s), so following the first firing in the
+  window is slower by about a fifth of the physics.
+- Not looked at on a screen: all of it was made offscreen.

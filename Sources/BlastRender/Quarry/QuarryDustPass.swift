@@ -6,6 +6,8 @@ import Metal
 final class QuarryDustPass {
     private(set) var target: MTLTexture
     let march: MTLRenderPipelineState
+    /// A ridge cut's march: its dust warped less (stage 3f).
+    let marchRidge: MTLRenderPipelineState
     let blend: MTLRenderPipelineState
     let sampler: MTLSamplerState
 
@@ -29,6 +31,8 @@ final class QuarryDustPass {
         draw.fragmentFunction = library.makeFunction(name: "dustFragment")!
         draw.colorAttachments[0].pixelFormat = .rgba16Float
         march = try device.makeRenderPipelineState(descriptor: draw)
+        draw.fragmentFunction = library.makeFunction(name: "dustFragmentRidge")!
+        marchRidge = try device.makeRenderPipelineState(descriptor: draw)
         let over = MTLRenderPipelineDescriptor()
         over.vertexFunction = library.makeFunction(name: "fullscreen")!
         over.fragmentFunction = library.makeFunction(name: "dustComposite")!
@@ -59,7 +63,8 @@ final class QuarryDustPass {
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .store
         let encoder = buffer.makeRenderCommandEncoder(descriptor: pass)!
-        encoder.setRenderPipelineState(march)
+        // A ridge cut's field carries its thinning in `low.w`; a face's is 0.
+        encoder.setRenderPipelineState(dust.uniforms.low.w > 0 ? marchRidge : march)
         encoder.setFragmentTexture(dust.density[0], index: 0)
         encoder.setFragmentTexture(dust.light, index: 1)
         encoder.setFragmentTexture(depth, index: 2)
