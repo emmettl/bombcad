@@ -66,6 +66,58 @@ public enum QuarryRock {
         return here
     }
 
+    /// A ridge cut's weathering back as drawn (emmettl/bombcad-work#147): `blendedRecess`, broken
+    /// along the strike. On a crest the beds crop out in broad bands nearly along the surface, and
+    /// one recess per kind made each band's edge a step running the whole crest, parallel to the
+    /// next: a ruled terrace. Here each bed's step grows and dies out along it (its recess eased
+    /// toward the beds' mean over stretches some tens of metres long), its edge is sharp in places
+    /// and a ramp in others, and it jogs up or down the bed between joints of the first set, so the
+    /// steps break, merge and offset. Drawn only: the solver's cells are clipped by
+    /// `blendedRecess` as before, and this moves the surfaces laid over them (the blocks' outer
+    /// faces, the held skin) by at most `strikeOut` outward and `strikeIn` inward of it, within the
+    /// relief the meshes already carry; and the dense rock round the cut, which is never simulated.
+    public static func strikeRecess(at p: SIMD3<Float>) -> Float {
+        let set = QuarryJoints.sets[0]
+        let plan = SIMD2(p.x, p.y)
+        let v = simd_dot(plan, set.along)
+        // Between two joints the step's line is shifted up or down the bed by its own amount,
+        // changing over a metre or so at the joint (`strikeJog` in QuarryRender.metal is a copy).
+        let u = simd_dot(plan, set.normal) + 2.2 * sin(0.083 * v + 1.3) + 0.8 * sin(0.29 * v)
+        let t = u / 7.5
+        let k0 = floor(t)
+        let e = max(0, min(1, (t - k0 - 0.85) / 0.15))
+        let (a, b) = (QuarryJoints.hash(Int32(k0), 61), QuarryJoints.hash(Int32(k0) &+ 1, 61))
+        let jog = (a + (b - a) * e * e * (3 - 2 * e) - 0.5) * 0.8
+        let c = QuarryFracture.bedCoordinate(simd_dot(p, QuarryFace.beddingNormal)) + jog
+        let k = Int(floor(c))
+        let f = c - Float(k)
+        // How much of its own recess bed `j` keeps here (the rest eased to the beds' mean), and how
+        // wide the ramp at its foot is (a share of a bed, each side of its lower edge).
+        func recess(_ j: Int) -> Float {
+            let n = QuarryJoints.noise2(p.x / 18 + Float(j) * 7.31, p.y / 18 + Float(j) * 3.17, 67)
+            let s = max(0, min(1, (n - 0.28) / 0.44))
+            return 0.36 + (Self.recess(kind(bed: j)) - 0.36) * (0.1 + s * s * (3 - 2 * s))
+        }
+        func ramp(_ j: Int) -> Float {
+            0.08 + 0.4 * QuarryJoints.noise2(p.x / 12 + Float(j) * 5.9, p.y / 12 - Float(j) * 2.3, 71)
+        }
+        let here = recess(k)
+        let (low, high) = (ramp(k), ramp(k + 1))
+        var r = here
+        if f < low {
+            r = here + (recess(k - 1) - here) * 0.5 * (1 - f / low)
+        } else if f > 1 - high {
+            r = here + (recess(k + 1) - here) * 0.5 * (1 - (1 - f) / high)
+        }
+        let blended = blendedRecess(at: p)
+        return blended + max(-strikeOut, min(strikeIn, r - blended))
+    }
+
+    /// How far `strikeRecess` draws a surface outward of (`strikeOut`) or into (`strikeIn`) the
+    /// solver's cells (m).
+    public static let strikeOut: Float = 0.62
+    public static let strikeIn: Float = 0.45
+
     /// How much more (above 1) or less a bed's joints cut it than the families' own persistence.
     /// Since 12 November 2026 limestone is cut less (more large, blocky pieces) and shale too, so
     /// that its partings leave plates rather than blades; sandstone takes close joints of its own.

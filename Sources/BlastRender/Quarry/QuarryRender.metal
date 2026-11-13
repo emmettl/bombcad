@@ -402,8 +402,23 @@ static inline float laminae(float c, float3 p, int kind, float h, float footprin
     return 1.0f + strength * l * contrast;
 }
 
-static inline RockColour rockAt(float3 p, float footprint = 1.0f) {
-    float c = bedCoordinate(dot(p, beddingNormal));
+// How far a ridge cut's beds are drawn shifted up or down their sequence between two joints of the
+// first set (`QuarryRock.strikeRecess`'s jog, a copy: change them together), so their outcrops on
+// the crest jog where a joint crosses rather than running as ruled lines (emmettl/bombcad-work#147).
+static inline float jointHash(int k, uint salt);
+static inline float strikeJog(float3 p) {
+    float2 normal = float2(0.9394f, 0.3429f), along = float2(-0.3429f, 0.9394f);
+    float v = dot(p.xy, along);
+    float u = dot(p.xy, normal) + 2.2f * sin(0.083f * v + 1.3f) + 0.8f * sin(0.29f * v);
+    float t = u / 7.5f;
+    float k0 = floor(t);
+    float e = saturate((t - k0 - 0.85f) / 0.15f);
+    float a = jointHash(int(k0), 61u), b = jointHash(int(k0) + 1, 61u);
+    return (a + (b - a) * e * e * (3.0f - 2.0f * e) - 0.5f) * 0.8f;
+}
+
+static inline RockColour rockAt(float3 p, float footprint = 1.0f, float jog = 0.0f) {
+    float c = bedCoordinate(dot(p, beddingNormal)) + jog;
     int k = int(floor(c));
     int kind = rockKind(k);
     float h = float(bedHash(k * 7 + 3) & 0xFFFFu) / 65535.0f;
@@ -524,13 +539,19 @@ static inline float3 stoneColour(float id);
 // joints' grooves, on the gentler tops (the steps and steeper fronts stay bare rock), on the
 // shale's slopes, and on a ridge cut toward the edge of its dense rock, where it meets the
 // flanks' own cover (`cover`, `QuarryFlank`). x how much soil, y how much of that is turf.
-static inline float2 heldSoil(float3 p, float3 n, float groove, constant QuarryCamera &cam, texture2d<float> cover) {
-    float c = bedCoordinate(dot(p, beddingNormal));
+static inline float2 heldSoil(float3 p, float3 n, float groove, constant QuarryCamera &cam, texture2d<float> cover,
+                             float jog = 0.0f) {
+    float c = bedCoordinate(dot(p, beddingNormal)) + jog;
     bool shale = rockKind(int(floor(c))) == 1;
     // On a ridge the shale weathers back to a soil slope; the harder beds hold soil only on their
     // tops. A face's ledges hold a little grit and soil, little turf.
     bool ridge = cam.terrainOrigin.z > 0.0f;
     float gentle = shale && ridge ? smoothstep(0.35f, 0.7f, n.z) : smoothstep(0.6f, 0.85f, n.z);
+    // On a ridge the shale's band is grassed over along stretches of its strike some tens of
+    // metres long, its steeper riser too, so its dark line across the crest comes and goes
+    // (emmettl/bombcad-work#147).
+    float stretch = shale && ridge ? smoothstep(0.42f, 0.6f, noise3(float3(p.xy / 16.0f, c * 1.7f + 3.0f))) : 0.0f;
+    gentle = max(gentle, stretch * smoothstep(0.1f, 0.35f, n.z));
     if (gentle <= 0.0f) return float2(0.0f);
     float hollow = fbm3(p * 0.45f + 61.0f, 3) - 0.45f;
     float patches = fbm3(p * 0.11f + 5.0f, 3) - 0.45f;
@@ -548,9 +569,9 @@ static inline float2 heldSoil(float3 p, float3 n, float groove, constant QuarryC
     }
     // Soil in broad patches and hollows (held to the laminae's treads it was striped again).
     float hold = 0.5f + 0.9f * hollow + 1.4f * patches + (shale ? 0.15f : 0.0f) + 0.3f * groove
-        + 0.9f * edge;
+        + 0.9f * edge + 0.8f * stretch;
     float soil = smoothstep(0.36f, 0.46f, hold) * gentle * (ridge ? 1.0f : 0.7f);
-    float turf = smoothstep(0.3f, 0.55f, fbm3(p * 0.27f + 17.0f, 3) + 0.25f * edge + 0.2f * (hold - 0.45f));
+    float turf = smoothstep(0.3f, 0.55f, fbm3(p * 0.27f + 17.0f, 3) + 0.25f * edge + 0.2f * (hold - 0.45f) + 0.3f * stretch);
     return float2(soil, turf * (ridge ? 1.0f : 0.25f));
 }
 
@@ -566,8 +587,10 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
     float grain = fbm3(rest * 19.0f, 3);
     float footprint = length(fwidth(rest));
     // The bed is read a few centimetres inside the block, so a face cut along a bedding plane
-    // takes its own block's bed and not the next.
-    RockColour rock = rockAt(rest + normalize(in.centre - rest + float3(1e-4f)) * 0.05f, footprint);
+    // takes its own block's bed and not the next. On a ridge cut the beds jog between joints, as
+    // its weathered surface's steps do (`strikeJog`).
+    float jog = cam.terrainOrigin.z > 0.0f ? strikeJog(rest) : 0.0f;
+    RockColour rock = rockAt(rest + normalize(in.centre - rest + float3(1e-4f)) * 0.05f, footprint, jog);
     // Each block a little its own: lighter or darker, warmer or greyer.
     float h1 = in.bodyTint;
     float h2 = fract(h1 * 7.31f + 0.17f);
@@ -609,7 +632,7 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
             * (rock.kind == 1 ? 0.0f : 1.0f);
         patina = mix(patina, patina * 0.6f + float3(0.012f, 0.01f, 0.008f), crust * 0.35f);
         // Rock thrown by the blast keeps some of its soil and turf on its old top.
-        soil = heldSoil(rest, n, joint.x, cam, cover);
+        soil = heldSoil(rest, n, joint.x, cam, cover, jog);
         soil.x *= 0.6f + 0.4f * in.intact;
     }
     if (in.kind == 1u) {
@@ -1876,11 +1899,16 @@ static inline float3 flankStonePoint(FlankStone stone, uint vid, const device fl
     float3 axis = normalize(float3(fract(k * 0.731f), fract(k * 1.913f), fract(k * 3.17f)) - 0.5f + 1e-3f);
     float angle = fract(k * 0.377f) * 6.2832f;
     v = rotate(float4(axis * sin(angle * 0.5f), cos(angle * 0.5f)), v);
-    float3 axes = float3(1.0f, 0.6f + 0.35f * fract(k * 1.37f), 0.34f + 0.26f * fract(k * 2.71f));
+    // Its short axis at least about half its long one, its middle one two thirds, a block more so:
+    // short axes down to a third, with the corners' pull and the flat underside, made blades
+    // (emmettl/bombcad-work#147).
+    float block = stone.look.w;
+    float3 axes = float3(1.0f, mix(0.66f, 0.72f, block) + 0.28f * fract(k * 1.37f),
+                         mix(0.48f, 0.56f, block) + 0.24f * fract(k * 2.71f));
     // Corners pulled in hard or left out, and a flatter underside, so no two read as one solid.
     // Pulled in less than they were: 0.5 to 1.25 of the radius made gems of them.
-    float3 p = v * (0.72f + 0.4f * corner) * axes;
-    p.z = max(p.z, -0.18f - 0.15f * fract(k * 5.3f));
+    float3 p = v * (0.78f + 0.3f * corner) * axes;
+    p.z = max(p.z, -axes.z * (0.62f + 0.3f * fract(k * 5.3f)));
     p += 0.1f * (float3(hash31(v * 7.0f + k), hash31(v * 7.0f + k + 3.1f), hash31(v * 7.0f + k + 6.7f)) - 0.5f);
     normal = rotate(stone.rotation, normalize(v / axes));
     return stone.posSize.xyz + rotate(stone.rotation, p * stone.posSize.w * 0.6f);
@@ -1897,16 +1925,20 @@ static inline float3 roundStoneShape(float3 v, float k, float angular) {
     float r = 1.0f + 0.16f * (noise3(v * 1.4f + k) - 0.5f) + 0.05f * (noise3(v * 3.3f + k * 1.7f) - 0.5f);
     float3 p = v * r;
     if (angular > 0.5f) p = clamp(p * 1.5f, -1.0f, 1.0f) * 0.82f;
-    float3 axes = angular > 0.5f ? float3(1.0f, 0.55f + 0.4f * fract(k * 1.37f), 0.4f + 0.3f * fract(k * 2.71f))
-                                 : float3(1.0f, 0.65f + 0.3f * fract(k * 1.37f), 0.42f + 0.25f * fract(k * 2.71f));
+    // A fallen block's short axis at least about half its long one (emmettl/bombcad-work#147): down
+    // to 0.4, with the cuts and the flat underside, a few stood on end as blades.
+    float3 axes = angular > 0.5f ? float3(1.0f, 0.68f + 0.3f * fract(k * 1.37f), 0.56f + 0.26f * fract(k * 2.71f))
+                                 : float3(1.0f, 0.65f + 0.3f * fract(k * 1.37f), 0.48f + 0.24f * fract(k * 2.71f));
     p *= axes;
     for (int i = 0; i < 5; ++i) {
         float3 cutNormal = normalize(float3(fract(k * (3.1f + i)), fract(k * (5.7f + i)), fract(k * (7.3f + i))) - 0.5f + 1e-3f);
-        float reach = (angular > 0.5f ? 0.42f : 0.5f) + 0.25f * fract(k * (11.0f + i));
+        // Across its short axis a cut takes only a sliver, so two cannot leave a slab.
+        float reach = max((angular > 0.5f ? 0.42f : 0.5f) + 0.25f * fract(k * (11.0f + i)),
+                          0.85f * length(cutNormal * axes));
         float beyond = dot(p, cutNormal) - reach;
         if (beyond > 0.0f) p -= cutNormal * beyond;
     }
-    p.z = max(p.z, -0.22f - 0.12f * fract(k * 5.3f));
+    p.z = max(p.z, -axes.z * (0.55f + 0.2f * fract(k * 5.3f)));
     return p;
 }
 

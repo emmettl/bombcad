@@ -188,4 +188,62 @@ struct QuarryFlankTests {
         #expect(again.map(\.posSize) == stones.map(\.posSize))
         #expect(flank.stones(scale: 0.5).count < stones.count * 3 / 4)
     }
+
+    @Test("Outcrops are not alike: some stand twice as high as most, and a crag's top faces up")
+    func rockForms() throws {
+        let flank = try #require(QuarryFlank(face: Self.face))
+        let runs = flank.ledgeRuns()
+        // How high each run's outcrop stands above the ground (emmettl/bombcad-work#147).
+        var heights: [Float] = []
+        for (k, run) in runs.enumerated() {
+            let mesh = QuarryFace.outcrop(run.map { flank.ledges[$0] }, flank: flank, seed: UInt64(k))
+            let high = mesh.vertices.map { $0.z - flank.groundHeight($0.x, $0.y) }.max() ?? 0
+            if high > 0.2 { heights.append(high) }
+        }
+        heights.sort()
+        let median = heights[heights.count / 2]
+        #expect(heights[heights.count * 9 / 10] > 1.5 * median)
+        // A crag's top, where it shows, faces up: judged at one row, a bowed crag was drawn
+        // inside out.
+        for (k, crag) in flank.crags.enumerated() {
+            let mesh = QuarryFace.crag(crag, flank: flank, seed: UInt64(k))
+            var up = 0
+            var shown = 0
+            for v in mesh.vertices where (v.body >> 16) & 7 == QuarryFace.OutcropPart.top.rawValue {
+                guard v.z - flank.groundHeight(v.x, v.y) > 0.5 else { continue }
+                shown += 1
+                if Float((v.normal >> 20) & 1023) / 511.5 - 1 > 0 { up += 1 }
+            }
+            #expect(shown > 0 && up * 10 > shown * 7)
+        }
+    }
+
+    @Test("A ridge's weathering as drawn breaks along the strike, within reach of the solver's cells")
+    func strikeRecess() {
+        let n = QuarryFace.beddingNormal
+        // Along the middle of a shale bed: its recess comes and goes, rather than one value the
+        // length of the crest.
+        let shale = (0..<40).first { QuarryRock.kind(bed: $0) == .shale }!
+        let s = QuarryFlank.bedLevel(Float(shale) + 0.5, near: 0)
+        var along: [Float] = []
+        var x: Float = -120
+        while x <= 120 {
+            let y = 0.3 * x
+            let p = SIMD3(x, y, (s - n.x * x - n.y * y) / n.z)
+            let r = QuarryRock.strikeRecess(at: p)
+            let blended = QuarryRock.blendedRecess(at: p)
+            #expect(r >= blended - QuarryRock.strikeOut - 1e-4 && r <= blended + QuarryRock.strikeIn + 1e-4)
+            along.append(r)
+            x += 1.5
+        }
+        #expect(along.min()! < 0.6 && along.max()! > 0.85)
+        // Anywhere, within reach of the cells' own recess.
+        var random = QuarryRandom(seed: 147)
+        for _ in 0..<2000 {
+            let p = SIMD3(random.float(-150, 150), random.float(-150, 150), random.float(-10, 60))
+            let r = QuarryRock.strikeRecess(at: p)
+            let blended = QuarryRock.blendedRecess(at: p)
+            #expect(r >= blended - QuarryRock.strikeOut - 1e-4 && r <= blended + QuarryRock.strikeIn + 1e-4)
+        }
+    }
 }

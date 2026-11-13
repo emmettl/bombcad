@@ -885,6 +885,9 @@ public struct QuarryFace: Sendable {
         // The old surface, stood back by each bed's own weathering and `cellRecess`, as the cells
         // were clipped: their outer faces are laid on it, so the unbroken face is one surface,
         // banded by its beds, rather than a cell-by-cell crack network (emmettl/bombcad-work#136).
+        // On a ridge cut the weathering as drawn is broken along the strike
+        // (`QuarryRock.strikeRecess`, emmettl/bombcad-work#147); the cells are clipped as before.
+        let ridgeCut = hillside.ridge != nil
         let outer: OuterSurface = { p in
             let e: Float = 0.5
             let top = hillside.height(hOld, p.x, p.y)
@@ -892,7 +895,9 @@ public struct QuarryFace: Sendable {
             let dy = (hillside.height(hOld, p.x, p.y + e) - hillside.height(hOld, p.x, p.y - e)) / (2 * e)
             let normal = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
             let depth = (top - p.z) * normal.z
-            return (depth - QuarryRock.blendedRecess(at: p + normal * depth) - cellRecess, normal)
+            let on = p + normal * depth
+            let recess = ridgeCut ? QuarryRock.strikeRecess(at: on) : QuarryRock.blendedRecess(at: on)
+            return (depth - recess - cellRecess, normal)
         }
         // Each block's displaced mesh, built in parallel.
         var meshes = [(vertices: [Vertex], indices: [UInt32], anchors: [SIMD3<Float>])](
@@ -1379,7 +1384,8 @@ public struct QuarryFace: Sendable {
         let frozenFootings = footings
         let frozenGrid = grid
         // A ridge cut's dense rock's outer surface: the ground stood 0.35 m proud, then back by each
-        // bed's weathering and by the sink toward the rock's edge, as its cells are clipped.
+        // bed's weathering as drawn (`QuarryRock.strikeRecess`) and by the sink toward the rock's
+        // edge, as its cells are clipped.
         var ridgeSurface: OuterSurface?
         if let flank {
             ridgeSurface = { p in
@@ -1390,7 +1396,7 @@ public struct QuarryFace: Sendable {
                 let normal = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
                 let depth = (top - p.z) * normal.z
                 let on = p + normal * depth
-                return (depth + 0.35 - QuarryRock.blendedRecess(at: on) - flank.sink(on.x, on.y), normal)
+                return (depth + 0.35 - QuarryRock.strikeRecess(at: on) - flank.sink(on.x, on.y), normal)
             }
         }
         let ridgeOuter = ridgeSurface
@@ -1485,7 +1491,7 @@ public struct QuarryFace: Sendable {
                     // A ridge cut's dense rock stands back by its bed's weathering alone, the same
                     // surface for every cell (`ridgeOuter`), as the cut's held rock does.
                     let standBack =
-                        flank.map { QuarryRock.blendedRecess(at: point) + $0.sink(point.x, point.y) }
+                        flank.map { QuarryRock.strikeRecess(at: point) + $0.sink(point.x, point.y) }
                         ?? (faceWhole ? QuarryRock.blendedRecess(at: point) + faceRecess + 0.35 : recess)
                     polyhedron.clip(
                         normal: normal, offset: simd_dot(normal, point) + 0.35 - standBack, kind: 1)

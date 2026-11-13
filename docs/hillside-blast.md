@@ -1332,3 +1332,98 @@ dense rock round the cut ended against the grass in a hard edge.
   `before140/`, `after140/`): the crest before firing looks the same, and the broken crest's larger
   slabs carry their turf in patches. GPU draw a frame in Record Clip of the default view (main's build
   and this one interleaved, twice): 9.14, 9.25 ms before and 9.34, 9.41 after (+0.2 ms).
+
+## Stage 3m: outcrops, crags and fallen blocks as rock masses, 14 November 2026
+
+emmettl/bombcad-work#147, on the user's word of 13 November ("keep working through the defects list
+until it looks strong"). Same standing: illustrative, for the eye; render-only and procedural, no
+third-party assets; nothing reaches the solver. The rock, its blocks and their poses are unchanged
+(116,967 blocks at the face, 31,259 on the ridge, its default since stage 3f), so before and after are
+rendered from the same stored poses (`rock-strong/face-poses`, `rock-surface/ridge140-poses`).
+
+**What was wrong** (#139's and #142's frames).
+- *Outcrops on a ridge's flanks were too regular*: similar sizes and shapes, spread evenly over each
+  cluster (one ledge every 3.2 m along a bed, kept wherever a cluster's noise allowed).
+- *The far crags read as plates on edge*: each was swept along a straight line across the slope, its
+  beds running out at its ends one at a time over a fifth of its width, so from along the flank it
+  was a stack of thin slabs cut square.
+- *Some fallen blocks were blades*: a stone's short axis went down to a third of its long one, the
+  flat underside and the corners' pull thinned it further, and a large block's fracture cuts could
+  take two opposite sides off one.
+- *The ridge crest's rock steps ran as long parallel lines*: each bed's weathering back (`recess`)
+  was one value per kind of rock, so where the beds crop out across the gentle crest every bed's
+  edge was a step the length of the crest, parallel to the next.
+
+**What changed.**
+- *Outcrops* (`QuarryFlank.outcrop`, `findLedges`; `QuarryFace.outcrop`, `outcropMesh`): denser in
+  the clusters' cores and thinning to the odd run at their edges, with bare slope between; the
+  ledges' spacing along a bed is 0.7, 1 or 1.6 times the old in patches, so they are not evenly
+  spaced; about a quarter of the outcrops stand on the bed below too (a mass two beds high, a soft bed
+  weathered back under the hard one), some have tipped forward 2 to 10 degrees down the slope, some
+  are broken into short blocks and some into long ones; their ends run on a little past the last
+  ledge and sink over a short way, so they end in a broken block rather than a long thin wedge. A
+  half-buried kind was tried and dropped: sunk into the slope a run read as a thin plate lying on it.
+- *Crags* (`QuarryFace.crag`): swept along a line that bows out down the slope by a tenth to a fifth
+  of its width and wanders a little, so its ends turn back into the hill and show their sides; its
+  beds run out at its ends nearly together, so an end sinks into the slope as a whole; overhangs
+  smaller and partings closed more often. A crag's outward side is now judged along the rows where its
+  top shows (judged at one row, a bowed crag was drawn inside out: dark, unlit faces). A two-tier crag
+  (upper beds set back over a bench) was tried and dropped: its lower tier's front came out as a long
+  slab across the slope.
+- *Fallen blocks and stones* (`flankStonePoint`, `roundStoneShape` in `QuarryRender.metal`): a stone's
+  short axis at least about half its long one (0.48 to 0.72 for a stone, 0.56 to 0.82 for a block, its
+  middle axis 0.66 or more), the corners' pull gentler, the flat underside cut at most a third of the
+  way up, and a block's fracture cuts taking only a sliver across its short axis, so no two leave a
+  slab.
+- *The crest's steps broken along the strike* (`QuarryRock.strikeRecess`, BlastModel, Linux-tested):
+  on a ridge cut the weathering as drawn eases each bed's recess toward the beds' mean along
+  stretches some tens of metres long (so a step grows and dies out along it), varies the width of the
+  ramp at each bed's edge (sharp in places, a slope in others), and jogs the bed boundaries up or down
+  by up to 0.4 of a bed between joints of the first set, so the steps offset where a joint crosses.
+  It moves only surfaces drawn over the solver's cells (the held skin and the blocks' outer faces,
+  which the cells are still clipped under by `blendedRecess`, at most 0.62 m out or 0.45 m in) and
+  the dense render-only rock round the cut. The blocks' shader takes the same jog (`strikeJog`, a
+  copy) for the beds' colours and the soil, and on a ridge the shale's band is grassed over along
+  stretches of its strike, its riser too.
+
+**Measured** (main's build and this one interleaved; GPU draw from the recorder's own timing).
+- *GPU draw a frame*, Record Clip of the default view (20 s, three rounds): the face 18.05, 17.87,
+  18.36 ms before and 18.32, 17.31, 17.49 after; the ridge 13.23, 13.24, 13.70 before and 13.33, 13.32,
+  13.30 after (within 0.1 ms; the target was at most +1 ms).
+- *Record Clip* a frame: the face 30.1, 30.1, 30.5 ms before and 30.7, 29.8, 29.9 after; the ridge
+  22.9, 23.1, 23.5 before and 23.1, 23.0, 23.0 after (load 6 to 10).
+- *The window's work a frame* (`play --self-test NAME --offscreen`, two rounds, medians; load 6 to
+  54): the face following 50.4, 30.4 ms before and 34.6, 29.0 after, scrubbing 62.2, 62.9 and 65.4,
+  61.2, playing 19.9, 20.0 and 26.6, 22.0 (the face's frames are the same image before and after, so
+  its spread is the machine's); the ridge following 16.6, 19.0 before and 16.9, 18.7 after, scrubbing
+  37.5, 45.1 and 44.1, 46.1, playing 13.8, 14.5 and 14.2, 15.1. Metal allocated after the first
+  firing 812 MB at the face both, 493 to 494 MB on the ridge. Outcrop triangles on the ridge 180,636
+  before, 176,628 after (582 ledges before, 631 after; three crags).
+- *The Quarry Face unchanged*: its frames from the same poses match main's to within a few levels in
+  a handful of pixels (the recorder's own run-to-run spread).
+
+**Checked by eye** from the stored poses with the window's recorder (`hillsideblast clip`, frames
+from the movie files), before on main's build and after on this one: #142's poses (the face's default
+view, close and left end; the ridge's default view and the Pull back) and #141's flank views (the
+near flank, the wide view, the crag and its close-up, an outcrop close), plus the crest from above.
+Files under `$BOMBCAD_DATA/hillside-blast/rock-forms/`: `before/` and `after/`, enlarged pairs in
+`crops/` (`crag-*`, `wide-left-*`, `wide-right-*`, `crest-*`, `near-*`), the trials `try1/` to
+`try7/` and `dbg-*`, the scripts in `scripts/` and the measurements in `measure.txt`, `rc-*`, `st-*`.
+
+**The look, frankly.**
+- *Far crags* now read as blocky rock masses with a lit top and a shaded front and sides, not stacked
+  plates (`crops/wide-right-*`). Close in, a crag's ends still show a few square-cut slabs where a
+  bed's front turns back into the hill, and the joints between its blocks are still evenly drawn.
+- *Outcrops* are more varied in height and grouping (some two beds high, some short, some long, some
+  tipped), and clustered with bare slope between, but they are still all swept along their bed's
+  contour, so from above many still read as rows; a few short ones still end in a thin lip.
+- *Fallen blocks* on the flanks no longer stand as blades; a few large angular blocks still read as
+  wedges from some angles. The thrown rock of the cut itself (the solver's pieces) is unchanged and
+  keeps its slabs and blades (39% blades by Zingg's measure): reshaping those would change the
+  simulation.
+- *The crest's steps* now vary in height along the crest, die out in places, jog where joints cross
+  and are grassed over in stretches, but from the default view the two strongest (the shale under a
+  limestone bed) still run most of the way across as near-parallel dark lines. They follow the
+  bedding, which crosses the crest in straight lines; breaking them fully would need the bedding
+  itself to fold or the crest's rock cells to differ, which is the solver's, so it is recorded here
+  as a stop for this stage.
