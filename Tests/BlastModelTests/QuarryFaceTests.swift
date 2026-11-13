@@ -238,6 +238,44 @@ struct QuarryFaceTests {
         #expect(chipped < 1 && chipped > 0.88)
     }
 
+    @Test("Unbroken neighbours' outer faces meet in one surface, however far each stood back")
+    func outerFacesMeet() {
+        // Two cells side by side under level ground, their tops cut 0.1 and 0.35 m down: laid on
+        // the surface, the corners and edges they share land in the same places, so the face shows
+        // no step or crack between them before they move.
+        func cell(_ x0: Float, _ top: Float) -> QuarryPolyhedron {
+            var box = QuarryPolyhedron.box(low: SIMD3(x0, 0, -2), high: SIMD3(x0 + 1, 1, top))
+            box.kinds[1] = 1
+            return box
+        }
+        let outer: QuarryFace.OuterSurface = { p in (-0.2 - p.z, SIMD3(0, 0, 1)) }
+        func mesh(_ poly: QuarryPolyhedron, rounding: Float, laid: Bool) -> [SIMD3<Float>] {
+            var vertices: [QuarryFace.Vertex] = []
+            var indices: [UInt32] = []
+            QuarryFace.tessellate(
+                poly, centre: poly.volumeAndCentroid.centroid, origin: .zero, body: 0, level: 2, warp: 0.05,
+                seed: Float(rounding), relief: 0.16, rounding: rounding, outer: laid ? outer : nil,
+                inward: 0.3,
+                vertices: &vertices, indices: &indices)
+            return vertices.map { SIMD3($0.x, $0.y, $0.z) }
+        }
+        func shared(laid: Bool) -> [SIMD3<Float>] {
+            let a = mesh(cell(0, -0.1), rounding: 0.05, laid: laid)
+            let b = mesh(cell(1, -0.35), rounding: 0.08, laid: laid)
+            var points: [SIMD3<Float>] = []
+            for p in a where b.contains(where: { simd_distance($0, p) < 1e-4 }) {
+                if !points.contains(where: { simd_distance($0, p) < 1e-4 }) { points.append(p) }
+            }
+            return points
+        }
+        // The shared edge's two corners and its middle, on the surface (0.2 m down, give or take
+        // the displacement), and nothing in common where each cell keeps its own cut.
+        let laid = shared(laid: true)
+        #expect(laid.count >= 3, "\(laid)")
+        #expect(laid.allSatisfy { abs($0.z + 0.2) < 0.45 })
+        #expect(shared(laid: false).filter { $0.z > -1 }.isEmpty)
+    }
+
     @Test("Neighbouring cells meet in one face in each bed's metric, so they never overlap")
     func bedMetricsShareFaces() {
         // The plane two sites see between them is the same from either side.
@@ -279,7 +317,9 @@ struct QuarryFaceTests {
             let extent = v.reduce(SIMD3<Float>.zero) { simd_max($0, simd_abs($1)) }
             flatness.append(extent.min() / extent.max())
         }
-        #expect((flatness.min() ?? 1) < 0.35 && (flatness.max() ?? 0) > 0.55, "\(flatness)")
+        // Slabs among chunky stones, but none a flake thin enough to read as a shard of paper.
+        #expect((flatness.min() ?? 0) > 0.29, "\(flatness.sorted())")
+        #expect((flatness.min() ?? 1) < 0.5 && (flatness.max() ?? 0) > 0.6, "\(flatness)")
     }
 
     @Test("A face kept without its meshes keeps the layout, the blocks and their spheres")

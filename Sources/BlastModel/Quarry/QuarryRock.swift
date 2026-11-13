@@ -53,6 +53,19 @@ public enum QuarryRock {
         }
     }
 
+    /// `recess` at a point of the old surface, eased over a quarter of a metre or so across a bed's
+    /// boundary, so the step between a ledge and the shale under it is a slope, not a fold.
+    public static func blendedRecess(at p: SIMD3<Float>) -> Float {
+        let c = QuarryFracture.bedCoordinate(simd_dot(p, QuarryFace.beddingNormal))
+        let k = Int(floor(c))
+        let f = c - Float(k)
+        let here = recess(kind(bed: k))
+        let width: Float = 0.3
+        if f < width { return here + (recess(kind(bed: k - 1)) - here) * 0.5 * (1 - f / width) }
+        if f > 1 - width { return here + (recess(kind(bed: k + 1)) - here) * 0.5 * (1 - (1 - f) / width) }
+        return here
+    }
+
     /// How much more (above 1) or less a bed's joints cut it than the families' own persistence.
     /// Since 12 November 2026 limestone is cut less (more large, blocky pieces) and shale too, so
     /// that its partings leave plates rather than blades; sandstone takes close joints of its own.
@@ -152,7 +165,9 @@ public enum QuarryChipShapes {
     /// Small broken stones of every shape: the convex hull of 5 to 8 points in an ellipsoid whose
     /// axes run from equal to slab and rod, each as unindexed triangles padded with degenerate
     /// ones. Until 12 November 2026 every chip was the same icosahedron, which stood out against
-    /// the varied blocks (and cost 20 triangles where these take up to 12).
+    /// the varied blocks (and cost 20 triangles where these take up to 12). The slabs and flakes
+    /// were as thin as a fifth of their length until the close-up pass of 12 November 2026
+    /// (emmettl/bombcad-work#136): near the camera, tumbling, they read as paper shards.
     public static func make() -> [SIMD4<Float>] {
         var r = QuarryRandom(seed: 4_021_977)
         var out: [SIMD4<Float>] = []
@@ -161,15 +176,18 @@ public enum QuarryChipShapes {
         while made < count {
             // Long, middle and short axes: chunky, slabby, rod-like and flaky by turns.
             let kind = made % 4
-            let b: Float = kind == 2 ? r.float(0.3, 0.5) : r.float(0.6, 1)
+            let b: Float = kind == 2 ? r.float(0.45, 0.65) : r.float(0.65, 1)
             let c: Float =
-                kind == 1 ? r.float(0.2, 0.4) : kind == 3 ? r.float(0.18, 0.3) : r.float(0.5, 0.9) * b
+                kind == 1 ? r.float(0.42, 0.58) : kind == 3 ? r.float(0.34, 0.46) : r.float(0.6, 0.9) * b
             let axes = SIMD3<Float>(1, b, c)
             let n = 5 + Int(r.float() * 3.99)
             let points = (0..<n).map { _ in r.unit() * r.float(0.75, 1) * axes }
             let triangles = hull(points)
             guard triangles.count >= 4, triangles.count * 3 <= vertices else { continue }
             let centre = points.reduce(SIMD3<Float>.zero, +) / Float(n)
+            // A few points can lie nearly in a plane whatever the axes: such a hull is a flake.
+            let extent = points.reduce(SIMD3<Float>.zero) { simd_max($0, simd_abs($1 - centre)) }
+            guard extent.min() > 0.3 * extent.max() else { continue }
             for t in triangles {
                 for k in [t.0, t.1, t.2] { out.append(SIMD4(points[k] - centre, 0)) }
             }

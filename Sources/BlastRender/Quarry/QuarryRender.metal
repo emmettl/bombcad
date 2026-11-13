@@ -47,6 +47,9 @@ struct RasterOut {
     float weather [[flat]];
     float faceRandom [[flat]];
     float3 centre [[flat]];
+    // 1 while the block is unbroken (held, and not yet moved by the swell), easing to 0 as it
+    // moves: its own tint and roughness come in only then, so the face reads as one rock first.
+    float intact [[flat]];
 };
 
 // A vertex's `body` carries the block's index in its low bits and the face's weathering and a
@@ -98,6 +101,8 @@ vertex RasterOut blockVertex(uint vid [[vertex_id]],
     o.released = pose[2 * body].w > 0.5f ? 1.0f : 0.0f;
     o.weather = float((v.body >> 21) & 31u) / 31.0f;
     o.faceRandom = float(v.body >> 26) / 63.0f;
+    float moved = length(pos - rest[body].xyz) + 2.0f * length(q.xyz) * max(rest[body].w, 0.3f);
+    o.intact = (1.0f - o.released) * (1.0f - smoothstep(0.02f, 0.2f, moved));
     return o;
 }
 
@@ -325,17 +330,21 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
     float h1 = in.bodyTint;
     float h2 = fract(h1 * 7.31f + 0.17f);
     float h3 = fract(h1 * 13.77f + 0.61f);
-    float3 shade1 = mix(float3(0.86f, 0.85f, 0.84f), float3(1.1f, 1.06f, 1.0f), h2);
+    float3 shade1 = mix(mix(float3(0.86f, 0.85f, 0.84f), float3(1.1f, 1.06f, 1.0f), h2), float3(0.97f), in.intact);
     float w = in.weather;
     float3 albedo;
-    if (in.kind == 1u) {
-        // The old weathered face: the bed's patina, streaked down the face by water, stained, and
-        // a little lichen on the harder beds.
+    // The old weathered face: the bed's patina, streaked down the face by water, stained, and a
+    // little lichen on the harder beds.
+    float3 patina = float3(0.0f);
+    if (in.kind == 1u || in.intact > 0.0f) {
         float streak = fbm3(rest * float3(2.6f, 2.6f, 0.22f) + 7.0f, 3);
         float stain = fbm3(rest * 0.2f, 3);
-        albedo = rock.patina * (0.72f + 0.6f * streak) * (0.8f + 0.4f * stain);
+        patina = rock.patina * (0.72f + 0.6f * streak) * (0.8f + 0.4f * stain);
         float lichen = smoothstep(0.55f, 0.75f, fbm3(rest * 1.3f + 40.0f, 4)) * (rock.kind == 1 ? 0.0f : 1.0f);
-        albedo = mix(albedo, float3(0.25f, 0.28f, 0.13f) * (0.7f + 0.8f * grain), lichen * 0.3f);
+        patina = mix(patina, float3(0.25f, 0.28f, 0.13f) * (0.7f + 0.8f * grain), lichen * 0.3f);
+    }
+    if (in.kind == 1u) {
+        albedo = patina;
     } else if (in.kind == 2u) {
         albedo = float3(0.2f, 0.18f, 0.15f) * (0.7f + 0.6f * detail);
     } else if (in.kind == 3u) {
@@ -351,7 +360,10 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
         float fleck = smoothstep(0.62f, 0.7f, fbm3(rest * 9.0f + h2 * 30.0f, 3));
         albedo = mix(albedo, albedo * 1.3f + 0.04f, fleck * 0.45f);
     }
-    if (h3 > 0.9f) albedo = mix(albedo, albedo * float3(1.03f, 0.9f, 0.8f), 0.5f);
+    // Rock that has not broken shows only its weathered skin: what shows of a side face through
+    // a seam between unbroken cells is the same rock as the face around it, not a fresh break.
+    if (in.kind != 1u) albedo = mix(albedo, patina, in.intact);
+    if (h3 > 0.9f) albedo = mix(albedo, albedo * float3(1.03f, 0.9f, 0.8f), 0.5f * (1.0f - in.intact));
     albedo *= shade1 * rock.lamination * (0.84f + 0.32f * grain);
     // Dust settled on the upper faces of rock that has moved, gathering as the cloud comes down:
     // a pale coat in broad patches.
@@ -366,7 +378,10 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
     // face away from the light, in spots.
     float roughScale = mix(2.0f, 6.5f, h2);
     float roughness = mix(0.05f, 0.16f, h3) * (rock.kind == 1 ? 0.6f : 1.0f);
-    float3 surface = in.kind == 1u ? bumped(n, rest, 1.6f, 0.45f, 4) : bumped(n, rest, roughScale, roughness, 3);
+    // The old weathered face's bump at 0.45 turned patches of every face that looks up away from
+    // a sun 18 degrees high: a ridge's crest and the face's ledges were spotted dark blue (sky
+    // light only) all over (until 12 November 2026, emmettl/bombcad-work#136).
+    float3 surface = in.kind == 1u || in.intact > 0.5f ? bumped(n, rest, 1.6f, 0.2f, 4) : bumped(n, rest, roughScale, roughness, 3);
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
     float dust = dustShadow(in.world, cam, dustLight);
     return float4(shade(albedo, in.world, surface, cam, shadow, dust), 1.0f);
@@ -644,6 +659,16 @@ kernel void chipUpdate(device QuarryChip *chips [[buffer(0)]],
         float age = C.velAge.w + dt;
         if (age < C.offsetDelay.w) { chips[i].velAge.w = age; return; }
         float3 pos = p.xyz + rotate(pose[2 * C.parent + 1], C.offsetDelay.xyz);
+        // A chip leaves only from rock open to the air: one from a block still buried under the
+        // rest was put up on top of it at once (the height it lands on is the top of the scene),
+        // so every block down through the cut shed its chips onto the surface as a carpet of
+        // flakes (until 12 November 2026, emmettl/bombcad-work#136). It waits until its block is
+        // near the top, and goes with it then, if ever.
+        float2 at = float2((pos.x - u.low.x) / u.size.x, 1.0f - (pos.y - u.low.y) / u.size.y);
+        if (all(at >= 0.0f) && all(at <= 1.0f)) {
+            float top = u.size.z - height.sample(s, at) * (u.size.z - u.size.w);
+            if (pos.z < top - 1.0f) { chips[i].velAge.w = age; return; }
+        }
         float3 v = (p.xyz - previous[2 * C.parent].xyz) / dt;
         float3 jitter = float3(fract(C.seed * 13.7f), fract(C.seed * 29.3f), fract(C.seed * 7.1f)) * 2.0f - 1.0f;
         v = v * 0.75f + jitter * 2.5f + float3(0, -0.6f, 1.2f);

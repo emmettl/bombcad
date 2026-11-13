@@ -676,3 +676,32 @@ is the cut and its margin, with no grass in it; ledges crop out clear of it, on 
 are not shale, on the ground, and each becomes rock; scree lies below the ledges more than on open
 gentle ground, and grass on the gentle ground; stones and scrub lie on the ground outside the rock,
 the same each time, fewer at a smaller scale.
+
+## Stage 3c: close-up rock, 12 November 2026
+
+emmettl/bombcad-work#136, on the user's word of 12 November. Same standing: illustrative, for the eye.
+The cause, the changes (shared with the Quarry Face) and the measurements are in
+[hillside-blast.md](hillside-blast.md#stage-3c-close-up-rock-and-rock-that-is-whole-until-it-breaks-12-november-2026);
+this is what they did to the ridge cut.
+
+- *The Pull back's opening.* The scattered paper-thin shards over the crest at 2.2 to 2.6 s were the
+  decorative chips: every block's chips, buried ones too, were set on the surface as soon as their
+  blocks let go, and many were as large as the ridge's small blocks and a fifth as thick as long. Now
+  a few small chunky stones fly off the top of the breaking crest, and the blocks lifting and turning
+  read as blocks. The crest before the first firing (0.5 and 1 s) is one weathered surface, banded by
+  its beds, where it was a mosaic of cells, each in its own tint, spotted dark blue by the bump.
+- *From the default view* at 1 s the crest of the cut is smooth banded rock with ledges; at 4.5 s the
+  tongue and the notch are much as before; at 12 and 19.9 s the pile is as before.
+- *The rock itself:* 96,386 blocks against 96,987, the same sizes and shapes; the cut's cells are no
+  longer stood back by a random amount of their own, so the crest's surface is one surface.
+- *What still looks wrong.* In the default view the crest's left part beyond the cut is the
+  render-only dressing, which still shows its cells and grass between them (emmettl/bombcad-work#135
+  is replacing it). In the Pull back's close shot the crest's surface is a little plain before it
+  breaks: banded and smooth, with less small relief than real weathered rock. The ridge's pieces are
+  still small (0.57 m median), so the broken crest is a field of small blocks.
+- *With stage 3a's heave* (landed beside this, emmettl/bombcad-work#134), in `final/`: the crest
+  lifts as one weathered mass at 2.2 to 2.6 s, then splits into blocks along the cells as it rises,
+  and at 3.2 s the close shot is full of solid blocks tumbling; no sheet-like shards.
+- Files: `$BOMBCAD_DATA/hillside-blast/rock-closeup/` (`before/ridge-*`, `after/ridge-*` on stage 2b's
+  launch, `final/ridge-*` on stage 3a's, and the debug renders `debug1/` and `debug2/` from the Pull
+  back).

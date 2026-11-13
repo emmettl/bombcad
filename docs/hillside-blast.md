@@ -872,3 +872,116 @@ the upper slope are still a carpet, only a varied one; the faces still carry sof
 from their relief; the held skin of rounded limestone blocks along the new face reads a little like
 loaves; the shape spread widened only modestly, and the pile is now mostly sandstone by count; and
 the driver's memory doubling, about 0.6 GB, is untraced.
+
+## Stage 3c: close-up rock, and rock that is whole until it breaks, 12 November 2026
+
+On the user's word of 12 November (emmettl/bombcad-work#136), with a second part added the same day
+from the user's first run of the window: "the rock is very clearly prefragmented". Same standing:
+illustrative, stylised beds and breakage, not a blast-design aid. Both scenes; the ridge cut's side of
+it is in [ridge-cut.md](ridge-cut.md#stage-3c-close-up-rock-12-november-2026).
+
+**Why the pieces near the camera were shards.** Traced in the ridge cut's Pull back opening (window
+quality, from the stored stage 1 poses) with a debug render that painted the blocks orange, the chips
+green, the dressing blue and the terrain purple, and a second that coloured each block by its least
+width over the cube root of its volume (red when thin), with back faces and normals turned from the
+eye flagged in their own colours.
+- *It was the chips.* At 2.2 and 2.6 s nearly everything thin and bright near the camera was green: a
+  carpet of the decorative chips over the whole crest. Two faults together. A chip leaves its block
+  once the block is released and its delay is up, and is then put on top of the scene's top-down
+  height; so the chips of every block down through the cut, still buried under the rest, appeared on
+  the surface at once, covering the crest within a second of the first firing. And the chips were
+  sized without regard to their block (up to 0.5 m in radius, the larger spalls 0.3 to 0.7 m) and
+  shaped down to a fifth as thick as long: on the ridge's small pieces (0.57 m median) many were as
+  large as their block and thin, and tumbling close to the lens they read as sheets.
+- *Not the fracture.* Only 2.3% of the ridge's blocks are less than 0.4 as thick as their size, none
+  under 0.1; the thin-block colouring showed almost no red near the camera. The fracture is unchanged.
+- *Not back faces or normals.* Only a few specks of back face or of normals turned from the eye
+  showed (on the old meshes; the new outer surface made more for a while, below).
+- *A part of it was the light.* The weathered outer faces' bump (0.45) turned patches of every
+  upward face away from a sun 18° up, so the crest was spotted dark blue all over (sky light only),
+  which broke the rock into flecks.
+
+**Why the unbroken rock looked broken.** Each block's outer face was clipped by tangent planes of the
+old surface around the cell and then stood back by its bed's weathering *and a random amount of its
+own* (up to 18% of the cell's size). So neighbouring blocks' outer faces were at different depths and
+angles, and every cell's outline showed as a step, a gap or a groove: a full Voronoi crack network on
+the face and the crest before anything fired. The blocks' own tint, warmth and roughness (each block a
+little its own) and the rounding of every edge drew the same network again in colour and shade.
+
+**What changed.**
+- *One outer surface* (`QuarryFace`, BlastModel). The outer faces of the blocks are now laid on one
+  continuous surface: the old ground stood back by its bed's own weathering (eased over a third of a
+  bed across each boundary, so ledges over shale are slopes, not folds) and a fixed share of the cell
+  size. Each point of an outer face is moved along the surface's normal onto it, with the surface's
+  own normal; the displacement and relief that shape it are functions of position alone, so where two
+  blocks meet their outer faces meet. Edges along it are not rounded. The cells themselves are cut by
+  the same recess (no random part); the strip's with tangent planes taken along the surface from the
+  point the cell lies under (in plan, a steep face's planes came from the floor or the brow and cut
+  its outer cells away), the held skin's at points around it in plan as before (along the surface it
+  kept 13 to 18% more blocks at the tests' small counts, all bodies to simulate). Corners are moved along the normal rather than along their own edges: along
+  the edges they would meet exactly, but where an edge leans from the normal a small step in depth
+  carried the corner across its own face and one outer triangle in fourteen turned inside out (along
+  the normal, one in about 200 at the window's mesh of the face and one in 900 at the film's mesh of
+  the ridge).
+- *Unbroken until it moves* (`QuarryRender.metal`). While a block is held and has moved less than a
+  few centimetres from where it was made (position, and rotation times its size), it takes no tint of
+  its own, its side faces show the weathered skin's colour and bump rather than a fresh break, and the
+  rarer reddish blocks are not reddened; from 2 to 20 cm of movement its own look comes in. So a
+  block shows as a separate piece as the swell starts to lift it, and the crack network appears as the
+  rock breaks. It reads the release and the movement the solver already writes in the poses; nothing
+  in the launch or the swell (emmettl/bombcad-work#134) changed.
+- *The chips.* A chip waits until its block is within a metre of the top of the scene (the top-down
+  height it lands on) before it leaves, so buried blocks shed none until they come up, if ever. Its
+  size is held to 0.13 of its block's (a spall's to 0.2). The 32 shapes are chunkier: the slab and
+  flake kinds 0.34 to 0.58 as thick as long, from 0.18 to 0.4, and a hull of a few points that lies
+  nearly in a plane is thrown out (one was 0.11 as thick as long), so none is under 0.3
+  (`QuarryChipShapes`, and its test).
+- *The weathered faces' bump* is 0.2 where it was 0.45, which took the blue spots away.
+
+**Measured.**
+- *The generator* at `--blocks 110000` (the face): 116,276 blocks before, 116,967 after; sizes and
+  shapes of the broken rock as before (median 0.74 to 0.75 m; Zingg's classes the same to a percent).
+  Ridge cut: 96,987 blocks before, 96,386 after, sizes and shapes unchanged. Meshing 0.4 s, as before
+  (the outer surface's normals by forward differences, each point brought back to the surface once).
+  At the window's tests' 12,000 blocks the face makes 29,601 against 26,124 (the larger cells keep
+  more of their pieces with no random recess).
+- *Stability*, the 20 s event at 240 Hz on the new rock: no NaNs; over the last second the median and
+  99th percentile block moved 0, the worst 7.0 cm (face) and 9.9 cm (ridge), none over 10 cm.
+- *Frame cost and memory*, the window's own session offscreen (`play --self-test NAME --offscreen`,
+  the window's 100,000 blocks), main's build and this one interleaved, two runs each, medians of the
+  work a frame, measured on a version that kept the larger held skin (120,904 blocks at the face, so
+  if anything an upper bound). The Studio was heavily loaded by other sessions' checks throughout (load average about
+  100), so every figure is about half again the quiet ones above, and the runs' spread is wider than
+  any change: the face playing a stored event 30.2, 30.2 to 28.0, 34.8 ms; following the first firing
+  36.9, 38.1 to 39.8, 43.9 ms; scrubbing and orbiting 72.5, 71.5 to 71.8, 73.5 ms; the ridge cut
+  playing 29.9, 29.8 to 27.8, 29.9 ms, following 34.7, 44.0 to 33.1, 46.0 ms, scrubbing 65.2, 64.1 to
+  61.8, 67.3 ms. Metal allocated 785 to 795 MB at the face (its larger held skin: 15.0 M triangles at
+  the film's mesh against 14.6 M) and 858 to 855 MB on the ridge; peak footprint 3.47 and 3.67 to 3.52
+  and 3.52 GB at the face, 3.86 and 3.81 to 3.86 and 3.84 GB on the ridge. The chips are the same
+  number; the shader does a little more for held blocks (the skin's colour on their side faces).
+- *Checked by eye*, in clips made by the window's Record Clip from stored poses (`hillsideblast clip`,
+  frames taken from the files themselves), before on main's code and rock (`look2/poses`,
+  `ridge/final/poses`), after on this code and its rock (`rock-closeup/after-*-poses`, and again on
+  main with the ridge's new heave, emmettl/bombcad-work#134, in `final/` from `final-*-poses`; both
+  with the larger held skin, whose outer faces lie on the same surface; the face at 1 s again with the
+  skin as landed, in `skin/`, looks the same): the face from
+  the default view at 1, 3.5, 6.5 and 19.9 s, the face close (focus 75,0,3, yaw -0.58, 46 m, 30°) at
+  the same times, the ridge from its default view at 1, 2.6, 4.5, 12 and 19.9 s and the Pull back at
+  0.5 to 11.9 s. Before and after cannot share poses: the new rock is a different set of blocks. Files
+  under `$BOMBCAD_DATA/hillside-blast/rock-closeup/`: `before/`, `after/`, `final/`, the debug renders
+  `debug1/` (blocks, chips, dressing, terrain), `debug2/` (thin blocks) and `debug-kinds-try4/`
+  (outer, side and joint faces), and the self-test logs beside them.
+
+**The look, frankly.**
+- *The unbroken face* (1 s) is the biggest change: from the default view it is banded rock with a
+  few joints, and the pile's front blocks along the floor are separate stones, where before it was a
+  wall of loose blocks. Up close it still shows thin dark lines along many cell edges, fewer and
+  finer than before: where three cells meet, their side faces' shallow seams still catch a shadow,
+  and the strip's shale ledges still show their blocks.
+- *The broken rock and pile* (3.5 s on) look as they did; the pile reads as stones.
+- *Chips* now come off the top of the rock as it breaks, small and chunky, rather than covering it.
+- *What is still wrong.* A seam of shade still shows round many unbroken cells in close views in low
+  sun; a fully seamless face would need a render-only skin drawn over held blocks and swapped out
+  block by block on release, which was not tried. The held skin past the strip's ends is a little
+  smoother and paler than the dressing beyond it. The left end of the ridge's crest in its default
+  view is the render-only dressing (emmettl/bombcad-work#135's), which still shows its cells.

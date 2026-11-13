@@ -610,6 +610,9 @@ public struct QuarryFace: Sendable {
         )
         // A hash of the sites for neighbours.
         let cell = meanEdge * 2.2
+        // How far every cell's outer face stands back besides its bed's own recess: the mean of
+        // the share of its size each cell took until 12 November 2026.
+        let cellRecess = cell * 0.06
         let hashLow = simd_min(boxLow, skinLow)
         let hashHigh = simd_max(boxHigh, skinHigh)
         let dims = SIMD3<Int>(
@@ -679,38 +682,47 @@ public struct QuarryFace: Sendable {
                 }
                 // Clip to the old surface and the new one, by tangent planes around the cell.
                 let extent = min(polyhedron.maxDistance(from: site), cell)
-                for offset: SIMD2<Float> in [.zero, [0.7, 0], [-0.7, 0], [0, 0.7], [0, -0.7]] {
+                for offset: SIMD2<Float> in [.zero, [0.7, 0], [-0.7, 0], [0, 0.7], [0, -0.7]] where !isSkin {
                     let p = SIMD2(site.x, site.y) + offset * extent
-                    func normal(_ h: [Float]) -> (SIMD3<Float>, Float) {
-                        let e: Float = 0.5
-                        let z = hillside.height(h, p.x, p.y)
-                        let dx =
-                            (hillside.height(h, p.x + e, p.y) - hillside.height(h, p.x - e, p.y)) / (2 * e)
-                        let dy =
-                            (hillside.height(h, p.x, p.y + e) - hillside.height(h, p.x, p.y - e)) / (2 * e)
-                        let n = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
-                        return (n, simd_dot(n, SIMD3<Float>(p.x, p.y, z)))
-                    }
-                    let top = normal(hOld)
-                    // Each cell's outer face stands back by its bed's own weathering (shale under
-                    // ledges of the harder beds) and a little more or less, so the face is banded
-                    // and stepped rather than one smooth plane, the same in the strip and past it.
-                    let recess =
-                        QuarryRock.recess(QuarryRock.kind(at: site))
-                        * (0.6 + 0.8 * QuarryNoise.hash(Int32(n), 3, 5).magnitude)
-                        + extent * 0.18 * QuarryNoise.hash(Int32(n), 7, 11).magnitude
-                    polyhedron.clip(normal: top.0, offset: top.1 - recess, kind: 1)
-                    if isSkin {
-                        // Behind the skin: the old surface's plane under the site itself, moved in by
-                        // the thickness. (Planes from the other samples, up on the brow, cut away
-                        // the whole of a steep face's skin.)
-                        if offset == .zero {
-                            polyhedron.clip(normal: -top.0, offset: -(top.1 - skinThickness), kind: 2)
-                        }
-                    } else {
-                        let bottom = normal(hNew)
-                        polyhedron.clip(normal: -bottom.0, offset: -bottom.1, kind: 2)
-                    }
+                    let bottom = hillside.tangentPlane(hNew, p)
+                    polyhedron.clip(normal: -bottom.0, offset: -bottom.1, kind: 2)
+                }
+                // The old surface by its tangent planes at the point of it the site lies under (along
+                // its normal) and at points around that one along the surface. Taken at points around
+                // the site in plan, as until 12 November 2026, a steep face's planes came from the
+                // floor in front or the brow above and cut its outer cells away, leaving pits. A
+                // plane the site stands well outside of is across a hollow, and left out.
+                // Each cell's outer face stands back by its bed's own weathering (shale under ledges
+                // of the harder beds), so the face is banded in relief. Until 12 November 2026 each
+                // cell also stood back a random amount of its own, which drew every cell's outline
+                // on the unbroken face as a crack: the rock looked broken before the blast
+                // (emmettl/bombcad-work#136). Now the recess is the bed's alone, eased across beds'
+                // boundaries, the same surface for every cell.
+                let foot = hillside.onSurface(hOld, site)
+                let side = simd_normalize(
+                    abs(foot.normal.z) < 0.9
+                        ? simd_cross(foot.normal, SIMD3(0, 0, 1)) : simd_cross(foot.normal, SIMD3(1, 0, 0)))
+                let slope = simd_cross(foot.normal, side)
+                for (k, along) in [SIMD3<Float>.zero, side, -side, slope, -slope].enumerated() {
+                    // The held skin keeps its cells as before, at points around the site in plan:
+                    // taken along the surface it kept a fifth more of them, all bodies to simulate.
+                    let inPlan: [SIMD2<Float>] = [.zero, [0.7, 0], [-0.7, 0], [0, 0.7], [0, -0.7]]
+                    let q = SIMD2(site.x, site.y) + inPlan[k] * extent
+                    let (point, normal) =
+                        isSkin
+                        ? (SIMD3(q, hillside.height(hOld, q.x, q.y)), hillside.tangentPlane(hOld, q).0)
+                        : along == .zero
+                            ? foot : hillside.onSurface(hOld, foot.point + along * (0.7 * extent))
+                    if along != .zero, simd_dot(normal, site - point) > 0.6 { continue }
+                    let recess = QuarryRock.blendedRecess(at: point) + cellRecess
+                    polyhedron.clip(normal: normal, offset: simd_dot(normal, point) - recess, kind: 1)
+                }
+                if isSkin {
+                    // Behind the skin: the old surface's plane under the site itself, moved in by the
+                    // thickness. (Planes from the other samples, up on the brow, cut away the whole of
+                    // a steep face's skin.)
+                    let under = hillside.tangentPlane(hOld, SIMD2(site.x, site.y))
+                    polyhedron.clip(normal: -under.0, offset: -(under.1 - skinThickness), kind: 2)
                 }
                 let (volume, centroid) = polyhedron.volumeAndCentroid
                 if polyhedron.faces.count >= 4, volume > 0, polyhedron.faces.count < 40 {
@@ -842,6 +854,18 @@ public struct QuarryFace: Sendable {
             }
             return (best, outward)
         }
+        // The old surface, stood back by each bed's own weathering and `cellRecess`, as the cells
+        // were clipped: their outer faces are laid on it, so the unbroken face is one surface,
+        // banded by its beds, rather than a cell-by-cell crack network (emmettl/bombcad-work#136).
+        let outer: OuterSurface = { p in
+            let e: Float = 0.5
+            let top = hillside.height(hOld, p.x, p.y)
+            let dx = (hillside.height(hOld, p.x + e, p.y) - hillside.height(hOld, p.x - e, p.y)) / (2 * e)
+            let dy = (hillside.height(hOld, p.x, p.y + e) - hillside.height(hOld, p.x, p.y - e)) / (2 * e)
+            let normal = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+            let depth = (top - p.z) * normal.z
+            return (depth - QuarryRock.blendedRecess(at: p + normal * depth) - cellRecess, normal)
+        }
         // Each block's displaced mesh, built in parallel.
         var meshes = [(vertices: [Vertex], indices: [UInt32], anchors: [SIMD3<Float>])](
             repeating: ([], [], []), count: keep.count)
@@ -874,11 +898,15 @@ public struct QuarryFace: Sendable {
                         weathering: QuarryRock.weathering(depth: d), random: localRandom.float())
                 }
                 let weathered = QuarryRock.weathering(depth: depth)
+                // How thick the piece is across the old surface: its outer face is not laid on the
+                // surface further in than a share of that, so a thin piece is never turned inside out.
+                let across = polyhedron.extent(along: outer(c).normal)
+                let thickness = across.1 - across.0
                 Self.tessellate(
                     polyhedron, centre: c, body: UInt32(n), level: level,
                     warp: size * 0.07, seed: Float(n) * 0.137, relief: 0.16,
                     rounding: level >= 2 ? size * (0.03 + 0.04 * weathered) : 0, tags: tags,
-                    vertices: &vertices, indices: &indices)
+                    outer: outer, inward: 0.4 * thickness, vertices: &vertices, indices: &indices)
                 for _ in 0..<6 {
                     let polygon = keep[n].polyhedron.faces[
                         Int(localRandom.float() * Float(keep[n].polyhedron.faces.count - 1))]
@@ -1016,6 +1044,29 @@ public struct QuarryFace: Sendable {
         return simd_normalize(d + (stretch * stretch - 1) * along * beddingNormal)
     }
 
+    /// The tangent plane of heights `h` at `p` in plan: its normal, and its offset along it.
+    func tangentPlane(_ h: [Float], _ p: SIMD2<Float>) -> (SIMD3<Float>, Float) {
+        let e: Float = 0.5
+        let z = height(h, p.x, p.y)
+        let dx = (height(h, p.x + e, p.y) - height(h, p.x - e, p.y)) / (2 * e)
+        let dy = (height(h, p.x, p.y + e) - height(h, p.x, p.y - e)) / (2 * e)
+        let n = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+        return (n, simd_dot(n, SIMD3<Float>(p.x, p.y, z)))
+    }
+
+    /// The point of the surface of heights `h` that `q` lies under or over along the surface's
+    /// normal, and the normal there.
+    func onSurface(_ h: [Float], _ q: SIMD3<Float>) -> (point: SIMD3<Float>, normal: SIMD3<Float>) {
+        var x = q
+        var normal = SIMD3<Float>(0, 0, 1)
+        for _ in 0..<6 {
+            let (n, offset) = tangentPlane(h, SIMD2(x.x, x.y))
+            normal = n
+            x += n * max(-3, min(3, offset - simd_dot(n, x)))
+        }
+        return (SIMD3(x.x, x.y, height(h, x.x, x.y)), normal)
+    }
+
     /// Surface displacement, a function of world position alone so that neighbouring blocks stay
     /// matched where they touch.
     public static func displacement(_ p: SIMD3<Float>) -> SIMD3<Float> {
@@ -1031,21 +1082,103 @@ public struct QuarryFace: Sendable {
         return large * 0.22 + fine * 0.015
     }
 
+    /// The old surface the rock was cut from, for a block's outer faces: how deep a point lies
+    /// inside it (m, negative outside) and the surface's outward normal there.
+    public typealias OuterSurface = @Sendable (SIMD3<Float>) -> (depth: Float, normal: SIMD3<Float>)
+
+    /// Where a point of a cell's outer face (`kind` 1) lies on the continuous `outer` surface:
+    /// moved along the surface's normal. Inward moves are held to `inward` (m), so a thin piece
+    /// keeps its thickness. (Moved within the side faces it lies on instead, the corners that
+    /// neighbouring cells share would land in exactly the same place, but a corner's line can
+    /// lean far from the normal, and a small difference in depth then carried it across its
+    /// own face: one outer triangle in fourteen was turned inside out.)
+    static func ontoOuter(_ p: SIMD3<Float>, outer: OuterSurface, inward: Float) -> SIMD3<Float> {
+        var t: Float = 0
+        let (_, direction) = outer(p)
+        for _ in 0..<3 {
+            let (depth, normal) = outer(p + direction * t)
+            t = max(-inward, min(0.9, t + depth / max(simd_dot(direction, normal), 0.6)))
+        }
+        return p + direction * t
+    }
+
     /// A polygon's tessellated, displaced surface: each fan triangle subdivided `level` times,
-    /// with vertex normals from its own grid. Kind comes from the polygon.
+    /// with vertex normals from its own grid. Kind comes from the polygon. With `outer`, the
+    /// polyhedron's outer faces (kind 1, clipped by tangent planes cell by cell, so each a
+    /// slightly different plane) and the edges of its other faces along them are laid on that
+    /// continuous surface instead, with its normals, and not rounded or warped there: neighbouring
+    /// cells then meet in one surface, so rock that has not broken reads as whole, with no crack
+    /// network before the blast.
     public static func tessellate(
         _ poly: QuarryPolyhedron, centre c: SIMD3<Float>, origin: SIMD3<Float>? = nil, body: UInt32,
         level n: Int,
         warp: Float, seed: Float, relief: Float = 0, rounding: Float = 0, tags: [UInt32]? = nil,
+        outer: OuterSurface? = nil, inward: Float = 0,
         vertices: inout [Vertex], indices: inout [UInt32]
     ) {
+        // Each face's plane, outward.
+        let planes: [(SIMD3<Float>, Float)] = poly.faces.map { polygon in
+            var newell = SIMD3<Float>.zero
+            for k in polygon.indices {
+                let a = polygon[k]
+                let b = polygon[(k + 1) % polygon.count]
+                newell += SIMD3(
+                    (a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y))
+            }
+            guard simd_length_squared(newell) > 1e-20, !polygon.isEmpty else {
+                return (SIMD3(0, 0, 1), .infinity)
+            }
+            var normal = simd_normalize(newell)
+            if simd_dot(normal, polygon[0] - c) < 0 { normal = -normal }
+            return (normal, simd_dot(normal, polygon[0]))
+        }
+        let outerPlanes =
+            outer == nil ? [] : poly.kinds.indices.filter { poly.kinds[$0] == 1 }.map { planes[$0] }
+        func onOuter(_ p: SIMD3<Float>) -> Bool {
+            outerPlanes.contains { abs(simd_dot($0.0, p) - $0.1) < 2e-3 }
+        }
+        /// The continuous surface's own shape at a point of it, `here` being the point shaped: its
+        /// normal with the displacement and relief on it, the same for every cell that has the
+        /// point (forward differences 6 cm along the surface, each brought back onto it once).
+        func outerNormal(_ base: SIMD3<Float>, here: SIMD3<Float>, outer: OuterSurface) -> SIMD3<Float> {
+            let (_, ns) = outer(base)
+            let t1 = simd_normalize(
+                abs(ns.z) < 0.9 ? simd_cross(ns, SIMD3(0, 0, 1)) : simd_cross(ns, SIMD3(1, 0, 0)))
+            let t2 = simd_cross(ns, t1)
+            let e: Float = 0.06
+            func at(_ q: SIMD3<Float>) -> SIMD3<Float> { shaped(q + ns * outer(q).depth) }
+            let normal = simd_cross(at(base + t1 * e) - here, at(base + t2 * e) - here)
+            guard simd_length_squared(normal) > 1e-12 else { return ns }
+            let unit = simd_normalize(normal)
+            return simd_dot(unit, ns) < 0 ? -unit : unit
+        }
+        /// The displacement and relief, functions of world position alone.
+        func shaped(_ base: SIMD3<Float>) -> SIMD3<Float> {
+            var p = base + displacement(base)
+            if relief > 0 {
+                let w = p * 0.42 + 13
+                p +=
+                    relief
+                    * SIMD3<Float>(
+                        QuarryNoise.fbm(w, octaves: 3), QuarryNoise.fbm(w + 4.7, octaves: 3),
+                        QuarryNoise.fbm(w + 11.3, octaves: 3)) * 1.4
+            }
+            return p
+        }
         for (f, polygon) in poly.faces.enumerated() where polygon.count >= 3 {
             let tagged = body | (tags?[f] ?? 0)
+            let outerFace = outer != nil && poly.kinds[f] == 1
+            // Edges on the outer surface are not rounded: rounded, they made a groove along every
+            // seam between unbroken cells.
+            let edgeOnOuter: [Bool] = polygon.indices.map { k in
+                outer != nil
+                    && (outerFace || (onOuter(polygon[k]) && onOuter(polygon[(k + 1) % polygon.count])))
+            }
             // In-plane distance to the polygon's edge, for rounding: the same on both faces along an
             // edge, so the pull toward the centre keeps the block closed.
             func edgeDistance(_ p: SIMD3<Float>) -> Float {
                 var best = Float.infinity
-                for k in polygon.indices {
+                for k in polygon.indices where !edgeOnOuter[k] {
                     let a = polygon[k]
                     let b = polygon[(k + 1) % polygon.count]
                     let ab = b - a
@@ -1064,10 +1197,21 @@ public struct QuarryFace: Sendable {
                 let side = n + 1
                 func at(_ i: Int, _ j: Int) -> Int { j * (2 * side - j + 1) / 2 + i }
                 var positions = [SIMD3<Float>](repeating: .zero, count: side * (side + 1) / 2)
+                var surfaceNormals = [SIMD3<Float>?](repeating: nil, count: positions.count)
                 for j in 0...n {
                     for i in 0...(n - j) {
                         let (u, v) = (Float(i) / Float(n), Float(j) / Float(n))
                         let planar = corners.0 + (corners.1 - corners.0) * u + (corners.2 - corners.0) * v
+                        if let outer, outerFace || onOuter(planar) {
+                            // On the outer surface: its place there, and its normal, also for a side
+                            // face's edge along it, so that what shows of a side face through a seam
+                            // is lit as the surface is.
+                            let base = ontoOuter(planar, outer: outer, inward: inward)
+                            let here = shaped(base)
+                            positions[at(i, j)] = here
+                            surfaceNormals[at(i, j)] = outerNormal(base, here: here, outer: outer)
+                            continue
+                        }
                         var p = planar + displacement(planar)
                         if rounding > 0 {
                             let e = edgeDistance(planar)
@@ -1120,7 +1264,7 @@ public struct QuarryFace: Sendable {
                     }
                 }
                 for (m, position) in positions.enumerated() {
-                    var normal = simd_normalize(normals[m] + 1e-9 * outward)
+                    var normal = surfaceNormals[m] ?? simd_normalize(normals[m] + 1e-9 * outward)
                     if normal.x.isNaN { normal = SIMD3(0, 0, 1) }
                     let packed = pack(normal: normal, kind: poly.kinds[f])
                     let local = position - (origin ?? c)

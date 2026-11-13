@@ -985,14 +985,18 @@ public enum QuarryDecor {
         }
         // Chips that leave their blocks, and fines that trickle after them and settle on the pile.
         // Nothing is strewn on the floor beforehand: what lies there comes from the event.
+        // A chip's size is the radius of its stone, held to a share of its block's own size: a
+        // chip as large as its block, on the ridge's smaller pieces, was a shard beside the rock
+        // until 12 November 2026 (emmettl/bombcad-work#136).
         for (n, block) in hillside.blocks.enumerated() where !block.skin {
             let c = block.centre
             let count = max(2, min(8, Int(block.size * block.size * 3 + 2)))
+            let largest = max(0.04, block.size * 0.13)
             for k in 0..<count {
                 let anchor = hillside.chipAnchors[6 * n + k % 6]
                 chips.append(
                     Chip(
-                        posSize: SIMD4(c, size(0.06, 0.5, 0.42)), velAge: .zero,
+                        posSize: SIMD4(c, min(size(0.06, 0.5, 0.42), largest)), velAge: .zero,
                         offsetDelay: SIMD4(anchor, r.float(0.02, 1.4)), parent: UInt32(n), state: 0,
                         seed: r.float(), tint: r.float(0.25, 0.9)))
             }
@@ -1002,7 +1006,7 @@ public enum QuarryDecor {
                     let anchor = hillside.chipAnchors[6 * n + (k + 1) % 6]
                     chips.append(
                         Chip(
-                            posSize: SIMD4(c, r.float(0.3, 0.7)), velAge: .zero,
+                            posSize: SIMD4(c, min(r.float(0.3, 0.7), block.size * 0.2)), velAge: .zero,
                             offsetDelay: SIMD4(anchor, r.float(0.05, 0.8)), parent: UInt32(n), state: 0,
                             seed: r.float(), tint: r.float(0.3, 0.9)))
                 }
