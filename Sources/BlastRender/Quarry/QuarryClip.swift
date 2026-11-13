@@ -111,7 +111,8 @@ public struct QuarryClipCamera: Sendable, Equatable {
         if motion == .pullBack {
             var v = QuarryPullBack.view(
                 orbit: QuarryOrbit(focus: focus, yaw: yaw, pitch: pitch, distance: distance),
-                fovY: fovDegrees * .pi / 180, time: time, firstFiring: firstFiring)
+                fovY: fovDegrees * .pi / 180, time: time, firstFiring: firstFiring,
+                shot: face.ridge == nil ? QuarryPullBack.face : QuarryPullBack.ridge)
             v.eye.z = max(v.eye.z, face.height(face.terrain.heights, v.eye.x, v.eye.y) + 2)
             return v
         }

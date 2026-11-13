@@ -1189,3 +1189,127 @@ and the window's recorder at the same three cameras.
 - *The solver works longer* (the whole cut swells from 0.3 s), so following the first firing in the
   window is slower by about a fifth of the physics.
 - Not looked at on a screen: all of it was made offscreen.
+
+## Stage 3i: a cloud that reads as sunlit dust, and an opening shot for the dome, 13 November 2026
+
+emmettl/bombcad-work#143, on the user's word of 13 November ("keep working through the defects
+list until it looks strong"). Same standing: illustrative, render-only; the rock's physics, block
+counts and motion are unchanged (every frame below is drawn from stage 3f's own 20 s run of 31,259
+blocks, `ridge-dust-heave/a30/poses`). Nothing here is a load, a blast design or a claim about
+fragments, dust or their reach.
+
+**What was wrong** (stage 3f's frames, and the list it left).
+- *Dark cores.* From 3.0 to 4.5 s the cloud had near-black cores and blotches (worst at 3.6 s in
+  the opening view) and hid the rock running down the near flank.
+- *Pull back* opened filled by the rising rock: it was framed for the old, lower heave.
+- *Jets* from the cracks read as round puffs at the window's 1.5 m dust cells.
+- *Dust about 0.2 s after the first motion.*
+
+**Why the cores went dark.** Three causes, found by drawing the march's own quantities.
+- *The sun's light was lost exponentially in the cloud.* The march lit each sample by an octave sum
+  of exponentials of the sun's optical depth (`exp(-tau) + 0.32 exp(-tau/4) + 0.14 exp(-0.06 tau)`).
+  Drawn as a picture, the depth in the cloud's core from 3 s on is 3 to 10, where that sum is a
+  fifth to a tenth of a sunlit sample's; with only the sky's light beside it the shaded parts came
+  out near black. Dust scatters nearly all it takes, so light in a thick cloud diffuses through it
+  and falls off slowly. Drawn with the self-shadow off, the cores went pale (and flat): this is
+  the main cause.
+- *The shadow was looked up where the dust was not.* The density was looked up through a warp of
+  a few metres; the sun's depth at the unwarped point. A puff's sunward side could be lit by the
+  field's shape 3 m off, inside it: dark patches on lit dust.
+- *Grain.* Thin dust over the heap was a speckle of dust and dark rock. Drawn as each pixel's mean
+  colour and its coverage, the dust's colour was even and its coverage speckled: the fine warp
+  (3.3 m of noise whose features are 0.3 to 0.6 m) turned faster than the march's 0.9 m steps
+  sample it, so each pixel drew a random handful of the field within 3 m. Finer steps (0.3 m) took
+  it away, at 2.6 ms more of the window's draw; neither a finer coarse search, a softer cut of the
+  noise nor a thin haze under it did. The coarse search's last probe also skipped dust lying on
+  the rock within 2 m of it, for pixels whose jittered probes fell past it.
+- Not a cause: density clamping (sources stop at 40, the march saturates long before), and the
+  ambient occlusion (drawn before the dust).
+
+**What changed** (`dustFragmentRidge`, `ridgeDustLit`, `jetVertex`, `jetFragment` in
+`QuarryRender.metal`; `QuarryDustPass`; `QuarryDustField`; `QuarryPullBack`, `QuarryClipCamera`).
+- *Diffused sunlight.* A ridge's dust is lit by the sun's light scattered once, with its phase
+  (bright rims toward the sun), plus the light diffused through the cloud, spread evenly and
+  falling as 1 / (1 + 0.15 tau) (as a slab's diffuse transmission does, rather than exp(-tau); the
+  0.15 chosen by eye), and the sky's light a quarter stronger in the shade. Shaded dust is now a
+  darker tan where it is thick and turned from the sun, never near black.
+- *The shadow at the warped point*, the same lookup as the density's.
+- *The warp in two scales*: 3.3 m of a slow one (features of 2 m and more), which billows the
+  cloud, and 1.2 m of the fine one (it was 3.3 m). The grain is gone; thin dust over the heap is a
+  soft veil the rock shows through. Three more noise samples a fine step.
+- *The coarse search's last probe* lands 5 cm short of the surface the ray ends on, and the last
+  step is cut at it.
+- *Jets as thin spurts* (the ridge's cracks only). Each crack that jets is also drawn as a narrow
+  streak facing the eye from its top (`QuarryDustField.Jet`, three buffers in turn, up to 1,024),
+  0.25 m wide at the crack and fanning out, growing at the jet's speed (9 m/s and the rock's rise)
+  to 4.5 m, with packets of grit running up it, streaks, ragged sides and wisps at its tip, lit as
+  the dust is, drawn over the scene before the march so the cloud veils it; for 0.35 s after it
+  stops its tail flies on up and fades. Only 0.35 of a crack's dust now goes into the field
+  (`crackField`): the rest is the streak, and at the field's cells it was the round puff.
+- *Pull back for the dome.* A ridge cut's pull-back has its own shot (`QuarryPullBack.ridge`): 0.8
+  of the view's distance (0.7), 0.75 of its field (0.55), aimed 0.09 of its distance higher (0.1),
+  moving out from the first firing (0.7 s after it) over 4 s (5 s). A face's is as it was
+  (`QuarryPullBack.face`).
+- The face's march, sources and frames are untouched. Its film stills from the same poses (110,000
+  blocks, 1.0 to 5.9 s): two runs of this build are byte-identical to main's first run or differ
+  from its second in 2 pixels by one level, as main's two runs differ from each other; one run of
+  this build, made while another job used the GPU, differed in 214 pixels by up to 8 levels at
+  1.0 s. Its Pull back frames are byte-identical.
+
+**Measured** (release build, M4 Max Studio, loaded by other sessions; `tools/` below).
+- *Record Clip's draw* (GPU, 1920 x 1080, 1.5 to 5.5 s of the event, interleaved): main 8.34 and
+  8.19 ms, this 8.32 and 8.62 ms (about +0.2 ms); the dust step 4.04 to 4.09 ms either way.
+- *The window* (`play --ridge --self-test`, two runs each interleaved; medians from 1 to 5 s while
+  following the first firing): draw 10.4 and 9.7 ms main, 10.5 and 10.3 ms this (about +0.35 ms);
+  following Fire again 10.8 and 11.3 against 11.3 and 10.7 ms; the dust-and-chips step 9.1 and 8.2
+  against 7.8 and 8.9 ms.
+- *Dust on view* (the window's own frames every 0.2 s with dustless twins, `lag.py`): the first
+  dust still shows at 0.6 s on the first firing, 0.2 s after the rock (0.4 s), unchanged; on Fire
+  again at 1.0 s (1.23 s before); on a moved cut at 0.83 s (0.6 s before), since less of the first
+  cracks' dust is in the field and the thin spurts cover fewer pixels than the measure's 1%. The
+  dust's share of the frame is 3 to 4% from 1.0 to 2.4 s (3 to 7% before) and 28 to 29% from 3.4
+  to 4.4 s (31 to 34% before). The delay is left: the jets start with the cracks, but the first
+  motion is a few centimetres and the first spurts are short.
+
+**Checked by eye**, before (main's build) and after, from the same poses and cameras: Record Clip's
+opening view held still (0.4 to 12 s), Pull back (0.4 to 11.9 s) and the crest close in (0.6 to
+7 s), and the window's own frames while following (every 0.2 s to 4.4 s, then 5 and 6 s).
+- *The cloud.* From 3.0 s the columns stand as pale tan billows with soft shading on their turned
+  sides and bright rims; no black cores. At 3.6 s the rock running down the near flank shows
+  through the thin dust over it; the speckle over the heap is gone.
+- *Jets.* From 0.6 s spurts of grit rise off the dome's top as thin fanned streaks, many along
+  the skyline by 1.6 to 2.2 s, rather than round puffs; close in they flicker in gusts. The early
+  cracks still leave small soft puffs in the field over them.
+- *Pull back* opens on the whole crest with sky over it; it swells, its spurts rise off the top,
+  the columns burst from 2.2 s, and the camera eases out from the first firing as the rock breaks
+  and comes down the flank.
+
+**What still looks wrong.**
+- *The columns' puffs are smooth balls.* With the grain gone, the big puffs at 3.6 to 4.5 s read
+  as rounded cotton wool, the field's own shape, where stage 3f's were wispy (and grainy). A finer
+  detail at no aliasing (a march at finer steps where the cloud is thin, or a detail noise in the
+  light rather than the shape) is the next thing to try.
+- *Less cloud follows the rock down the flank.* The fine warp spread the shed dust's thin field
+  into a visible veil; at 1.2 m it shows less, so the near flank is clearer at 3.6 to 4.5 s (as
+  asked) and the cloud pours less visibly with the rock.
+- *Jets on the near slopes* of the dome read as faint vertical streaks over the rock in the close
+  shot, and a crack near the eye in the window's following view (0.8 to 1.0 s) is a soft pale
+  smudge rather than a spurt.
+- *Pull back's opening* still cuts the crest's far end at the right of the frame; wider would make
+  it the opening view.
+- *The dust's delay* (0.2 s of event on the first firing) is unchanged, and on a moved cut longer
+  by the coverage measure (see above).
+- Not looked at on a screen: all of it was made offscreen.
+
+Files: `$BOMBCAD_DATA/hillside-blast/ridge-cloud/`: `before/` and `after/` (`clips/` with
+`still.mp4`, `pullback.mp4`, `crest.mp4` and their frames), `sheet-still-ba.png`,
+`sheet-pullback-ba.png`, `sheet-crest-ba.png` (Record Clip, before left), `sheet-window-early.png`
+and `sheet-window-late.png` (the window's frames), `play-before/` and `play-after/` (with
+`-nodust` twins), the cost runs `cost-*`, `clipcost/`, `costs.txt`, the face check `face-*`, the
+diagnostic frames (`taudbg/` the sun's depth, `noshadow/`, `coldbg/` the dust's colour, `stepdbg/`
+its coverage, `finedbg/`, `warplo/`, `warp2-*`), and `tools/` (`iter.sh`, `try.sh`, `look.sh`,
+`play.sh`, `costruns.sh`, `clipcost.sh`, `face.sh`, `pairs.py`, `crop.py`).
+
+**Tests.** `QuarryRidgeViewTests/pullBack` (BlastModel, Linux) runs for both shots: each holds,
+starts at its own distance and field, ends on the view and only moves out; `ridgePullBackOpensWider`:
+a ridge's opens wider and moves sooner than a face's.

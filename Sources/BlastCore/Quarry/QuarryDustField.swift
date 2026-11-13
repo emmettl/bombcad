@@ -57,6 +57,9 @@ public final class QuarryDustField {
     let crackShare: Float = 0.08
     let crackJet: Float = 6
     let crackSpurt: Float = 200
+    /// The share of a crack's dust put into the field (stage 3i): the rest is drawn as its jet,
+    /// whose dust at the field's cells was a round puff three metres across at the least.
+    let crackField: Float = 0.35
     /// A ridge's broken rock's dust after it lets go, from half its exposed blocks: a rate per
     /// square metre of block, fading over `shedTime` seconds.
     let shed: Float = 56
@@ -67,6 +70,44 @@ public final class QuarryDustField {
     let ridgeRamp: Float = max(QuarryLaunch().ridgeRise, 0.1)
     /// A ridge cut's rock top this frame, for where the firings' columns are born.
     var top: TopMap?
+
+    /// A ridge's crack jets drawn as thin spurts, finer than the field's cells (stage 3i,
+    /// emmettl/bombcad-work#143): at the window's 1.5 m cells a jet's dust is three metres across
+    /// at the least and read as a round puff. Each crack that jets this step is also drawn as a
+    /// narrow streak from its top (`jetVertex`, `jetFragment` in the renderer's shaders), growing
+    /// at the jet's speed to a few metres, and for a moment after it stops, its tail flying off;
+    /// only `crackField` of its dust goes into the field. Drawn only, nothing moves by it. Layout
+    /// matches `QuarryJet` there.
+    public struct Jet {
+        /// The crack's top; w the jet's strength, 0 to 1.
+        public var base: SIMD4<Float>
+        /// Direction times length (m); w the half-width at the base (m).
+        public var axis: SIMD4<Float>
+        /// x a draw for the jet's own pattern, y its age (s), z the half-width at its tip (m).
+        public var shape: SIMD4<Float>
+    }
+    /// The most jets drawn at once.
+    public static let jetCapacity = 1024
+    /// This step's jets, in one of three buffers taken in turn, so a frame still being drawn keeps
+    /// its own.
+    let jetBuffers: [MTLBuffer]
+    public private(set) var jetSlot = 0
+    public private(set) var jetCount = 0
+    public var jets: MTLBuffer { jetBuffers[jetSlot] }
+    /// Each crack jetting or lately stopped: when it started and last jetted, where and how.
+    struct JetTrack {
+        var start: Float
+        var last: Float
+        var base: SIMD3<Float>
+        var direction: SIMD3<Float>
+        var speed: Float
+        var strength: Float
+        var seed: Float
+    }
+    var jetTracks: [Int: JetTrack] = [:]
+    /// How long a jet's tail is drawn after it stops (s), and the longest a jet grows (m).
+    static let jetFade: Float = 0.35
+    static let jetLength: Float = 4.5
 
     /// The highest top of the moving rock in each 2 m column of the dust box, this frame.
     struct TopMap {
@@ -215,6 +256,10 @@ public final class QuarryDustField {
             top = TopMap(low: SIMD2(low.x, low.y), extent: SIMD2(high.x - low.x, high.y - low.y))
         }
         lastVelocity = Array(repeating: .zero, count: hillside.blocks.count)
+        jetBuffers = (0..<3).map { _ in
+            device.makeBuffer(
+                length: MemoryLayout<Jet>.stride * Self.jetCapacity, options: .storageModeShared)!
+        }
         var map: [String: MTLComputePipelineState] = [:]
         for name in [
             "dustAddSources", "dustAdvectVelocity", "dustForces", "dustDivergence", "dustJacobi",
@@ -270,6 +315,56 @@ public final class QuarryDustField {
         // A coarser field gets the same amount of dust per unit volume.
         let scaled = dust / (h * h * h)
         pointer[index] += SIMD4(v * scaled, scaled)
+    }
+
+    /// Crack `n` jets this step from `top` at `rate` (the field's), its rock rising at `rising`.
+    private func noteJet(_ n: Int, top: SIMD3<Float>, rate: Float, rising: Float, time: Float) {
+        let strength = min(1, max(0.25, rate / 60))
+        if var track = jetTracks[n], time - track.last <= Self.jetFade {
+            track.last = time
+            track.base = top
+            track.speed = 9 + rising
+            track.strength = strength
+            jetTracks[n] = track
+            return
+        }
+        // A draw of its own for the lean and the pattern, fixed by the crack.
+        var r = QuarryRandom(seed: 0x7E7 &+ UInt64(n) &* 2_654_435_761)
+        let lean = SIMD3(r.float(-0.4, 0.4), r.float(-0.4, 0.4), Float(1))
+        jetTracks[n] = JetTrack(
+            start: time, last: time, base: top, direction: simd_normalize(lean), speed: 9 + rising,
+            strength: strength, seed: r.float())
+    }
+
+    /// This step's jets into the next of the jet buffers: each grows from its crack at its speed,
+    /// easing to `jetLength`; once stopped its tail flies on up and fades.
+    private func writeJets(time: Float) {
+        jetSlot = (jetSlot + 1) % jetBuffers.count
+        jetCount = 0
+        guard !jetTracks.isEmpty else { return }
+        let out = jetBuffers[jetSlot].contents().bindMemory(to: Jet.self, capacity: Self.jetCapacity)
+        // In the cracks' order, so a frame is drawn the same every time.
+        for n in jetTracks.keys.sorted() {
+            let track = jetTracks[n]!
+            let since = time - track.last
+            if since > Self.jetFade {
+                jetTracks[n] = nil
+                continue
+            }
+            guard jetCount < Self.jetCapacity else { continue }
+            let age = time - track.start
+            // Thrown grit slows in the air: the jet's reach eases toward its longest.
+            let reach = Self.jetLength * (1 - exp(-track.speed * age / Self.jetLength))
+            let fade = 1 - since / Self.jetFade
+            // A stopped jet's tail leaves the crack and flies on up as it thins.
+            let base = track.base + track.direction * min(reach, track.speed * since)
+            let length = max(0.3, reach - min(reach, track.speed * since) + 0.6 * track.speed * since)
+            out[jetCount] = Jet(
+                base: SIMD4(base, track.strength * fade * fade),
+                axis: SIMD4(track.direction * length, 0.12),
+                shape: SIMD4(track.seed, age, 0.25 + 0.3 * length, 0))
+            jetCount += 1
+        }
     }
 
     /// One dust step of 1/`frameRate` s (1/30 s for the event's own frames): sources from the
@@ -336,10 +431,12 @@ public final class QuarryDustField {
                         // The first cracks spurt as the rock starts to move, then settle to the
                         // rate the rising rock gives.
                         let spurt = crack[n] < 0.25 * crackShare ? crackSpurt * max(0, 1 - opened / 0.5) : 0
+                        let rate = crackJet * (1.5 + rising) + spurt
                         add(
-                            here + SIMD3(0, 0, 0.5 * size + 0.8),
-                            dust: (crackJet * (1.5 + rising) + spurt) * size * size,
+                            here + SIMD3(0, 0, 0.5 * size + 0.8), dust: crackField * rate * size * size,
                             velocity: SIMD3(v.x, v.y, 0) + lean + SIMD3(0, 0, rising + 9), heat: 1)
+                        noteJet(
+                            n, top: here + SIMD3(0, 0, 0.5 * size), rate: rate, rising: rising, time: time)
                     }
                 } else if share < Self.ventShare {
                     let out = outward.isEmpty ? SIMD3<Float>(0, -1, 0) : outward[n]
@@ -411,6 +508,7 @@ public final class QuarryDustField {
             }
             lastVelocity[n] = v
         }
+        writeJets(time: time)
         // A ridge cut's firings: a narrow column from the rock's top over each firing as it stands
         // now (the heave has lifted it, stage 3f; it was born at the old ground, inside the risen
         // rock), mostly up and a little out down the flank, most of its dust slow so the column
@@ -563,6 +661,8 @@ public final class QuarryDustField {
         guard data.count == cells * 10 else { throw CocoaError(.fileReadCorruptFile) }
         let staging = data.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
         lastVelocity = Array(repeating: .zero, count: lastVelocity.count)
+        jetTracks = [:]
+        jetCount = 0
         let buffer = queue.makeCommandBuffer()!
         let blit = buffer.makeBlitCommandEncoder()!
         let size = MTLSize(width: dims.x, height: dims.y, depth: dims.z)

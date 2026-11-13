@@ -9,6 +9,9 @@ final class QuarryDustPass {
     /// A ridge cut's march: its dust warped less (stage 3f).
     let marchRidge: MTLRenderPipelineState
     let blend: MTLRenderPipelineState
+    /// A ridge cut's crack jets, drawn as thin streaks over the scene before the march (stage 3i).
+    let jets: MTLRenderPipelineState
+    let jetDepth: MTLDepthStencilState
     let sampler: MTLSamplerState
 
     static func makeTarget(device: MTLDevice, width: Int, height: Int) -> MTLTexture {
@@ -45,6 +48,14 @@ final class QuarryDustPass {
         over.colorAttachments[0].sourceAlphaBlendFactor = .one
         over.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
         blend = try device.makeRenderPipelineState(descriptor: over)
+        over.vertexFunction = library.makeFunction(name: "jetVertex")!
+        over.fragmentFunction = library.makeFunction(name: "jetFragment")!
+        over.depthAttachmentPixelFormat = .depth32Float
+        jets = try device.makeRenderPipelineState(descriptor: over)
+        let tested = MTLDepthStencilDescriptor()
+        tested.depthCompareFunction = .less
+        tested.isDepthWriteEnabled = false
+        jetDepth = device.makeDepthStencilState(descriptor: tested)!
         let linear = MTLSamplerDescriptor()
         linear.minFilter = .linear
         linear.magFilter = .linear
@@ -58,6 +69,26 @@ final class QuarryDustPass {
         camera: QuarryCameraUniforms
     ) {
         var cam = camera
+        if dust.jetCount > 0 {
+            let jetPass = MTLRenderPassDescriptor()
+            jetPass.colorAttachments[0].texture = hdr
+            jetPass.colorAttachments[0].loadAction = .load
+            jetPass.colorAttachments[0].storeAction = .store
+            jetPass.depthAttachment.texture = depth
+            jetPass.depthAttachment.loadAction = .load
+            jetPass.depthAttachment.storeAction = .store
+            let encoder = buffer.makeRenderCommandEncoder(descriptor: jetPass)!
+            encoder.setRenderPipelineState(jets)
+            encoder.setDepthStencilState(jetDepth)
+            encoder.setCullMode(.none)
+            encoder.setVertexBuffer(dust.jets, offset: 0, index: 0)
+            encoder.setVertexBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 0)
+            encoder.setFragmentTexture(dust.light, index: 0)
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: dust.jetCount)
+            encoder.endEncoding()
+        }
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = target
         pass.colorAttachments[0].loadAction = .dontCare

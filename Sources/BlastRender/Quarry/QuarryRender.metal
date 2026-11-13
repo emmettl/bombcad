@@ -1216,6 +1216,34 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
     return float4(accumulated, 1.0f - transmittance);
 }
 
+// A ridge cut's dust's phase function (the face's march's, above in it): forward scattering with
+// a little back, for the cosine `mu` between the view and the sun.
+static inline float ridgeDustPhase(float mu) {
+    float g = 0.45f;
+    float hgForward = (1.0f - g * g) / pow(1.0f + g * g - 2.0f * g * mu, 1.5f) * 0.25f;
+    float g2 = -0.15f;
+    float hgBack = (1.0f - g2 * g2) / pow(1.0f + g2 * g2 - 2.0f * g2 * mu, 1.5f) * 0.25f;
+    return 0.75f * hgForward + 0.45f * hgBack;
+}
+
+// A ridge cut's dust's colour where the sun is `tau` deep in dust (stage 3i, emmettl/bombcad-work#143),
+// `heightFrac` up the dust box. Sunlit dust scatters nearly all it takes, so in a thick cloud the
+// sun's light is not lost as it goes in but diffuses through, falling off slowly (as a slab's
+// diffuse transmission does, 1 / (1 + k tau), rather than as exp(-tau); k chosen by eye). The
+// light scattered once keeps its phase (bright rims toward the sun); the diffused light is spread
+// evenly. With the face's octave sum of exponentials instead, the cloud's shaded parts went near
+// black where the sun was only 3 to 10 deep (most of the cloud's core from 3 s on).
+static inline float3 ridgeDustLit(float tau, float phase, float heightFrac) {
+    float3 albedo = float3(0.62f, 0.53f, 0.42f);
+    float3 sunColor = float3(1.0f, 0.72f, 0.46f) * 5.2f;
+    float3 ambientUp = float3(0.42f, 0.5f, 0.68f) * 0.42f;
+    float3 ambientDown = float3(0.62f, 0.5f, 0.38f) * 0.42f;
+    float single = exp(-tau);
+    float diffused = 0.8f / (1.0f + 0.15f * tau);
+    float3 ambient = mix(ambientDown, ambientUp, heightFrac) * (0.75f + 0.25f * exp(-tau * 0.3f));
+    return albedo * (sunColor * (phase * single + 0.25f * diffused) + ambient);
+}
+
 // A ridge cut's march (stage 3f): the face's (`dustFragment`, above) with its lookup warped less,
 // 3.3 m rather than 5.5 m: warped further, its thin jets off the heaving rock showed as loose
 // patches lying over the rock. A copy rather than a shared function, because the face's march
@@ -1251,33 +1279,38 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
     float3 size = float3(u.dims.xyz) * h;
     float3 accumulated = float3(0.0f);
     float transmittance = 1.0f;
-    float3 albedo = float3(0.62f, 0.53f, 0.42f);
-    float mu = dot(dir, cam.sun.xyz);
-    float g = 0.45f;
-    float hgForward = (1.0f - g * g) / pow(1.0f + g * g - 2.0f * g * mu, 1.5f) * 0.25f;
-    float g2 = -0.15f;
-    float hgBack = (1.0f - g2 * g2) / pow(1.0f + g2 * g2 - 2.0f * g2 * mu, 1.5f) * 0.25f;
-    float phase = 0.75f * hgForward + 0.45f * hgBack;
-    float3 sunColor = float3(1.0f, 0.72f, 0.46f) * 5.2f;
-    float3 ambientUp = float3(0.42f, 0.5f, 0.68f) * 0.42f;
-    float3 ambientDown = float3(0.62f, 0.5f, 0.38f) * 0.42f;
+    float phase = ridgeDustPhase(dot(dir, cam.sun.xyz));
     int quiet = 0;
     bool stepping = false;
     float tt = cam.misc.x;
     for (int steps = 0; steps < 900 && t < leave; ++steps) {
-        float step = stepping ? fine : coarse;
+        // The coarse search lands its last probe just short of the surface the ray ends on, so
+        // dust lying on the rock (shed by it, or left over the heap) is found by every pixel; it
+        // was found only by the pixels whose jittered 2 m probes fell in it, which speckled the
+        // dust over the heap with the dark rock behind.
+        float step = stepping ? fine : min(coarse, max(leave - 0.05f - t, 0.05f));
         float3 world = eye + dir * t;
         float3 p = (world - low) / size;
         float d = density.sample(triSampler, p).r;
         float shaped = 0.0f;
+        float3 lp = p;
         if (d > 0.004f) {
             if (!stepping) { stepping = true; t = max(enter, t - coarse * 0.9f); quiet = 0; continue; }
             float dn = 1.0f - exp(-d * 0.42f);
-            // Warp the lookup by a few metres so the field's own smooth shape breaks up, then cut
-            // the lumps with the noise, more where the field is thin.
+            // Warp the lookup so the field's own smooth shape breaks up, then cut the lumps with
+            // the noise, more where the field is thin. The warp is in two scales (stage 3i): 3.3 m
+            // of a slow one (features of 2 m and more), which billows the cloud, and 1.2 m of the
+            // fine one. The fine one alone at 3.3 m turned faster than the march's 0.9 m steps
+            // sample it, so each pixel drew a random handful of the field within 3 m: the dust
+            // thin over the heap came out as a speckle of dust and rock, dark grain in the cloud.
             float3 warpSample = noise.sample(wrap, world * 0.05f + float3(0.012f * tt, 0.0f, -0.02f * tt)).rgb;
-            float3 warped = (world + (warpSample * 2.0f - 1.0f) * float3(3.3f, 3.3f, 3.9f) - low) / size;
+            float3 wq = world * 0.016f + float3(0.004f * tt, 0.0f, -0.0065f * tt);
+            float3 warpSlow = float3(noise.sample(wrap, wq).r, noise.sample(wrap, wq + float3(0.37f, 0.61f, 0.23f)).r,
+                                     noise.sample(wrap, wq * 0.5f + float3(0.71f, 0.13f, 0.47f)).g);
+            float3 warped = (world + (warpSlow * 2.0f - 1.0f) * float3(3.3f, 3.3f, 3.9f)
+                             + (warpSample * 2.0f - 1.0f) * 1.2f - low) / size;
             float dw = density.sample(triSampler, warped).r;
+            lp = warped;
             dn = 1.0f - exp(-dw * 0.42f);
             float3 q = world * 0.022f + float3(0.0085f * tt, -0.004f * tt, -0.018f * tt);
             float big = noise.sample(wrap, q).r;
@@ -1293,14 +1326,12 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
         if (shaped > 0.001f) {
             quiet = 0;
             float sigma = shaped * (d * 0.12f + 0.55f);
-            float a = 1.0f - exp(-sigma * step);
-            float tau = light.sample(triSampler, p).r * 0.075f;
-            // Light scattered many times in dust is lost slowly: an octave sum of attenuations,
-            // each weaker and less extinguished, so the shadowed underside stays pale and glows.
-            float direct = exp(-tau) + 0.32f * exp(-tau * 0.25f) + 0.14f * exp(-tau * 0.06f);
-            float heightFrac = saturate(p.z * 2.0f);
-            float3 ambient = mix(ambientDown, ambientUp, heightFrac) * (0.6f + 0.4f * exp(-tau * 0.4f));
-            float3 lit = albedo * (sunColor * phase * direct + ambient);
+            float a = 1.0f - exp(-sigma * min(step, leave - t));
+            // The sun's optical depth where the dust is drawn: at the warped lookup, the same as
+            // its density's, so a puff's sunward side is lit by its own shape and not by the
+            // field's unwarped shape a few metres off (which left dark blotches on lit dust).
+            float tau = light.sample(triSampler, lp).r * 0.075f;
+            float3 lit = ridgeDustLit(tau, phase, saturate(p.z * 2.0f));
             accumulated += transmittance * a * lit;
             transmittance *= 1.0f - a;
             if (transmittance < 0.01f) break;
@@ -1308,6 +1339,83 @@ fragment float4 dustFragmentRidge(FullscreenOut in [[stage_in]],
         t += step;
     }
     return float4(accumulated, 1.0f - transmittance);
+}
+
+
+// A ridge cut's crack jets (stage 3i, emmettl/bombcad-work#143): thin spurts finer than the dust
+// field's cells, each a streak facing the eye from the crack's top along the jet (`QuarryDustField.Jet`),
+// drawn over the scene before the dust's march, so the cloud veils them. Grit in streaks that run
+// up the jet, pulsing, thinning and widening toward the tip; lit as the ridge's dust is.
+struct QuarryJet {
+    float4 base;  // the crack's top; w strength
+    float4 axis;  // direction times length; w half-width at the base
+    float4 shape; // x a draw, y age (s), z half-width at the tip
+};
+
+struct JetOut {
+    float4 position [[position]];
+    float3 world;
+    float2 uv;
+    float strength;
+    float seed;
+    float age;
+    float length;
+};
+
+vertex JetOut jetVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
+                        const device QuarryJet *jets [[buffer(0)]],
+                        constant QuarryCamera &cam [[buffer(1)]]) {
+    QuarryJet j = jets[instance];
+    float2 corner = float2(vid == 1 || vid == 2 || vid == 4 ? 1.0f : -1.0f, vid == 2 || vid == 4 || vid == 5 ? 1.0f : 0.0f);
+    float reach = max(length(j.axis.xyz), 1e-3f);
+    float3 dir = j.axis.xyz / reach;
+    // Begun a little inside the crack, so it comes out of the rock rather than off its face.
+    float3 p = j.base.xyz - dir * 0.25f + j.axis.xyz * corner.y;
+    float3 side = cross(dir, cam.eye.xyz - p);
+    float sideLength = length(side);
+    side = sideLength > 1e-4f ? side / sideLength : float3(1.0f, 0.0f, 0.0f);
+    p += side * mix(j.axis.w, j.shape.z, corner.y) * corner.x;
+    JetOut out;
+    out.position = cam.viewProjection * float4(p, 1.0f);
+    out.world = p;
+    out.uv = corner;
+    out.strength = j.base.w;
+    out.seed = j.shape.x;
+    out.age = j.shape.y;
+    out.length = reach;
+    return out;
+}
+
+fragment float4 jetFragment(JetOut in [[stage_in]],
+                            texture3d<float> dustLight [[texture(0)]],
+                            constant QuarryCamera &cam [[buffer(0)]]) {
+    float u = in.uv.x, v = in.uv.y;
+    float metres = v * in.length;
+    float s = in.seed * 61.0f;
+    // Spurts: packets of grit a metre or two apart running up the jet faster than it grows, so
+    // it reads as gusts thrown out of the crack rather than a steady rod; streaks along it, and
+    // ragged sides.
+    float packets = 0.5f + 0.5f * sin(6.2831853f * (metres * 0.55f - in.age * 3.1f + in.seed));
+    packets = packets * packets * (3.0f - 2.0f * packets);
+    float streak = noise3(float3(u * 2.6f + s, metres * 0.9f - in.age * 9.0f, s));
+    float ragged = noise3(float3(u * 1.3f - s, metres * 1.7f - in.age * 6.0f, s + 7.0f));
+    // The core wanders across the streak and its width swells and narrows, so its sides are
+    // ragged rather than the quad's straight edges.
+    float wander = (noise3(float3(metres * 0.6f - in.age * 5.0f, s, 2.0f)) - 0.5f) * 0.7f * v;
+    float across = (u - wander) / max(0.25f, 0.2f + 0.8f * ragged);
+    float core = exp(-across * across * 4.5f);
+    // Thrown in from the crack, breaking into wisps toward the tip.
+    float along = smoothstep(0.0f, 0.1f, v) * (1.0f - v) * (1.0f - v);
+    float wisps = smoothstep(0.25f * v, 0.25f * v + 0.45f, streak);
+    float density = core * along * wisps * (0.25f + 0.75f * packets) * in.strength;
+    float alpha = 1.0f - exp(-density * 3.0f);
+    if (alpha < 0.003f) discard_fragment();
+    float3 uvw = (in.world - cam.dustLow.xyz) / (cam.dustHigh.xyz - cam.dustLow.xyz);
+    constexpr sampler linear(filter::linear, address::clamp_to_edge);
+    float tau = dustLight.sample(linear, uvw).r * 0.075f;
+    float3 dir = normalize(in.world - cam.eye.xyz);
+    float3 lit = ridgeDustLit(tau, ridgeDustPhase(dot(dir, cam.sun.xyz)), saturate(uvw.z * 2.0f));
+    return float4(lit * alpha, alpha);
 }
 
 fragment float4 dustComposite(FullscreenOut in [[stage_in]],

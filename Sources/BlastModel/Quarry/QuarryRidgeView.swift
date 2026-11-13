@@ -138,29 +138,53 @@ public struct QuarryRidgeView: Sendable, Equatable {
 /// the view as it stands while the rock spills, eased at both ends. Timed by the event's own
 /// seconds, so it is the same moment at any clip speed. Chosen by eye.
 public enum QuarryPullBack {
-    /// At the start: the share of the view's distance, of its field, and how much higher it aims,
-    /// as a share of its distance.
-    public static let startDistance: Float = 0.7
-    public static let startField: Float = 0.55
-    public static let startAim: Float = 0.1
-    /// Event seconds after the first firing the move begins, and how long it takes.
-    public static let delay: Float = 0.7
-    public static let seconds: Float = 5
+    /// Where a pull-back starts and when it moves.
+    public struct Shot: Sendable, Equatable {
+        /// At the start: the share of the view's distance, of its field, and how much higher it
+        /// aims, as a share of its distance.
+        public var startDistance: Float
+        public var startField: Float
+        public var startAim: Float
+        /// Event seconds after the first firing the move begins, and how long it takes.
+        public var delay: Float
+        public var seconds: Float
+
+        public init(startDistance: Float, startField: Float, startAim: Float, delay: Float, seconds: Float) {
+            self.startDistance = startDistance
+            self.startField = startField
+            self.startAim = startAim
+            self.delay = delay
+            self.seconds = seconds
+        }
+    }
+
+    /// A face's (stage 2b's, as it was).
+    public static let face = Shot(startDistance: 0.7, startField: 0.55, startAim: 0.1, delay: 0.7, seconds: 5)
+    /// A ridge cut's (stage 3i, emmettl/bombcad-work#143): the crest now heaves as one dome up to
+    /// about 9 m (stage 3f), which filled the face's close, long-lens opening with rock by 1.6 s.
+    /// It opens wider and a little further off, with sky over the crest, so the whole crest is
+    /// seen swelling, and moves out sooner, as the dome breaks.
+    public static let ridge = Shot(startDistance: 0.8, startField: 0.75, startAim: 0.09, delay: 0, seconds: 4)
 
     /// How far through the move it is at event time `time` (0 close in, 1 the view), eased.
-    public static func progress(time: Float, firstFiring: Float) -> Float {
-        let s = max(0, min(1, (time - firstFiring - delay) / seconds))
+    public static func progress(time: Float, firstFiring: Float, shot: Shot = face) -> Float {
+        let s = max(0, min(1, (time - firstFiring - shot.delay) / shot.seconds))
         return s * s * (3 - 2 * s)
     }
 
     /// The camera at event time `time` for a view `orbit` with a field of `fovY`: its eye, what it
     /// looks at and its field.
-    public static func view(orbit: QuarryOrbit, fovY: Float, time: Float, firstFiring: Float) -> (
-        eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float
-    ) {
-        let p = progress(time: time, firstFiring: firstFiring)
-        let distance = orbit.distance * (startDistance + (1 - startDistance) * p)
-        let target = orbit.focus + SIMD3(0, 0, orbit.distance * startAim * (1 - p))
-        return (orbit.focus + orbit.direction * distance, target, fovY * (startField + (1 - startField) * p))
+    public static func view(
+        orbit: QuarryOrbit, fovY: Float, time: Float, firstFiring: Float, shot: Shot = face
+    )
+        -> (eye: SIMD3<Float>, target: SIMD3<Float>, fovY: Float)
+    {
+        let p = progress(time: time, firstFiring: firstFiring, shot: shot)
+        let distance = orbit.distance * (shot.startDistance + (1 - shot.startDistance) * p)
+        let target = orbit.focus + SIMD3(0, 0, orbit.distance * shot.startAim * (1 - p))
+        return (
+            orbit.focus + orbit.direction * distance, target,
+            fovY * (shot.startField + (1 - shot.startField) * p)
+        )
     }
 }

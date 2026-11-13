@@ -161,32 +161,43 @@ struct QuarryRidgeViewTests {
         #expect(QuarryRidgeView.clear(view.orbit, ridge: ridge, ground: ground))
     }
 
-    @Test("The pull-back holds close in until just after the first firing, then eases out to the view")
-    func pullBack() {
+    @Test(
+        "The pull-back holds close in until just after the first firing, then eases out to the view",
+        arguments: [QuarryPullBack.face, QuarryPullBack.ridge])
+    func pullBack(shot: QuarryPullBack.Shot) {
         let orbit = QuarryOrbit(focus: SIMD3(70, 0, 30), yaw: 0.95, pitch: 0.07, distance: 94)
         let fov: Float = 0.56
         let first: Float = 1.8
-        let start = QuarryPullBack.view(orbit: orbit, fovY: fov, time: 0, firstFiring: first)
+        let start = QuarryPullBack.view(orbit: orbit, fovY: fov, time: 0, firstFiring: first, shot: shot)
         let held = QuarryPullBack.view(
-            orbit: orbit, fovY: fov, time: first + QuarryPullBack.delay, firstFiring: first)
+            orbit: orbit, fovY: fov, time: first + shot.delay, firstFiring: first, shot: shot)
         #expect(start == held)
-        #expect(abs(simd_distance(start.eye, orbit.focus) - QuarryPullBack.startDistance * 94) < 1e-3)
-        #expect(abs(start.fovY - QuarryPullBack.startField * fov) < 1e-6)
+        #expect(abs(simd_distance(start.eye, orbit.focus) - shot.startDistance * 94) < 1e-3)
+        #expect(abs(start.fovY - shot.startField * fov) < 1e-6)
         #expect(start.target.z > orbit.focus.z + 5)
-        let end = QuarryPullBack.view(orbit: orbit, fovY: fov, time: 20, firstFiring: first)
+        let end = QuarryPullBack.view(orbit: orbit, fovY: fov, time: 20, firstFiring: first, shot: shot)
         #expect(simd_distance(end.eye, orbit.eye) < 1e-3 && end.target == orbit.focus && end.fovY == fov)
         // Out the whole way, never back in, on the view's own line.
         var last: Float = 0
         for k in 0...100 {
             let t = Float(k) * 0.1
-            let v = QuarryPullBack.view(orbit: orbit, fovY: fov, time: t, firstFiring: first)
+            let v = QuarryPullBack.view(orbit: orbit, fovY: fov, time: t, firstFiring: first, shot: shot)
             let d = simd_distance(v.eye, orbit.focus)
             #expect(d >= last - 1e-4)
             #expect(simd_distance(simd_normalize(v.eye - orbit.focus), orbit.direction) < 1e-4)
             last = d
         }
         #expect(
-            QuarryPullBack.progress(
-                time: first + QuarryPullBack.delay + QuarryPullBack.seconds, firstFiring: first) == 1)
+            QuarryPullBack.progress(time: first + shot.delay + shot.seconds, firstFiring: first, shot: shot)
+                == 1)
+    }
+
+    @Test(
+        "A ridge cut's pull-back opens wider than a face's, for the whole crest's dome, and moves out sooner")
+    func ridgePullBackOpensWider() {
+        let ridge = QuarryPullBack.ridge
+        let face = QuarryPullBack.face
+        #expect(ridge.startField > face.startField && ridge.startDistance >= face.startDistance)
+        #expect(ridge.delay < face.delay)
     }
 }
