@@ -36,10 +36,11 @@ if command == "rigid-scaling" {
 }
 
 let device = MTLCreateSystemDefaultDevice()!
-var options = QuarryFace.Options()
-options.blocks = option(arguments, "--blocks").flatMap(Int.init) ?? 100_000
+// Each scene's own piece size (a ridge cut's fewer, larger pieces) unless asked otherwise.
+var options = QuarryFace.Options(scene: arguments.contains("--ridge") ? .ridgeCut : .face)
+if let v = option(arguments, "--blocks").flatMap(Int.init) { options.blocks = v }
 options.spheres = option(arguments, "--spheres").flatMap(Int.init) ?? 5
-options.fractureScale = option(arguments, "--fracture").flatMap(Float.init) ?? 1
+if let v = option(arguments, "--fracture").flatMap(Float.init) { options.fractureScale = v }
 // `clip` is the window's Record Clip, at the window's mesh.
 if command == "clip" { options.meshDetail = 1 }
 let substepsPerSecond = option(arguments, "--hz").flatMap(Float.init) ?? 240

@@ -29,6 +29,7 @@
         /// The strip as dragged on the map, before it is broken.
         var draftStart: SIMD2<Float>?
         var draftEnd: SIMD2<Float>?
+        /// Blocks asked for; each scene has its own default (`QuarryFace.Options.defaultBlocks`).
         var blocks = 100_000
         /// The stylised firing pattern, kept across strips.
         var order = QuarryFiringOrder.leftToRight
@@ -79,11 +80,11 @@
         private var keyRoot: URL
 
         init(
-            device: MTLDevice? = MTLCreateSystemDefaultDevice(), blocks: Int = 100_000,
+            device: MTLDevice? = MTLCreateSystemDefaultDevice(), blocks: Int? = nil,
             scene: QuarryScene = .face
         ) {
             self.device = device
-            self.blocks = blocks
+            self.blocks = blocks ?? QuarryFace.Options.defaultBlocks(scene)
             site = .builtIn(scene)
             terrainName = Self.builtInName(scene)
             keyRoot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
@@ -106,6 +107,10 @@
         func useScene(_ scene: QuarryScene) {
             guard scene != site.scene else { return }
             stripMode = false
+            // The new scene's own block count, unless another was chosen.
+            if blocks == QuarryFace.Options.defaultBlocks(site.scene) {
+                blocks = QuarryFace.Options.defaultBlocks(scene)
+            }
             site.scene = scene
             if builtInGround {
                 useBuiltIn()
@@ -360,7 +365,7 @@
             incoming = nil
             let site = self.site
             let settings = self.settings
-            var options = QuarryFace.Options()
+            var options = QuarryFace.Options(scene: site.scene)
             options.blocks = blocks
             options.meshDetail = 1
             let keys = keyRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)

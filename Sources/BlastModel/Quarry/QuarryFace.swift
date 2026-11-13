@@ -243,6 +243,23 @@ public struct QuarryFace: Sendable {
         public var fractureScale: Float = 1
         public var seed: UInt64 = 2026
         public init() {}
+
+        /// A scene's own: a ridge cut's rock breaks into fewer, larger pieces (about 30,000 blocks
+        /// asked, the bedding and joints cutting half as much: about 31,000 blocks, median 0.82 m
+        /// against 0.57 m), chosen by the user on 13 November (emmettl/bombcad-work#140); a face's
+        /// is as it was.
+        public init(scene: QuarryScene) {
+            self.init()
+            blocks = Self.defaultBlocks(scene)
+            fractureScale = Self.fractureScale(scene)
+        }
+
+        /// The blocks asked for by default in `scene`.
+        public static func defaultBlocks(_ scene: QuarryScene) -> Int {
+            scene == .ridgeCut ? 30_000 : 100_000
+        }
+        /// How much the bedding and joints cut the coarse cells in `scene`.
+        public static func fractureScale(_ scene: QuarryScene) -> Float { scene == .ridgeCut ? 0.5 : 1 }
     }
 
     /// A contact sphere: local offset from the centroid, its radius.
