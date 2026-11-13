@@ -13,7 +13,7 @@ import simd
 /// the 3-D view, an opened terrain's area chosen, the open project's terrain offered, and a clip
 /// recorded. Offscreen: the window is never shown. Illustrative scene.
 @MainActor
-@Suite("Quarry face handling", .serialized)
+@Suite("Quarry face handling", .serialized, .hangLimit)
 struct QuarryFaceHandlingTests {
     /// The window's view, laid out offscreen, and its 3-D view.
     static func host(_ model: QuarryFaceModel) throws -> (
@@ -119,14 +119,26 @@ struct QuarryFaceHandlingTests {
         return best
     }
 
-    static func waitForEvent(_ model: QuarryFaceModel, seconds: Double = 240) async throws {
-        var waited = 0.0
-        while model.session?.canPlay != true || model.preparing != nil, waited < seconds {
+    /// Waits for the model's event to be playable, however long that takes (the suite's
+    /// `hangLimit` is the only bound; a 240 s deadline of its own until 13 November 2026).
+    static func waitForEvent(_ model: QuarryFaceModel) async throws {
+        while model.session?.canPlay != true || model.preparing != nil {
             try await Task.sleep(for: .milliseconds(20))
             model.session?.update(elapsed: 0.02)
-            waited += 0.02
         }
         #expect(model.session?.canPlay == true)
+    }
+
+    /// Waits until the 3-D view has the model's session. SwiftUI hands it over in an update of
+    /// its own, on a later turn of the main run loop than the one the session became playable in;
+    /// under load that turn came after the test had already asked the view for its overlay, which
+    /// it drew with no session (no overlay, no point on the view): the strip test failed that way
+    /// at load averages of 30 to 55 (emmettl/bombcad-work#139, #140).
+    static func waitForView(_ view: QuarryMetalView, _ host: NSView, _ model: QuarryFaceModel) async throws {
+        while view.session == nil || view.session !== model.session {
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(20))
+        }
     }
 
     static func mouse(
@@ -142,11 +154,12 @@ struct QuarryFaceHandlingTests {
     func dragsTheStripInTheView() async throws {
         guard MTLCreateSystemDefaultDevice() != nil else { return }
         let model = QuarryFaceModel(blocks: 12000)
-        let (window, _, view) = try Self.host(model)
+        let (window, host, view) = try Self.host(model)
         defer { window.close() }
         #expect(!window.isVisible)
         model.prepare()
         try await Self.waitForEvent(model)
+        try await Self.waitForView(view, host, model)
         model.stripMode = true
         #expect(model.session?.frame == 0)
         view.refreshOverlay()
@@ -225,6 +238,7 @@ struct QuarryFaceHandlingTests {
         defer { window.close() }
         model.prepare()
         try await Self.waitForEvent(model)
+        try await Self.waitForView(view, host, model)
         let session = try #require(model.session)
         session.seek(to: 0)
         session.update(elapsed: 0)
