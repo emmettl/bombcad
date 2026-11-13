@@ -823,3 +823,117 @@ way in `try1/` to `try6/`, the Quarry Face check in `face-*` and `faceclip-*`, a
 in one run; the runs become outcrops of their own, not dressing, buried at their backs and feet and
 never more than a few metres proud of the ground; stones come before bushes' lobes, which stand on
 grass; grass holds on all but the steepest ground.
+
+## Stage 3g: outcrops, stones and crags that hold up close in, 13 November 2026
+
+emmettl/bombcad-work#141, on the user's word of 13 November ("keep working through the defects until
+it looks strong"). Same standing as stages 3b and 3d: illustrative, for the eye; all of it is
+render-only and procedural, chosen by eye, with no third-party assets; nothing reaches the solver. The
+cut, its blocks, the firings, the launch, the dust, the block shader and the shared shadow and
+occlusion are unchanged. Made and checked on stage 3c's stored ridge poses
+(`rock-closeup/final-ridge-poses`).
+
+**What was wrong** (stage 3d's own list, and the orchestrator's look at its frames). Close in the
+outcrops read as stacked, rounded bales or sandbags: their tiers ran the whole length of a run like
+courses of masonry, a decimetre of smooth wear along the normal swelled them into pillows, and short
+runs that turned sharply bent into crescents. The stones were faceted, 20 flat-shaded triangles each,
+and looked like gems. The bushes showed only as dark dots in the wide view. Every outcrop was about
+one bed thick; there were no larger crags. And the outcrops were pale and evenly lit, mottled on top
+by the shared shadow and occlusion under the low sun.
+
+**What a user gets.**
+- *Outcrops that come and go* (`QuarryFace.outcropMesh`, which now builds both). A run's bed is one
+  to three layers where its laminae have parted, swept along a line through its ledges that is eased,
+  and laid straight for a run under 9 m, so it no longer bends into a crescent. Each layer is broken by
+  joints (most through every layer) into blocks of its own: a block's front stands out or back, square
+  or skew to the run with a kink along it, its corners broken back, its top dropped where a lamina has
+  gone, its face bulging or hollowed half way down; now and then one has fallen away and left a bay.
+  Over about a third of the top layer's blocks that layer, and sometimes the next, is gone, so the
+  top steps down a layer; a parting between layers is closed over some blocks (one face) and open over others; a
+  layer weathers back along stretches of its own, so the tiers come and go, the layers above overhang
+  it, and its front leans back or is undercut. The partings wander up and down along the run, every
+  point is moved a little by noise in all three directions, so the edges wander and the faces are
+  uneven planes, and the wear along the normal is a few centimetres, not a decimetre. Nothing stands
+  above the ground uphill of where the top meets it.
+- *Crags* (`QuarryFlank.crags`, `QuarryFace.crag`). Up to six, 60 m apart, where the slope over 9 m
+  is steeper than 0.6 and steady, at least 30 m from the cut and from the opening view's lines from
+  the eye to what it looks at and to the crest either side of the cut (in plan), and wholly on the map
+  clear of the dense rock. Each is its top hard bed and as many beds below as make it 5 to 9 m high,
+  22 to 40 m along the slope, its foot 3 to 14 m downhill of its top; shale is weathered back under
+  the harder beds, a thick hard bed parts in two, and the upper beds run out before the lower ones so
+  its ends step down. Its top carries turf, scree falls in fans from most of its foot, and blocks of
+  0.45 to 2.4 m lie below it. The ground under it and round it has no ledges, stones or bushes. The
+  built-in ridge's default cut gets three: on the near flank 40 m wide (5 beds), and two on the far
+  flank, 27 and 23 m (5 and 7 beds).
+- *Their own shading and light* (`ledgeFragment`, its own; not `shade`, `shadowAt` or the blocks'
+  shader). Close in, the facets' own planes, so edges read broken; the bed's weathered colour, greyed,
+  each outcrop and layer its own tone; a few wandering, broken partings rather than ruled lines; dark
+  water stains down the fronts; on the tops lichen in patches and rosettes (grey-green, a few yellow)
+  and dark crusts; turf in patches, more on a crag's top; soil and scree banked at the foot. Its own
+  light: the sun through its own shadow lookup (pushed out along the normal and toward the sun, 16
+  taps over a wider footprint), sky light that falls off under overhangs, in partings and joints and
+  toward the foot, and warm light thrown up from the ground; a gentler bump. The screen-space
+  occlusion pass still runs over it, as over everything.
+- *Stones.* Corners pulled in less, and shaded by their stretched shape's smooth normal with a fifth of
+  the facets (a block's nearly half), with grain, lichen, dark spots and a soil stain at the foot. The
+  stones of 0.45 m and more (about a fifth) are drawn with the 80-triangle sphere (`roundStoneVertex`),
+  shaped as a function of direction alone, so the normal is the shape's own: rounded and a little
+  lumpy, cut by five flat fracture faces of its own, flat underneath, and a fallen block squared off.
+  Blocks fallen from outcrops and crags are mostly angular (`Stone.look.w`).
+- *Bushes in the wide view.* Far off, where a leaf is under a pixel, the leaves, gaps and normal
+  jitter give way to their mean and a lobe is lit as a ball with its sunlit crown a little paler, so a
+  bush reads as a lit, rounded shrub; the colours are a little lighter; one in seven is 1.6 times as
+  wide.
+
+**Measured** (release build, M4 Max Studio; main's build `bd99abab` before, this one after).
+- *Geometry*, each drawn in the shadow pass and the scene: dense rock 419,197 triangles before and
+  after; outcrops 170,184 (660 ledges) before, 180,636 after (582 ledges and 3 crags); stones 11,861 of
+  20 triangles (237,220) before, 8,515 of 20 and 2,335 of 80 (357,100) after; bushes' lobes 6,336
+  (506,880) before, 6,311 (504,880) after. In all 1.33 M triangles a pass before, 1.46 M after. Built
+  in 0.03 s as before.
+- *The window's Record Clip* of the default view, 600 frames at 1920 x 1080 from the stored poses,
+  before and after in turn three times: 22.5, 22.4, 22.4 ms a frame median before; 22.6, 22.6, 22.6
+  after: 0.2 ms (1%) more, against a spread of 0.1 ms within each.
+
+**Quarry Face unchanged.** A face has no flanks, outcrops, crags, stones or bushes; its draws are as
+before (the new pipelines are made but nothing is drawn with them). Stills from face poses
+(`ridge-flanks-2/face-poses`; `render --blocks 110000 --stills 1.0,3.5,5.9`) and frames at 1.0 and
+3.5 s from a clip by the window's recorder on the same poses are byte-identical between main's build
+and this one.
+
+**Checked by eye**, with the window's recorder (`hillsideblast clip`) and frames from the movie files,
+before and after at the same cameras and times: the default view held still for 20 s (0.5, 1, 2.6,
+4.5, 7, 12, 19.9 s), the Pull back (0.5, 2.2, 4, 6.5, 8, 11.9 s), the near flank close (focus (112,
+-42, 18), 38 m, yaw 1.1, pitch 0.25) and the wide view (260 m, pitch 0.22) at 1 s and the end, and
+three new ones at 1 s: the near-flank crag (focus (104, -119, 19), 55 m, yaw 1.3, pitch 0.1), the
+same close (focus (104, -122, 19), 26 m, yaw 1.75, pitch 0.06) and an outcrop close (focus (100, -36,
+22), 14 m, yaw 0.9, pitch 0.12). Files under `$BOMBCAD_DATA/hillside-blast/ridge-crags/`: `before/`
+and `after/`, the steps on the way in `try1/` to `try8/`, the Quarry Face check in `face-*` and
+`faceclip-*`, the timings in `perf-*`, and the scripts in `tools/`.
+- *Crag.* From in front it reads as a small jointed limestone cliff: turf on its top, faces in a few
+  beds with the partings closed in places and open in others, blocks standing out or set back, an
+  overhang, its ends stepping down, scree and fallen blocks below.
+- *Near flank close.* The outcrops are jointed blocks of their beds, uneven in height, some stepped
+  down, some fallen away, with broken edges, rather than rows of bales; the stones are weathered
+  stones, round or blocky, not gems.
+- *Wide.* The crag on the near flank shows as a turf-topped band of rock; the bushes read as small lit
+  shrubs, a few larger.
+
+**The look, frankly.**
+- Close in, some outcrops are still regular: blocks with near-square corners in tidy rows can read as
+  masonry or crates from above, and a few short runs leave thin flat slivers where they sink into the
+  ground at their ends. The faces are still fairly smooth between their facets; real rock has more
+  relief at a hand's breadth.
+- The far flank's crags, seen from the side in the wide view, read as a stack of plates: their ends
+  step down a bed at a time, cut square.
+- The crags are only three on the built-in ridge (the rest of its steep, steady ground is within 30 m
+  of the cut or the view's lines); a gentler ridge may have none.
+- A few fallen blocks are long and thin enough to look like blades on end.
+- The screen-space occlusion still darkens the outcrops' tops a little in patches; only the shadow
+  lookup is their own.
+- Not looked at on a screen: all of it was made offscreen.
+
+**Tests.** `QuarryFlankTests` (BlastModel, Linux): crags lie clear of the cut, the opening view's line
+and each other, of at least two beds, with no ledges on their ground; they are made into outcrops
+after the ledges' (a tag bit marks them), standing 3 to 14 m proud of the ground, with fallen blocks
+below; small stones come before large ones.

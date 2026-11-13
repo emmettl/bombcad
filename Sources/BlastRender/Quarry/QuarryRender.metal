@@ -1204,23 +1204,27 @@ fragment float4 ridgeTerrainFragment(TerrainOut in [[stage_in]],
 struct FlankStone {
     float4 posSize;
     float4 rotation;
-    float4 look;     // x: 0 a stone, 1 scrub; y: a random value; z: its tint
+    float4 look;     // x: 0 a stone, 1 scrub; y: a random value; z: its tint; w: a stone's 1 an angular block
 };
 
 struct FlankStoneOut {
     float4 position [[position]];
     float3 world;
+    // The stone's or lobe's smooth normal: its shape's own, not its facets' (emmettl/bombcad-work#141).
+    float3 normal;
     float3 centre [[flat]];
     float3 albedo [[flat]];
     float kind [[flat]];
     float seed [[flat]];
     float size [[flat]];
+    float angular [[flat]];
 };
 
 // `shapes` is `QuarryFlank.stoneShape()`, an icosahedron: each corner pulled in or out by the
 // stone's own hash, so the facets are irregular, and the whole stretched to the stone's own
-// proportions (long, middling and short axes), lying on its flattest side.
-static inline float3 flankStonePoint(FlankStone stone, uint vid, const device float4 *shapes) {
+// proportions (long, middling and short axes), lying on its flattest side. `normal` is the
+// stretched shape's smooth normal, before the corners' pull.
+static inline float3 flankStonePoint(FlankStone stone, uint vid, const device float4 *shapes, thread float3 &normal) {
     float3 v = shapes[vid].xyz;
     float k = stone.look.y * 53.0f;
     float corner = hash31(floor(v * 4.0f + 0.5f) + k);
@@ -1231,10 +1235,70 @@ static inline float3 flankStonePoint(FlankStone stone, uint vid, const device fl
     v = rotate(float4(axis * sin(angle * 0.5f), cos(angle * 0.5f)), v);
     float3 axes = float3(1.0f, 0.6f + 0.35f * fract(k * 1.37f), 0.34f + 0.26f * fract(k * 2.71f));
     // Corners pulled in hard or left out, and a flatter underside, so no two read as one solid.
-    float3 p = v * (0.5f + 0.75f * corner) * axes;
+    // Pulled in less than they were: 0.5 to 1.25 of the radius made gems of them.
+    float3 p = v * (0.72f + 0.4f * corner) * axes;
     p.z = max(p.z, -0.18f - 0.15f * fract(k * 5.3f));
-    p += 0.18f * (float3(hash31(v * 7.0f + k), hash31(v * 7.0f + k + 3.1f), hash31(v * 7.0f + k + 6.7f)) - 0.5f);
+    p += 0.1f * (float3(hash31(v * 7.0f + k), hash31(v * 7.0f + k + 3.1f), hash31(v * 7.0f + k + 6.7f)) - 0.5f);
+    normal = rotate(stone.rotation, normalize(v / axes));
     return stone.posSize.xyz + rotate(stone.rotation, p * stone.posSize.w * 0.6f);
+}
+
+// A large stone or a fallen block: `shapes` is `QuarryFlank.lobeShape()`, a sphere of 80 triangles
+// shaped here as a function of the direction alone, so its smooth normal can be taken from the
+// shape itself: rounded and lumpy, squared off for a block, cut by a few flat fracture faces of its
+// own and flat underneath (emmettl/bombcad-work#141).
+static inline float3 roundStoneShape(float3 v, float k, float angular) {
+    float3 axis = normalize(float3(fract(k * 0.731f), fract(k * 1.913f), fract(k * 3.17f)) - 0.5f + 1e-3f);
+    float angle = fract(k * 0.377f) * 6.2832f;
+    v = rotate(float4(axis * sin(angle * 0.5f), cos(angle * 0.5f)), v);
+    float r = 1.0f + 0.16f * (noise3(v * 1.4f + k) - 0.5f) + 0.05f * (noise3(v * 3.3f + k * 1.7f) - 0.5f);
+    float3 p = v * r;
+    if (angular > 0.5f) p = clamp(p * 1.5f, -1.0f, 1.0f) * 0.82f;
+    float3 axes = angular > 0.5f ? float3(1.0f, 0.55f + 0.4f * fract(k * 1.37f), 0.4f + 0.3f * fract(k * 2.71f))
+                                 : float3(1.0f, 0.65f + 0.3f * fract(k * 1.37f), 0.42f + 0.25f * fract(k * 2.71f));
+    p *= axes;
+    for (int i = 0; i < 5; ++i) {
+        float3 cutNormal = normalize(float3(fract(k * (3.1f + i)), fract(k * (5.7f + i)), fract(k * (7.3f + i))) - 0.5f + 1e-3f);
+        float reach = (angular > 0.5f ? 0.42f : 0.5f) + 0.25f * fract(k * (11.0f + i));
+        float beyond = dot(p, cutNormal) - reach;
+        if (beyond > 0.0f) p -= cutNormal * beyond;
+    }
+    p.z = max(p.z, -0.22f - 0.12f * fract(k * 5.3f));
+    return p;
+}
+
+static inline float3 roundStonePoint(FlankStone stone, uint vid, const device float4 *shapes, thread float3 &normal) {
+    float3 v = normalize(shapes[vid].xyz);
+    float k = stone.look.y * 53.0f;
+    float3 p = roundStoneShape(v, k, stone.look.w);
+    float3 t1 = normalize(cross(v, abs(v.z) < 0.9f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f)));
+    float3 t2 = cross(v, t1);
+    float3 a = roundStoneShape(normalize(v + t1 * 0.04f), k, stone.look.w) - p;
+    float3 b = roundStoneShape(normalize(v + t2 * 0.04f), k, stone.look.w) - p;
+    float3 n = cross(a, b);
+    // A corner squared off on all three axes has no slope of its own there.
+    n = length(n) > 1e-9f ? normalize(n) : normalize(p + 1e-4f);
+    if (dot(n, p) < 0.0f) n = -n;
+    normal = rotate(stone.rotation, n);
+    return stone.posSize.xyz + rotate(stone.rotation, p * stone.posSize.w * 0.6f);
+}
+
+static inline FlankStoneOut flankStoneOut(FlankStone stone, float3 world, float3 normal, constant QuarryCamera &cam) {
+    FlankStoneOut o;
+    o.world = world;
+    o.normal = normal;
+    o.position = cam.viewProjection * float4(o.world, 1.0f);
+    o.centre = stone.posSize.xyz;
+    o.kind = stone.look.x;
+    o.seed = stone.look.y;
+    o.size = stone.posSize.w;
+    o.angular = stone.look.w;
+    // Weathered rock of the beds, paled toward grey, each stone a little its own.
+    RockColour rock = rockOfKind(kindFromShare(fract(stone.look.y * 3.71f)));
+    if (rock.kind == 1) rock.patina = mix(rock.patina, float3(0.3f, 0.29f, 0.27f), 0.5f);
+    o.albedo = mix(mix(rock.patina, rock.oxidised, 0.25f + 0.6f * stone.look.z), float3(0.36f, 0.35f, 0.32f), 0.25f)
+             * (0.62f + 0.4f * fract(stone.look.y * 17.0f));
+    return o;
 }
 
 vertex FlankStoneOut flankStoneVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
@@ -1242,26 +1306,35 @@ vertex FlankStoneOut flankStoneVertex(uint vid [[vertex_id]], uint instance [[in
                                       constant QuarryCamera &cam [[buffer(2)]],
                                       const device float4 *shapes [[buffer(5)]]) {
     FlankStone stone = stones[instance];
-    FlankStoneOut o;
-    o.world = flankStonePoint(stone, vid, shapes);
-    o.position = cam.viewProjection * float4(o.world, 1.0f);
-    o.centre = stone.posSize.xyz;
-    o.kind = stone.look.x;
-    o.seed = stone.look.y;
-    o.size = stone.posSize.w;
-    // Weathered rock of the beds, paled toward grey, each stone a little its own.
-    RockColour rock = rockOfKind(kindFromShare(fract(stone.look.y * 3.71f)));
-    if (rock.kind == 1) rock.patina = mix(rock.patina, float3(0.3f, 0.29f, 0.27f), 0.5f);
-    o.albedo = mix(mix(rock.patina, rock.oxidised, 0.25f + 0.6f * stone.look.z), float3(0.44f, 0.43f, 0.4f), 0.25f)
-             * (0.7f + 0.4f * fract(stone.look.y * 17.0f));
-    return o;
+    float3 normal;
+    float3 world = flankStonePoint(stone, vid, shapes, normal);
+    return flankStoneOut(stone, world, normal, cam);
 }
 
 vertex float4 flankStoneShadowVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
                                      const device FlankStone *stones [[buffer(0)]],
                                      constant QuarryCamera &cam [[buffer(2)]],
                                      const device float4 *shapes [[buffer(5)]]) {
-    return cam.shadow * float4(flankStonePoint(stones[instance], vid, shapes), 1.0f);
+    float3 normal;
+    return cam.shadow * float4(flankStonePoint(stones[instance], vid, shapes, normal), 1.0f);
+}
+
+vertex FlankStoneOut roundStoneVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
+                                      const device FlankStone *stones [[buffer(0)]],
+                                      constant QuarryCamera &cam [[buffer(2)]],
+                                      const device float4 *shapes [[buffer(5)]]) {
+    FlankStone stone = stones[instance];
+    float3 normal;
+    float3 world = roundStonePoint(stone, vid, shapes, normal);
+    return flankStoneOut(stone, world, normal, cam);
+}
+
+vertex float4 roundStoneShadowVertex(uint vid [[vertex_id]], uint instance [[instance_id]],
+                                     const device FlankStone *stones [[buffer(0)]],
+                                     constant QuarryCamera &cam [[buffer(2)]],
+                                     const device float4 *shapes [[buffer(5)]]) {
+    float3 normal;
+    return cam.shadow * float4(roundStonePoint(stones[instance], vid, shapes, normal), 1.0f);
 }
 
 fragment float4 flankStoneFragment(FlankStoneOut in [[stage_in]],
@@ -1271,30 +1344,43 @@ fragment float4 flankStoneFragment(FlankStoneOut in [[stage_in]],
                                    sampler s [[sampler(0)]]) {
     float3 facet = normalize(cross(dfdx(in.world), dfdy(in.world)));
     if (dot(facet, cam.eye.xyz - in.world) < 0.0f) facet = -facet;
+    float footprint = length(fwidth(in.world));
+    float near = 1.0f - smoothstep(0.03f, 0.2f, footprint);
     float3 albedo = in.albedo;
     float3 n = facet;
     float3 local = in.world - in.centre;
     if (in.kind > 0.5f) {
         // A lobe of a bush: lit as a ball of small leaves, broken by clusters with dark gaps
-        // between, darker underneath and inside.
+        // between, darker underneath and inside. Far off, where a leaf is under a pixel, the
+        // leaves and gaps give way to their mean and the lobe is lit as a ball, so a bush still
+        // reads as a lit, rounded bush in the wide view, not a dark dot (emmettl/bombcad-work#141).
         float3 round = normalize(local + float3(0.0f, 0.0f, 0.15f * in.size));
         float3 p = in.world * 7.0f + in.seed * 30.0f;
         float3 jitter = float3(noise3(p), noise3(p + 7.1f), noise3(p + 13.3f)) - 0.5f;
-        n = normalize(mix(round, facet, 0.25f) + jitter * 1.0f);
-        float leaves = fbm3(in.world * 11.0f + in.seed * 30.0f, 3);
-        float gaps = smoothstep(0.28f, 0.5f, fbm3(in.world * 4.0f + 5.0f + in.seed * 9.0f, 2));
+        n = normalize(mix(round, facet, 0.25f * near) + jitter * near);
+        float leaves = mix(0.5f, fbm3(in.world * 11.0f + in.seed * 30.0f, 3), near);
+        float gaps = mix(0.75f, smoothstep(0.28f, 0.5f, fbm3(in.world * 4.0f + 5.0f + in.seed * 9.0f, 2)), near);
         albedo *= (0.6f + 0.85f * leaves) * mix(0.45f, 1.0f, gaps);
         albedo *= mix(0.5f, 1.0f, saturate(round.z * 0.7f + 0.65f));
-        // A few paler leaves catching the light.
-        albedo = mix(albedo, albedo * 1.6f + 0.02f, smoothstep(0.62f, 0.7f, fbm3(in.world * 23.0f + in.seed, 2)) * 0.5f);
+        // A few paler leaves catching the light, and far off the sunlit crown a little paler too.
+        albedo = mix(albedo, albedo * 1.6f + 0.02f, smoothstep(0.62f, 0.7f, fbm3(in.world * 23.0f + in.seed, 2)) * 0.5f * near);
+        albedo *= 1.0f + 0.35f * (1.0f - near) * saturate(dot(round, cam.sun.xyz));
     } else {
+        // Weathered stone: rounded by its own smooth normal with only a little of its facets,
+        // more for a block; grain, pits and lichen on top, soil stain at its foot.
+        float3 smooth = normalize(in.normal);
+        n = normalize(mix(smooth, facet, in.angular > 0.5f ? 0.45f : 0.2f));
         float grain = fbm3(in.world * 9.0f + in.seed * 30.0f, 3);
-        albedo *= 0.8f + 0.4f * grain;
-        float lichen = smoothstep(0.58f, 0.72f, fbm3(in.world * 2.3f + in.seed * 11.0f, 3)) * smoothstep(0.2f, 0.8f, facet.z);
-        albedo = mix(albedo, float3(0.52f, 0.52f, 0.42f), lichen * 0.35f);
-        n = normalize(n + (float3(noise3(in.world * 7.0f), noise3(in.world * 7.0f + 3.3f), 0.5f) - 0.5f) * 0.25f);
+        albedo *= 0.8f + 0.4f * mix(0.5f, grain, near);
+        float lichen = smoothstep(0.58f, 0.72f, fbm3(in.world * 2.3f + in.seed * 11.0f, 3)) * smoothstep(0.2f, 0.8f, n.z);
+        albedo = mix(albedo, float3(0.55f, 0.55f, 0.45f), lichen * 0.4f);
+        float dark = smoothstep(0.6f, 0.75f, fbm3(in.world * 4.1f + in.seed * 7.0f, 3)) * smoothstep(0.0f, 0.6f, n.z);
+        albedo = mix(albedo, float3(0.13f, 0.12f, 0.1f), dark * 0.35f);
+        float foot = 1.0f - smoothstep(-0.12f, 0.05f, local.z / max(in.size, 0.05f));
+        albedo = mix(albedo, float3(0.22f, 0.18f, 0.13f), foot * 0.55f);
+        n = bumped(n, in.world, 4.0f / max(in.size, 0.3f), 0.12f * near, 3);
     }
-    float shadow = shadowAt(in.world, facet, cam, shadowMap, s);
+    float shadow = shadowAt(in.world, in.kind > 0.5f ? facet : normalize(in.normal), cam, shadowMap, s);
     float dust = dustShadow(in.world, cam, dustLight);
     return float4(shade(albedo, in.world, n, cam, shadow, dust), 1.0f);
 }
@@ -1314,18 +1400,20 @@ vertex FlankStoneOut flankBushVertex(uint vid [[vertex_id]], uint instance [[ins
     FlankStone bush = bushes[instance];
     FlankStoneOut o;
     o.world = flankBushPoint(bush, vid, shapes);
+    o.normal = rotate(bush.rotation, shapes[vid].xyz);
     o.position = cam.viewProjection * float4(o.world, 1.0f);
     o.centre = bush.posSize.xyz;
     o.kind = 1.0f;
     o.seed = bush.look.y;
     o.size = bush.posSize.w;
+    o.angular = 0.0f;
     // Each bush its own: dark olive, grey-green, brownish olive, a few turning rusty; each lobe a
     // little lighter or darker.
     float t = bush.look.z;
-    float3 c = t < 0.45f ? mix(float3(0.15f, 0.17f, 0.07f), float3(0.23f, 0.25f, 0.11f), t / 0.45f)
-             : t < 0.72f ? float3(0.27f, 0.29f, 0.2f)
-             : t < 0.93f ? float3(0.27f, 0.24f, 0.13f)
-                         : float3(0.3f, 0.21f, 0.12f);
+    float3 c = t < 0.45f ? mix(float3(0.17f, 0.2f, 0.08f), float3(0.25f, 0.28f, 0.12f), t / 0.45f)
+             : t < 0.72f ? float3(0.28f, 0.31f, 0.21f)
+             : t < 0.93f ? float3(0.29f, 0.26f, 0.14f)
+                         : float3(0.32f, 0.22f, 0.12f);
     o.albedo = c * (0.78f + 0.44f * bush.look.w);
     return o;
 }
@@ -1337,20 +1425,26 @@ vertex float4 flankBushShadowVertex(uint vid [[vertex_id]], uint instance [[inst
     return cam.shadow * float4(flankBushPoint(bushes[instance], vid, shapes), 1.0f);
 }
 
-// --- A ridge cut's outcrops (emmettl/bombcad-work#138) ---
-// Illustrative: each run of ledges is a weathered stratum swept along its bed (`QuarryFace.outcrop`),
-// shaded here on its own, not by the blocks' shader: the bed's weathered colour paled toward grey,
-// partings along the bed, streaks down the front, lichen, turf on its top and soil and scree banked
-// against its foot. A vertex's `body` carries its height above the ground (cm), its run's random
-// value and the point of the profile it is (`QuarryFace.outcropTag`).
+// --- A ridge cut's outcrops and crags (emmettl/bombcad-work#138, #141) ---
+// Illustrative: each run of ledges, and each crag, is a stack of weathered layers swept along its
+// bed (`QuarryFace.outcropMesh`), shaded and lit here on their own, not by the blocks' shader or
+// `shade`: the bed's weathered colour, partings, dark water stains down the fronts, lichen and dark
+// crusts on the tops, turf on them in patches, soil and scree banked against the foot, its facets'
+// own planes close in so its edges read broken and angular, and its own light: a soft shadow that
+// does not speckle under a low sun, and sky light that falls off under overhangs, in partings and
+// joints and at the foot. A vertex's `body` carries its height above the ground (cm), its
+// outcrop's random value, what part of the profile it is, its layer from the top, how open a joint
+// is there and whether it is a crag's (`QuarryFace.outcropTag`).
 struct LedgeOut {
     float4 position [[position]];
     float3 world;
     float3 normal;
     float above;
     float part;
+    float layer;
     float crack;
     float random [[flat]];
+    float crag [[flat]];
 };
 
 vertex LedgeOut ledgeVertex(uint vid [[vertex_id]],
@@ -1363,8 +1457,10 @@ vertex LedgeOut ledgeVertex(uint vid [[vertex_id]],
     o.normal = unpackNormal(v.normalKind);
     o.above = float(v.body & 1023u) * 0.01f;
     o.random = float((v.body >> 10) & 63u) / 63.0f;
-    o.part = float((v.body >> 16) & 15u);
-    o.crack = float((v.body >> 20) & 15u) / 15.0f;
+    o.part = float((v.body >> 16) & 7u);
+    o.layer = float((v.body >> 19) & 7u);
+    o.crack = float((v.body >> 22) & 15u) / 15.0f;
+    o.crag = float((v.body >> 26) & 1u);
     return o;
 }
 
@@ -1374,54 +1470,102 @@ vertex float4 ledgeShadowVertex(uint vid [[vertex_id]],
     return cam.shadow * float4(float3(vertices[vid].local), 1.0f);
 }
 
+// The outcrops' own shadow: pushed out along the normal and toward the sun, and sampled over a
+// wider footprint, so a top raked by the low sun is not speckled.
+static inline float outcropShadow(float3 world, float3 n, constant QuarryCamera &cam, depth2d<float> map, sampler s) {
+    float3 w = world + n * 0.3f + cam.sun.xyz * 0.2f;
+    float4 c = cam.shadow * float4(w, 1.0f);
+    float3 q = c.xyz / c.w;
+    float2 uv = q.xy * float2(0.5f, -0.5f) + 0.5f;
+    if (any(uv < 0.0f) || any(uv > 1.0f)) return 1.0f;
+    float texel = 1.6f / float(map.get_width());
+    float sum = 0.0f;
+    for (int y = -1; y <= 2; ++y) for (int x = -1; x <= 2; ++x) {
+        sum += map.sample_compare(s, uv + (float2(x, y) - 0.5f) * texel, q.z - 0.0006f);
+    }
+    return sum / 16.0f;
+}
+
 fragment float4 ledgeFragment(LedgeOut in [[stage_in]],
                               constant QuarryCamera &cam [[buffer(0)]],
                               depth2d<float> shadowMap [[texture(0)]],
                               texture3d<float> dustLight [[texture(1)]],
                               sampler s [[sampler(0)]]) {
     float3 world = in.world;
-    float3 n = normalize(in.normal);
+    float3 smooth = normalize(in.normal);
+    float3 facet = normalize(cross(dfdx(world), dfdy(world)));
+    if (dot(facet, smooth) < 0.0f) facet = -facet;
     float footprint = length(fwidth(world));
     float detail = 1.0f - smoothstep(0.03f, 0.12f, footprint);
-    RockColour rock = rockAt(world - n * 0.1f);
+    // Close in the facets' own planes, so the edges read broken and angular rather than rounded.
+    float3 n = normalize(mix(smooth, facet, 0.6f * (1.0f - smoothstep(0.06f, 0.5f, footprint))));
+    RockColour rock = rockAt(world - smooth * 0.1f);
     float c = bedCoordinate(dot(world, beddingNormal));
-    // Weathered rock: the bed's colour paled toward grey, mottled broadly.
-    float broad = fbm3(world * 0.5f + in.random * 17.0f, 3);
-    float3 albedo = mix(mix(rock.patina, rock.oxidised, 0.3f), float3(0.5f, 0.49f, 0.45f), 0.4f);
-    albedo *= (0.8f + 0.42f * broad) * (0.92f + 0.16f * fbm3(world * 4.0f, 2));
-    // Partings within the bed: thin darker lines along it, on the front most.
-    float front = 1.0f - smoothstep(0.45f, 0.8f, n.z);
-    float lines = rock.kind == 0 ? 2.0f : 5.0f;
-    float parting = smoothstep(0.86f, 0.97f, abs(sin((c + 0.15f * fbm3(world * 0.7f, 2)) * 3.1416f * lines)));
-    albedo *= 1.0f - 0.3f * parting * front;
-    // Streaks down the front where water runs off the top.
-    float streak = fbm3(world * float3(2.0f, 2.0f, 0.22f) + 5.0f, 3);
-    albedo *= 1.0f - front * 0.3f * smoothstep(0.45f, 0.72f, streak);
-    // Lichen: pale grey-green crusts, more on the tops and the nose, and small dark spots.
-    float up = smoothstep(-0.3f, 0.7f, n.z);
-    float lichen = smoothstep(0.5f, 0.66f, fbm3(world * 1.5f + 31.0f, 4));
-    albedo = mix(albedo, float3(0.58f, 0.59f, 0.5f) * (0.85f + 0.3f * fbm3(world * 9.0f, 2)), lichen * 0.3f * up);
-    float spots = smoothstep(0.66f, 0.76f, fbm3(world * 5.0f + 9.0f, 3));
-    albedo = mix(albedo, float3(0.2f, 0.19f, 0.16f), spots * 0.2f);
-    // Turf on the top, in patches, more toward the back where it runs into the slope.
+    float tone = fract(in.random * 7.31f + in.layer * 0.37f);
+    // Weathered rock: the bed's patina, greyed, each outcrop and layer its own tone, mottled broadly.
+    float broad = fbm3(world * 0.35f + in.random * 17.0f, 3);
+    float3 albedo = mix(mix(rock.patina, rock.oxidised, 0.2f + 0.3f * tone), float3(0.42f, 0.41f, 0.38f), 0.25f);
+    albedo *= (0.76f + 0.44f * broad) * (0.9f + 0.2f * fbm3(world * 3.0f, 2)) * (0.86f + 0.24f * tone);
+    float front = 1.0f - smoothstep(0.45f, 0.8f, smooth.z);
+    float topness = smoothstep(0.6f, 0.85f, smooth.z);
+    // Partings within the bed: a few thin darker lines along it on the fronts, wandering and
+    // broken, not ruled (evenly ruled lines read as planks).
+    float lines = rock.kind == 0 ? 1.0f : 3.0f;
+    float parting = smoothstep(0.9f, 0.98f, abs(sin((c + 0.25f * fbm3(world * 0.45f, 3)) * 3.1416f * lines)));
+    parting *= smoothstep(0.35f, 0.55f, fbm3(world * float3(0.35f, 0.35f, 1.2f) + 13.0f, 2));
+    albedo *= 1.0f - 0.28f * parting * front * detail;
+    // Dark stains down the fronts where water runs off the tops, and paler, cleaner rock between.
+    float streak = fbm3(world * float3(1.7f, 1.7f, 0.16f) + 5.0f + in.random * 9.0f, 3);
+    albedo = mix(albedo, float3(0.13f, 0.12f, 0.11f), front * 0.55f * smoothstep(0.48f, 0.7f, streak));
+    albedo *= 1.0f + front * 0.12f * smoothstep(0.45f, 0.25f, streak);
+    // On the tops: pale grey-green lichen in rosettes, small yellow ones, dark crusts in patches.
+    float2 toCentre;
+    float3 cells = stones(world.xy / 0.22f + in.random * 40.0f, 41u, toCentre);
+    float rosette = (1.0f - smoothstep(0.25f, 0.42f, cells.x)) * step(0.55f, cells.z);
+    float lichenPatch = smoothstep(0.42f, 0.6f, fbm3(world * 0.9f + 31.0f, 3));
+    float up = smoothstep(-0.2f, 0.7f, smooth.z);
+    float lichen = max(lichenPatch * 0.7f, rosette * lichenPatch * detail) * up;
+    float3 lichenColour = cells.z > 0.9f ? float3(0.62f, 0.5f, 0.22f) : float3(0.6f, 0.61f, 0.53f);
+    albedo = mix(albedo, lichenColour * (0.85f + 0.3f * fbm3(world * 9.0f, 2)), lichen * 0.55f);
+    float crust = smoothstep(0.52f, 0.7f, fbm3(world * 0.4f + 9.0f + in.random * 5.0f, 2)) * (0.4f + 0.6f * topness);
+    albedo = mix(albedo, float3(0.11f, 0.1f, 0.09f), crust * 0.5f * (1.0f - lichen));
+    // Turf on the tops in patches, more toward the back where they run into the slope, and on a
+    // crag's broad top; soil and scree banked against the foot, the line wandering.
     float3 tilt;
-    float topness = smoothstep(0.62f, 0.86f, n.z);
-    float back = 1.0f - saturate((in.part - 2.0f) / 2.5f);
-    float turf = smoothstep(0.42f, 0.56f, fbm3(world * 0.8f + 3.0f, 3) + 0.25f * back) * topness;
+    float back = in.part < 0.5f ? 1.0f : 0.0f;
+    // A crag's broad top is mostly turf, the hillside running on over it to its edge.
+    float turf = smoothstep(0.44f, 0.58f, fbm3(world * 0.8f + 3.0f, 3) + 0.25f * back + 0.3f * in.crag * (in.layer < 0.5f ? 1.0f : 0.3f)) * topness;
     albedo = mix(albedo, grassGround(world, detail, tilt), turf);
-    // Soil and scree banked against its foot, the line wandering.
     float bank = 0.18f + 0.6f * fbm3(world * float3(0.9f, 0.9f, 0.4f) + 21.0f, 3);
     float banked = 1.0f - smoothstep(bank - 0.12f, bank + 0.04f, in.above);
     float3 screeTilt;
     float3 loose = screeGround(world.xy, world, detail, screeTilt);
     albedo = mix(albedo, mix(loose, float3(0.23f, 0.19f, 0.14f), 0.35f), banked);
-    // Joints across it: dark, narrow cracks.
-    albedo *= 1.0f - 0.4f * smoothstep(0.35f, 0.85f, in.crack);
+    // Joints: dark, narrow cracks; partings between layers dark and dirty.
+    float joint = smoothstep(0.35f, 0.85f, in.crack);
+    float inParting = 1.0f - saturate(abs(in.part - 3.0f));
+    albedo *= (1.0f - 0.45f * joint) * (1.0f - 0.35f * inParting);
     // Pitted and worn, less where it is turf or soil.
     float rough = 1.0f - max(turf, banked) * 0.7f;
-    float3 surface = bumped(n, world, 1.7f, 0.25f * rough, 4);
-    surface = bumped(surface, world, 7.0f, 0.14f * rough * detail, 2);
-    float shadow = shadowAt(world, n, cam, shadowMap, s);
+    float3 surface = bumped(n, world, 1.6f, 0.07f * rough, 3);
+    surface = bumped(surface, world, 8.0f, 0.08f * rough * detail, 2);
+    // Its own light: sun through its own soft shadow, sky that falls off under overhangs, in
+    // partings and joints and toward the foot, and warm light thrown up from the ground.
+    float shadow = outcropShadow(world, smooth, cam, shadowMap, s);
     float dust = dustShadow(world, cam, dustLight);
-    return float4(shade(albedo, world, surface, cam, shadow, dust), 1.0f);
+    float under = saturate(-smooth.z * 1.3f + 0.05f);
+    float foot = (1.0f - smoothstep(0.0f, 0.8f, in.above)) * (1.0f - topness);
+    float cavity = saturate(1.0f - 0.5f * inParting - 0.4f * under - 0.3f * foot - 0.5f * joint);
+    float3 sun = cam.sun.xyz;
+    float nl = max(dot(surface, sun), 0.0f);
+    float3 sunColor = float3(1.0f, 0.74f, 0.47f) * 3.4f;
+    float sky = surface.z * 0.5f + 0.5f;
+    float3 skyLight = mix(float3(0.3f, 0.24f, 0.2f), float3(0.3f, 0.39f, 0.6f), sky) * 0.52f * cavity;
+    float3 bounce = float3(0.5f, 0.38f, 0.26f) * saturate(-surface.z * 0.5f + 0.35f) * 0.2f * (0.5f + 0.5f * cavity);
+    float3 lit = albedo * (sunColor * nl * shadow * dust * mix(0.75f, 1.0f, cavity) + skyLight + bounce);
+    float distance = length(world - cam.eye.xyz);
+    float fog = 1.0f - exp(-distance * distance * 0.7e-6f);
+    float3 dir = (world - cam.eye.xyz) / max(distance, 1.0f);
+    float3 haze = cam.fogColor.w > 1.5f ? backdrop(float3(dir.x, dir.y, 0.0f), cam) : skyColor(float3(dir.x, dir.y, 0.03f), cam);
+    return float4(mix(lit, haze * 0.95f, fog), 1.0f);
 }

@@ -24,9 +24,25 @@ public struct QuarryFlank: Sendable {
         public var seed: Float
     }
 
+    /// A crag (emmettl/bombcad-work#141): several beds stacked into a small cliff standing out of a
+    /// steep flank, from `beds.lowerBound` at its foot to `beds.upperBound` on top, `width` metres
+    /// along the strike. `centre` is where its top bed's top meets the ground at its middle; its
+    /// foot is about `reach` metres downhill of it.
+    public struct Crag: Sendable, Equatable {
+        public var centre: SIMD3<Float>
+        /// Downhill in plan, unit.
+        public var downhill: SIMD2<Float>
+        public var width: Float
+        public var beds: ClosedRange<Int>
+        public var reach: Float
+        /// A random value of its own, 0...1.
+        public var seed: Float
+    }
+
     /// One render-only stone of the scree, or one clump of a low shrub: centre and size (m), its
     /// turn as a quaternion (x, y, z, w), and what it is (x: 0 a stone, 1 a shrub; y: a random
-    /// value; z: its tint). Layout matches `FlankStone` in `QuarryRender.metal`.
+    /// value; z: its tint; w: for a stone, 1 an angular block fallen from an outcrop or a crag, 0 a
+    /// weathered stone). Layout matches `FlankStone` in `QuarryRender.metal`.
     public struct Stone: Sendable {
         public var posSize: SIMD4<Float>
         public var rotation: SIMD4<Float>
@@ -54,6 +70,10 @@ public struct QuarryFlank: Sendable {
     /// How far inside the dense rock each texel is from its edge (m; 0 outside it).
     public private(set) var pavingDepth: [Float] = []
     public private(set) var ledges: [Ledge] = []
+    /// The crags, and the ground they stand on and just round them (no ledges, stones or bushes
+    /// there).
+    public private(set) var crags: [Crag] = []
+    public private(set) var cragMask: [Bool] = []
 
     /// The margin of dense rock round the cut (m), before its ragged edge (up to `marginWander`
     /// more).
@@ -63,6 +83,14 @@ public struct QuarryFlank: Sendable {
     /// their bed by about `ledgeSpacing` (m).
     public static let ledgeSlope: Float = 0.3
     public static let ledgeSpacing: Float = 3.2
+    /// At most this many crags, at least `cragSpacing` apart (m), on slopes steeper than
+    /// `cragSlope`, at least `cragClear` from the cut and from the opening view's sight lines.
+    public static let cragCount = 6
+    public static let cragSpacing: Float = 60
+    public static let cragSlope: Float = 0.6
+    public static let cragClear: Float = 30
+    /// Stones at least this big (m) are drawn with the finer, rounder shape (`lobeShape`).
+    public static let largeStone: Float = 0.45
 
     /// The flanks of `face`'s ridge cut, nil for a face.
     public init?(face: QuarryFace) {
@@ -128,6 +156,7 @@ public struct QuarryFlank: Sendable {
             }
         }
         pavingDepth = Self.distance(from: paving.map { !$0 }, columns: columns, rows: rows, spacing: spacing)
+        findCrags(face: face, ridge: ridge)
         findLedges(ridge: ridge)
         cover(ridge: ridge)
     }
@@ -239,6 +268,131 @@ public struct QuarryFlank: Sendable {
         return max(0, min(1, (clusters - 0.06) / 0.12)) * max(0, min(1, (runs + 0.08) / 0.16)) * steep
     }
 
+    /// The crags: a few places on the steep flanks, clear of the cut and of the opening view's
+    /// sight lines to the crest, where several beds stand out together as a small cliff, the top
+    /// one a hard bed. Chosen by slope and broad noise, the steepest first, `cragSpacing` apart.
+    mutating func findCrags(face: QuarryFace, ridge: QuarryRidge) {
+        cragMask = [Bool](repeating: false, count: columns * rows)
+        let normal = QuarryFace.beddingNormal
+        // The opening view's lines from the eye to what it looks at and to the crest either side
+        // of the cut, in plan; the pull-back moves along the first.
+        var sights: [(SIMD2<Float>, SIMD2<Float>)] = []
+        if let view = QuarryRidgeView.opening(face) {
+            let eye = SIMD2(view.orbit.eye.x, view.orbit.eye.y)
+            let wall = ridge.halfWidth + (ridge.crest - ridge.floor) / ridge.wallSlope + 3
+            for target in [
+                SIMD2(view.orbit.focus.x, view.orbit.focus.y), SIMD2(ridge.crestX, wall),
+                SIMD2(ridge.crestX, -wall),
+            ] {
+                sights.append((eye, target))
+            }
+        }
+        func off(_ p: SIMD2<Float>, _ a: SIMD2<Float>, _ b: SIMD2<Float>) -> Float {
+            let ab = b - a
+            let t = max(0, min(1, simd_dot(p - a, ab) / max(simd_length_squared(ab), 1e-6)))
+            return simd_distance(p, a + ab * t)
+        }
+        // The slope's mean over 9 m round a texel, and how steady its direction is there (1 a
+        // plane, less on a spur or in a hollow).
+        func meanSlope(_ i: Int, _ j: Int) -> (SIMD2<Float>, Float) {
+            var sum = SIMD2<Float>.zero
+            var lengths: Float = 0
+            for dj in stride(from: -4, through: 4, by: 2) {
+                for di in stride(from: -4, through: 4, by: 2) {
+                    let g = gradient[(i + di) + (j + dj) * columns]
+                    sum += g
+                    lengths += simd_length(g)
+                }
+            }
+            return (sum / 25, simd_length(sum) / max(lengths, 1e-6))
+        }
+        var candidates: [(score: Float, i: Int, j: Int)] = []
+        let border = 24
+        guard columns > 2 * border, rows > 2 * border else { return }
+        for j in stride(from: border, to: rows - border, by: 3) {
+            for i in stride(from: border, to: columns - border, by: 3) {
+                let n = i + j * columns
+                guard !paving[n], cut[n] < 0.5, cutDistance[n] > Self.cragClear else { continue }
+                let (g, steady) = meanSlope(i, j)
+                let slope = simd_length(g)
+                guard slope > Self.cragSlope, slope < 1.5, steady > 0.85 else { continue }
+                let (x, y) = position(i, j)
+                let p = SIMD2(x, y)
+                guard sights.allSatisfy({ off(p, $0.0, $0.1) > Self.cragClear }) else { continue }
+                let score = slope * (0.7 + QuarryNoise.fbm(SIMD3(x / 45, y / 45, 5.5), octaves: 2))
+                candidates.append((score, i, j))
+            }
+        }
+        candidates.sort { ($0.score, $1.i, $1.j) > ($1.score, $0.i, $0.j) }
+        var r = QuarryRandom(seed: 2_026_111_41)
+        for candidate in candidates where crags.count < Self.cragCount {
+            let (x, y) = position(candidate.i, candidate.j)
+            guard
+                crags.allSatisfy({
+                    simd_distance(SIMD2($0.centre.x, $0.centre.y), SIMD2(x, y)) > Self.cragSpacing
+                })
+            else { continue }
+            let (g, _) = meanSlope(candidate.i, candidate.j)
+            let down = -g / simd_length(g)
+            let side = SIMD2(-down.y, down.x)
+            let p = SIMD3(x, y, groundHeight(x, y))
+            // Its top a hard bed; its foot as many beds down as make it 5 to 9 m high.
+            var top = Int(floor(QuarryFracture.bedCoordinate(simd_dot(p, normal))))
+            while QuarryRock.kind(bed: top) == .shale { top -= 1 }
+            let topLevel = Self.bedLevel(Float(top + 1), near: simd_dot(p, normal))
+            let height = r.float(5, 9)
+            var bottom = top
+            var bottomLevel = Self.bedLevel(Float(top), near: topLevel)
+            while topLevel - bottomLevel < height, bottom > top - 9 {
+                bottom -= 1
+                bottomLevel = Self.bedLevel(Float(bottom), near: bottomLevel)
+            }
+            // Where its top meets the ground, and where its foot does, down the slope.
+            func level(_ s: Float, _ q: SIMD2<Float>) -> Float {
+                (s - normal.x * q.x - normal.y * q.y) / normal.z
+            }
+            var s0: Float = 0
+            while s0 > -8,
+                groundHeight(x + down.x * s0, y + down.y * s0) < level(topLevel, SIMD2(x, y) + down * s0)
+            {
+                s0 -= 0.25
+            }
+            let centre = SIMD2(x, y) + down * s0
+            var reach: Float = 0
+            while reach < 15 {
+                let q = centre + down * reach
+                if groundHeight(q.x, q.y) < level(bottomLevel, q) { break }
+                reach += 0.25
+            }
+            let width = r.float(22, 40)
+            guard reach > 3, reach < 14 else { continue }
+            // All of it on the map, clear of the dense rock, on steep ground.
+            var fits = true
+            for a in stride(from: -width / 2 - 4, through: width / 2 + 4, by: 2) {
+                for s in stride(from: -6, through: reach + 5, by: 2) {
+                    let q = centre + side * a + down * s
+                    guard let n = texel(q.x, q.y), !paving[n], cutDistance[n] > Self.cragClear * 0.6 else {
+                        fits = false
+                        break
+                    }
+                }
+                if !fits { break }
+            }
+            guard fits else { continue }
+            crags.append(
+                Crag(
+                    centre: SIMD3(centre.x, centre.y, groundHeight(centre.x, centre.y)), downhill: down,
+                    width: width,
+                    beds: bottom...top, reach: reach, seed: r.float()))
+            for a in stride(from: -width / 2 - 4, through: width / 2 + 4, by: 0.5) {
+                for s in stride(from: -6, through: reach + 4, by: 0.5) {
+                    let q = centre + side * a + down * s
+                    if let n = texel(q.x, q.y) { cragMask[n] = true }
+                }
+            }
+        }
+    }
+
     /// The ledges: where a hard bed's top meets the ground going uphill, in the outcrops, one
     /// every `ledgeSpacing` or so along the bed, clear of the dense rock round the cut.
     mutating func findLedges(ridge: QuarryRidge) {
@@ -247,7 +401,7 @@ public struct QuarryFlank: Sendable {
         for j in 1..<(rows - 1) {
             for i in 1..<(columns - 1) {
                 let n = i + j * columns
-                guard !paving[n], cutDistance[n] > Self.margin + 1.5 else { continue }
+                guard !paving[n], !cragMask[n], cutDistance[n] > Self.margin + 1.5 else { continue }
                 let g = gradient[n]
                 let slope = simd_length(g)
                 guard slope > Self.ledgeSlope else { continue }
@@ -270,7 +424,9 @@ public struct QuarryFlank: Sendable {
                 // Where the bed's top crosses the ground between the two.
                 let f = max(0, min(1, (Float(bed + 1) - cp) / max(cu - cp, 1e-4)))
                 let contour = p + (u - p) * f
-                guard !paves(contour.x, contour.y) else { continue }
+                guard !paves(contour.x, contour.y),
+                    !(texel(contour.x, contour.y).map { cragMask[$0] } ?? true)
+                else { continue }
                 let top = Self.bedLevel(Float(bed + 1), near: simd_dot(contour, normal))
                 let bottom = Self.bedLevel(Float(bed), near: top)
                 let thickness = top - bottom
@@ -310,6 +466,21 @@ public struct QuarryFlank: Sendable {
                 let falls = smoothstep(
                     -0.05, 0.12, QuarryNoise.fbm(SIMD3(front.x / 13, front.y / 13, 2.2), octaves: 2))
                 if let n = texel(front.x, front.y) { source[n] = max(source[n], 0.9 * falls) }
+            }
+        }
+        // Below the crags, scree in fans from most of their feet, and bare rock under them.
+        for crag in crags {
+            let side = SIMD2(-crag.downhill.y, crag.downhill.x)
+            let centre = SIMD2(crag.centre.x, crag.centre.y)
+            for a in stride(from: -crag.width / 2, through: crag.width / 2, by: 0.7) {
+                for b in stride(from: Float(-1), through: crag.reach, by: 0.7) {
+                    let q = centre + side * a + crag.downhill * b
+                    if let n = texel(q.x, q.y) { rock[n] = max(rock[n], 0.8) }
+                }
+                let front = centre + side * a + crag.downhill * (crag.reach + 1.2)
+                let falls = smoothstep(
+                    -0.2, 0.05, QuarryNoise.fbm(SIMD3(front.x / 9, front.y / 9, 2.7), octaves: 2))
+                if let n = texel(front.x, front.y) { source[n] = max(source[n], falls) }
             }
         }
         for j in 1..<(rows - 1) {
@@ -438,16 +609,21 @@ public struct QuarryFlank: Sendable {
         }
         func clear(_ x: Float, _ y: Float) -> Bool {
             guard let n = texel(x, y) else { return false }
-            return !paving[n] && cut[n] < 0.5
+            return !paving[n] && cut[n] < 0.5 && !cragMask[n]
         }
-        /// A stone of `size` (m) at (x, y), sunk by `sink` of its size.
-        func stone(_ x: Float, _ y: Float, _ size: Float, sink: Float) {
-            guard clear(x, y) else { return }
+        /// A stone of `size` (m) at (x, y), sunk by `sink` of its size; `angular` a block fallen
+        /// from an outcrop or a crag.
+        func stone(
+            _ x: Float, _ y: Float, _ size: Float, sink: Float, angular: Bool = false, anywhere: Bool = false
+        ) {
+            guard anywhere ? texel(x, y).map({ !paving[$0] && cut[$0] < 0.5 }) ?? false : clear(x, y) else {
+                return
+            }
             stones.append(
                 Stone(
                     posSize: SIMD4(x, y, groundHeight(x, y) + size * (0.3 - sink), size),
                     rotation: turn(normal: normal(x, y), yaw: r.float(0, 6.283), lean: r.float(-0.3, 0.3)),
-                    look: SIMD4(0, r.float(), r.float(), 0)))
+                    look: SIMD4(0, r.float(), r.float(), angular ? 1 : 0)))
         }
         // Sizes from a fist to a boulder, on a power law.
         func size(_ low: Float, _ high: Float, _ power: Float) -> Float {
@@ -488,7 +664,8 @@ public struct QuarryFlank: Sendable {
                 let clumps = max(
                     0, min(1, (QuarryNoise.fbm(SIMD3(x / 13, y / 13, 4.4), octaves: 3) + 0.02) / 0.25))
                 guard r.float() < grass[n] * 0.05 * scale * clumps * clumps else { continue }
-                let width = min(2.6, 0.95 * pow(max(r.float(), 0.02), -0.3))
+                // A few big ones, so the scrub still shows from far off.
+                let width = min(2.6, 0.95 * pow(max(r.float(), 0.02), -0.3)) * (r.float() < 0.15 ? 1.6 : 1)
                 let (bx, by) = (x + r.float(-0.5, 0.5), y + r.float(-0.5, 0.5))
                 guard clear(bx, by) else { continue }
                 let tint = r.float()
@@ -522,15 +699,37 @@ public struct QuarryFlank: Sendable {
                     SIMD2(ledge.contour.x, ledge.contour.y) + ledge.downhill
                     * (ledge.run + lr.float(0.4, 4.5))
                     + side * lr.float(-1.6, 1.6)
-                stone(p.x, p.y, lr.float(0.4, 1.2), sink: 0.2)
+                stone(p.x, p.y, lr.float(0.4, 1.2), sink: 0.2, angular: lr.float() < 0.7)
             }
         }
-        return stones + bushes
+        // Blocks fallen from the crags, below their feet, the biggest furthest out.
+        for crag in crags {
+            var cr = QuarryRandom(seed: UInt64(crag.seed * 1e6) &+ 977)
+            let side = SIMD2(-crag.downhill.y, crag.downhill.x)
+            let centre = SIMD2(crag.centre.x, crag.centre.y)
+            for _ in 0..<Int(crag.width * 1.1 * scale) {
+                let size = min(2.4, 0.45 * pow(max(cr.float(), 0.02), -0.45))
+                let p =
+                    centre + side * cr.float(-0.55, 0.55) * crag.width
+                    + crag.downhill * (crag.reach + cr.float(0.2, 2.5) + size * cr.float(0.5, 3))
+                stone(p.x, p.y, size, sink: 0.22, angular: cr.float() < 0.75, anywhere: true)
+            }
+        }
+        // The small stones first, then the large (drawn rounder), then the bushes' lobes.
+        let small = stones.filter { $0.posSize.w < Self.largeStone }
+        let large = stones.filter { $0.posSize.w >= Self.largeStone }
+        return small + large + bushes
     }
 
     /// How many of `stones()` are stones; the rest are bushes' lobes.
     public static func stoneCount(_ stones: [Stone]) -> Int {
         stones.firstIndex { $0.look.x > 0.5 } ?? stones.count
+    }
+
+    /// How many of `stones()` are small stones, drawn with `stoneShape`; the large ones after them
+    /// take `lobeShape`.
+    public static func smallStoneCount(_ stones: [Stone]) -> Int {
+        stones.firstIndex { $0.look.x > 0.5 || $0.posSize.w >= largeStone } ?? stones.count
     }
 
     /// A stone: an icosahedron's 20 triangles, unindexed, as float4 points (w unused), which
@@ -640,89 +839,302 @@ extension QuarryFlank {
 }
 
 extension QuarryFace {
+    /// What part of an outcrop's profile a vertex is, for its shading.
+    public enum OutcropPart: UInt32, Sendable {
+        /// Under the ground behind it or at its foot.
+        case buried = 0
+        /// The top of a layer, where it shows.
+        case top
+        /// A layer's front.
+        case face
+        /// The parting between two layers, drawn back into the rock.
+        case parting
+        /// Its foot, running into the ground.
+        case foot
+    }
+
     /// The body bits of an outcrop's vertex, read by `ledgeVertex` in QuarryRender.metal: its height
-    /// above the ground (cm, to 10.23 m), its run's random value (6 bits), the point of the
-    /// profile it is (0 buried behind, 2-4 the top, 5-6 the nose, 7-12 the front's tiers, 13-14 the
-    /// foot) and how open a joint across it is there (4 bits).
-    public static func outcropTag(above: Float, random: Float, part: Int, joint: Float = 0) -> UInt32 {
+    /// above the ground (cm, to 10.23 m), its outcrop's random value (6 bits), what part of the
+    /// profile it is (3 bits), which layer from the top (3 bits), how open a joint across it is there
+    /// (4 bits), and whether it is a crag's (1 bit).
+    public static func outcropTag(
+        above: Float, random: Float, part: OutcropPart, layer: Int = 0, joint: Float = 0, crag: Bool = false
+    ) -> UInt32 {
         let height = UInt32(max(0, min(1023, (above * 100).rounded())))
         let value = UInt32(max(0, min(63, (random * 63).rounded())))
         let crack = UInt32(max(0, min(15, (joint * 15).rounded())))
-        return height | (value << 10) | (UInt32(part) << 16) | (crack << 20)
+        return height | (value << 10) | (part.rawValue << 16) | (UInt32(max(0, min(layer, 7))) << 19)
+            | (crack << 22)
+            | ((crag ? 1 : 0) << 26)
     }
 
-    /// The points of an outcrop's profile, from buried behind it over its top and down its front
-    /// to buried at its foot.
-    static let outcropProfile = 15
+    /// Whether an outcrop's vertex is a crag's (`outcropTag`).
+    public static func isCrag(_ body: UInt32) -> Bool { body >> 26 & 1 == 1 }
 
-    /// One run of ledges as an outcrop of its bed (render-only, illustrative): a weathered stratum
-    /// swept along the bed, its top the bed's top following the dip, worn uneven and stepped where
-    /// a lamina has come away; its front rounded at the nose, in two or three tiers that stand out
-    /// or are undercut, with a notch at each parting; broken across by joints; dipping under the
-    /// ground at its ends and in gaps along it, and buried at its back and foot.
+    /// One layer of an outcrop, between two levels along the bedding's normal: a set of laminae of
+    /// one bed in a ledge's outcrop, or a whole bed in a crag. `soft` is 0 for a hard bed, 1 for
+    /// shale, which weathers back under the beds above it.
+    struct OutcropLayer {
+        var top: Float
+        var bottom: Float
+        var soft: Float
+    }
+
+    /// One run of ledges as an outcrop of its bed (render-only, illustrative; `outcropMesh`): the bed
+    /// in one to three layers where its laminae have parted, along a line through the ledges eased
+    /// so that a short or sharply turning run is not bent into a crescent.
     static func outcrop(
         _ run: [QuarryFlank.Ledge], flank: QuarryFlank, seed: UInt64
     ) -> (vertices: [Vertex], indices: [UInt32]) {
         var r = QuarryRandom(seed: seed &* 0x9E37_79B9 &+ 90_211)
-        let bedNormal = beddingNormal
-        let top = run[0].top
-        let thickness = run[0].top - run[0].bottom
+        let (top, bottom) = (run[0].top, run[0].bottom)
+        let thickness = top - bottom
+        let count =
+            thickness > 1.6 ? (r.float() < 0.35 ? 3 : 2) : thickness > 0.95 ? (r.float() < 0.6 ? 2 : 1) : 1
+        var levels = [bottom]
+        if count == 2 { levels.append(bottom + thickness * r.float(0.35, 0.6)) }
+        if count == 3 {
+            levels += [bottom + thickness * r.float(0.22, 0.4), bottom + thickness * r.float(0.55, 0.75)]
+        }
+        levels.append(top)
+        var layers: [OutcropLayer] = []
+        for k in 0..<count {
+            // The lowest set of laminae is often the weaker, undercut under the rest.
+            layers.append(
+                OutcropLayer(
+                    top: levels[k + 1], bottom: levels[k], soft: k == 0 && count > 1 ? r.float(0, 0.7) : 0))
+        }
+        var points = run.map { SIMD2($0.contour.x, $0.contour.y) }
+        var mean = run.map(\.downhill).reduce(SIMD2<Float>.zero, +)
+        mean = simd_length(mean) > 1e-3 ? simd_normalize(mean) : run[0].downhill
+        var downs = run.map { simd_normalize($0.downhill + mean * 1.5) }
+        if points.count > 2 {
+            for _ in 0..<4 {
+                var eased = points
+                for k in 1..<(points.count - 1) {
+                    eased[k] = 0.25 * points[k - 1] + 0.5 * points[k] + 0.25 * points[k + 1]
+                }
+                points = eased
+            }
+        }
+        // A short run lies straight, square to the slope.
+        if points.count > 1 {
+            let (a, b) = (points[0], points[points.count - 1])
+            let chord = simd_distance(a, b)
+            if chord < 9, chord > 0.5 {
+                let way = (b - a) / chord
+                points = points.map { a + way * simd_dot($0 - a, way) }
+                downs = downs.map { _ in mean }
+            }
+        }
+        return outcropMesh(points: points, downs: downs, layers: layers, crag: false, flank: flank, r: &r)
+    }
+
+    /// A crag (render-only, illustrative; `outcropMesh`): each of its beds a layer, shale weathered
+    /// back under the harder beds, along a straight line across the slope.
+    static func crag(_ crag: QuarryFlank.Crag, flank: QuarryFlank, seed: UInt64) -> (
+        vertices: [Vertex], indices: [UInt32]
+    ) {
+        var r = QuarryRandom(seed: seed &* 0x2545_F491 &+ 41_141)
+        // Each bed's levels found from the one above, down from the top.
+        var levels: [Int: Float] = [:]
+        var near = simd_dot(crag.centre, beddingNormal)
+        for bed in crag.beds.reversed() {
+            if levels[bed + 1] == nil { levels[bed + 1] = QuarryFlank.bedLevel(Float(bed + 1), near: near) }
+            levels[bed] = QuarryFlank.bedLevel(Float(bed), near: levels[bed + 1]!)
+            near = levels[bed]!
+        }
+        var layers: [OutcropLayer] = []
+        for bed in crag.beds {
+            let (top, bottom) = (levels[bed + 1]!, levels[bed]!)
+            let kind = QuarryRock.kind(bed: bed)
+            let soft: Float = kind == .shale ? 1 : kind == .sandstone ? 0.35 : 0
+            // A thick hard bed parts in two.
+            if top - bottom > 2.2, soft < 0.5 {
+                let middle = bottom + (top - bottom) * r.float(0.4, 0.6)
+                layers += [
+                    OutcropLayer(top: middle, bottom: bottom, soft: soft),
+                    OutcropLayer(top: top, bottom: middle, soft: soft),
+                ]
+            } else {
+                layers.append(OutcropLayer(top: top, bottom: bottom, soft: soft))
+            }
+        }
+        let side = SIMD2(-crag.downhill.y, crag.downhill.x)
+        let centre = SIMD2(crag.centre.x, crag.centre.y)
+        let points = stride(from: -crag.width / 2, through: crag.width / 2 + 0.01, by: crag.width / 4).map {
+            centre + side * $0
+        }
+        return outcropMesh(
+            points: points, downs: points.map { _ in crag.downhill }, layers: Array(layers.suffix(7)),
+            crag: true,
+            flank: flank, r: &r)
+    }
+
+    /// An outcrop of `layers` (bottom to top) swept along `points` (render-only, illustrative): the
+    /// top layer's top is its bed's following the dip, from where it meets the ground to the top
+    /// layer's front; down from there each layer's front in turn, with a parting drawn back between
+    /// each and the next, to its foot, buried in the ground. Each layer is broken by joints into
+    /// blocks of its own (most joints cut every layer, some one only): each block's front stands
+    /// out or back, square or skew to the run, its corners broken back and its top dropped where a
+    /// lamina has gone; now and then a block has fallen away and left a bay. A layer weathers back
+    /// along stretches of its own, so tiers come and go and the layers above overhang it, soft ones
+    /// most; its front leans back or is undercut. The whole sinks under the ground at its ends (a
+    /// crag draws back into the slope there) and, for a ledge's outcrop, in gaps along it.
+    static func outcropMesh(
+        points inPoints: [SIMD2<Float>], downs inDowns: [SIMD2<Float>], layers: [OutcropLayer], crag: Bool,
+        flank: QuarryFlank, r: inout QuarryRandom
+    ) -> (vertices: [Vertex], indices: [UInt32]) {
+        let normal = beddingNormal
         let random = r.float()
-        // The bed's top at (x, y), and the ground.
-        func bedTop(_ q: SIMD2<Float>) -> Float {
-            (top - bedNormal.x * q.x - bedNormal.y * q.y) / bedNormal.z
+        let m = layers.count
+        guard m > 0, !inPoints.isEmpty else { return ([], []) }
+        func level(_ s: Float, _ q: SIMD2<Float>) -> Float {
+            (s - normal.x * q.x - normal.y * q.y) / normal.z
         }
         func ground(_ q: SIMD2<Float>) -> Float { flank.groundHeight(q.x, q.y) }
-        // The line along the bed through the ledges' contours, and on past each end.
-        var points = run.map { SIMD2($0.contour.x, $0.contour.y) }
-        var downs = run.map(\.downhill)
-        var reaches = run.map(\.run)
-        let strike = SIMD2(-downs[0].y, downs[0].x)
-        let firstWay = points.count > 1 ? simd_normalize(points[0] - points[1]) : -strike
-        let lastWay =
-            points.count > 1 ? simd_normalize(points[points.count - 1] - points[points.count - 2]) : strike
-        points.insert(points[0] + firstWay * r.float(0.9, 1.9), at: 0)
-        points.append(points[points.count - 1] + lastWay * r.float(0.9, 1.9))
-        downs.insert(downs[0], at: 0)
-        downs.append(downs[downs.count - 1])
-        reaches.insert(reaches[0] * 0.8, at: 0)
-        reaches.append(reaches[reaches.count - 1] * 0.8)
+        var (points, downs) = (inPoints, inDowns)
+        if !crag {
+            let strike = SIMD2(-downs[0].y, downs[0].x)
+            let n = points.count
+            let firstWay =
+                n > 1 && simd_distance(points[0], points[1]) > 1e-3
+                ? simd_normalize(points[0] - points[1]) : -strike
+            let lastWay =
+                n > 1 && simd_distance(points[n - 1], points[n - 2]) > 1e-3
+                ? simd_normalize(points[n - 1] - points[n - 2]) : strike
+            points.insert(points[0] + firstWay * r.float(0.9, 1.9), at: 0)
+            points.append(points[points.count - 1] + lastWay * r.float(0.9, 1.9))
+            downs.insert(downs[0], at: 0)
+            downs.append(downs[downs.count - 1])
+        }
         var lengths: [Float] = [0]
         for k in 1..<points.count { lengths.append(lengths[k - 1] + simd_distance(points[k], points[k - 1])) }
         let total = lengths[lengths.count - 1]
         guard total > 1 else { return ([], []) }
-        // Joints across it every 1.8 to 4.2 m, each opened its own amount.
-        var joints: [(at: Float, depth: Float)] = []
-        var next = r.float(1.2, 3.2)
-        while next < total - 1 {
-            joints.append((next, r.float(0.4, 1)))
-            next += r.float(1.1, 3.2)
+        // Joints: most cut every layer, some one only.
+        struct Joint {
+            var at: Float
+            var open: Float
         }
-        // Each block between joints its own: standing out or set back, and some with their top
-        // lamina gone, so the run reads as jointed blocks of its bed, stepped at each joint.
-        let blocks: [(out: Float, drop: Float)] = (0...joints.count).map { _ in
-            (r.float(-0.45, 0.35), r.float() < 0.45 ? r.float(0.08, 0.32) : 0)
+        struct Block {
+            /// Its front's stand-out at its two ends and at a kink between (`kinkAt` of the way).
+            var outA: Float
+            var outB: Float
+            var outKink: Float
+            var kinkAt: Float
+            var drop: Float
+            var chamfer: Float
+            /// How far its front bulges out (+) or is hollowed (-) half way down, as a share of
+            /// the layer's thickness.
+            var bulge: Float
+            /// The parting over it closed: it and the layer above stand as one.
+            var merged: Bool
+            /// How many layers from the top are gone over it (the top layer's blocks only).
+            var strip: Int
         }
-        var samples = Array(stride(from: Float(0), through: total, by: 0.55))
+        var shared: [Float] = []
+        var next = r.float(1, crag ? 3.5 : 2.8)
+        while next < total - 0.8 {
+            shared.append(next)
+            next += crag ? r.float(1.6, 4.5) : r.float(1.4, 3.6)
+        }
+        var joints: [[Joint]] = []
+        var blocks: [[Block]] = []
+        for _ in 0..<m {
+            var own: [Joint] = []
+            for at in shared where r.float() < 0.9 { own.append(Joint(at: at, open: r.float(0.3, 1))) }
+            var extra = r.float(0.8, 3)
+            while extra < total - 0.6 {
+                if r.float() < 0.15 { own.append(Joint(at: extra, open: r.float(0.2, 0.8))) }
+                extra += r.float(0.8, 3)
+            }
+            own.sort { $0.at < $1.at }
+            var kept: [Joint] = []
+            for j in own where kept.isEmpty || j.at - kept[kept.count - 1].at > 0.5 { kept.append(j) }
+            joints.append(kept)
+            let spread: Float = crag ? 0.4 : 0.45
+            var row: [Block] = []
+            for _ in 0...kept.count {
+                let out = r.float(-spread, spread * 0.8)
+                var block = Block(
+                    outA: out + r.float(-0.3, 0.3), outB: out + r.float(-0.3, 0.3),
+                    outKink: out + r.float(-0.35, 0.3),
+                    kinkAt: r.float(0.25, 0.75), drop: r.float() < 0.55 ? r.float(0.05, 0.5) : 0,
+                    chamfer: r.float(0.1, 0.6), bulge: r.float(-0.3, 0.25),
+                    merged: r.float() < (crag ? 0.6 : 0.45),
+                    strip: m > 1 && r.float() < 0.35 ? (m > 2 && r.float() < 0.35 ? 2 : 1) : 0)
+                if r.float() < (crag ? 0.1 : 0.1) {
+                    // Fallen away, leaving a bay.
+                    block.outA -= r.float(0.5, 1.2)
+                    block.outB = block.outA + r.float(-0.3, 0.3)
+                    block.outKink = block.outA - r.float(0, 0.3)
+                    block.drop += r.float(0.1, 0.35)
+                }
+                row.append(block)
+            }
+            blocks.append(row)
+        }
+        // Each layer's own weathering.
+        struct Look {
+            var batter: Float
+            var recess: Float
+            var goneDepth: Float
+            var goneAt: Float
+            var nose: Float
+            var lean: Float
+            var notch: Float
+            var overhang: Float
+            var phase: Float
+        }
+        var looks: [Look] = []
+        for layer in layers {
+            let soft = layer.soft
+            looks.append(
+                Look(
+                    batter: crag ? r.float(0, 0.35) : r.float(0, 0.12),
+                    recess: soft * (crag ? r.float(0.6, 1.4) : r.float(0.2, 0.5)),
+                    goneDepth: (crag ? r.float(0.2, 0.7) : r.float(0.2, 0.6)) * (0.6 + soft),
+                    goneAt: r.float(0, 0.25) - 0.15 * soft,
+                    nose: r.float(0.02, 0.1),
+                    lean: soft > 0.3 ? r.float(0.1, 0.45) : r.float(-0.12, 0.22),
+                    notch: crag && soft < 0.5 ? r.float(0.02, 0.12) : r.float(0.05, 0.3),
+                    overhang: soft > 0.3 ? 0.1 : crag ? r.float(0.3, 0.9) : r.float(0.15, 0.45),
+                    phase: r.float(0, 100)))
+        }
+        let phase = r.float(0, 100)
+        // How far in from each end each layer of a crag starts: further the higher it is.
+        var extents: [(Float, Float)] = []
+        for layer in 0..<m {
+            let high = Float(layer) / Float(max(m - 1, 1))
+            func reach() -> Float { crag ? total * (0.02 + 0.22 * high) * r.float(0.5, 1.5) : 0 }
+            extents.append((reach(), reach()))
+        }
+        var samples = Array(stride(from: Float(0), through: total, by: crag ? 0.6 : 0.5))
         if samples[samples.count - 1] < total - 0.15 { samples.append(total) }
-        for joint in joints {
-            samples += [joint.at - 0.13, joint.at - 0.03, joint.at + 0.03, joint.at + 0.13]
+        for layerJoints in joints {
+            for j in layerJoints { samples += [j.at - 0.12, j.at - 0.03, j.at + 0.03, j.at + 0.12] }
+        }
+        for (a, b) in extents where crag {
+            samples += [a - 0.03, a + 0.03, total - b - 0.03, total - b + 0.03]
         }
         samples.sort()
         var along: [Float] = []
-        for u in samples where along.isEmpty || u - along[along.count - 1] > 0.05 { along.append(u) }
-        // The run's own shape: its nose, its tiers and partings, its lean.
-        let nose = r.float(0.08, 0.25)
-        let partings = (r.float(0.28, 0.45), r.float(0.6, 0.82))
-        let standOut = (r.float(-0.55, 0.25), r.float(-0.65, 0.35))
-        let notch = (r.float(0.05, 0.32), r.float(0.05, 0.32))
-        let lean = r.float(-0.08, 0.12)
-        let phase = r.float(0, 100)
-        let columns = Self.outcropProfile
-        var grid: [SIMD3<Float>] = []
-        grid.reserveCapacity(along.count * columns)
-        var cracks: [Float] = []
+        for u in samples where u >= 0 && u <= total && (along.isEmpty || u - along[along.count - 1] > 0.04) {
+            along.append(u)
+        }
+        let rows = along.count
+        guard rows >= 2 else { return ([], []) }
+        let topLevel = layers[m - 1].top
+        let bottomLevel = layers[0].bottom
+        // Where the top meets the ground along the slope at each sample, and how far below that the
+        // foot's level does, eased along the run.
+        var frames: [(p: SIMD2<Float>, d: SIMD2<Float>)] = []
+        var meets: [Float] = []
+        var feet: [Float] = []
         var segment = 0
+        let span: Float = crag ? 6 : 2.5
+        let longest: Float = crag ? 24 : 4.5
         for u in along {
             while segment < points.count - 2 && lengths[segment + 1] < u { segment += 1 }
             let t = max(
@@ -730,81 +1142,198 @@ extension QuarryFace {
             let p = points[segment] + (points[segment + 1] - points[segment]) * t
             var d = downs[segment] + (downs[segment + 1] - downs[segment]) * t
             d = simd_length(d) > 1e-3 ? simd_normalize(d) : downs[segment]
-            let reach = reaches[segment] + (reaches[segment + 1] - reaches[segment]) * t
-            // Where the bed's top meets the ground along the slope here.
-            func excess(_ s: Float) -> Float { ground(p + d * s) - bedTop(p + d * s) }
+            func excess(_ s: Float, _ at: Float) -> Float { ground(p + d * s) - level(at, p + d * s) }
             var s0: Float = 0
-            if excess(-2.5) > 0, excess(2.5) < 0 {
-                var (a, b): (Float, Float) = (-2.5, 2.5)
+            if excess(-span, topLevel) > 0, excess(span, topLevel) < 0 {
+                var (a, b) = (-span, span)
                 for _ in 0..<20 {
-                    let m = (a + b) / 2
-                    if excess(m) > 0 { a = m } else { b = m }
+                    let mid = (a + b) / 2
+                    if excess(mid, topLevel) > 0 { a = mid } else { b = mid }
                 }
                 s0 = (a + b) / 2
             }
-            let c = p + d * s0
-            let w = SIMD3(c.x, c.y, phase)
-            func at(_ s: Float) -> SIMD2<Float> { c + d * s }
-            func height(_ s: Float) -> Float { bedTop(at(s)) - ground(at(s)) }
-            // How much of it stands out here: none at its ends, little in its gaps.
-            let ends = min(smoothstep(0, 1.5, u), smoothstep(total, total - 1.5, u))
-            let gaps = smoothstep(-0.34, -0.12, QuarryNoise.fbm(w / 5, octaves: 2))
-            let stand = ends * gaps
-            var joint: Float = 0
-            for j in joints { joint = max(joint, j.depth * (1 - smoothstep(0.03, 0.12, abs(u - j.at)))) }
-            cracks.append(joint)
-            // This block's own step, eased over a few centimetres either side of its joints.
-            var step = blocks[0]
-            for (k, j) in joints.enumerated() {
-                let t = smoothstep(j.at - 0.04, j.at + 0.04, u)
-                step.out += (blocks[k + 1].out - blocks[k].out) * t
-                step.drop += (blocks[k + 1].drop - blocks[k].drop) * t
+            var foot: Float = 0.5
+            if excess(s0, bottomLevel) > 0 {
+                foot = longest
+                var s: Float = 0.25
+                while s < longest {
+                    if excess(s0 + s, bottomLevel) < 0 {
+                        foot = s
+                        break
+                    }
+                    s += 0.25
+                }
             }
-            // Its front, wandering, no taller than a little over the bed is thick.
-            var front = max(0.6, reach * (1.25 + 0.8 * QuarryNoise.fbm(w / 2.3 + 3, octaves: 2)))
-            while front > 0.6 && height(front) > 1.35 * thickness { front -= 0.1 }
-            front = max(0.5, front + step.out) * (0.55 + 0.45 * stand) - joint * 0.12
-            let rise = max(0.15, height(front))
-            let sink = (1 - stand) * (rise + 0.45)
-            // A lamina come away from the top's front part.
-            let lamina = 0.2 * smoothstep(0.05, 0.3, QuarryNoise.fbm(w / 3.1 + 5, octaves: 2)) + step.drop
-            let wobble = (
-                0.5 * QuarryNoise.fbm(w / 1.9 + 11, octaves: 2),
-                0.55 * QuarryNoise.fbm(w / 1.9 + 19, octaves: 2)
-            )
-            let noseBottom = bedTop(at(front)) - lamina - nose
-            let face = max(0.05, noseBottom - ground(at(front)))
-            let fit = min(1, face / 0.7)
-            let wander = 0.12 * QuarryNoise.fbm(w / 2.6 + 23, octaves: 2)
-            let parting1 = noseBottom - (partings.0 + wander) * face
-            let parting2 = noseBottom - (partings.1 + wander) * face
-            let front1 = front + (standOut.0 + wobble.0) * fit
-            let front2 = front + (standOut.1 + wobble.1) * fit
-            let foot = front2 + 0.1
-            let profile: [(Float, Float)] = [
-                (-1.2, min(bedTop(at(-1.2)), ground(at(-1.2))) - 0.4),
-                (-0.35, min(bedTop(at(-0.35)) - 0.06, ground(at(-0.35)) - 0.12)),
-                (0.3 * (front - nose), bedTop(at(0.3 * (front - nose))) - 0.03),
-                (0.65 * (front - nose), bedTop(at(0.65 * (front - nose))) - lamina * 0.5),
-                (front - nose, bedTop(at(front - nose)) - lamina),
-                (front - nose * 0.3, bedTop(at(front)) - lamina - nose * 0.3),
-                (front, noseBottom),
-                (front - lean * partings.0 * face, parting1 + 0.06 * fit),
-                (min(front, front1) - notch.0 * fit, parting1 - 0.04 * fit),
-                (front1, parting1 - 0.14 * fit),
-                (front1 - lean * (partings.1 - partings.0) * face, parting2 + 0.06 * fit),
-                (min(front1, front2) - notch.1 * fit, parting2 - 0.04 * fit),
-                (front2, parting2 - 0.14 * fit),
-                (foot, min(ground(at(foot)) + 0.05, parting2 - 0.2 * fit)),
-                (foot + 0.55, ground(at(foot + 0.55)) - 0.45),
-            ]
-            for (s, z) in profile {
-                let q = at(s)
-                grid.append(SIMD3(q.x, q.y, z - sink))
+            frames.append((p, d))
+            meets.append(s0)
+            feet.append(foot)
+        }
+        func eased(_ v: [Float], _ width: Float) -> [Float] {
+            along.indices.map { k in
+                var (sum, weight): (Float, Float) = (0, 0)
+                for q in along.indices where abs(along[q] - along[k]) <= width {
+                    let w = 1 - abs(along[q] - along[k]) / (width * 1.01)
+                    sum += v[q] * w
+                    weight += w
+                }
+                return sum / weight
             }
         }
-        let rows = along.count
-        guard rows >= 2 else { return ([], []) }
+        meets = eased(meets, crag ? 2.5 : 1.2)
+        feet = eased(feet, crag ? 2.5 : 1.2)
+        // The profile's layout: buried behind, the top layer's top, each layer's front (with the
+        // parting above it for all but the top one), the foot.
+        var parts: [OutcropPart] = [.buried, .buried, .top, .top, .top]
+        var layerOf = [0, 0, 0, 0, 0]
+        for k in 0..<m {
+            if k > 0 {
+                parts += [.parting, .top]
+                layerOf += [k, k]
+            }
+            parts += [.face, .face, .face]
+            layerOf += [k, k, k]
+        }
+        parts += [.foot, .foot]
+        layerOf += [m - 1, m - 1]
+        let columns = parts.count
+        var grid: [SIMD3<Float>] = []
+        grid.reserveCapacity(rows * columns)
+        var opened: [Float] = []
+        opened.reserveCapacity(rows * columns)
+        let endLength: Float = crag ? 5 : 1.5
+        for (k, u) in along.enumerated() {
+            let (p, d) = frames[k]
+            let c = p + d * meets[k]
+            let w = SIMD3(c.x, c.y, phase)
+            func at(_ s: Float) -> SIMD2<Float> { c + d * s }
+            let ends = min(smoothstep(0, endLength, u), smoothstep(total, total - endLength, u))
+            let gaps = crag ? 1 : smoothstep(-0.34, -0.12, QuarryNoise.fbm(w / 5, octaves: 2))
+            let stand = ends * gaps
+            var base = max(
+                0.5, feet[k] * (0.88 + 0.45 * QuarryNoise.fbm(w / 4 + 3, octaves: 2)) + (crag ? 0.25 : 0.1))
+            base *= crag ? 0.2 + 0.8 * ends : 0.55 + 0.45 * stand
+            var fronts = [Float](repeating: 0, count: m)
+            var drops = [Float](repeating: 0, count: m)
+            var opens = [Float](repeating: 0, count: m)
+            var bulges = [Float](repeating: 0, count: m)
+            var closed = [Bool](repeating: false, count: m)
+            var batter: Float = 0
+            for layer in 0..<m {
+                let look = looks[layer]
+                let js = joints[layer]
+                let b = js.firstIndex { $0.at > u } ?? js.count
+                let start = b == 0 ? 0 : js[b - 1].at
+                let end = b == js.count ? total : js[b].at
+                let block = blocks[layer][b]
+                let t = (u - start) / max(end - start, 1e-3)
+                var out =
+                    t < block.kinkAt
+                    ? block.outA + (block.outKink - block.outA) * t / block.kinkAt
+                    : block.outKink + (block.outB - block.outKink) * (t - block.kinkAt) / (1 - block.kinkAt)
+                // Its corners broken back.
+                let corner = max(0, 1 - min(u - start, end - u) / block.chamfer)
+                out -= corner * block.chamfer * 0.9
+                let lw = SIMD3(u / (crag ? 6 : 4.5), Float(layer) * 3.7, look.phase)
+                let gone =
+                    smoothstep(look.goneAt - 0.06, look.goneAt + 0.06, QuarryNoise.fbm(lw, octaves: 2))
+                    * look.goneDepth
+                let wobble =
+                    0.1 * QuarryNoise.fbm(SIMD3(u / 1.6, Float(layer) * 5.1, look.phase + 3), octaves: 2)
+                var open: Float = 0
+                for j in js { open = max(open, j.open * (1 - smoothstep(0.03, 0.12, abs(u - j.at)))) }
+                var f = base - batter - look.recess - gone + out + wobble
+                if layer > 0 { f = min(f, fronts[layer - 1] + look.overhang) }
+                f -= open * 0.3
+                fronts[layer] = f
+                drops[layer] = block.drop + corner * block.chamfer * 0.35 + open * 0.12
+                opens[layer] = open
+                bulges[layer] = block.bulge
+                closed[layer] = block.merged && layer < m - 1
+                batter += look.batter
+            }
+            // Over some blocks of the top layer, it and maybe the one below are gone, so the
+            // outcrop's top steps down a layer there; elsewhere the top layer stands.
+            let topJoints = joints[m - 1]
+            let strip = blocks[m - 1][topJoints.firstIndex { $0.at > u } ?? topJoints.count].strip
+            fronts[m - 1] = max(fronts[m - 1], 0.2)
+            // Where a parting has closed, the layer under it stands with the one above as one.
+            for layer in stride(from: m - 2, through: 0, by: -1) where closed[layer] {
+                fronts[layer] = fronts[layer + 1]
+                drops[layer] = 0
+            }
+            for layer in max(0, m - strip)..<m where strip > 0 { fronts[layer] = -1.5 }
+            // A crag's upper beds run out before its lower ones, so its ends step down.
+            for layer in 0..<m where crag && (u < extents[layer].0 || u > total - extents[layer].1) {
+                fronts[layer] = -1.5
+            }
+            // A lamina come away from the top's front part.
+            let lamina = 0.2 * smoothstep(0.05, 0.3, QuarryNoise.fbm(w / 3.1 + 5, octaves: 2))
+            var profile: [SIMD2<Float>] = []
+            profile.reserveCapacity(columns)
+            let topFront = fronts[m - 1] - looks[m - 1].nose
+            profile.append(SIMD2(-1.2, min(level(topLevel, at(-1.2)), ground(at(-1.2))) - 0.4))
+            profile.append(SIMD2(-0.35, min(level(topLevel, at(-0.35)) - 0.06, ground(at(-0.35)) - 0.12)))
+            for (share, worn) in [(Float(0.35), Float(0.2)), (0.7, 0.6), (1, 1)] {
+                let s = share * topFront
+                let thick = level(topLevel, at(s)) - level(layers[m - 1].bottom, at(s))
+                profile.append(
+                    SIMD2(s, level(topLevel, at(s)) - min(0.5 * thick, (lamina + drops[m - 1]) * worn) - 0.03)
+                )
+            }
+            // The partings between layers are not quite planes: each wanders a little up and down
+            // along the run, so the layers thicken and thin.
+            var wander = [Float](repeating: 0, count: m + 1)
+            for layer in 1..<max(m, 1) {
+                let thin = min(
+                    layers[layer].top - layers[layer].bottom, layers[layer - 1].top - layers[layer - 1].bottom
+                )
+                wander[layer] =
+                    0.3 * thin * QuarryNoise.fbm(SIMD3(u / 2.2, Float(layer) * 7.3, phase + 11), octaves: 2)
+            }
+            func topOf(_ layer: Int, _ q: SIMD2<Float>) -> Float {
+                level(layers[layer].top, q) + wander[layer + 1]
+            }
+            func bottomOf(_ layer: Int, _ q: SIMD2<Float>) -> Float {
+                level(layers[layer].bottom, q) + wander[layer]
+            }
+            for layer in stride(from: m - 1, through: 0, by: -1) {
+                let (f, look) = (fronts[layer], looks[layer])
+                let thick = max(0.1, topOf(layer, at(f)) - bottomOf(layer, at(f)))
+                let lowered = min(0.45 * thick, layer == m - 1 ? lamina + drops[layer] : drops[layer])
+                let nose = closed[layer] ? 0 : min(look.nose, 0.3 * thick)
+                if layer < m - 1 {
+                    let back = min(fronts[layer + 1], f) - (closed[layer] ? 0 : look.notch)
+                    profile.append(SIMD2(back, topOf(layer, at(back)) - 0.02))
+                    profile.append(SIMD2(f - nose, topOf(layer, at(f - nose)) - lowered))
+                }
+                let upper = topOf(layer, at(f)) - lowered - nose
+                profile.append(SIMD2(f, upper))
+                // Over a closed parting below, the face runs on down without leaning.
+                let lean = layer > 0 && closed[layer - 1] ? 0 : look.lean
+                let low = f - lean * thick
+                let lower = bottomOf(layer, at(low)) + 0.04
+                profile.append(
+                    SIMD2(f - lean * thick * 0.5 + bulges[layer] * thick * 0.6, (upper + lower) / 2))
+                profile.append(SIMD2(low, lower))
+            }
+            let foot = fronts[0]
+            profile.append(
+                SIMD2(foot + 0.12, min(ground(at(foot + 0.12)) + 0.05, level(bottomLevel, at(foot)) - 0.15)))
+            profile.append(SIMD2(foot + 0.65, ground(at(foot + 0.65)) - 0.45))
+            // Nothing of it stands above the ground uphill of where its top meets it: a layer gone
+            // from over a block, or drawn back past that line, lies under the soil there.
+            for (column, q) in profile.enumerated() where q.x < 0 && parts[column] != .buried {
+                profile[column].y = min(q.y, ground(at(q.x)) - 0.08)
+            }
+            var rise: Float = 0.15
+            for q in profile { rise = max(rise, q.y - ground(at(q.x))) }
+            let sink = (1 - stand) * (rise + 0.45)
+            for (column, q) in profile.enumerated() {
+                let xy = at(q.x)
+                grid.append(SIMD3(xy.x, xy.y, q.y - sink))
+                opened.append(opens[m - 1 - layerOf[column]])
+            }
+        }
         func normals(_ g: [SIMD3<Float>]) -> [SIMD3<Float>] {
             var out = [SIMD3<Float>](repeating: .zero, count: g.count)
             for i in 0..<rows {
@@ -819,25 +1348,34 @@ extension QuarryFace {
             let sign: Float = middle.z < 0 ? -1 : 1
             return out.map { simd_length($0) > 1e-8 ? simd_normalize($0) * sign : SIMD3(0, 0, 1) }
         }
-        // Weathered: worn unevenly along its own normal, a decimetre or so, finer between.
+        // Broken up: every point moved a little in all three directions by noise, so the edges
+        // wander and the faces are uneven planes rather than a sweep's straight courses, and worn
+        // a few centimetres along its own normal (a decimetre of smooth wear along the normal made
+        // pillows of it until emmettl/bombcad-work#141).
         var shaped = grid
         let first = normals(grid)
+        let reach: Float = crag ? 0.32 : 0.2
         for k in 0..<grid.count {
             let p = grid[k] + SIMD3(0, 0, phase)
+            let q = p / 1.4
+            let move = SIMD3(
+                QuarryNoise.fbm(q, octaves: 2), QuarryNoise.fbm(q + 19.1, octaves: 2),
+                0.6 * QuarryNoise.fbm(q + 37.7, octaves: 2))
             let wear =
-                0.1 * QuarryNoise.fbm(p * 0.6, octaves: 3) + 0.05 * QuarryNoise.fbm(p * 2.6 + 7, octaves: 2)
-            shaped[k] = grid[k] + first[k] * wear
+                0.04 * QuarryNoise.fbm(p * 0.9, octaves: 2) + 0.03 * QuarryNoise.fbm(p * 2.8 + 7, octaves: 2)
+            shaped[k] = grid[k] + move * reach + first[k] * wear
         }
         let final = normals(shaped)
         var vertices: [Vertex] = []
         vertices.reserveCapacity(shaped.count)
         for (k, p) in shaped.enumerated() {
-            let above = p.z - flank.groundHeight(p.x, p.y)
+            let column = k % columns
             vertices.append(
                 Vertex(
                     x: p.x, y: p.y, z: p.z, normal: pack(normal: final[k], kind: 1),
                     body: outcropTag(
-                        above: above, random: random, part: k % columns, joint: cracks[k / columns])))
+                        above: p.z - flank.groundHeight(p.x, p.y), random: random, part: parts[column],
+                        layer: layerOf[column], joint: opened[k], crag: crag)))
         }
         var indices: [UInt32] = []
         indices.reserveCapacity((rows - 1) * (columns - 1) * 6)
@@ -852,23 +1390,29 @@ extension QuarryFace {
     }
 
     /// The ledges of a ridge cut's flanks as render-only outcrops (`outcrop`), one for each run of
-    /// them along a bed, in `ledgeVertices` and `ledgeIndices`. Returns how many were made.
+    /// them along a bed, and its crags (`crag`), in `ledgeVertices` and `ledgeIndices`. Returns how
+    /// many runs were made into outcrops.
     mutating func appendLedges(_ flank: QuarryFlank) -> Int {
         let runs = flank.ledgeRuns()
         let ledges = flank.ledges
-        var meshes = [(vertices: [Vertex], indices: [UInt32])](repeating: ([], []), count: runs.count)
+        let crags = flank.crags
+        var meshes = [(vertices: [Vertex], indices: [UInt32])](
+            repeating: ([], []), count: runs.count + crags.count)
         meshes.withUnsafeMutableBufferPointer { out in
             nonisolated(unsafe) let output = out
-            DispatchQueue.concurrentPerform(iterations: runs.count) { k in
-                output[k] = Self.outcrop(runs[k].map { ledges[$0] }, flank: flank, seed: UInt64(k))
+            DispatchQueue.concurrentPerform(iterations: runs.count + crags.count) { k in
+                output[k] =
+                    k < runs.count
+                    ? Self.outcrop(runs[k].map { ledges[$0] }, flank: flank, seed: UInt64(k))
+                    : Self.crag(crags[k - runs.count], flank: flank, seed: UInt64(k - runs.count))
             }
         }
         var made = 0
-        for mesh in meshes where !mesh.vertices.isEmpty {
+        for (k, mesh) in meshes.enumerated() where !mesh.vertices.isEmpty {
             let base = UInt32(ledgeVertices.count)
             ledgeVertices.append(contentsOf: mesh.vertices)
             ledgeIndices.append(contentsOf: mesh.indices.map { $0 + base })
-            made += 1
+            if k < runs.count { made += 1 }
         }
         return made
     }

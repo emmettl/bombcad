@@ -73,12 +73,59 @@ struct QuarryFlankTests {
         // Near the ground: buried at their backs and feet, standing no more than a few metres
         // proud of it.
         var buried = 0
-        for v in face.ledgeVertices {
+        var outcrop = 0
+        for v in face.ledgeVertices where !QuarryFace.isCrag(v.body) {
             let above = v.z - flank.groundHeight(v.x, v.y)
             #expect(above < 5)
             if above < 0 { buried += 1 }
+            outcrop += 1
         }
-        #expect(buried > face.ledgeVertices.count / 5)
+        #expect(buried > outcrop / 5)
+    }
+
+    @Test("A few crags of several beds stand on the steep flanks, clear of the cut, the view and the ledges")
+    func crags() throws {
+        let flank = try #require(QuarryFlank(face: Self.face))
+        let view = try #require(QuarryRidgeView.opening(Self.face))
+        #expect(!flank.crags.isEmpty && flank.crags.count <= QuarryFlank.cragCount)
+        let eye = SIMD2(view.orbit.eye.x, view.orbit.eye.y)
+        let focus = SIMD2(view.orbit.focus.x, view.orbit.focus.y)
+        for (k, crag) in flank.crags.enumerated() {
+            let n = try #require(flank.texel(crag.centre.x, crag.centre.y))
+            #expect(flank.cutDistance[n] > QuarryFlank.cragClear)
+            #expect(crag.beds.count >= 2)
+            #expect(crag.reach > 3)
+            // Off the line from the eye to what it looks at.
+            let p = SIMD2(crag.centre.x, crag.centre.y)
+            let t = max(0, min(1, simd_dot(p - eye, focus - eye) / simd_length_squared(focus - eye)))
+            #expect(simd_distance(p, eye + (focus - eye) * t) > QuarryFlank.cragClear)
+            for other in flank.crags[(k + 1)...] {
+                #expect(simd_distance(p, SIMD2(other.centre.x, other.centre.y)) > QuarryFlank.cragSpacing)
+            }
+        }
+        for ledge in flank.ledges {
+            let n = try #require(flank.texel(ledge.contour.x, ledge.contour.y))
+            #expect(!flank.cragMask[n])
+        }
+        // Made into outcrops after the ledges', standing several metres proud of the ground.
+        var face = Self.face
+        _ = face.appendLedges(flank)
+        let crag = face.ledgeVertices.filter { QuarryFace.isCrag($0.body) }
+        #expect(!crag.isEmpty)
+        let tallest = crag.map { $0.z - flank.groundHeight($0.x, $0.y) }.max() ?? 0
+        #expect(tallest > 3 && tallest < 14)
+        // Fallen blocks below them.
+        let stones = flank.stones()
+        let below = stones.filter { stone in
+            flank.crags.contains {
+                simd_distance(SIMD2($0.centre.x, $0.centre.y), SIMD2(stone.posSize.x, stone.posSize.y)) < $0
+                    .reach + $0.width
+            }
+                && stone.look.w > 0.5
+        }
+        #expect(below.count > flank.crags.count * 3)
+        let small = QuarryFlank.smallStoneCount(stones)
+        #expect(stones[..<small].allSatisfy { $0.posSize.w < QuarryFlank.largeStone })
     }
 
     @Test("Scree lies below the ledges more than on open gentle ground, and grass on the gentle ground")

@@ -97,6 +97,11 @@ public final class QuarryRenderer {
     public let flankStoneCount: Int
     public let flankStonePipeline: MTLRenderPipelineState
     public let flankStoneShadow: MTLRenderPipelineState
+    /// The first `flankSmallStoneCount` stones take the stones' own shape; the larger ones after them
+    /// the rounder `QuarryFlank.lobeShape()` (`roundStoneVertex`).
+    public let flankSmallStoneCount: Int
+    public let roundStonePipeline: MTLRenderPipelineState
+    public let roundStoneShadow: MTLRenderPipelineState
     /// The scrub: bushes' lobes after the stones in `flankStones`, drawn as lumpy spheres
     /// (`QuarryFlank.lobeShape()`).
     public let flankBushCount: Int
@@ -218,6 +223,7 @@ public final class QuarryRenderer {
         self.flank = flank
         let stones = flank?.stones() ?? []
         flankStoneCount = QuarryFlank.stoneCount(stones)
+        flankSmallStoneCount = QuarryFlank.smallStoneCount(stones)
         flankBushCount = stones.count - flankStoneCount
         let lobe = QuarryFlank.lobeShape()
         flankLobe = device.makeBuffer(bytes: lobe, length: 16 * lobe.count)!
@@ -241,8 +247,9 @@ public final class QuarryRenderer {
             print(
                 String(
                     format:
-                        "flanks: %d ledges (%d outcrop triangles), %d stones, %d bushes' lobes, %.2f s; dressing %d triangles",
-                    flank.ledges.count, meshes.ledgeCount / 3, flankStoneCount, flankBushCount,
+                        "flanks: %d ledges and %d crags (%d outcrop triangles), %d stones (%d large), %d bushes' lobes, %.2f s; dressing %d triangles",
+                    flank.ledges.count, flank.crags.count, meshes.ledgeCount / 3, flankStoneCount,
+                    flankStoneCount - flankSmallStoneCount, flankBushCount,
                     Date().timeIntervalSince(flankStart), meshes.dressingCount / 3))
         }
         // Terrain mesh.
@@ -497,6 +504,8 @@ public final class QuarryRenderer {
             vertex: "terrainVertex", fragment: flank == nil ? "terrainFragment" : "ridgeTerrainFragment")
         flankStonePipeline = try pipeline(vertex: "flankStoneVertex", fragment: "flankStoneFragment")
         flankStoneShadow = try pipeline(vertex: "flankStoneShadowVertex", fragment: nil, color: nil)
+        roundStonePipeline = try pipeline(vertex: "roundStoneVertex", fragment: "flankStoneFragment")
+        roundStoneShadow = try pipeline(vertex: "roundStoneShadowVertex", fragment: nil, color: nil)
         flankBushPipeline = try pipeline(vertex: "flankBushVertex", fragment: "flankStoneFragment")
         flankBushShadow = try pipeline(vertex: "flankBushShadowVertex", fragment: nil, color: nil)
         ledgePipeline = try pipeline(vertex: "ledgeVertex", fragment: "ledgeFragment")
@@ -669,14 +678,7 @@ public final class QuarryRenderer {
         shadow.setVertexBuffer(chipShapes, offset: 0, index: 5)
         shadow.drawPrimitives(
             type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices, instanceCount: chipCount)
-        if flankStoneCount > 0 {
-            shadow.setRenderPipelineState(flankStoneShadow)
-            shadow.setVertexBuffer(flankStones, offset: 0, index: 0)
-            shadow.setVertexBuffer(flankStoneShape, offset: 0, index: 5)
-            shadow.drawPrimitives(
-                type: .triangle, vertexStart: 0, vertexCount: flankStoneShape.length / 16,
-                instanceCount: flankStoneCount)
-        }
+        drawFlankStones(shadow, small: flankStoneShadow, round: roundStoneShadow)
         drawFlankExtras(shadow, ledge: ledgeShadow, bush: flankBushShadow)
         shadow.endEncoding()
         // Scene.
@@ -736,14 +738,7 @@ public final class QuarryRenderer {
         scene.setVertexBuffer(chipShapes, offset: 0, index: 5)
         scene.drawPrimitives(
             type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices, instanceCount: chipCount)
-        if flankStoneCount > 0 {
-            scene.setRenderPipelineState(flankStonePipeline)
-            scene.setVertexBuffer(flankStones, offset: 0, index: 0)
-            scene.setVertexBuffer(flankStoneShape, offset: 0, index: 5)
-            scene.drawPrimitives(
-                type: .triangle, vertexStart: 0, vertexCount: flankStoneShape.length / 16,
-                instanceCount: flankStoneCount)
-        }
+        drawFlankStones(scene, small: flankStonePipeline, round: roundStonePipeline)
         drawFlankExtras(scene, ledge: ledgePipeline, bush: flankBushPipeline)
         scene.setRenderPipelineState(sky)
         scene.setDepthStencilState(skyDepth)
@@ -776,6 +771,30 @@ public final class QuarryRenderer {
         buffer.commit()
         buffer.waitUntilCompleted()
         return buffer.gpuEndTime - buffer.gpuStartTime
+    }
+
+    /// A ridge cut's render-only stones (none for a face): the small ones with the stones' own
+    /// shape, the large ones rounder.
+    func drawFlankStones(
+        _ encoder: MTLRenderCommandEncoder, small: MTLRenderPipelineState, round: MTLRenderPipelineState
+    ) {
+        guard flankStoneCount > 0 else { return }
+        encoder.setVertexBuffer(flankStones, offset: 0, index: 0)
+        if flankSmallStoneCount > 0 {
+            encoder.setRenderPipelineState(small)
+            encoder.setVertexBuffer(flankStoneShape, offset: 0, index: 5)
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: flankStoneShape.length / 16,
+                instanceCount: flankSmallStoneCount)
+        }
+        if flankStoneCount > flankSmallStoneCount {
+            encoder.setRenderPipelineState(round)
+            encoder.setVertexBuffer(flankStones, offset: 48 * flankSmallStoneCount, index: 0)
+            encoder.setVertexBuffer(flankLobe, offset: 0, index: 5)
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: flankLobe.length / 16,
+                instanceCount: flankStoneCount - flankSmallStoneCount)
+        }
     }
 
     /// A ridge cut's outcrops and bushes (none for a face), from both sides: the outcrops are open
