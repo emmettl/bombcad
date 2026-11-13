@@ -937,3 +937,51 @@ and `after/`, the steps on the way in `try1/` to `try8/`, the Quarry Face check 
 and each other, of at least two beds, with no ledges on their ground; they are made into outcrops
 after the ledges' (a tag bit marks them), standing 3 to 14 m proud of the ground, with fallen blocks
 below; small stones come before large ones.
+
+## Stage 3e: rock that looks strong, 13 November 2026
+
+emmettl/bombcad-work#139, on the user's word of 13 November. Same standing: illustrative, for the eye.
+The changes (shared with the Quarry Face) and the cost are in
+[hillside-blast.md](hillside-blast.md#stage-3e-rock-that-looks-strong-13-november-2026); this is what
+they do to the ridge cut, and the piece-size study.
+
+- *The crest before it breaks.* The held skin covers the cut's rock (0.11 M triangles in the window,
+  0.32 M for the film) and goes block by block as the swell lifts the blocks. The weathered surface
+  now has joints that wander and die out with dark open cracks, knobs and hollows, laminae stepped
+  off the harder beds' tops, pits, lichen and crusts: in the Pull back's close shot at 0.5 and 1 s the
+  crest reads as jointed limestone pavement rather than banded smooth slabs.
+- *The rock round the cut* (#138's render-only rock, laid on one surface since then) takes the same
+  relief and shading, so it and the cut's crest match: in the default view at 1 s both are jointed
+  weathered rock.
+- *What still looks wrong.* From the default view the two joint sets on the crest's flat tops read
+  as a fairly regular grid, like a limestone pavement's, which is natural but a little tidy; the
+  shale bands' fine laminations show as thin lines close in.
+- Files: `$BOMBCAD_DATA/hillside-blast/rock-strong/` (`before/ridge-*` and `final/ridge-*` from the
+  same poses, `ridge-poses`; the piece-size runs `ridge*k-poses` and their clips `size*/`).
+- *Piece size* (below): the scene's default block size and count are unchanged; a proposal for the
+  user.
+
+**Piece size: a proposal, not changed.** The ridge's pieces are small (median 0.57 m), so the broken
+crest reads as a field of small blocks. Tried with `hillsideblast simulate --ridge --blocks N
+[--fracture S]` (main's solver, 20 s at 240 Hz; `--fracture` scales how much the bedding and joints cut
+the coarse cells, `QuarryFace.Options.fractureScale`, 1 as the scene is):
+
+| asked | blocks | median / 90% / largest (m) | spheres | physics a frame while awake, median / p90 (ms) | last second: worst move, over 10 cm |
+|---|---|---|---|---|---|
+| 100,000 (default) | 96,386 | 0.57 / 1.01 / 2.46 | 524,956 | 37.8 / 70.6 | 1.47 m, 2 |
+| 70,000 | 75,369 | 0.61 / 1.10 / 2.54 | 411,848 | 26.5 / 43.3 | 0.00 m, 0 |
+| 50,000 | 59,820 | 0.65 / 1.20 / 2.73 | 327,040 | 19.7 / 32.1 | 0.01 m, 0 |
+| 30,000 | 42,338 | 0.71 / 1.35 / 2.83 | 230,157 | 12.9 / 20.5 | 0.29 m, 2 |
+| 30,000, fracture 0.5 | 31,259 | 0.82 / 1.49 / 2.86 | 175,368 | 10.4 / 16.4 | 0.03 m, 0 |
+
+No NaNs in any. Asking for fewer blocks alone changes the size slowly (the cut's coarse cells are
+capped by its volume, and the bedding and joints cut each cell much the same), so the pieces stay
+small; halving the fracture as well gives pieces 44% larger at the median and a third of the blocks
+and spheres. In the Pull back at 2.6 and 3.2 s the crest then breaks into broad slabs and blocks a
+metre or two across rather than a carpet of small ones, and the pile at 19.9 s is coarser
+(`size30kf05/`, against `before/`; `size50k/`, `size30k/` the others). Physics while the rock moves
+falls by about 3.6 times (the Studio was loaded; GPU medians while more than 5% are awake), and the
+event settles as well. **What it would take:** for a ridge cut only, the window's and the clip's
+block count 100,000 to 30,000 and `fractureScale` 0.5 (two lines where the session's options are
+made, with the face unchanged), and a check that the heave (#134's swell, carried and released by
+block) still reads with fewer, larger blocks; it did in these clips. Left for the user's word.

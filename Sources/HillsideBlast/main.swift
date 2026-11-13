@@ -25,7 +25,7 @@ let dataRoot = URL(fileURLWithPath: "/Volumes/StudioData/bombcad/hillside-blast"
 guard let command = arguments.first else {
     print("hillsideblast: an illustrative spectacle (docs/hillside-blast.md), not a blast-design aid.")
     print(
-        "hillsideblast rigid-scaling <counts...> | simulate --blocks N --seconds T --out name | render --poses name --out name [--clip] [--stills t,t,...] | clip --poses name --out name [--motion still|orbit|pullBack] [--frames t,t,...]"
+        "hillsideblast rigid-scaling <counts...> | simulate --blocks N [--fracture S] --seconds T --out name | render --poses name --out name [--clip] [--stills t,t,...] | clip --poses name --out name [--motion still|orbit|pullBack] [--frames t,t,...]"
     )
     exit(0)
 }
@@ -39,6 +39,7 @@ let device = MTLCreateSystemDefaultDevice()!
 var options = QuarryFace.Options()
 options.blocks = option(arguments, "--blocks").flatMap(Int.init) ?? 100_000
 options.spheres = option(arguments, "--spheres").flatMap(Int.init) ?? 5
+options.fractureScale = option(arguments, "--fracture").flatMap(Float.init) ?? 1
 // `clip` is the window's Record Clip, at the window's mesh.
 if command == "clip" { options.meshDetail = 1 }
 let substepsPerSecond = option(arguments, "--hz").flatMap(Float.init) ?? 240
@@ -234,7 +235,7 @@ if command == "simulate" {
 }
 
 if command == "clip" {
-    hillside.buildDressing(level: 1)
+    if !arguments.contains("--no-dressing") { hillside.buildDressing(level: 1) }
     let posesName = option(arguments, "--poses") ?? name
     try ClipCommand.run(
         arguments: arguments, face: hillside, firings: firings, device: device,

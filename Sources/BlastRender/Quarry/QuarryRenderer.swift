@@ -134,9 +134,17 @@ public final class QuarryRenderer {
     public let shadowSampler: MTLSamplerState
     public let linearSampler: MTLSamplerState
     public let blockPipeline: MTLRenderPipelineState
+    /// The held skin over the blocks (`QuarryFace.skinVertices`, `skinVertex`).
+    public let skinPipeline: MTLRenderPipelineState
+    /// The dressing, drawn as blocks but never behind a skin (`dressingVertex`).
+    public let dressingPipeline: MTLRenderPipelineState
     public let terrainPipeline: MTLRenderPipelineState
     public let chipPipeline: MTLRenderPipelineState
-    public let blockShadow: MTLRenderPipelineState
+    /// The blocks, the held skin and the dressing in the shadow map (`heldBlockShadowVertex`,
+    /// `skinShadowVertex`, `dressingShadowVertex`).
+    public let heldBlockShadow: MTLRenderPipelineState
+    public let skinShadow: MTLRenderPipelineState
+    public let dressingShadow: MTLRenderPipelineState
     public let terrainShadow: MTLRenderPipelineState
     public let chipShadow: MTLRenderPipelineState
     public let chipUpdate: MTLComputePipelineState
@@ -271,7 +279,7 @@ public final class QuarryRenderer {
                 // The steep ground sits behind the render-only rock, not through it: set back along
                 // its normal (straight down left a near-vertical face where it was). A ridge cut's
                 // flanks only where that rock is.
-                let inset: Float = n.z < 0.8 ? 1.8 * (flank?.setBack(x, y) ?? 1) : 0
+                let inset = Self.steepInset(n, flank?.setBack(x, y))
                 let p = SIMD3(x, y, h(i, j)) - n * inset
                 vertices += [p.x, p.y, p.z, n.x, n.y, n.z]
             }
@@ -316,7 +324,7 @@ public final class QuarryRenderer {
                 let dx = extHeight(x + 1, y) - extHeight(x - 1, y)
                 let dy = extHeight(x, y + 1) - extHeight(x, y - 1)
                 let n = simd_normalize(SIMD3<Float>(-dx * 0.5, -dy * 0.5, 1))
-                let inset: Float = n.z < 0.8 ? 1.8 * (flank?.setBack(x, y) ?? 1) : 0
+                let inset = Self.steepInset(n, flank?.setBack(x, y))
                 let p = SIMD3(x, y, z) - n * inset
                 vertices += [p.x, p.y, p.z, n.x, n.y, n.z]
             }
@@ -499,6 +507,8 @@ public final class QuarryRenderer {
             return try device.makeRenderPipelineState(descriptor: d)
         }
         blockPipeline = try pipeline(vertex: "blockVertex", fragment: "blockFragment")
+        skinPipeline = try pipeline(vertex: "skinVertex", fragment: "blockFragment")
+        dressingPipeline = try pipeline(vertex: "dressingVertex", fragment: "blockFragment")
         // A ridge cut's ground is shaded as its flanks' cover says; a face's as before.
         terrainPipeline = try pipeline(
             vertex: "terrainVertex", fragment: flank == nil ? "terrainFragment" : "ridgeTerrainFragment")
@@ -511,7 +521,9 @@ public final class QuarryRenderer {
         ledgePipeline = try pipeline(vertex: "ledgeVertex", fragment: "ledgeFragment")
         ledgeShadow = try pipeline(vertex: "ledgeShadowVertex", fragment: nil, color: nil)
         chipPipeline = try pipeline(vertex: "chipVertex", fragment: "chipFragment")
-        blockShadow = try pipeline(vertex: "blockShadowVertex", fragment: nil, color: nil)
+        heldBlockShadow = try pipeline(vertex: "heldBlockShadowVertex", fragment: nil, color: nil)
+        skinShadow = try pipeline(vertex: "skinShadowVertex", fragment: nil, color: nil)
+        dressingShadow = try pipeline(vertex: "dressingShadowVertex", fragment: nil, color: nil)
         terrainShadow = try pipeline(vertex: "terrainShadowVertex", fragment: nil, color: nil)
         chipShadow = try pipeline(vertex: "chipShadowVertex", fragment: nil, color: nil)
         chipUpdate = try device.makeComputePipelineState(function: library.makeFunction(name: "chipUpdate")!)
@@ -568,6 +580,17 @@ public final class QuarryRenderer {
     /// The scene's own low sun, in the strip's frame: a face's rakes along it from in front; a
     /// ridge cut's is its opening view's (`QuarryRidgeView`), along the ridge from the side the view
     /// looks from, so that the cut's wall facing the eye is lit and the flanks are raked.
+    /// How far steep ground is set back along its normal behind the render-only rock and the held
+    /// skin (m). A ridge cut's, 1.8 m where `setBack` says, from slope 0.8 as before. A face's eases
+    /// in from 0.95 to 2.4 m by 0.6: set back by a step at 0.8, the ground's 1 m triangles over the
+    /// face folded out in front of the skin's shale recess (up to a metre) in dark slivers
+    /// (emmettl/bombcad-work#139).
+    static func steepInset(_ n: SIMD3<Float>, _ setBack: Float?) -> Float {
+        if let setBack { return n.z < 0.8 ? 1.8 * setBack : 0 }
+        let t = max(0, min(1, (0.95 - n.z) / 0.35))
+        return 2.4 * t * t * (3 - 2 * t)
+    }
+
     public static func sun(_ face: QuarryFace) -> SIMD3<Float> {
         QuarryRidgeView.opening(face)?.sun ?? SIMD3(0.86, -0.42, 0.26)
     }
@@ -630,14 +653,25 @@ public final class QuarryRenderer {
             cam.dustHigh = SIMD4(dust.high, 1)
         }
         func drawGeometry(
-            _ encoder: MTLRenderCommandEncoder, block: MTLRenderPipelineState, terrain: MTLRenderPipelineState
+            _ encoder: MTLRenderCommandEncoder, terrain: MTLRenderPipelineState
         ) {
-            encoder.setRenderPipelineState(block)
+            encoder.setRenderPipelineState(heldBlockShadow)
             encoder.setVertexBuffer(blockVertices, offset: 0, index: 0)
             encoder.setVertexBuffer(pose, offset: 0, index: 1)
+            encoder.setVertexBuffer(restCentres, offset: 0, index: 3)
             encoder.drawIndexedPrimitives(
                 type: .triangle, indexCount: indexCount, indexType: .uint32, indexBuffer: blockIndices,
                 indexBufferOffset: 0)
+            if meshes.skinCount > 0 {
+                encoder.setRenderPipelineState(skinShadow)
+                encoder.setCullMode(.none)
+                encoder.setVertexBuffer(meshes.skinVertices, offset: 0, index: 0)
+                encoder.drawIndexedPrimitives(
+                    type: .triangle, indexCount: meshes.skinCount, indexType: .uint32,
+                    indexBuffer: meshes.skinIndices, indexBufferOffset: 0)
+                encoder.setCullMode(.front)
+            }
+            encoder.setRenderPipelineState(dressingShadow)
             encoder.setVertexBuffer(dressingVertices, offset: 0, index: 0)
             encoder.setVertexBuffer(identityPose, offset: 0, index: 1)
             if dressingCount > 0 {
@@ -671,7 +705,7 @@ public final class QuarryRenderer {
         shadow.setDepthStencilState(opaqueDepth)
         shadow.setCullMode(.front)
         shadow.setVertexBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
-        drawGeometry(shadow, block: blockShadow, terrain: terrainShadow)
+        drawGeometry(shadow, terrain: terrainShadow)
         shadow.setCullMode(.none)
         shadow.setRenderPipelineState(chipShadow)
         shadow.setVertexBuffer(chips, offset: 0, index: 0)
@@ -700,16 +734,28 @@ public final class QuarryRenderer {
         scene.setFragmentSamplerState(shadowSampler, index: 0)
         scene.setFragmentBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 0)
         scene.setVertexBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 2)
+        // The held skin over the blocks first, on their poses: rock that has not broken, whole
+        // (emmettl/bombcad-work#139). Drawn first, the blocks under it (drawn behind it) fail the
+        // depth test before they are shaded.
+        scene.setVertexBuffer(pose, offset: 0, index: 1)
+        scene.setVertexBuffer(restCentres, offset: 0, index: 3)
+        if meshes.skinCount > 0 {
+            scene.setRenderPipelineState(skinPipeline)
+            scene.setVertexBuffer(meshes.skinVertices, offset: 0, index: 0)
+            scene.drawIndexedPrimitives(
+                type: .triangle, indexCount: meshes.skinCount, indexType: .uint32,
+                indexBuffer: meshes.skinIndices,
+                indexBufferOffset: 0)
+        }
         // Blocks and their rest positions.
         scene.setRenderPipelineState(blockPipeline)
         scene.setVertexBuffer(blockVertices, offset: 0, index: 0)
-        scene.setVertexBuffer(pose, offset: 0, index: 1)
-        scene.setVertexBuffer(restCentres, offset: 0, index: 3)
         scene.drawIndexedPrimitives(
             type: .triangle, indexCount: indexCount, indexType: .uint32, indexBuffer: blockIndices,
             indexBufferOffset: 0)
         // The dressing of the rest of the face.
         if dressingCount > 0 {
+            scene.setRenderPipelineState(dressingPipeline)
             scene.setVertexBuffer(dressingVertices, offset: 0, index: 0)
             scene.setVertexBuffer(identityPose, offset: 0, index: 1)
             scene.setVertexBuffer(identityRest, offset: 0, index: 3)
@@ -962,6 +1008,10 @@ public final class QuarryMeshBuffers: @unchecked Sendable {
     public let ledgeVertices: MTLBuffer
     public let ledgeIndices: MTLBuffer
     public let ledgeCount: Int
+    /// The held skin over the blocks (`QuarryFace.skinVertices`).
+    public let skinVertices: MTLBuffer
+    public let skinIndices: MTLBuffer
+    public let skinCount: Int
 
     init(_ face: QuarryFace, device: MTLDevice) {
         func buffer<T>(_ array: [T], minimum: Int) -> MTLBuffer {
@@ -978,6 +1028,9 @@ public final class QuarryMeshBuffers: @unchecked Sendable {
         ledgeVertices = buffer(face.ledgeVertices, minimum: 20)
         ledgeIndices = buffer(face.ledgeIndices, minimum: 12)
         ledgeCount = face.ledgeIndices.count
+        skinVertices = buffer(face.skinVertices, minimum: 20)
+        skinIndices = buffer(face.skinIndices, minimum: 12)
+        skinCount = face.skinIndices.count
     }
 
     private final class Weak {

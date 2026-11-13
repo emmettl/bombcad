@@ -238,6 +238,9 @@ public struct QuarryFace: Sendable {
         /// 0 for the film's full mesh, 1 for the live window's (fewer triangles).
         public var meshDetail = 0
         public var spheres = 5
+        /// How much the bedding and joints cut the coarse cells, times the rock's own intensity: 1
+        /// as the scenes are; less for fewer, larger pieces (for trying, emmettl/bombcad-work#139).
+        public var fractureScale: Float = 1
         public var seed: UInt64 = 2026
         public init() {}
     }
@@ -304,6 +307,10 @@ public struct QuarryFace: Sendable {
     /// (`ledgeFragment`); empty for a face.
     public var ledgeVertices: [Vertex] = []
     public var ledgeIndices: [UInt32] = []
+    /// The held skin over the blocks' outer faces (`heldSkin`): render-only, in the world's frame,
+    /// each triangle tagged with the block under it and gone once that block moves.
+    public var skinVertices: [Vertex] = []
+    public var skinIndices: [UInt32] = []
     /// What the generator made, line by line (counts and times).
     public var report: [String] = []
     /// Which generated rock this is, the same in every copy of it: a renderer of a face kept
@@ -745,7 +752,7 @@ public struct QuarryFace: Sendable {
             nonisolated(unsafe) let output = out
             DispatchQueue.concurrentPerform(iterations: cells.count) { n in
                 let centre = cells[n].centroid
-                let intensity = min(1, density(centre) / 2.6)
+                let intensity = min(1, density(centre) / 2.6) * options.fractureScale
                 let pieces = QuarryFracture.fracture(
                     cells[n].polyhedron, intensity: intensity, minimumVolume: 0.012 * referenceVolume,
                     beds: !cells[n].skin)
@@ -908,7 +915,7 @@ public struct QuarryFace: Sendable {
                 let thickness = across.1 - across.0
                 Self.tessellate(
                     polyhedron, centre: c, body: UInt32(n), level: level,
-                    warp: size * 0.07, seed: Float(n) * 0.137, relief: 0.16,
+                    warp: size * 0.07, seed: Float(n) * 0.137, relief: Self.blockRelief,
                     rounding: level >= 2 ? size * (0.03 + 0.04 * weathered) : 0, tags: tags,
                     outer: outer, inward: 0.4 * thickness, vertices: &vertices, indices: &indices)
                 for _ in 0..<6 {
@@ -1024,11 +1031,29 @@ public struct QuarryFace: Sendable {
         }
         self.blocks = blocks
         report.append(String(format: "meshes and spheres: %.1f s", Date().timeIntervalSince(meshed)))
+        // The held skin over the blocks' outer faces, on the same surface, finer than the blocks'
+        // own meshes (emmettl/bombcad-work#139).
+        let skin = Self.heldSkin(
+            pieces: keep.map(\.polyhedron), centres: keep.map(\.centroid), held: keep.map(\.skin),
+            face: hillside,
+            oldHeights: hOld, outer: outer, relief: Self.blockRelief,
+            spacing: options.meshDetail > 0 ? 0.25 : 0.15)
+        skinVertices = skin.vertices
+        skinIndices = skin.indices
+        report.append(skin.report)
         maxRadius = spheres.reduce(0) { max($0, $1.radius) }
         report.append(
             "blocks \(blocks.count), spheres \(spheres.count) (\(String(format: "%.2f", Float(spheres.count) / Float(max(blocks.count, 1)))) per block), max radius \(String(format: "%.2f", maxRadius)) m, vertices \(vertices.count), triangles \(indices.count / 3), \(String(format: "%.1f", Date().timeIntervalSince(start))) s in all"
         )
     }
+
+    /// The weathering grade (of 31) that marks the dressing under a face's held skin past the
+    /// strip's ends: drawn behind the skin (`dressingVertex`), as held blocks are, so a thin cell
+    /// whose outer face could not reach the shale's recess does not show through it.
+    public static let underSkinGrade: UInt32 = 30
+
+    /// The relief of the blocks' surfaces (`shaped`), the held skin's too.
+    static let blockRelief: Float = 0.16
 
     /// The bedding: the rock splits flatter along these planes, tilted a little.
     public static let beddingNormal = simd_normalize(SIMD3<Float>(0.06, 0.05, 1))
@@ -1141,34 +1166,6 @@ public struct QuarryFace: Sendable {
         func onOuter(_ p: SIMD3<Float>) -> Bool {
             outerPlanes.contains { abs(simd_dot($0.0, p) - $0.1) < 2e-3 }
         }
-        /// The continuous surface's own shape at a point of it, `here` being the point shaped: its
-        /// normal with the displacement and relief on it, the same for every cell that has the
-        /// point (forward differences 6 cm along the surface, each brought back onto it once).
-        func outerNormal(_ base: SIMD3<Float>, here: SIMD3<Float>, outer: OuterSurface) -> SIMD3<Float> {
-            let (_, ns) = outer(base)
-            let t1 = simd_normalize(
-                abs(ns.z) < 0.9 ? simd_cross(ns, SIMD3(0, 0, 1)) : simd_cross(ns, SIMD3(1, 0, 0)))
-            let t2 = simd_cross(ns, t1)
-            let e: Float = 0.06
-            func at(_ q: SIMD3<Float>) -> SIMD3<Float> { shaped(q + ns * outer(q).depth) }
-            let normal = simd_cross(at(base + t1 * e) - here, at(base + t2 * e) - here)
-            guard simd_length_squared(normal) > 1e-12 else { return ns }
-            let unit = simd_normalize(normal)
-            return simd_dot(unit, ns) < 0 ? -unit : unit
-        }
-        /// The displacement and relief, functions of world position alone.
-        func shaped(_ base: SIMD3<Float>) -> SIMD3<Float> {
-            var p = base + displacement(base)
-            if relief > 0 {
-                let w = p * 0.42 + 13
-                p +=
-                    relief
-                    * SIMD3<Float>(
-                        QuarryNoise.fbm(w, octaves: 3), QuarryNoise.fbm(w + 4.7, octaves: 3),
-                        QuarryNoise.fbm(w + 11.3, octaves: 3)) * 1.4
-            }
-            return p
-        }
         for (f, polygon) in poly.faces.enumerated() where polygon.count >= 3 {
             let tagged = body | (tags?[f] ?? 0)
             let outerFace = outer != nil && poly.kinds[f] == 1
@@ -1211,9 +1208,10 @@ public struct QuarryFace: Sendable {
                             // face's edge along it, so that what shows of a side face through a seam
                             // is lit as the surface is.
                             let base = ontoOuter(planar, outer: outer, inward: inward)
-                            let here = shaped(base)
+                            let here = outerPoint(base, outer: outer, relief: relief)
                             positions[at(i, j)] = here
-                            surfaceNormals[at(i, j)] = outerNormal(base, here: here, outer: outer)
+                            surfaceNormals[at(i, j)] = outerNormal(
+                                base, here: here, outer: outer, relief: relief)
                             continue
                         }
                         var p = planar + displacement(planar)
@@ -1379,6 +1377,39 @@ public struct QuarryFace: Sendable {
             }
         }
         let ridgeOuter = ridgeSurface
+        // A face's rock past the strip's ends, which the held skin's blocks share: laid on their own
+        // outer surface (the old ground stood back by its bed's weathering and about the blocks'
+        // `cellRecess`), so it reads whole beside the strip rather than as a mosaic of cells each
+        // standing proud by its own amount (until 13 November 2026, emmettl/bombcad-work#139). The
+        // dressing of the strip's new face, behind the broken rock, keeps its broken look.
+        let faceRecess: Float = 0.08
+        var faceSurface: OuterSurface?
+        if flank == nil {
+            faceSurface = { p in
+                let e: Float = 0.5
+                let top = surface(p.x, p.y)
+                let dx = (surface(p.x + e, p.y) - surface(p.x - e, p.y)) / (2 * e)
+                let dy = (surface(p.x, p.y + e) - surface(p.x, p.y - e)) / (2 * e)
+                let normal = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+                let depth = (top - p.z) * normal.z
+                return (depth - QuarryRock.blendedRecess(at: p + normal * depth) - faceRecess, normal)
+            }
+        }
+        let faceOuter = faceSurface
+        let original = self.original
+        /// How deep `p` lies under the old surface, along its normal (m).
+        @Sendable func oldDepth(_ p: SIMD3<Float>) -> Float {
+            let e: Float = 0.5
+            let top = hillside.height(original, p.x, p.y)
+            let dx =
+                (hillside.height(original, p.x + e, p.y) - hillside.height(original, p.x - e, p.y)) / (2 * e)
+            let dy =
+                (hillside.height(original, p.x, p.y + e) - hillside.height(original, p.x, p.y - e)) / (2 * e)
+            return (top - p.z) / sqrt(1 + dx * dx + dy * dy)
+        }
+        @Sendable func inCut(_ p: SIMD3<Float>) -> Bool {
+            hillside.height(original, p.x, p.y) - hillside.height(t.heights, p.x, p.y) > 0.2
+        }
         var meshes = [(vertices: [Vertex], indices: [UInt32])](repeating: ([], []), count: sites.count)
         meshes.withUnsafeMutableBufferPointer { out in
             nonisolated(unsafe) let output = out
@@ -1429,6 +1460,7 @@ public struct QuarryFace: Sendable {
                 let recess =
                     QuarryRock.recess(QuarryRock.kind(at: site))
                     * (0.6 + 0.8 * QuarryNoise.hash(Int32(n), 3, 5).magnitude) + sink
+                let faceWhole = faceOuter != nil && !inCut(site)
                 for along: SIMD3<Float> in [.zero, side, -side, slope, -slope] {
                     let reach = foot.0 + along * (0.7 * extent)
                     let (point, normal) = along == .zero ? foot : tangentPlane(SIMD2(reach.x, reach.y))
@@ -1437,17 +1469,28 @@ public struct QuarryFace: Sendable {
                     // surface for every cell (`ridgeOuter`), as the cut's held rock does.
                     let standBack =
                         flank.map { QuarryRock.blendedRecess(at: point) + $0.sink(point.x, point.y) }
-                        ?? recess
+                        ?? (faceWhole ? QuarryRock.blendedRecess(at: point) + faceRecess + 0.35 : recess)
                     polyhedron.clip(
                         normal: normal, offset: simd_dot(normal, point) + 0.35 - standBack, kind: 1)
+                }
+                if faceWhole, abs(site.y - hillside.faceLine(site.x)) < 30 {
+                    // Along the face, its foot ends just under the floor in front, rather than in points standing
+                    // out of it.
+                    let floor = hillside.floorHeight(site.x) - 0.3
+                    polyhedron.clip(normal: SIMD3(0, 0, -1), offset: -floor, kind: 2)
                 }
                 let (volume, centroid) = polyhedron.volumeAndCentroid
                 guard polyhedron.faces.count >= 4, polyhedron.faces.count < 40, volume > 0.02 else { return }
                 var vertices: [Vertex] = []
                 var indices: [UInt32] = []
                 var faceRandom = QuarryRandom(seed: UInt64(n) &+ 4441)
+                // The rock under a face's held skin, past the strip and where its new face is too
+                // near the old one to stay hidden behind the skin, is weathered a grade
+                // less (`underSkinGrade`), which the shader reads as "behind the skin".
+                let underSkin = faceWhole || (faceOuter != nil && oldDepth(centroid) < 2.5)
+                let grade: Float = underSkin ? Float(Self.underSkinGrade) / 31 : 1
                 let tags = polyhedron.faces.map { _ in
-                    QuarryRock.faceTag(weathering: 1, random: faceRandom.float())
+                    QuarryRock.faceTag(weathering: grade, random: faceRandom.float())
                 }
                 if let ridgeOuter {
                     // Laid on one continuous weathered surface, so the rock round the cut reads as
@@ -1457,6 +1500,13 @@ public struct QuarryFace: Sendable {
                     Self.tessellate(
                         polyhedron, centre: centroid, origin: .zero, body: 0, level: level, warp: 0, seed: 0,
                         relief: 0.3, tags: tags, outer: ridgeOuter, inward: 0.4 * (across.1 - across.0),
+                        vertices: &vertices, indices: &indices)
+                } else if faceWhole, let faceOuter {
+                    let across = polyhedron.extent(along: faceOuter(centroid).normal)
+                    Self.tessellate(
+                        polyhedron, centre: centroid, origin: .zero, body: 0, level: level, warp: 0, seed: 0,
+                        relief: Self.blockRelief, tags: tags, outer: faceOuter,
+                        inward: 0.4 * (across.1 - across.0),
                         vertices: &vertices, indices: &indices)
                 } else {
                     Self.tessellate(
@@ -1495,6 +1545,8 @@ public struct QuarryFace: Sendable {
         face.dressingIndices = []
         face.ledgeVertices = []
         face.ledgeIndices = []
+        face.skinVertices = []
+        face.skinIndices = []
         return face
     }
 

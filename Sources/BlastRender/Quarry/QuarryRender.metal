@@ -79,19 +79,14 @@ static inline float3 unpackNormal(uint packed) {
     return float3(float((packed >> 0) & 1023u), float((packed >> 10) & 1023u), float((packed >> 20) & 1023u)) / 511.5f - 1.0f;
 }
 
-vertex RasterOut blockVertex(uint vid [[vertex_id]],
-                             const device QuarryBlockVertex *vertices [[buffer(0)]],
-                             const device float4 *pose [[buffer(1)]],
-                             constant QuarryCamera &cam [[buffer(2)]],
-                             const device float4 *rest [[buffer(3)]]) {
-    QuarryBlockVertex v = vertices[vid];
+static inline RasterOut blockRaster(QuarryBlockVertex v, const device float4 *pose, constant QuarryCamera &cam,
+                                    const device float4 *rest, bool underSkin, bool dressing = false) {
     uint body = v.body & bodyMask;
     float3 pos = pose[2 * body].xyz;
     float4 q = pose[2 * body + 1];
     float3 local = float3(v.local);
     float3 w = pos + rotate(q, local);
     RasterOut o;
-    o.position = cam.viewProjection * float4(w, 1.0f);
     o.world = w;
     o.normal = rotate(q, unpackNormal(v.normalKind));
     o.local = local + rest[body].xyz;
@@ -103,17 +98,106 @@ vertex RasterOut blockVertex(uint vid [[vertex_id]],
     o.faceRandom = float(v.body >> 26) / 63.0f;
     float moved = length(pos - rest[body].xyz) + 2.0f * length(q.xyz) * max(rest[body].w, 0.3f);
     o.intact = (1.0f - o.released) * (1.0f - smoothstep(0.02f, 0.2f, moved));
+    // While the held skin is over a block (`skinVertex`), the block is drawn farther along the line
+    // of sight (2.5 m, and more far off): where its outer face stands proud of the skin (a hard
+    // bed's block over the shale's recess, a thin piece kept from the surface), even seen at a
+    // grazing angle, the skin is seen, not the block and its seams. The same pixels, so its outline
+    // is unchanged where no skin is.
+    // The dressing under a face's held skin past the strip (`QuarryFace.underSkinGrade`) too.
+    bool skinned = dressing ? ((v.body >> 21) & 31u) == 30u : underSkin && o.released < 0.5f && moved <= 0.03f;
+    float3 view = w - cam.eye.xyz;
+    float3 drawn = skinned ? w + view * (2.5f / max(length(view), 1.0f) + 0.04f) : w;
+    o.position = cam.viewProjection * float4(drawn, 1.0f);
     return o;
 }
 
-vertex float4 blockShadowVertex(uint vid [[vertex_id]],
+vertex RasterOut blockVertex(uint vid [[vertex_id]],
+                             const device QuarryBlockVertex *vertices [[buffer(0)]],
+                             const device float4 *pose [[buffer(1)]],
+                             constant QuarryCamera &cam [[buffer(2)]],
+                             const device float4 *rest [[buffer(3)]]) {
+    return blockRaster(vertices[vid], pose, cam, rest, true);
+}
+
+// The render-only dressing: as the blocks, on one identity pose, with no skin over it.
+vertex RasterOut dressingVertex(uint vid [[vertex_id]],
                                 const device QuarryBlockVertex *vertices [[buffer(0)]],
                                 const device float4 *pose [[buffer(1)]],
-                                constant QuarryCamera &cam [[buffer(2)]]) {
+                                constant QuarryCamera &cam [[buffer(2)]],
+                                const device float4 *rest [[buffer(3)]]) {
+    return blockRaster(vertices[vid], pose, cam, rest, false, true);
+}
+
+// The held skin (`QuarryFace.heldSkin`, emmettl/bombcad-work#139): one continuous surface a few
+// centimetres proud of the blocks' outer faces, in the world's frame, each triangle tagged with the
+// block under it, so rock that has not broken shows no seam between its cells. A triangle goes
+// (clipped away whole) once its block is released or has moved 3 cm; the block's own outer face is
+// under it.
+static inline bool skinGone(uint body, const device float4 *pose, const device float4 *rest) {
+    float4 p = pose[2 * body];
+    float4 q = pose[2 * body + 1];
+    float moved = length(p.xyz - rest[body].xyz) + 2.0f * length(q.xyz) * max(rest[body].w, 0.3f);
+    return p.w > 0.5f || moved > 0.03f;
+}
+
+vertex RasterOut skinVertex(uint vid [[vertex_id]],
+                            const device QuarryBlockVertex *vertices [[buffer(0)]],
+                            const device float4 *pose [[buffer(1)]],
+                            constant QuarryCamera &cam [[buffer(2)]],
+                            const device float4 *rest [[buffer(3)]]) {
     QuarryBlockVertex v = vertices[vid];
     uint body = v.body & bodyMask;
-    float3 w = pose[2 * body].xyz + rotate(pose[2 * body + 1], float3(v.local));
+    float3 w = float3(v.local);
+    RasterOut o;
+    o.position = skinGone(body, pose, rest) ? float4(0.0f, 0.0f, 2.0f, 1.0f) : cam.viewProjection * float4(w, 1.0f);
+    o.world = w;
+    o.normal = unpackNormal(v.normalKind);
+    o.local = w;
+    o.centre = rest[body].xyz;
+    o.bodyTint = fract(float(body) * 0.6180339f);
+    o.kind = 1u;
+    o.released = 0.0f;
+    o.weather = float((v.body >> 21) & 31u) / 31.0f;
+    o.faceRandom = float(v.body >> 26) / 63.0f;
+    o.intact = 1.0f;
+    return o;
+}
+
+// The blocks in the shadow map: a block under the held skin is moved 1.2 m away from the sun, as
+// it is drawn behind the skin, so the skin casts the rock's shadow (`skinShadowVertex`) and a piece
+// standing proud of the skin does not throw a stray shadow onto it.
+vertex float4 heldBlockShadowVertex(uint vid [[vertex_id]],
+                                    const device QuarryBlockVertex *vertices [[buffer(0)]],
+                                    const device float4 *pose [[buffer(1)]],
+                                    constant QuarryCamera &cam [[buffer(2)]],
+                                    const device float4 *rest [[buffer(3)]]) {
+    QuarryBlockVertex v = vertices[vid];
+    uint body = v.body & bodyMask;
+    float4 p = pose[2 * body];
+    float4 q = pose[2 * body + 1];
+    float3 w = p.xyz + rotate(q, float3(v.local));
+    float moved = length(p.xyz - rest[body].xyz) + 2.0f * length(q.xyz) * max(rest[body].w, 0.3f);
+    if (p.w < 0.5f && moved <= 0.03f) w -= cam.sun.xyz * 1.2f;
     return cam.shadow * float4(w, 1.0f);
+}
+
+vertex float4 dressingShadowVertex(uint vid [[vertex_id]],
+                                   const device QuarryBlockVertex *vertices [[buffer(0)]],
+                                   constant QuarryCamera &cam [[buffer(2)]]) {
+    QuarryBlockVertex v = vertices[vid];
+    float3 w = float3(v.local);
+    if (((v.body >> 21) & 31u) == 30u) w -= cam.sun.xyz * 1.2f;
+    return cam.shadow * float4(w, 1.0f);
+}
+
+vertex float4 skinShadowVertex(uint vid [[vertex_id]],
+                               const device QuarryBlockVertex *vertices [[buffer(0)]],
+                               const device float4 *pose [[buffer(1)]],
+                               constant QuarryCamera &cam [[buffer(2)]],
+                               const device float4 *rest [[buffer(3)]]) {
+    QuarryBlockVertex v = vertices[vid];
+    if (skinGone(v.body & bodyMask, pose, rest)) return float4(0.0f, 0.0f, 2.0f, 1.0f);
+    return cam.shadow * float4(float3(v.local), 1.0f);
 }
 
 // The top-down height of the scene, for the chips to land on and the fines to fill: the top
@@ -317,6 +401,79 @@ static inline float3 bedColour(float3 p) {
     return mix(r.patina, r.oxidised, 0.35f) * r.lamination;
 }
 
+static inline float hash2i(int2 c, uint salt) {
+    uint h = as_type<uint>(c.x) * 0x8DA6B343u ^ as_type<uint>(c.y) * 0xD8163841u ^ salt * 0xCB1AB31Fu;
+    h ^= h >> 13; h *= 0x4F37F8A5u; h ^= h >> 16;
+    return float(h & 0xFFFFFFu) / 16777215.0f;
+}
+
+// Nearest and second-nearest stone in a jittered grid: x f1, y f2, z the stone's own value, and the
+// way to its middle in `toCentre`.
+static inline float3 stones(float2 x, uint salt, thread float2 &toCentre) {
+    float2 i = floor(x), f = x - i;
+    float f1 = 8.0f, f2 = 8.0f, id = 0.0f;
+    for (int y = -1; y <= 1; ++y) for (int xx = -1; xx <= 1; ++xx) {
+        int2 cell = int2(i) + int2(xx, y);
+        float2 o = float2(hash2i(cell, salt), hash2i(cell, salt + 7u)) * 0.8f + 0.1f;
+        float2 r = float2(xx, y) + o - f;
+        float d = dot(r, r);
+        if (d < f1) { f2 = f1; f1 = d; id = hash2i(cell, salt + 13u); toCentre = r; }
+        else if (d < f2) { f2 = d; }
+    }
+    return float3(sqrt(f1), sqrt(f2), id);
+}
+
+// The old joints of the weathered surface (`QuarryJoints.field` in BlastModel, a copy: change them
+// together): x how deep in a joint's groove, y how near its open crack, each times how open the
+// joint is there.
+static inline float jointHash(int k, uint salt) {
+    uint h = (as_type<uint>(k) * 0x8DA6B343u) ^ (salt * 0xCB1AB31Fu);
+    h ^= h >> 13; h *= 0x4F37F8A5u; h ^= h >> 16;
+    return float(h & 0xFFFFFFu) / 16777216.0f;
+}
+static inline float jointNoise(float x, uint salt) {
+    float i = floor(x);
+    float f = x - i;
+    float s = f * f * (3.0f - 2.0f * f);
+    int k = int(i);
+    float a = jointHash(k, salt);
+    return a + (jointHash(k + 1, salt) - a) * s;
+}
+static inline void jointSet(float3 p, int bed, float2 normal, float2 along, float spacing, float lean, uint salt,
+                            float halfWidth, float line, thread float2 &field) {
+    float v = dot(p.xy, along);
+    float s = float(salt);
+    float u = dot(p.xy, normal) + lean * p.z + 1.1f * sin(0.11f * v + s) + 0.35f * sin(0.37f * v + 0.7f * s)
+        + 0.12f * sin(1.3f * v + 1.9f * s)
+        + (jointHash(bed, salt + 6u) < 0.35f ? (jointHash(bed, salt + 5u) - 0.5f) * spacing : 0.0f);
+    int k0 = int(floor(u / spacing));
+    for (int dk = -1; dk <= 1; ++dk) {
+        int k = k0 + dk;
+        if (jointHash(k, salt) <= 0.35f) continue;
+        float centre = (float(k) + 0.5f + 0.7f * (jointHash(k, salt + 1u) - 0.5f)) * spacing;
+        float d = abs(u - centre);
+        float n = jointNoise(v * 0.06f + float(k) * 7.31f + float(bed) * 3.17f, salt + 2u);
+        float open = saturate((n - 0.35f) / 0.3f);
+        float openness = open * open * (3.0f - 2.0f * open);
+        if (d < halfWidth) {
+            float t = d / halfWidth;
+            field.x = max(field.x, openness * (1.0f - t * t) * (1.0f - t * t));
+        }
+        if (d < line) {
+            float t = saturate((d - 0.5f * line) / (0.5f * line));
+            field.y = max(field.y, openness * (1.0f - t * t * (3.0f - 2.0f * t)));
+        }
+    }
+}
+static inline float2 jointField(float3 p, float halfWidth, float line) {
+    float2 field = float2(0.0f);
+    int bed = int(floor(bedCoordinate(dot(p, beddingNormal))));
+    if (rockKind(bed) == 1) return field;
+    jointSet(p, bed, float2(0.9394f, 0.3429f), float2(-0.3429f, 0.9394f), 3.7f, 0.08f, 17u, halfWidth, line, field);
+    jointSet(p, bed, float2(-0.3090f, 0.9511f), float2(-0.9511f, -0.3090f), 5.6f, -0.05f, 29u, halfWidth, line, field);
+    return field;
+}
+
 fragment float4 blockFragment(RasterOut in [[stage_in]],
                               constant QuarryCamera &cam [[buffer(0)]],
                               depth2d<float> shadowMap [[texture(0)]],
@@ -345,6 +502,28 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
         patina = rock.patina * (0.72f + 0.6f * streak) * (0.8f + 0.4f * stain);
         float lichen = smoothstep(0.55f, 0.75f, fbm3(rest * 1.3f + 40.0f, 4)) * (rock.kind == 1 ? 0.0f : 1.0f);
         patina = mix(patina, float3(0.25f, 0.28f, 0.13f) * (0.7f + 0.8f * grain), lichen * 0.3f);
+        // The weathered surface's small relief, as its geometry (`QuarryFace.weatheredRelief`) is
+        // too coarse to carry it (emmettl/bombcad-work#139): the old joints' dark open cracks and
+        // stained grooves, small pits, pale lichen rosettes and dark crusts in patches; the finer
+        // of them fade as they come under a pixel.
+        float footprint = length(fwidth(rest));
+        float2 joint = jointField(rest, 0.35f, 0.025f + 1.2f * footprint);
+        float crackFade = 1.0f - smoothstep(0.05f, 0.2f, footprint);
+        patina *= 1.0f - 0.18f * joint.x * joint.x;
+        patina = mix(patina, float3(0.06f, 0.053f, 0.047f), joint.y * 0.75f * crackFade);
+        float close = 1.0f - smoothstep(0.015f, 0.05f, footprint);
+        if (close > 0.0f) {
+            float pits = smoothstep(0.68f, 0.8f, fbm3(rest * 6.5f + 3.0f, 2)) * close;
+            patina *= 1.0f - 0.15f * pits;
+            float2 toRosette;
+            float3 rosette = stones(rest.xy * 3.1f + rest.z * 0.7f, 41u, toRosette);
+            float rosettes = (rosette.z < 0.18f ? 1.0f - smoothstep(0.18f, 0.3f, rosette.x) : 0.0f) * close
+                * (rock.kind == 1 ? 0.0f : 1.0f);
+            patina = mix(patina, float3(0.55f, 0.55f, 0.47f) * (0.85f + 0.3f * grain), rosettes * 0.4f);
+        }
+        float crust = smoothstep(0.58f, 0.78f, fbm3(rest * float3(0.45f, 0.45f, 0.8f) + 23.0f, 3))
+            * (rock.kind == 1 ? 0.0f : 1.0f);
+        patina = mix(patina, patina * 0.6f + float3(0.012f, 0.01f, 0.008f), crust * 0.35f);
     }
     if (in.kind == 1u) {
         albedo = patina;
@@ -384,7 +563,14 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
     // The old weathered face's bump at 0.45 turned patches of every face that looks up away from
     // a sun 18 degrees high: a ridge's crest and the face's ledges were spotted dark blue (sky
     // light only) all over (until 12 November 2026, emmettl/bombcad-work#136).
-    float3 surface = in.kind == 1u || in.intact > 0.5f ? bumped(n, rest, 1.6f, 0.2f, 4) : bumped(n, rest, roughScale, roughness, 3);
+    // The weathered faces' bump, 0.2 in four octaves until 13 November 2026: under the low sun its
+    // finer octaves still spotted the crest's rock with dark blue blotches (emmettl/bombcad-work#139).
+    float3 surface = in.kind == 1u || in.intact > 0.5f ? bumped(n, rest, 1.6f, 0.12f, 2) : bumped(n, rest, roughScale, roughness, 3);
+    // The weathered surface's grain close in: a fine, gentle bump, faded with the pixel's footprint.
+    if (in.kind == 1u || in.intact > 0.5f) {
+        float near = 1.0f - smoothstep(0.02f, 0.08f, length(fwidth(rest)));
+        if (near > 0.0f) surface = bumped(surface, rest, 7.0f, 0.06f * near, 2);
+    }
     float shadow = shadowAt(in.world, n, cam, shadowMap, s);
     float dust = dustShadow(in.world, cam, dustLight);
     return float4(shade(albedo, in.world, surface, cam, shadow, dust), 1.0f);
@@ -537,28 +723,6 @@ vertex FinesOut finesVertex(uint vid [[vertex_id]],
     o.normal = normalize(float3(-dzdx, -dzdy, 1.0f));
     o.position = cam.viewProjection * float4(o.world, 1.0f);
     return o;
-}
-
-static inline float hash2i(int2 c, uint salt) {
-    uint h = as_type<uint>(c.x) * 0x8DA6B343u ^ as_type<uint>(c.y) * 0xD8163841u ^ salt * 0xCB1AB31Fu;
-    h ^= h >> 13; h *= 0x4F37F8A5u; h ^= h >> 16;
-    return float(h & 0xFFFFFFu) / 16777215.0f;
-}
-
-// Nearest and second-nearest stone in a jittered grid: x f1, y f2, z the stone's own value, and the
-// way to its middle in `toCentre`.
-static inline float3 stones(float2 x, uint salt, thread float2 &toCentre) {
-    float2 i = floor(x), f = x - i;
-    float f1 = 8.0f, f2 = 8.0f, id = 0.0f;
-    for (int y = -1; y <= 1; ++y) for (int xx = -1; xx <= 1; ++xx) {
-        int2 cell = int2(i) + int2(xx, y);
-        float2 o = float2(hash2i(cell, salt), hash2i(cell, salt + 7u)) * 0.8f + 0.1f;
-        float2 r = float2(xx, y) + o - f;
-        float d = dot(r, r);
-        if (d < f1) { f2 = f1; f1 = d; id = hash2i(cell, salt + 13u); toCentre = r; }
-        else if (d < f2) { f2 = d; }
-    }
-    return float3(sqrt(f1), sqrt(f2), id);
 }
 
 static inline float3 stoneColour(float id) {

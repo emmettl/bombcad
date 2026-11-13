@@ -322,11 +322,92 @@ struct QuarryFaceTests {
         #expect((flatness.min() ?? 1) < 0.5 && (flatness.max() ?? 0) > 0.6, "\(flatness)")
     }
 
+    @Test("The held skin covers the cut's outer face, each triangle on one block of it")
+    func heldSkinCoversTheCut() throws {
+        let face = try Self.small()
+        #expect(!face.skinIndices.isEmpty && face.skinIndices.count % 3 == 0)
+        let mask = QuarryRock.bodyMask
+        var points: [SIMD3<Float>] = []
+        points.reserveCapacity(face.skinVertices.count)
+        for v in face.skinVertices {
+            let body = Int(v.body & mask)
+            #expect(body < face.blocks.count)
+            points.append(SIMD3(v.x, v.y, v.z))
+        }
+        // A triangle goes with one block: all three of its corners are that block's.
+        var mixed = 0
+        for t in stride(from: 0, to: face.skinIndices.count, by: 3) {
+            let bodies = (0..<3).map { face.skinVertices[Int(face.skinIndices[t + $0])].body & mask }
+            if bodies[0] != bodies[1] || bodies[1] != bodies[2] { mixed += 1 }
+        }
+        #expect(mixed == 0)
+        // Points of the old face in the strip's middle, from its foot to near its brow: the skin
+        // lies over each within the beds' recess (up to about a metre for shale).
+        var grid: [SIMD3<Int32>: [Int32]] = [:]
+        func key(_ p: SIMD3<Float>) -> SIMD3<Int32> { SIMD3<Int32>(p / 2, rounding: .down) }
+        for (n, p) in points.enumerated() { grid[key(p), default: []].append(Int32(n)) }
+        func nearest(_ p: SIMD3<Float>) -> Float {
+            var best = Float.infinity
+            let k = key(p)
+            for dz: Int32 in -1...1 {
+                for dy: Int32 in -1...1 {
+                    for dx: Int32 in -1...1 {
+                        for n in grid[k &+ SIMD3(dx, dy, dz)] ?? [] {
+                            best = min(best, simd_distance(points[Int(n)], p))
+                        }
+                    }
+                }
+            }
+            return best
+        }
+        var checked = 0
+        var covered = 0
+        for x in stride(from: face.length * 0.3, through: face.length * 0.7, by: 4) {
+            let line = face.faceLine(x)
+            let floor = face.oldHeight(x, line - 12)
+            let top = face.oldHeight(x, line + 12)
+            guard top - floor > 8 else { continue }
+            for share: Float in [0.2, 0.4, 0.6, 0.8] {
+                let z = floor + share * (top - floor)
+                var y = line - 12
+                while y < line + 12, face.oldHeight(x, y) < z { y += 0.1 }
+                checked += 1
+                if nearest(SIMD3(x, y, z)) < 1.3 { covered += 1 }
+            }
+        }
+        #expect(checked > 20)
+        #expect(Float(covered) >= 0.9 * Float(checked), "\(covered) of \(checked)")
+    }
+
+    @Test("The old joints are in their bounds, the same every time, and none in the shale")
+    func jointsField() {
+        var cracked = 0
+        var limestone = 0
+        var random = QuarryRandom(seed: 7)
+        for _ in 0..<4000 {
+            let p = SIMD3<Float>(random.float(-50, 50), random.float(-50, 50), random.float(0, 30))
+            let a = QuarryJoints.field(p, halfWidth: 0.35, line: 0.05)
+            let b = QuarryJoints.field(p, halfWidth: 0.35, line: 0.05)
+            #expect(a.groove == b.groove && a.crack == b.crack)
+            #expect(a.groove >= 0 && a.groove <= 1 && a.crack >= 0 && a.crack <= 1)
+            switch QuarryRock.kind(at: p) {
+            case .shale: #expect(a.groove == 0 && a.crack == 0)
+            case .limestone:
+                limestone += 1
+                if a.groove > 0 { cracked += 1 }
+            default: break
+            }
+        }
+        // Joints a few metres apart, some closed or dying out: a groove under a few in a hundred.
+        #expect(cracked > limestone / 100 && cracked < limestone / 4, "\(cracked) of \(limestone)")
+    }
+
     @Test("A face kept without its meshes keeps the layout, the blocks and their spheres")
     func withoutMesh() throws {
         let face = try Self.small()
         let kept = face.withoutMesh()
         #expect(kept.vertices.isEmpty && kept.indices.isEmpty && kept.dressingVertices.isEmpty)
+        #expect(kept.skinVertices.isEmpty && kept.skinIndices.isEmpty && !face.skinIndices.isEmpty)
         #expect(kept.meshID == face.meshID && face.meshID != 0)
         #expect(kept.chipAnchors.count == face.chipAnchors.count)
         #expect(kept.blocks.map(\.centre) == face.blocks.map(\.centre))

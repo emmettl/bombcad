@@ -1112,3 +1112,98 @@ rest (60% with main's chips).
 - Files: `$BOMBCAD_DATA/hillside-blast/dust-lag/` (`diag2-*` the window's frames with and without
   dust at each time, `clean-*` the timing runs, `film-final-*` the film stills, `tools/` the
   measuring scripts).
+
+## Stage 3e: rock that looks strong, 13 November 2026
+
+emmettl/bombcad-work#139, on the user's word of 13 November ("keep working through the defects until
+it looks strong"). Same standing: illustrative, stylised beds, joints and breakage, for the eye; not
+a blast-design aid. Both scenes; the ridge cut's side of it, and the piece-size study, are in
+[ridge-cut.md](ridge-cut.md#stage-3e-rock-that-looks-strong-13-november-2026).
+
+**What was wrong.** Stage 3c laid every block's outer face on one surface, but a cell's outer face is
+clipped by tangent planes cell by cell, so it meets that surface only at its corners: a thin shade
+line still ran along many cells' edges in close views under the low sun. Past the strip's left end
+the dressing's cells each stood proud by an amount of their own, so the rock there was still a
+mosaic beside the now-continuous strip (at 1 s in the default view). And the weathered surface itself
+was plain: banded and smooth, with little small relief.
+
+**What changed.**
+- *The held skin* (`QuarryFace.heldSkin`, BlastModel). One continuous render-only surface over the
+  blocks' outer faces, 4.5 cm proud of them: a grid over the old surface (its columns along the
+  strip, its rows by distance along the surface from the face's line, so a steep face is sampled as
+  finely as a flat top), 0.25 m in the window and Record Clip and 0.15 m for the film, laid on the
+  blocks' own outer surface. Each triangle is tagged with the block under it (or, in a hole of the
+  cut's rock, the nearest; past the strip's ends, the nearest block of the held rock there, which
+  never moves) and is clipped away whole once that block is released or has moved 3 cm
+  (`skinVertex`), so the skin goes block by block as the rock breaks and the block's own faces show.
+  It is in the world's frame, so the corners blocks share are the same numbers and the skin is
+  watertight. Held blocks are drawn 2.5 m farther along the line of sight (more far off) while the
+  skin is over them, and 1.2 m away from the sun in the shadow map, where the skin casts the rock's
+  shadow: a block's face standing proud of the skin (a hard bed's block over the shale's recess, a
+  thin piece kept from the surface) is never seen through it. The skin is drawn before the blocks,
+  so the blocks under it fail the depth test before they are shaded.
+- *Past a face's strip*, the dressing (render-only) is laid on the same surface as the held blocks
+  (tessellate's `outer`, as the ridge's rock round the cut since #138), with the blocks' relief, its
+  foot clipped just under the floor; where it lies under the skin (within 2.5 m of the old surface)
+  it is tagged with weathering grade 30 (`underSkinGrade`) and drawn behind the skin as held blocks
+  are. The steep ground behind it is set back along its normal smoothly from slope 0.95 to 2.4 m by
+  0.6 (it was 1.8 m from 0.8 in a step, and the 1 m ground's triangles folded out in front of the
+  shale's recess in dark slivers); a ridge cut's is as it was.
+- *Weathered relief* (`QuarryFace.weatheredRelief`, `QuarryJoints`, BlastModel, Linux-tested): on the
+  old surface, out along its normal, grooves along two near-vertical joint sets (3.7 and 5.6 m apart
+  on average, wandering, dying out along their length, some beds' joints shifted from the next bed's,
+  none of their own in the shale), knobs and hollows a metre or two across (±5 cm), and on the
+  harder beds where the surface runs nearly along the bedding (a crest, a ledge's top) small steps
+  where laminae have weathered off. The shader draws the same joints (`jointField`, a copy) as dark
+  open cracks in their grooves, fading as they come under a pixel, and pits, pale lichen rosettes and
+  dark crusts in patches close in. The skin's normals are held within about 50° of the surface's
+  (folded over the shale's recess they turned away and shaded in dark blots). The weathered faces'
+  bump is 0.12 in two octaves (0.2 in four; the finer octaves still spotted the crest dark blue), with
+  a fine grain close in.
+- `hillsideblast simulate` takes `--fracture S` (`QuarryFace.Options.fractureScale`, 1 as before):
+  how much the bedding and joints cut the coarse cells, for the piece-size study. The scenes' defaults
+  are unchanged.
+
+**Measured.** Same rock as main (the generator's sizes, shapes and counts are unchanged: 116,967
+blocks at the face, 96,386 on the ridge), so before and after share poses
+(`$BOMBCAD_DATA/hillside-blast/rock-strong/face-poses`, `ridge-poses`, simulated on main at 240 Hz).
+- *The skin.* At the face 1.28 M triangles over 17,827 blocks in the window (0.25 m) and 3.57 M for
+  the film (0.15 m); on the ridge 0.11 M and 0.32 M. Building it takes 0.5 s (window) and 1.9 s (film)
+  of the rock's generation; the window's rock and dressing took 4.12, 4.39 s against 3.42, 3.67 s on
+  main (face) and 4.12, 3.84 against 3.62, 3.70 s (ridge).
+- *The window's work a frame* (`play --self-test NAME --offscreen`, main's build and this one
+  interleaved, two runs each, medians; load average 25 to 45 throughout): the face following the
+  first firing 29.5, 31.9 ms before, 31.7, 33.0 after; scrubbing and orbiting 56.6, 58.3 before, 58.9,
+  57.7 after; playing 19.1, 20.7 before, 20.8, 20.0 after. The ridge following 31.5, 29.2 before,
+  30.3, 30.3 after; scrubbing 53.5, 61.7 before, 56.2, 61.6 after; playing 17.8, 18.3 before, 18.9,
+  21.8 after. So about +1 to +2 ms a frame (5 to 8%), inside the runs' spread for scrubbing. Metal
+  allocated after the first firing 792 to 807 MB (face), 656 to 658 MB (ridge); peak footprint 3.47,
+  3.49 GB before and 3.45, 3.48 GB after (face), 3.16, 3.16 and 3.18, 3.17 GB (ridge). (A first
+  version drew the skin after the blocks, which then were shaded and overdrawn: the face scrubbing at
+  95 ms, following at 49. Drawn first, the blocks under it fail the depth test.)
+- *Record Clip* of the default view, 600 frames at 1920 x 1080, interleaved three times: the face
+  29.3, 26.9, 38.1 ms a frame before and 29.9, 35.4, 37.9 after; the ridge 27.3, 26.9, 31.9 before and
+  24.8, 29.4, 33.5 after. The spread (load falling from 41 to 35 over the runs, yet frames slower) is
+  larger than any difference.
+- *Checked by eye*, from the same stored poses with the window's recorder (`hillsideblast clip`,
+  frames from the movie files), before on main's build and after on this one: the face's default view
+  at 0.3, 1, 3.5, 6.5 and 19.9 s, the face close (focus 75,0,3, yaw -0.58, 46 m, 30°), the strip's
+  left end close (focus 0,0,8, yaw -0.7, 45 m, 30°) at 0.3 and 1 s, the ridge's default view at 1,
+  2.6, 4.5, 12 and 19.9 s and the Pull back at 0.5 to 11.9 s. Files under
+  `$BOMBCAD_DATA/hillside-blast/rock-strong/`: `before/`, `final/`, the measurement logs (`st-*`,
+  `rc-*`, `measure.txt`) and the scripts (`scripts/`); the trials are `try*/`, and `debug-*/` the
+  debug renders (skin coverage, normals, shadows, draw calls).
+
+**The look, frankly.**
+- *The unbroken face* is one rock: from the default view at 0.3 and 1 s, banded beds with weathered
+  relief, joints and cracks; no seam lines along the blocks' edges, close or far, and past the strip's
+  left end the same rock runs on (it was a mosaic of separate blocks on main). The blocks appear only
+  where the first firings have started them moving, as the rock breaks.
+- *Close in* the hard beds read as weathered limestone with joints, pits and stains. What is still
+  weak: the joints are short, near-vertical and fairly evenly spaced, so in the thicker pale beds they
+  can read a little like masonry joints; the shale bands show the faint fine laminations as a pattern
+  of thin lines close in (as before); a few small dark blots remain on one shale band high on the face
+  past the left end, where the ground behind shows through gaps between the skin's rows over a sharp
+  fold; and the foot of the face past the strip still ends in a row of small teeth on the floor (the
+  dressing's cells, as before).
+- *The broken rock and the pile* (3.5 s on) are as before: the blocks' own look, unchanged.
