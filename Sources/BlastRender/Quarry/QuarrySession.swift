@@ -254,6 +254,8 @@ public final class QuarrySession: @unchecked Sendable {
         dressed.wait()
         face.dressingVertices = dressing.face.dressingVertices
         face.dressingIndices = dressing.face.dressingIndices
+        face.ledgeVertices = dressing.face.ledgeVertices
+        face.ledgeIndices = dressing.face.ledgeIndices
         face.report += dressing.face.report
         times.append(("rest of the dressing", Date()))
         let session = try QuarrySession(

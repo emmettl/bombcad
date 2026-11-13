@@ -97,6 +97,17 @@ public final class QuarryRenderer {
     public let flankStoneCount: Int
     public let flankStonePipeline: MTLRenderPipelineState
     public let flankStoneShadow: MTLRenderPipelineState
+    /// The scrub: bushes' lobes after the stones in `flankStones`, drawn as lumpy spheres
+    /// (`QuarryFlank.lobeShape()`).
+    public let flankBushCount: Int
+    public let flankLobe: MTLBuffer
+    /// The stones' own shape (`QuarryFlank.stoneShape()`), made irregular in the vertex shader.
+    public let flankStoneShape: MTLBuffer
+    public let flankBushPipeline: MTLRenderPipelineState
+    public let flankBushShadow: MTLRenderPipelineState
+    /// A ridge cut's outcrops, shaded on their own (`ledgeFragment`), not as blocks.
+    public let ledgePipeline: MTLRenderPipelineState
+    public let ledgeShadow: MTLRenderPipelineState
     public let shadowMap: MTLTexture
     public private(set) var hdr: MTLTexture
     public private(set) var hdrDepth: MTLTexture
@@ -206,7 +217,12 @@ public final class QuarryRenderer {
         let flank = QuarryFlank(face: hillside)
         self.flank = flank
         let stones = flank?.stones() ?? []
-        flankStoneCount = stones.count
+        flankStoneCount = QuarryFlank.stoneCount(stones)
+        flankBushCount = stones.count - flankStoneCount
+        let lobe = QuarryFlank.lobeShape()
+        flankLobe = device.makeBuffer(bytes: lobe, length: 16 * lobe.count)!
+        let stoneShape = QuarryFlank.stoneShape()
+        flankStoneShape = device.makeBuffer(bytes: stoneShape, length: 16 * stoneShape.count)!
         flankStones =
             stones.isEmpty
             ? device.makeBuffer(length: 48)!
@@ -224,9 +240,10 @@ public final class QuarryRenderer {
             }
             print(
                 String(
-                    format: "flanks: %d ledges, %d stones and scrub, %.2f s", flank.ledges.count,
-                    stones.count,
-                    Date().timeIntervalSince(flankStart)))
+                    format:
+                        "flanks: %d ledges (%d outcrop triangles), %d stones, %d bushes' lobes, %.2f s; dressing %d triangles",
+                    flank.ledges.count, meshes.ledgeCount / 3, flankStoneCount, flankBushCount,
+                    Date().timeIntervalSince(flankStart), meshes.dressingCount / 3))
         }
         // Terrain mesh.
         let t = hillside.terrain
@@ -317,28 +334,37 @@ public final class QuarryRenderer {
         // A ground beyond the grid, so the long lens sees no edge: a low skirt on four sides.
         let skirtBase = UInt32(vertices.count / 6)
         if hillside.ridge != nil {
-            // Round the whole of it, at the height of its edge, a little below so it never shows
-            // through: a frame of four quads from the edge out to 2.5 km.
-            let (x0, y0) = (extX + extSpacing, extY + extSpacing)
-            let (x1, y1) = (extX + Float(extColumns - 2) * extSpacing, extY + Float(extRows - 2) * extSpacing)
+            // Round the whole of it, out to 2.5 km a little below its edge, joined to the 3 m
+            // ground's own outermost vertices. It was a frame of four flat quads from a ring one
+            // row in, at the edge's mean height, which left a gap where the ground stood lower than
+            // the frame: the sky showed through it as a thin pale line across the far plain (13
+            // November 2026).
             var edge: [Float] = []
-            for k in 0..<64 {
-                let u = Float(k) / 63
-                edge += [
-                    extHeight(x0 + (x1 - x0) * u, y0), extHeight(x0 + (x1 - x0) * u, y1),
-                    extHeight(x0, y0 + (y1 - y0) * u), extHeight(x1, y0 + (y1 - y0) * u),
-                ]
-            }
+            for i in 0..<extColumns { edge += [extHeight(extX + Float(i) * extSpacing, extY)] }
             let z = edge.reduce(0, +) / Float(edge.count) - 1
             let far: Float = 2500
-            let ring: [(Float, Float)] = [
-                (x0, y0), (x1, y0), (x1, y1), (x0, y1),
-                (x0 - far, y0 - far), (x1 + far, y0 - far), (x1 + far, y1 + far), (x0 - far, y1 + far),
-            ]
-            for (x, y) in ring { vertices += [x, y, z, 0, 0, 1] }
-            for k in 0..<4 {
-                let (a, b) = (skirtBase + UInt32(k), skirtBase + UInt32((k + 1) % 4))
-                let (c, d) = (a + 4, b + 4)
+            let centre = SIMD2(
+                extX + Float(extColumns - 1) * extSpacing / 2, extY + Float(extRows - 1) * extSpacing / 2)
+            // The border, once round, as indices into the 3 m ground.
+            var border: [UInt32] = []
+            for i in 0..<(extColumns - 1) { border.append(extBase + UInt32(i)) }
+            for j in 0..<(extRows - 1) { border.append(extBase + UInt32(extColumns - 1 + j * extColumns)) }
+            for i in stride(from: extColumns - 1, to: 0, by: -1) {
+                border.append(extBase + UInt32(i + (extRows - 1) * extColumns))
+            }
+            for j in stride(from: extRows - 1, to: 0, by: -1) {
+                border.append(extBase + UInt32(j * extColumns))
+            }
+            for k in border {
+                let (x, y) = (vertices[6 * Int(k)], vertices[6 * Int(k) + 1])
+                let out = simd_normalize(SIMD2(x, y) - centre)
+                let reach = far / max(abs(out.x), abs(out.y))
+                vertices += [x + out.x * reach, y + out.y * reach, z, 0, 0, 1]
+            }
+            let count = UInt32(border.count)
+            for k in 0..<count {
+                let (a, b) = (border[Int(k)], border[Int((k + 1) % count)])
+                let (c, d) = (skirtBase + k, skirtBase + (k + 1) % count)
                 indices += [a, c, b, b, c, d]
             }
         } else {
@@ -471,6 +497,10 @@ public final class QuarryRenderer {
             vertex: "terrainVertex", fragment: flank == nil ? "terrainFragment" : "ridgeTerrainFragment")
         flankStonePipeline = try pipeline(vertex: "flankStoneVertex", fragment: "flankStoneFragment")
         flankStoneShadow = try pipeline(vertex: "flankStoneShadowVertex", fragment: nil, color: nil)
+        flankBushPipeline = try pipeline(vertex: "flankBushVertex", fragment: "flankStoneFragment")
+        flankBushShadow = try pipeline(vertex: "flankBushShadowVertex", fragment: nil, color: nil)
+        ledgePipeline = try pipeline(vertex: "ledgeVertex", fragment: "ledgeFragment")
+        ledgeShadow = try pipeline(vertex: "ledgeShadowVertex", fragment: nil, color: nil)
         chipPipeline = try pipeline(vertex: "chipVertex", fragment: "chipFragment")
         blockShadow = try pipeline(vertex: "blockShadowVertex", fragment: nil, color: nil)
         terrainShadow = try pipeline(vertex: "terrainShadowVertex", fragment: nil, color: nil)
@@ -642,12 +672,12 @@ public final class QuarryRenderer {
         if flankStoneCount > 0 {
             shadow.setRenderPipelineState(flankStoneShadow)
             shadow.setVertexBuffer(flankStones, offset: 0, index: 0)
-            var shapeInfo = SIMD2<UInt32>(UInt32(QuarryChipShapes.count), UInt32(QuarryChipShapes.vertices))
-            shadow.setVertexBytes(&shapeInfo, length: 8, index: 6)
+            shadow.setVertexBuffer(flankStoneShape, offset: 0, index: 5)
             shadow.drawPrimitives(
-                type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices,
+                type: .triangle, vertexStart: 0, vertexCount: flankStoneShape.length / 16,
                 instanceCount: flankStoneCount)
         }
+        drawFlankExtras(shadow, ledge: ledgeShadow, bush: flankBushShadow)
         shadow.endEncoding()
         // Scene.
         let scenePass = MTLRenderPassDescriptor()
@@ -709,12 +739,12 @@ public final class QuarryRenderer {
         if flankStoneCount > 0 {
             scene.setRenderPipelineState(flankStonePipeline)
             scene.setVertexBuffer(flankStones, offset: 0, index: 0)
-            var shapeInfo = SIMD2<UInt32>(UInt32(QuarryChipShapes.count), UInt32(QuarryChipShapes.vertices))
-            scene.setVertexBytes(&shapeInfo, length: 8, index: 6)
+            scene.setVertexBuffer(flankStoneShape, offset: 0, index: 5)
             scene.drawPrimitives(
-                type: .triangle, vertexStart: 0, vertexCount: QuarryChipShapes.vertices,
+                type: .triangle, vertexStart: 0, vertexCount: flankStoneShape.length / 16,
                 instanceCount: flankStoneCount)
         }
+        drawFlankExtras(scene, ledge: ledgePipeline, bush: flankBushPipeline)
         scene.setRenderPipelineState(sky)
         scene.setDepthStencilState(skyDepth)
         scene.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -746,6 +776,30 @@ public final class QuarryRenderer {
         buffer.commit()
         buffer.waitUntilCompleted()
         return buffer.gpuEndTime - buffer.gpuStartTime
+    }
+
+    /// A ridge cut's outcrops and bushes (none for a face), from both sides: the outcrops are open
+    /// sheets buried at their back and foot.
+    func drawFlankExtras(
+        _ encoder: MTLRenderCommandEncoder, ledge: MTLRenderPipelineState, bush: MTLRenderPipelineState
+    ) {
+        guard meshes.ledgeCount > 0 || flankBushCount > 0 else { return }
+        encoder.setCullMode(.none)
+        if meshes.ledgeCount > 0 {
+            encoder.setRenderPipelineState(ledge)
+            encoder.setVertexBuffer(meshes.ledgeVertices, offset: 0, index: 0)
+            encoder.drawIndexedPrimitives(
+                type: .triangle, indexCount: meshes.ledgeCount, indexType: .uint32,
+                indexBuffer: meshes.ledgeIndices, indexBufferOffset: 0)
+        }
+        if flankBushCount > 0 {
+            encoder.setRenderPipelineState(bush)
+            encoder.setVertexBuffer(flankStones, offset: 48 * flankStoneCount, index: 0)
+            encoder.setVertexBuffer(flankLobe, offset: 0, index: 5)
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: flankLobe.length / 16,
+                instanceCount: flankBushCount)
+        }
     }
 
     /// The top-down height of the scene (blocks and ground), for the chips to land on and the
@@ -885,6 +939,10 @@ public final class QuarryMeshBuffers: @unchecked Sendable {
     public let dressingVertices: MTLBuffer
     public let dressingIndices: MTLBuffer
     public let dressingCount: Int
+    /// A ridge cut's outcrops (`QuarryFace.ledgeVertices`); none for a face.
+    public let ledgeVertices: MTLBuffer
+    public let ledgeIndices: MTLBuffer
+    public let ledgeCount: Int
 
     init(_ face: QuarryFace, device: MTLDevice) {
         func buffer<T>(_ array: [T], minimum: Int) -> MTLBuffer {
@@ -898,6 +956,9 @@ public final class QuarryMeshBuffers: @unchecked Sendable {
         dressingVertices = buffer(face.dressingVertices, minimum: 20)
         dressingIndices = buffer(face.dressingIndices, minimum: 12)
         dressingCount = face.dressingIndices.count
+        ledgeVertices = buffer(face.ledgeVertices, minimum: 20)
+        ledgeIndices = buffer(face.ledgeIndices, minimum: 12)
+        ledgeCount = face.ledgeIndices.count
     }
 
     private final class Weak {

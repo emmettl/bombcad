@@ -300,6 +300,10 @@ public struct QuarryFace: Sendable {
     /// Render-only dressing of the rest of the face (one identity pose).
     public var dressingVertices: [Vertex] = []
     public var dressingIndices: [UInt32] = []
+    /// A ridge cut's outcrops (`QuarryFace.outcrop`), render-only, shaded on their own
+    /// (`ledgeFragment`); empty for a face.
+    public var ledgeVertices: [Vertex] = []
+    public var ledgeIndices: [UInt32] = []
     /// What the generator made, line by line (counts and times).
     public var report: [String] = []
     /// Which generated rock this is, the same in every copy of it: a renderer of a face kept
@@ -1359,6 +1363,22 @@ public struct QuarryFace: Sendable {
         let frozen = sites
         let frozenFootings = footings
         let frozenGrid = grid
+        // A ridge cut's dense rock's outer surface: the ground stood 0.35 m proud, then back by each
+        // bed's weathering and by the sink toward the rock's edge, as its cells are clipped.
+        var ridgeSurface: OuterSurface?
+        if let flank {
+            ridgeSurface = { p in
+                let e: Float = 0.5
+                let top = surface(p.x, p.y)
+                let dx = (surface(p.x + e, p.y) - surface(p.x - e, p.y)) / (2 * e)
+                let dy = (surface(p.x, p.y + e) - surface(p.x, p.y - e)) / (2 * e)
+                let normal = simd_normalize(SIMD3<Float>(-dx, -dy, 1))
+                let depth = (top - p.z) * normal.z
+                let on = p + normal * depth
+                return (depth + 0.35 - QuarryRock.blendedRecess(at: on) - flank.sink(on.x, on.y), normal)
+            }
+        }
+        let ridgeOuter = ridgeSurface
         var meshes = [(vertices: [Vertex], indices: [UInt32])](repeating: ([], []), count: sites.count)
         meshes.withUnsafeMutableBufferPointer { out in
             nonisolated(unsafe) let output = out
@@ -1413,7 +1433,13 @@ public struct QuarryFace: Sendable {
                     let reach = foot.0 + along * (0.7 * extent)
                     let (point, normal) = along == .zero ? foot : tangentPlane(SIMD2(reach.x, reach.y))
                     if along != .zero, simd_dot(normal, site - point) > 0.6 { continue }
-                    polyhedron.clip(normal: normal, offset: simd_dot(normal, point) + 0.35 - recess, kind: 1)
+                    // A ridge cut's dense rock stands back by its bed's weathering alone, the same
+                    // surface for every cell (`ridgeOuter`), as the cut's held rock does.
+                    let standBack =
+                        flank.map { QuarryRock.blendedRecess(at: point) + $0.sink(point.x, point.y) }
+                        ?? recess
+                    polyhedron.clip(
+                        normal: normal, offset: simd_dot(normal, point) + 0.35 - standBack, kind: 1)
                 }
                 let (volume, centroid) = polyhedron.volumeAndCentroid
                 guard polyhedron.faces.count >= 4, polyhedron.faces.count < 40, volume > 0.02 else { return }
@@ -1423,10 +1449,21 @@ public struct QuarryFace: Sendable {
                 let tags = polyhedron.faces.map { _ in
                     QuarryRock.faceTag(weathering: 1, random: faceRandom.float())
                 }
-                Self.tessellate(
-                    polyhedron, centre: centroid, origin: .zero, body: 0, level: level, warp: 0, seed: 0,
-                    relief: 0.75, tags: tags, vertices: &vertices,
-                    indices: &indices)
+                if let ridgeOuter {
+                    // Laid on one continuous weathered surface, so the rock round the cut reads as
+                    // whole, like the cut's own held rock, rather than as a mosaic of cells with
+                    // grass between them (until 13 November 2026, emmettl/bombcad-work#138).
+                    let across = polyhedron.extent(along: ridgeOuter(centroid).normal)
+                    Self.tessellate(
+                        polyhedron, centre: centroid, origin: .zero, body: 0, level: level, warp: 0, seed: 0,
+                        relief: 0.3, tags: tags, outer: ridgeOuter, inward: 0.4 * (across.1 - across.0),
+                        vertices: &vertices, indices: &indices)
+                } else {
+                    Self.tessellate(
+                        polyhedron, centre: centroid, origin: .zero, body: 0, level: level, warp: 0, seed: 0,
+                        relief: 0.75, tags: tags, vertices: &vertices,
+                        indices: &indices)
+                }
                 output[n] = (vertices, indices)
             }
         }
@@ -1439,10 +1476,9 @@ public struct QuarryFace: Sendable {
             "dressing: \(sites.count) sites, \(dressingIndices.count / 3) triangles (\(accepted) steep samples)"
         )
         if let flank {
-            let paved = dressingIndices.count / 3
-            let made = appendLedges(flank, level: level)
+            let made = appendLedges(flank)
             report.append(
-                "ledges: \(made) of \(flank.ledges.count), \(dressingIndices.count / 3 - paved) triangles")
+                "ledges: \(flank.ledges.count) in \(made) outcrops, \(ledgeIndices.count / 3) triangles")
         }
     }
 
@@ -1457,6 +1493,8 @@ public struct QuarryFace: Sendable {
         face.indices = []
         face.dressingVertices = []
         face.dressingIndices = []
+        face.ledgeVertices = []
+        face.ledgeIndices = []
         return face
     }
 

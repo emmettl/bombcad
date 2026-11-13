@@ -57,14 +57,28 @@ struct QuarryFlankTests {
             let ahead = SIMD2(ledge.contour.x, ledge.contour.y) + ledge.downhill * 2
             #expect(flank.groundHeight(ahead.x, ahead.y) < ledge.contour.z)
         }
-        // Each made into rock.
+        // In runs along their beds, each ledge in one run, and the runs made into outcrops of their
+        // own, not dressing.
+        let runs = flank.ledgeRuns()
+        #expect(runs.flatMap { $0 }.sorted() == Array(flank.ledges.indices))
+        #expect(runs.count < flank.ledges.count)
+        for run in runs { #expect(Set(run.map { flank.ledges[$0].bed }).count == 1) }
         var face = Self.face
-        let made = face.appendLedges(flank, level: 1)
-        #expect(Float(made) > 0.9 * Float(flank.ledges.count))
-        #expect(face.dressingIndices.count > 3 * 8 * made)
-        let corners = face.dressingVertices.map { SIMD3($0.x, $0.y, $0.z) }
-        let lowest = flank.ledges.map { $0.bottom }.min()! - 2
-        #expect(corners.allSatisfy { $0.z > lowest })
+        let dressing = face.dressingIndices.count
+        let made = face.appendLedges(flank)
+        #expect(Float(made) > 0.9 * Float(runs.count))
+        #expect(face.dressingIndices.count == dressing)
+        #expect(face.ledgeIndices.count > 3 * 8 * made)
+        #expect(face.ledgeIndices.allSatisfy { Int($0) < face.ledgeVertices.count })
+        // Near the ground: buried at their backs and feet, standing no more than a few metres
+        // proud of it.
+        var buried = 0
+        for v in face.ledgeVertices {
+            let above = v.z - flank.groundHeight(v.x, v.y)
+            #expect(above < 5)
+            if above < 0 { buried += 1 }
+        }
+        #expect(buried > face.ledgeVertices.count / 5)
     }
 
     @Test("Scree lies below the ledges more than on open gentle ground, and grass on the gentle ground")
@@ -83,12 +97,14 @@ struct QuarryFlankTests {
             if slope < 0.15 {
                 gentleScree.append(flank.scree[n])
                 gentleGrass.append(flank.grass[n])
-            } else if slope > 0.9 {
+            } else if slope > 1.6 {
                 steepGrass.append(flank.grass[n])
             }
         }
         func mean(_ v: [Float]) -> Float { v.reduce(0, +) / Float(max(v.count, 1)) }
-        #expect(mean(below) > 0.4)
+        // Below some of the ledges, not all: others stand in the grass.
+        #expect(mean(below) > 0.15)
+        #expect(mean(below) > 3 * mean(gentleScree))
         #expect(mean(gentleScree) < 0.1)
         #expect(mean(gentleGrass) > 0.35)
         #expect(steepGrass.isEmpty || mean(steepGrass) < 0.1)
@@ -106,12 +122,21 @@ struct QuarryFlankTests {
             #expect(!flank.paving[n] && flank.cut[n] < 0.5)
             #expect(abs(p.z - flank.groundHeight(p.x, p.y)) < p.w)
             #expect(abs(simd_length(stone.rotation) - 1) < 1e-3)
-            if stone.look.x > 0.5 {
-                shrubs += 1
-                #expect(flank.grass[n] > 0 || flank.grass[max(0, n - 1)] > 0)
+            if stone.look.x > 0.5 { shrubs += 1 }
+        }
+        // Stones first, then the bushes' lobes, which stand on grass.
+        let first = QuarryFlank.stoneCount(stones)
+        #expect(stones[..<first].allSatisfy { $0.look.x < 0.5 })
+        #expect(stones[first...].allSatisfy { $0.look.x > 0.5 })
+        #expect(shrubs > 100 && shrubs < stones.count / 2)
+        let around: [SIMD2<Float>] = [SIMD2(0, 0), SIMD2(1, 0), SIMD2(-1, 0), SIMD2(0, 1), SIMD2(0, -1)]
+        let onGrass = stones[first...].filter { stone in
+            around.contains { d in
+                flank.texel(stone.posSize.x + d.x, stone.posSize.y + d.y).map { flank.grass[$0] > 0 } ?? false
             }
         }
-        #expect(shrubs > 100 && shrubs < stones.count / 2)
+        #expect(onGrass.count > shrubs * 9 / 10)
+        #expect(QuarryFlank.lobeShape().count == 240)
         let again = try #require(QuarryFlank(face: Self.face)).stones()
         #expect(again.map(\.posSize) == stones.map(\.posSize))
         #expect(flank.stones(scale: 0.5).count < stones.count * 3 / 4)
