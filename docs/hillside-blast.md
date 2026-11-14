@@ -1885,3 +1885,97 @@ and `fixdbg/` (the shells fixed), the trials `t1/` to `t7/`, orbiting clips over
 - *No shimmer* seen in the orbiting clip over the floor (`crops/orbit-*`, consecutive frames 33 ms
   apart): the stones and their facets hold still as the camera moves; the mid-distance floor is
   busier than before.
+
+## Stage 3r: a dust bank with depth, 14 November 2026
+
+emmettl/bombcad-work#152, on the user's word of 13 November ("keep working through the defects
+list until it looks strong"). Same standing: illustrative, dust for the eye; not a model of real
+dust, a dust hazard or a blast-design aid. Dust only: the rock's physics is unchanged, and every
+face frame below is drawn from stage 3l's one 20 s run of the default face
+(`$BOMBCAD_DATA/hillside-blast/quarry-dust/face20/poses`). The ridge cut's side (a plume that leans,
+a haze that swirls less, the near flank's low dust, the crest close shot out of the fog) is in
+[ridge-cut.md](ridge-cut.md#stage-3r-a-plume-that-leans-a-calmer-haze-and-the-crest-out-of-the-fog-14-november-2026).
+
+**What was wrong** (stage 3l's list, rendered again on main's build at de992c68).
+- *A wall.* At 4.5 to 8 s the bank stood as a tall, even wall the length of the face, its top lobed
+  but its front a fairly flat surface of billows; in Pull back's close opening it filled the frame.
+  Every firing threw its dust out of the face the same way (one throw a firing, from one band of
+  the face's height, at about the same heat).
+- *A brown fringe.* At 8 to 12 s the bank's lower edge over the pile was a shaded brown fringe: the
+  dust there, deep in the bank's own shadow, was lit by the warm ambient and the diffused sun alone
+  (both warm, and the dust's albedo warm again).
+- *Strands.* Pull back's close opening at 3 s showed thin streaky strands through the bank. Drawn
+  without the billows' crease shading they went; with the crease shading and without its lit side,
+  or with the billows' flow held to 2 m/s, they stayed: they were the billows' thin creases, looked up
+  where the seen dust's depth turns steeply across the screen and drawn out into lines.
+
+**What changed** (`QuarryDustField.faceColumns` and the face's sources, BlastCore; `dustFragment`,
+`QuarryRender.metal`).
+- *Firings that differ more.* A quarter of the firings are weak (0.4 of their strength), leaving a
+  gap or a low place in the bank; each throws its dust out of the face over its own distance (0.5 to
+  1.4 of 12 m/s; it was 0.7 to 1.3, applied the same way everywhere) and runs at its own heat (0.6 to
+  1.25, so some climb higher than their neighbours; the bench-top vent's rise goes with it).
+- *Clumps out of the face* (`faceClumps`, `faceClump`): each firing's dust out of the face comes
+  from three clumps, each at its own place along the firing's footprint, its own height up the
+  face (0.25 to 0.85 of it) and its own throw (0.45 to 1.35 of the firing's), so the bank's front
+  stands out in lobes at different depths, with shadowed recesses between, rather than as one front.
+- *The fringe lit by the low sky and the floor.* A face's shaded dust low over the pile (below the
+  bench's top, fading out by 1.2 times its height) is lit by a pale grey-cream bounce from the low
+  sky and the sunlit floor (`dustFaceBounce`), and its warm diffused light is greyed toward cream
+  as it goes in.
+- *Softer creases* (both scenes): the billows' crease shading is taken from the small and the
+  broad lobes together and is shallower (0.78 to 1.08, it was 0.68 to 1.1).
+- The face's wind, thinning, haze and cream are as stage 3l's.
+
+**Measured** (release build, M4 Max Studio, loaded by other sessions, load average 20 to 65; Record
+Clip at 1920 x 1080, the opening view, interleaved with main's build at de992c68; `clipcost*.txt`).
+- *While the face fires* (1.5 to 5.5 s, four runs each): draw 14.67, 14.66, 15.83, 16.60 ms main,
+  14.91, 15.90, 15.95, 16.72 ms this: +0.1 to +0.2 ms in three pairs, +1.2 ms in the one run beside
+  a GPU test. The dust step 5.80, 5.76, 5.75, 5.76 against 5.76, 5.84, 5.74, 5.75 ms: unchanged.
+- *Over the whole 20 s* (three runs each): draw 17.00, 16.22, 16.37 ms main, 16.69, 17.13, 16.58 ms
+  this (within the runs' spread, about +0.3 ms); the dust step unchanged (5.8 ms).
+- *The window* (`play --self-test`, two runs each interleaved, the first of each with shots;
+  medians from 1 to 5 s while following the first firing): draw 30.7 and 32.7 ms main, 32.5 and 31.5
+  ms this; the dust-and-chips step 23.8 and 23.0 against 24.2 and 23.0 ms. Over the whole follow the
+  draw is 20.7 and 22.3 against 22.4 and 20.8 ms. Inside the runs' spread either way
+  (`playcost.txt`; its frames, `sheet-window-ba.png`, are as Record Clip's).
+- *No crawl* (`flicker.py`, the opening view at 4.50, 4.53, 4.57 s and 12.00, 12.03, 12.07 s): the
+  change in fine detail between frames is 2.62 and 2.64 at 4.5 s (main 2.75 and 2.75), with the
+  fine detail itself 4.05 (4.28); 0.45 and 0.41 at 12 s (0.48 and 0.41).
+
+**Checked by eye**, before (main's build) and after, from the same poses: Record Clip's opening
+view, Pull back and the close shot at 1, 2, 3, 3.6, 4, 4.5, 6, 8, 10, 12, 18 and 19.9 s (4.5 and
+12 s three frames in a row), and the window's own frames (`sheet-face-still-ba.png`,
+`sheet-face-pull-ba.png`, `sheet-face-close-ba.png`, before left).
+- *Depth.* From 3 s the bank's front is lobes at different depths: some stand out over the pile,
+  others are set back with shadowed recesses between them, and at a weak firing the face shows
+  through a gap low down. Pull back at 3 and 4.5 s opens on lobes and a gap with the rock in it
+  rather than on a flat wall of dust.
+- *Strong and cream.* The bank is still the strip's length at 4.5 to 8 s, still plainly there along
+  the bench at 12 s, and a haze over the bench's far half at 18 to 20 s, as stage 3l's.
+- *The fringe.* The bank's lower edge over the pile at 8 to 12 s is a paler cream-grey (in the close
+  shot at 8 s three patches of it 18 to 25% brighter, a little less saturated: 132, 106, 80 and 150,
+  126, 98 against main's 112, 90, 69 and 120, 97, 76).
+- *Strands.* Pull back at 3 s: the long streaks through the bank are gone; one or two faint ones
+  are left.
+
+**What still looks wrong.**
+- *A dark band under the bank* at 8 to 12 s: the face in the bank's shadow, seen through thin dust,
+  is still a dark brown-grey band between the lit bank and the pile. That is the rock's shading in
+  the dust's shadow, not the dust's light, and was left (it is the rock's shader).
+- *An arch.* The gap at one weak firing reads, in Pull back at 4.5 s and the opening view at 12 s,
+  as a hole through the bank with dust bridged over its top; plausible, but it catches the eye.
+- *Dark recesses* between the lobes at 4.5 to 6 s are a little grey: they are the bank's own shadow,
+  above the fringe the bounce lifts.
+- *Speckle* at the bank's lower edge close in (single pixels of dust and rock) as before.
+- Not looked at on a screen: all of it was made offscreen.
+
+Files: `$BOMBCAD_DATA/hillside-blast/dust-depth/`: `before/` and `after/` (`face/` and `ridge/`,
+each with `still.mp4`, `pull.mp4`, `close.mp4` and their frames), the sheets `sheet-*-ba.png`
+(before left), the window's `play-*`, the trials `it1`, `it2`, `xA` to `xP` and their `peek-*`
+sheets (`exp/` holds their shaders), `wide/` (a wide view of the ridge's plume), `clipcost*.txt`,
+`play.txt`, `flicker.txt` and `tools/` (`mkbin.sh`, `mkit.sh`, `trym.sh`, `look.sh`,
+`clipcost.sh`, `playcost.py`, `grid.py`).
+
+**Tests.** `QuarryDustTests/faceDustMergesAndHazeBound` now also checks that some firings are weak,
+that their throws and heats differ, and that their clumps' throws differ.

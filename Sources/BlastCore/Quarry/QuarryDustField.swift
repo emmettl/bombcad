@@ -17,6 +17,11 @@ public final class QuarryDustField {
         public var wind: SIMD4<Float>
         public var sun: SIMD4<Float>
         public var lowHigh: SIMD4<Float>
+        /// Stage 3r: x the height over the box's floor the wind's carry aloft grows from (a ridge
+        /// cut's crest, a face's bench top), y that carry's share of the wind 16 m above it, z a
+        /// ridge cut's settling a second of cold dust low over its cut once the firings are done
+        /// (0 for a face, which has its own), w the last firing's time.
+        public var shape: SIMD4<Float>
     }
 
     public let device: MTLDevice
@@ -103,6 +108,9 @@ public final class QuarryDustField {
         var reach: SIMD2<Float>
         /// How shallow the rock over it is, 0 over the deepest to 1 toward the cut's ends.
         var shallow: Float = 0
+        /// How hot its dust is against the others' (a face's, stage 3r): a hotter column climbs
+        /// higher.
+        var heat: Float = 1
     }
     var columns: [Column] = []
     /// The wind at height (m/s; a ridge cut's since stage 3k, a face's since stage 3l): light and
@@ -353,7 +361,8 @@ public final class QuarryDustField {
         uniforms = Uniforms(
             low: SIMD4(low, 0), hdtsteps: SIMD4(h, 0, 0, 0),
             dims: SIMD4(Int32(dims.x), Int32(dims.y), Int32(dims.z), 0),
-            wind: SIMD4(windAtHeight, 0), sun: SIMD4(sun, 0), lowHigh: SIMD4(high, 0))
+            wind: SIMD4(windAtHeight, 0), sun: SIMD4(sun, 0), lowHigh: SIMD4(high, 0),
+            shape: SIMD4(0, 0, 0, lastFiring))
         // The fines thin slowly, a share a second: high up and near the ground (`fines`); the
         // coarse dust falls out while it is thick (`dustCorrect`). Stage 3f to 3j thinned all of a
         // ridge's at 0.9 and 0.6 a second, so its cloud had nearly gone by 7 s.
@@ -376,6 +385,18 @@ public final class QuarryDustField {
                     return hillside.height(hillside.original, x, hillside.faceLine(x) + 2)
                 }.reduce(0, +) / Float(samples)
             uniforms.dims.w = Int32(max(1, (crest - low.z).rounded()))
+        }
+        // The wind's carry aloft (stage 3r, emmettl/bombcad-work#152, `carryAt` in the kernels): a
+        // ridge cut's dust is carried on downwind from the crest's height up, so its plume leans
+        // more the higher it rises. A ridge cut's cold dust low over its cut settles once the
+        // firings are done, so the haze left over the crest clears from about 6 s rather than
+        // standing as a fog over it to 12 s. A face's dust has neither.
+        if let ridge = hillside.ridge {
+            uniforms.shape.x = ridge.crest - low.z
+            uniforms.shape.y = Self.ridgeCarry
+            uniforms.shape.z = Self.ridgeSettle
+        } else {
+            uniforms.shape.x = Float(uniforms.dims.w)
         }
         // A first clear of the private textures so the first frame is defined.
         let buffer = queue.makeCommandBuffer()!
@@ -432,6 +453,14 @@ public final class QuarryDustField {
         }
     }
 
+    /// The share of the wind a ridge cut's dust is carried on by 16 m over its crest (stage 3r):
+    /// 4.5 m/s there, none 4 m under the crest. At 2 the plume's haze had left the opening view by
+    /// 12 s; at 1 the lean hardly showed.
+    static let ridgeCarry: Float = 1.5
+    /// A ridge cut's cold dust's settling a second low over its cut, once the firings are done.
+    /// At 0.4 the heap was bare of haze by 12 s.
+    static let ridgeSettle: Float = 0.3
+
     /// The fines' thinning a second in `scene`, high up (from 10 m over the ground) and near the
     /// ground (within 3 m of it): a ridge cut's since stage 3k, a face's since stage 3l.
     static func fines(_ scene: QuarryScene) -> (high: Float, low: Float) {
@@ -470,10 +499,11 @@ public final class QuarryDustField {
     }
 
     /// Over rock shallower than this share, a ridge cut's column's dust comes from `clumps` clumps
-    /// of its footprint, each `clumpSize` of it (stage 3l): broken low down, the rock between.
+    /// of its footprint, each `clumpSize` of it (stage 3l): broken low down, the rock between. Six of
+    /// 0.45 since stage 3r (three of 0.7), lying lower the shallower the rock.
     static let clumpedFrom: Float = 0.3
-    static let clumps = 3
-    static let clumpSize: Float = 0.7
+    static let clumps = 6
+    static let clumpSize: Float = 0.45
 
     /// A face's firings' dust (stage 3l, emmettl/bombcad-work#146), drawn once from each firing's
     /// place in the row as a ridge's columns are. Before it a face's firing was a ball 7 m across
@@ -488,14 +518,34 @@ public final class QuarryDustField {
         let spacing = xs.count > 1 ? max(2, (xs.last! - xs.first!) / Float(xs.count - 1)) : 6
         return firings.indices.map { n in
             var r = QuarryRandom(seed: 0xFAC3 &+ UInt64(n) &* 7919)
-            return Column(
+            var column = Column(
                 delay: r.float(0, 0.1), feed: r.float(0.3, 0.6), strength: r.float(0.5, 1.4),
                 lift: r.float(0.7, 1.3), shift: SIMD2(r.float(-0.4, 0.4) * spacing, 0),
                 // The row's end firings have no neighbour past them to merge with: wider.
                 reach: SIMD2(
                     r.float(0.9, 1.9) * spacing * (n == 0 || n == firings.count - 1 ? 1.6 : 1),
                     depth * r.float(0.3, 0.6)))
+            // Stage 3r (emmettl/bombcad-work#152): the bank stood as a tall, even wall the length of
+            // the face, its front a flat surface of billows. Now the firings differ more: some are
+            // weak (a gap in the bank), each throws its dust out over its own distance, and some
+            // run hotter and climb higher than their neighbours.
+            var depthDraw = QuarryRandom(seed: 0xDE97 &+ UInt64(n) &* 7919)
+            if depthDraw.float() < Self.faceWeakShare { column.strength *= 0.4 }
+            column.lift = depthDraw.float(0.5, 1.4)
+            column.heat = depthDraw.float(0.6, 1.25)
+            return column
         }
+    }
+
+    /// The share of a face's firings that are weak (stage 3r), at 0.4 of their strength.
+    static let faceWeakShare: Float = 0.25
+    /// A face's firing's dust out of the face comes from `faceClumps` clumps (stage 3r), each at its
+    /// own place along the firing's footprint, height up the face and throw, so the bank's front
+    /// stands out in lobes at different depths rather than as one flat front.
+    static let faceClumps = 3
+    static func faceClump(_ n: Int, _ c: Int) -> (along: Float, height: Float, distance: Float) {
+        var r = QuarryRandom(seed: 0xFC1A &+ UInt64(n) &* 131 &+ UInt64(c))
+        return (r.float(-0.8, 0.8), r.float(0.25, 0.85), r.float(0.45, 1.35))
     }
     /// A face's firing's dust in all (the old ball's was 8,170, which never thinned), the share of
     /// it out of the face (the rest from the bench's top), and how fast it is thrown out (m/s).
@@ -605,16 +655,21 @@ public final class QuarryDustField {
                 if r.float() < Self.faceFrontShare {
                     // Out of the face, nearer the firing along the strip than the vent (spread as
                     // far, the first firings' dust was too thin to show), up the middle of its
-                    // height, thrown out over the floor, hot so it billows up off the pile.
-                    let x = firing.position.x + column.shift.x + a * column.reach.x * 0.75
+                    // height, thrown out over the floor, hot so it billows up off the pile. From
+                    // one of the firing's clumps (stage 3r), each its own place, height and throw.
+                    let c = min(Self.faceClumps - 1, Int(r.float() * Float(Self.faceClumps)))
+                    let clump = Self.faceClump(n, c)
+                    let x =
+                        firing.position.x + column.shift.x + (clump.along + a * 0.5) * column.reach.x * 0.75
                     let front = face.faceLine(x)
                     let floor = face.floorHeight(x)
                     let top = face.height(face.original, x, front + 2)
-                    let z = floor + r.float(0.3, 0.85) * (top - floor)
-                    let out = SIMD3<Float>(a * 1.5, -Self.faceThrow * column.lift * speed, r.float(1, 5))
+                    let z = floor + min(0.9, max(0.2, clump.height + r.float(-0.15, 0.15))) * (top - floor)
+                    let out = SIMD3<Float>(
+                        a * 1.5, -Self.faceThrow * column.lift * clump.distance * speed, r.float(1, 5))
                     add(
                         SIMD3(x, front - r.float(0.5, 3), z), dust: rate * falling,
-                        velocity: out + r.unit() * 3, heat: 1)
+                        velocity: out + r.unit() * 3, heat: column.heat)
                 } else {
                     let x = firing.position.x + column.shift.x + a * column.reach.x
                     let front = face.faceLine(x)
@@ -623,8 +678,8 @@ public final class QuarryDustField {
                     let rise = r.float(0, 1)
                     add(
                         SIMD3(x, y, base + rise * rise * 3), dust: rate * falling,
-                        velocity: SIMD3(a, -r.float(0, 3), 10 * column.lift * speed * speed) + r.unit() * 2.5,
-                        heat: 0.8)
+                        velocity: SIMD3(a, -r.float(0, 3), 10 * column.heat * speed * speed) + r.unit() * 2.5,
+                        heat: 0.8 * column.heat)
                 }
             }
         }
@@ -798,24 +853,32 @@ public final class QuarryDustField {
             for _ in 0..<700 {
                 // Denser in the middle, thinning to the footprint's edge.
                 var a = SIMD2(r.float(-1, 1) + r.float(-1, 1), r.float(-1, 1) + r.float(-1, 1)) * 0.5
-                // Over shallow rock (stage 3l), from three clumps of the footprint, so the low dust
+                // Over shallow rock (stage 3l), from clumps of the footprint, so the low dust
                 // over the rock running down the flank is broken, with the rock between.
+                // Stage 3r (emmettl/bombcad-work#152): from more, smaller clumps spread wider, and
+                // low and flat rather than up (`low`, 0 over the crest's rock to 1 over the
+                // shallowest), so the near flank's dust is a broken sheet lying over the rock rather
+                // than three stems rising into the plume.
+                var low: Float = 0
                 if column.shallow > Self.clumpedFrom {
                     let c = min(Self.clumps - 1, Int(r.float() * Float(Self.clumps)))
                     var cr = QuarryRandom(seed: 0xC1A &+ UInt64(n) &* 131 &+ UInt64(c))
-                    let middle = SIMD2(cr.float(-0.8, 0.8), cr.float(-0.8, 0.8))
+                    let middle = SIMD2(cr.float(-1, 1), cr.float(-1, 1))
                     a = middle + a * Self.clumpSize
+                    low = min(1, (column.shallow - Self.clumpedFrom) / 0.4)
                 }
                 let place = centre + a * column.reach
                 let base =
                     max(face.height(face.original, place.x, place.y), rockTop(place.x, place.y, reach: 1))
                     + 0.3
                 let rise = r.float(0, 1)
-                let way = simd_normalize(SIMD3<Float>(a.x * 0.25 + out.x * 0.6, a.y * 0.25, 3))
+                let up = 3 - 2.2 * low
+                let way = simd_normalize(SIMD3<Float>(a.x * 0.25 + out.x * (0.6 + 0.6 * low), a.y * 0.25, up))
                 let speed = r.float(0.15, 1)
                 add(
-                    SIMD3(place.x, place.y, base + rise * rise * 4), dust: rate * falling,
-                    velocity: way * 11 * column.lift * speed * speed + r.unit() * 3, heat: 0.7)
+                    SIMD3(place.x, place.y, base + rise * rise * (4 - 2.5 * low)), dust: rate * falling,
+                    velocity: way * 11 * column.lift * speed * speed + r.unit() * (3 + 1.5 * low),
+                    heat: 0.7 * (1 - 0.6 * low))
             }
         }
         let buffer = queue.makeCommandBuffer()!

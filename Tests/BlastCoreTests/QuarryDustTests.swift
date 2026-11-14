@@ -24,8 +24,11 @@ struct QuarryDustTests {
         }
     }
 
-    /// All the dust in the field and where its middle is (m), from a stored copy of it.
-    func centre(_ dust: QuarryDustField) throws -> (total: Double, middle: SIMD3<Double>) {
+    /// All the dust in the field and where its middle is (m), from a stored copy of it; with
+    /// `above`, only the cells whose middles are higher than that (m).
+    func centre(_ dust: QuarryDustField, above: Float = -.infinity) throws -> (
+        total: Double, middle: SIMD3<Double>
+    ) {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "quarry-dust-centre-\(ProcessInfo.processInfo.processIdentifier).bin")
         defer { try? FileManager.default.removeItem(at: url) }
@@ -37,7 +40,7 @@ struct QuarryDustTests {
                 to: Float16.self)
             var total = 0.0
             var sum = SIMD3<Double>.zero
-            for k in 0..<nz {
+            for k in 0..<nz where dust.low.z + dust.h * (Float(k) + 0.5) > above {
                 for j in 0..<ny {
                     for i in 0..<nx {
                         let d = Double(density[i + nx * (j + ny * k)])
@@ -94,10 +97,36 @@ struct QuarryDustTests {
         run(to: last + 2)
         let early = try centre(dust)
         #expect(early.total > 0)
+        // Stage 3r (emmettl/bombcad-work#152): the dust high over the crest is carried on downwind
+        // further than the dust as a whole, so the plume leans more as it rises; and the cold dust
+        // low over the cut settles once the firings are done.
+        let crest = try #require(face.ridge?.crest)
+        let earlyHigh = try centre(dust, above: crest + 12)
+        let earlyLow = try centre(dust, above: crest - 4).total - earlyHigh.total
+        run(to: last + 6)
+        let lateHigh = try centre(dust, above: crest + 12)
+        let lateLow = try centre(dust, above: crest - 4).total - lateHigh.total
+        let middle = try centre(dust)
+        let downwind = simd_normalize(
+            SIMD2<Double>(Double(dust.uniforms.wind.x), Double(dust.uniforms.wind.y)))
+        func along(_ a: SIMD3<Double>, _ b: SIMD3<Double>) -> Double {
+            simd_dot(SIMD2(b.x - a.x, b.y - a.y), downwind)
+        }
+        let highDrift = along(earlyHigh.middle, lateHigh.middle)
+        let allDrift = along(early.middle, middle.middle)
+        #expect(
+            highDrift > allDrift + 5,
+            "high over the crest \(highDrift) m downwind in 4 s, all of it \(allDrift) m")
+        #expect(
+            lateLow < 0.5 * earlyLow, "the dust low over the cut settles: \(lateLow / earlyLow) of it left")
+        let earlyAloft = try centre(dust, above: crest + 6).total
         run(to: last + 10)
         let late = try centre(dust)
-        // Stage 3f to 3j thinned all of it at 0.6 to 0.9 a second: exp(-0.6 * 8) is under 1%.
-        #expect(late.total > 0.1 * early.total, "the dust lingers: \(late.total / early.total) of it left")
+        // Stage 3f to 3j thinned all of it at 0.6 to 0.9 a second: exp(-0.6 * 8) is under 1%. Since
+        // stage 3r the cold dust low over the cut settles, so it is the dust aloft that lingers.
+        let lateAloft = try centre(dust, above: crest + 6).total
+        #expect(late.total > 0.02 * early.total, "the dust lingers: \(late.total / early.total) of it left")
+        #expect(lateAloft > 0.1 * earlyAloft, "the dust aloft lingers: \(lateAloft / earlyAloft) of it left")
         let wind = SIMD2<Double>(Double(dust.uniforms.wind.x), Double(dust.uniforms.wind.y))
         let drift = SIMD2(late.middle.x - early.middle.x, late.middle.y - early.middle.y)
         #expect(simd_dot(drift, simd_normalize(wind)) > 5, "the dust drifts downwind: \(drift)")
@@ -139,6 +168,16 @@ struct QuarryDustTests {
         #expect(columns.count == firings.count)
         let strengths = columns.map(\.strength)
         #expect(strengths.max()! - strengths.min()! > 0.4, "firings of unequal strength")
+        // Stage 3r (emmettl/bombcad-work#152): a bank with depth, not a wall: some firings weak, each
+        // throwing its dust out its own distance and climbing its own height, from clumps at their
+        // own places, heights and throws.
+        #expect(strengths.contains { $0 < 0.6 }, "some firings weak: \(strengths)")
+        #expect(columns.map(\.lift).max()! - columns.map(\.lift).min()! > 0.5, "throws differ")
+        #expect(columns.map(\.heat).max()! - columns.map(\.heat).min()! > 0.3, "heights differ")
+        let clumps = columns.indices.flatMap { n in
+            (0..<QuarryDustField.faceClumps).map { QuarryDustField.faceClump(n, $0) }
+        }
+        #expect(clumps.map(\.distance).max()! - clumps.map(\.distance).min()! > 0.1, "clumps' throws differ")
         let xs = firings.map(\.position.x).sorted()
         let spacing = (xs.last! - xs.first!) / Float(xs.count - 1)
         #expect(

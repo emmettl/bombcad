@@ -1685,3 +1685,103 @@ debug marches `dbg*/`, and `tools/` (`look.sh`, `clipcost.sh`, `play.sh`, `sheet
 is of unequal strength and each reaches its neighbours along the strip, its wind blows along the
 strip and off the face, and after the firings every cell's dust is under the haze bound of every
 cell within its reach (which covers the warp and a cell). `ridgeDustLingers` as before.
+
+## Stage 3r: a plume that leans, a calmer haze, and the crest out of the fog, 14 November 2026
+
+emmettl/bombcad-work#152, on the user's word of 13 November ("keep working through the defects
+list until it looks strong"). Same standing: illustrative; the rock's physics, block counts and
+motion are unchanged (every ridge frame below is drawn from stage 3f's own 20 s run of 31,259
+blocks, `ridge-dust-heave/a30/poses`). Nothing here is a load, a blast design, or a claim about
+fragments, dust, a dust hazard, the wind or anything's reach. The Quarry Face's side of it (a bank
+with depth) is in [hillside-blast.md](hillside-blast.md), "Stage 3r".
+
+**What was wrong** (stage 3l's list, rendered again on main's build at de992c68).
+- *The lean was slight.* The plume rose nearly straight and then drifted as haze. A wide view of
+  the whole plume (220 m off) showed why: its top moved little more than a metre a second however
+  the flow's wind was set. With the wind growing with height in the flow (0.8 and 1.6 of it more 30
+  m over the crest), with the plume's rise slowed high up, and even with the flow's wind three
+  times as strong, the plume stood where it rose: the buoyant column's own inflow and spread, which
+  the pressure solve keeps, outweigh a light wind round it.
+- *Marbled haze at 6 to 8 s.* Drawn without the billows the marbling went; without the field's
+  vorticity confinement it stayed; without the noise's cuts the haze was an opaque fog. It was the
+  billows' mottling of thin dust: small lobes, carried with the haze's gusty, sheared flow, drawn
+  out into swirls and streaks.
+- *Stems.* The near flank's low dust rose as a few separate stems into the plume at 3.6 to 4 s: the
+  shallow columns' three clumps each rose as fast as the crest's columns.
+- *The crest close shot in fog* from 6 to 12 s (its camera stands in the dust left low over the cut,
+  0.3 to 0.8 of density over 90 to 115 fine steps, stage 3l).
+
+**What changed** (`QuarryDust.metal`, `QuarryDustField`, BlastCore; `dustFragment`,
+`QuarryRender.metal`; the dust's uniforms gain `shape`, in both shaders' copies and the Swift mirror).
+- *The wind's carry aloft* (`carryAt`, `ridgeCarry`). Outside the flow, as the face's dust drifted
+  along the strip before stage 3l, a ridge cut's dust is carried on downwind by 1.5 times the wind
+  (4.5 m/s) from 16 m over the crest up, easing in from 4 m under it; the flow itself is as before.
+  So the plume's top runs ahead of its base and it leans more the higher it rises. The billows ride
+  the same carry, so they move with the dust. Tried: 1 (3 m/s), whose lean hardly showed in the
+  opening view; 2 (6 m/s), whose haze had left the opening view by 12 s.
+- *The haze settles low over the cut* (`ridgeSettle`). Once the firings are done (easing in from 1
+  to 2.5 s after the last), cold dust up to 6 m over the crest, fading out by 16 m, settles at 0.3 a
+  second, as the face's trench's does; the plume above drifts on. At 0.4 the heap was bare of haze by
+  12 s.
+- *A calmer haze* (`dustFragment`). Thin dust's billows ride its flow at most 1.5 m/s (thick dust's
+  5 m/s, as before), and it is mottled by lobes two and a half times the size and less deep (0.6 to
+  1.25, it was 0.45 to 1.35), so a haze is broad, soft patches rather than a marbling.
+- *A broken low sheet* (`columns` over shallow rock): six clumps of 0.45 of the footprint (three of
+  0.7), spread a little wider, and the shallower the rock the lower and flatter the dust goes: up to
+  a quarter of the crest's columns' rise, more of it out down the flank, cooler and more scattered.
+- *Softer creases* (both scenes): see the face's stage 3r.
+
+**Measured** (release build, M4 Max Studio, loaded by other sessions, load average 20 to 65; Record
+Clip at 1920 x 1080, interleaved with main's build at de992c68; `clipcost*.txt`).
+- *While the ridge fires* (the opening view, 1.5 to 5.5 s, two runs each): draw 11.10 and 11.69 ms
+  main, 11.66 and 11.51 ms this (within the runs' spread, about +0.2 ms); the dust step 4.44 and 4.69
+  against 4.26 and 4.39 ms.
+- *Over the whole 20 s* (four runs each): draw 11.30, 11.60, 11.79, 12.50 ms main, 12.03, 11.45,
+  12.15, 12.14 ms this (about +0.1 ms).
+- *The crest close shot* (6 to 12 s, four runs each): 13.12, 15.65, 13.95, 15.75 ms main, 13.32,
+  12.46, 13.36, 14.48 ms this: cheaper, by about 1 ms, with less dust to march through.
+- *The window* (`play --ridge --self-test`, two runs each interleaved, the first of each with
+  shots; medians from 1 to 5 s while following the first firing): draw 14.1 and 14.9 ms main, 14.6
+  and 15.1 ms this (+0.3 ms); the dust-and-chips step 13.0 and 14.9 against 14.4 and 14.9 ms. Over
+  the whole follow the draw is 11.5 and 11.6 against 11.2 and 11.7 ms (`playcost.txt`).
+- *No crawl* (`flicker.py`, the opening view at 4.50, 4.53, 4.57 s and 12.00, 12.03, 12.07 s): the
+  change in fine detail between frames is 5.14 and 5.05 at 4.5 s (main 5.25 and 5.18), with the fine
+  detail itself 5.82 (5.73); 0.34 and 0.30 at 12 s (0.47 and 0.40), the fine detail 7.23 (6.16):
+  more of the rock shows through the thinner haze. The crest close shot at 12 s: 0.41 and 0.36 (0.47
+  and 0.39).
+- *The field* (`QuarryDustTests/ridgeDustLingers`, columns only): over the 4 s from 2 s after the last
+  firing the dust more than 12 m over the crest drifts more than 5 m further downwind than the dust
+  as a whole, the dust from 4 m under the crest to 12 m over it falls to under half, and the dust
+  over 6 m above the crest keeps more than a tenth 8 s later (all the dust more than 2%; stage 3j's
+  thinning left under 1%).
+
+**Checked by eye**, before (main's build) and after, from the same poses and cameras: Record Clip's
+opening view, Pull back and the crest close in at 1, 2, 3, 3.6, 4, 4.5, 6, 8, 12 and 18 s (4.5 and
+12 s three frames in a row), and the window's own frames (`sheet-ridge-still-ba.png`,
+`sheet-ridge-pull-ba.png`, `sheet-ridge-plume-ba.png`, `sheet-ridge-close-ba.png`, before left).
+- *The lean.* At 3.6 to 4.5 s the plume's head reaches further left, downwind over the crest, than
+  its base; at 6 s its cap has drifted left of where main's stands, and at 8 s its haze lies across
+  the upper left.
+- *The haze* at 6 to 8 s is broad, soft patches; the close shot's swirled, marbled lobes are gone.
+- *The near flank* at 3.6 to 4 s: the low dust over the rock running down it is broader and lower,
+  with the rock showing between; one column still rises from it into the plume.
+- *The crest close shot*: at 6 s still hazy, though less (the plume overhead and the dust still
+  settling); at 8 s the far plain and hills are clear behind a light haze, and at 12 s clear.
+- *The opening view* at 12 s keeps a faint haze over the heap and high on the left (main's was a
+  paler, broader haze).
+
+**What still looks wrong.**
+- *The lean is a carry, not the flow's.* The plume's dust is carried downwind outside its flow, so
+  the plume leans by its dust, not by its air: the hot column it rose in stays put. It reads as a
+  lean in the frames; a wind in the flow strong enough to bend the column would no longer be light.
+- *The plume's middle over the crest* is still a tall dense mass in front of the crest's break at
+  3.6 to 4.5 s, and one stem still rises from the near flank.
+- *The crest close shot at 6 s* is still in haze.
+- *Less haze at 12 s* in the opening view than main's: the settling and the carry take it sooner.
+- Not looked at on a screen: all of it was made offscreen.
+
+Files: `$BOMBCAD_DATA/hillside-blast/dust-depth/`, as listed in
+[hillside-blast.md](hillside-blast.md), "Stage 3r".
+
+**Tests.** `QuarryDustTests/ridgeDustLingers` adds the carry aloft and the settling low over the cut
+(above), and checks the lingering on the dust aloft.

@@ -1608,6 +1608,7 @@ struct QuarryDustUniforms {
     float4 wind;
     float4 sun; // w: the share of thin dust drawn as haze (a face's low down)
     float4 high;
+    float4 shape; // stage 3r: x the carry aloft's base over the box's floor, y its share of the wind, w the last firing's time
 };
 
 constexpr sampler triSampler(filter::linear, address::clamp_to_edge, coord::normalized);
@@ -1652,6 +1653,9 @@ constant float dustHaze = 0.03f;
 // A face's dust's light against a ridge cut's (stage 3l): paler and creamier, as the face's old
 // cloud read under its low sun.
 constant float3 dustFaceCream = float3(1.1f, 1.15f, 1.22f);
+// The light a face's shaded dust low over the pile gets from the low sky and the sunlit floor
+// (stage 3r).
+constant float3 dustFaceBounce = float3(0.3f, 0.29f, 0.28f);
 
 static inline float dustBillowAt(texture3d<float, access::sample> noise, float3 p, float lod) {
     constexpr sampler mipped(filter::linear, mip_filter::linear, address::repeat);
@@ -1792,7 +1796,18 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
             float tau = light.sample(triSampler, lp).r * 0.075f;
             float3 lit = dustLit(tau, phase, saturate(p.z * 2.0f));
             // A face's dust lit a paler cream (stage 3l), as its old cloud was.
-            if (u.dims.w > 0) lit *= dustFaceCream;
+            if (u.dims.w > 0) {
+                lit *= dustFaceCream;
+                // Stage 3r (emmettl/bombcad-work#152): the bank's shaded underside, low over the
+                // pile, is lit by the low sky and the sunlit floor's bounce, a pale grey-cream; lit
+                // by the warm ambient alone it went a shaded brown fringe at 8 to 12 s.
+                // Its warm diffused sun is greyed toward the bounce's cream as it goes in.
+                float bench = float(u.dims.w);
+                float low = 1.0f - smoothstep(0.4f * bench, 1.2f * bench, p.z * size.z);
+                float shade = (1.0f - exp(-0.25f * tau)) * low;
+                float grey = dot(lit, float3(0.3f, 0.55f, 0.15f));
+                lit = mix(lit, grey * float3(1.06f, 1.0f, 0.9f), 0.4f * shade) + dustFaceBounce * shade;
+            }
             accumulated += transmittance * a * lit;
             seenSum += transmittance * a * world;
             seenWeight += transmittance * a;
@@ -1813,8 +1828,16 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
     float3 ps = (seen - low) / size;
     // The wind is in the flow itself (stage 3k).
     float3 flow = flowField.sample(triSampler, ps).xyz;
+    // With the wind's carry aloft (stage 3r, `carryAt` in QuarryDust.metal), so the lobes ride the
+    // plume as it leans.
+    flow += u.wind.xyz * u.shape.y * smoothstep(-4.0f, 16.0f, ps.z * size.z - u.shape.x);
+    float opticalDepth = -log(max(transmittance, 1e-4f));
+    // How thin the dust is on this pixel: a veil, or the haze a cloud leaves.
+    float thin = 1.0f - smoothstep(0.5f, 2.0f, opticalDepth);
     // Held to 5 m/s: faster, the flow's change across a puff smeared the lobes within a phase.
-    flow *= min(1.0f, 5.0f / max(length(flow), 1e-3f));
+    // Thin dust's to 1.5 m/s (stage 3r, emmettl/bombcad-work#152): the haze's gusty, sheared flow
+    // drew its lobes out into swirled, marbled streaks at 6 to 8 s.
+    flow *= min(1.0f, mix(5.0f, 1.5f, thin) / max(length(flow), 1e-3f));
     float lobes = dustBillow(noise, seen, flow, tt, foot);
     // Across the line of sight (the seen point is only good to a step along it): toward the sun
     // as the screen shows it, and square to that.
@@ -1825,16 +1848,21 @@ fragment float4 dustFragment(FullscreenOut in [[stage_in]],
     float towardSun = dustBillow(noise, seen + e1 * reach, flow, tt, foot);
     // A lobe brighter on its side toward the sun, by how far across the screen the sun stands.
     float lit = (towardSun - lobes) * saturate(acrossLength * 1.5f);
-    float opticalDepth = -log(max(transmittance, 1e-4f));
     // The edges of thick dust tear into lobes; thin dust (a veil, or the haze round a puff) is left.
     float cut = 2.4f * (1.0f - lobes) * smoothstep(0.5f, 2.0f, opticalDepth);
     float kept = max(opticalDepth - cut, 0.0f) + 0.3f * min(opticalDepth, cut);
     // Thin dust (a veil running over the rock, the haze round a puff) is mottled by the same lobes,
     // so it rolls rather than lying as an even sheet.
-    kept *= mix(1.0f, mix(0.45f, 1.35f, lobes), 1.0f - smoothstep(0.5f, 2.0f, opticalDepth));
+    // Since stage 3r by lobes two and a half times the size and less deep, so a haze is broad,
+    // soft patches rather than a marbling of small lobes.
+    float broad = dustBillow(noise, seen * 0.4f, flow * 0.4f, tt, foot * 0.4f);
+    kept *= mix(1.0f, mix(0.6f, 1.25f, broad), thin);
     float alphaKept = 1.0f - exp(-kept);
     float body = smoothstep(0.3f, 2.0f, opticalDepth);
-    float crease = mix(0.68f, 1.1f, smoothstep(0.15f, 0.85f, lobes));
+    // Creases from the small and the broad lobes together, and shallower (stage 3r): from the
+    // small lobes alone, where the seen dust's depth turned steeply across the screen their thin
+    // creases were drawn out into streaky strands through a thick bank (the face's Pull back at 3 s).
+    float crease = mix(0.78f, 1.08f, smoothstep(0.15f, 0.85f, 0.5f * (lobes + broad)));
     float3 shaded = accumulated * (alphaKept / alpha) * mix(1.0f, crease * (1.0f - 1.6f * lit), body);
     return float4(max(shaded, 0.0f), alphaKept);
 }

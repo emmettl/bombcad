@@ -10,6 +10,7 @@ struct QuarryDustUniforms {
     float4 wind; // xyz: the wind at height; w: the fines' thinning near the ground
     float4 sun; // w: the share of thin dust the renderer's march draws as haze
     float4 high; // w: the event's time
+    float4 shape; // x the carry aloft's base over the box's floor, y its share of the wind, z a ridge's low settling, w last firing (stage 3r)
 };
 
 constexpr sampler triSampler(filter::linear, address::clamp_to_edge, coord::normalized);
@@ -119,6 +120,18 @@ static inline float3 windAt(constant QuarryDustUniforms &u, float above) {
     return u.wind.xyz * (0.35f + 0.65f * smoothstep(0.0f, 12.0f, above));
 }
 
+// The wind's carry aloft (stage 3r, emmettl/bombcad-work#152): the dust is carried on downwind,
+// outside the flow, by `shape.y` of the wind, from none 4 m under the crest's or the bench's height
+// (`shape.x` over the box's floor) to all of it 16 m over it, for a cell `z` metres over the box's
+// floor. In the flow itself a wind three times as strong hardly moved the plume: the buoyant
+// column's own inflow and spread, which the pressure solve keeps, outweigh a light wind round it,
+// so the plume rose nearly straight. Carried outside the flow (as the face's dust drifted along the
+// strip before stage 3l), the plume leans more the higher it rises. The renderer's billows ride the
+// same carry.
+static inline float3 carryAt(constant QuarryDustUniforms &u, float z) {
+    return u.wind.xyz * u.shape.y * smoothstep(-4.0f, 16.0f, z - u.shape.x);
+}
+
 kernel void dustWindStart(texture3d<float, access::write> vOut [[texture(0)]],
                           texture3d<float, access::read> clearance [[texture(1)]],
                           texture3d<float, access::read> sIn [[texture(2)]],
@@ -195,7 +208,7 @@ kernel void dustAdvectDensity(texture3d<float, access::sample> dIn [[texture(0)]
                                    uint3 id [[thread_position_in_grid]]) {
     if (sIn.read(id).r > 0.5f) { dOut.write(float4(0), id); return; }
     float3 pos = float3(id) + 0.5f;
-    float3 v = vIn.read(id).xyz + float3(0.0f, 0.0f, -0.05f);
+    float3 v = vIn.read(id).xyz + float3(0.0f, 0.0f, -0.05f) + carryAt(u, pos.z * u.hdtsteps.x);
     float3 size = float3(u.dims.xyz);
     float3 back = (pos - v * u.hdtsteps.y / u.hdtsteps.x) / size;
     dOut.write(float4(dIn.sample(triSampler, back).r * u.hdtsteps.w), id);
@@ -207,7 +220,7 @@ kernel void dustBackward(texture3d<float, access::sample> dIn [[texture(0)]],
                               constant QuarryDustUniforms &u [[buffer(0)]],
                               uint3 id [[thread_position_in_grid]]) {
     float3 pos = float3(id) + 0.5f;
-    float3 v = vIn.read(id).xyz + float3(0.0f, 0.0f, -0.05f);
+    float3 v = vIn.read(id).xyz + float3(0.0f, 0.0f, -0.05f) + carryAt(u, pos.z * u.hdtsteps.x);
     float3 size = float3(u.dims.xyz);
     float3 forward = (pos + v * u.hdtsteps.y / u.hdtsteps.x) / size;
     dOut.write(dIn.sample(triSampler, forward), id);
@@ -225,7 +238,7 @@ kernel void dustCorrect(texture3d<float, access::sample> d0 [[texture(0)]],
     if (sIn.read(id).r > 0.5f) { dOut.write(float4(0), id); return; }
     float above = clearance.read(id).r * 12.75f;
     float3 pos = float3(id) + 0.5f;
-    float3 v = vIn.read(id).xyz + float3(0.0f, 0.0f, -0.05f);
+    float3 v = vIn.read(id).xyz + float3(0.0f, 0.0f, -0.05f) + carryAt(u, pos.z * u.hdtsteps.x);
     float3 size = float3(u.dims.xyz);
     float3 back = (pos - v * u.hdtsteps.y / u.hdtsteps.x) / size;
     float semi = dSemi.read(id).r;
@@ -254,6 +267,13 @@ kernel void dustCorrect(texture3d<float, access::sample> d0 [[texture(0)]],
         float bench = float(u.dims.w);
         float z = (float(id.z) + 0.5f) * u.hdtsteps.x;
         coarse = coarse * faceCoarse + faceSettle * cold * (1.0f - smoothstep(0.6f * bench, bench, z));
+    } else {
+        // A ridge cut's (stage 3r, emmettl/bombcad-work#152): once the firings are done, cold dust
+        // low over the cut (up to 6 m over the crest, fading out by 16 m) settles, so the haze
+        // left over the crest and the heap clears from about 6 s; the plume above drifts on.
+        float z = (float(id.z) + 0.5f) * u.hdtsteps.x;
+        float done = smoothstep(u.shape.w + 1.0f, u.shape.w + 2.5f, u.high.w);
+        coarse += u.shape.z * done * cold * (1.0f - smoothstep(u.shape.x + 6.0f, u.shape.x + 16.0f, z));
     }
     float fines = mix(u.low.w, u.wind.w, near);
     // Toward the box's sides (not its top or floor) the dust fades over its last 8 m, so it
