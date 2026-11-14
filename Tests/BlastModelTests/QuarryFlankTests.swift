@@ -256,6 +256,97 @@ struct QuarryFlankTests {
         }
     }
 
+    @Test("Every outcrop piece and crag faces out: where its tops show, they face up")
+    func outcropsFaceOut() throws {
+        // Judged from the drawn top, a fifth of the outcrops' pieces were drawn inside out, dark
+        // hollow shells on the flanks: a short piece whose top layer was gone over all of it took
+        // its way out from a row folded back under the ground (emmettl/bombcad-work#150).
+        let flank = try #require(QuarryFlank(face: Self.face))
+        var meshes = flank.ledgeRuns().enumerated().map { k, run in
+            QuarryFace.outcrop(run.map { flank.ledges[$0] }, flank: flank, seed: UInt64(k))
+        }
+        meshes += flank.crags.enumerated().map { k, crag in
+            QuarryFace.crag(crag, flank: flank, seed: UInt64(k))
+        }
+        var pieces = 0
+        for mesh in meshes {
+            let piece = Self.pieces(mesh)
+            var votes: [Int: (up: Int, down: Int)] = [:]
+            for (i, v) in mesh.vertices.enumerated()
+            where (v.body >> 16) & 7 == QuarryFace.OutcropPart.top.rawValue
+                && v.z - flank.groundHeight(v.x, v.y) > 0.2
+            {
+                let up = Float((v.normal >> 20) & 1023) / 511.5 - 1 > 0
+                var vote = votes[piece[i]] ?? (0, 0)
+                if up { vote.up += 1 } else { vote.down += 1 }
+                votes[piece[i]] = vote
+            }
+            for vote in votes.values {
+                pieces += 1
+                #expect(vote.up > vote.down)
+            }
+        }
+        #expect(pieces > 100)
+    }
+
+    /// Which connected sheet (piece) of `mesh` each vertex is in.
+    static func pieces(_ mesh: (vertices: [QuarryFace.Vertex], indices: [UInt32])) -> [Int] {
+        var parent = Array(mesh.vertices.indices)
+        func find(_ a: Int) -> Int {
+            var a = a
+            while parent[a] != a {
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            }
+            return a
+        }
+        for t in stride(from: 0, to: mesh.indices.count, by: 3) {
+            let a = find(Int(mesh.indices[t]))
+            parent[find(Int(mesh.indices[t + 1]))] = a
+            parent[find(Int(mesh.indices[t + 2]))] = a
+        }
+        return mesh.vertices.indices.map(find)
+    }
+
+    @Test("No outcrop piece lies on the slope as a thin slab: each stands a quarter as high as it is wide")
+    func outcropsNotSlabs() throws {
+        // Thin slabs and lips a few decimetres high and metres across, where a bed lay nearly along
+        // the slope, sunk part way, or was left where the layers over it were gone; and long thin
+        // points at the pieces' ends (emmettl/bombcad-work#150).
+        let flank = try #require(QuarryFlank(face: Self.face))
+        var pieces = 0
+        for (k, run) in flank.ledgeRuns().enumerated() {
+            let mesh = QuarryFace.outcrop(run.map { flank.ledges[$0] }, flank: flank, seed: UInt64(k))
+            let piece = Self.pieces(mesh)
+            var shown: [Int: [SIMD3<Float>]] = [:]
+            for (i, v) in mesh.vertices.enumerated() {
+                let above = v.z - flank.groundHeight(v.x, v.y)
+                if above > 0.05 { shown[piece[i], default: []].append(SIMD3(v.x, v.y, above)) }
+            }
+            for points in shown.values where points.count > 4 {
+                pieces += 1
+                // Its width: its plan's narrower spread (as a uniform strip's width), and how high
+                // it stands.
+                let centre = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
+                var (xx, xy, yy): (Float, Float, Float) = (0, 0, 0)
+                for p in points {
+                    let d = p - centre
+                    (xx, xy, yy) = (xx + d.x * d.x, xy + d.x * d.y, yy + d.y * d.y)
+                }
+                let n = Float(points.count)
+                (xx, xy, yy) = (xx / n, xy / n, yy / n)
+                let half = (xx + yy) / 2
+                let narrow = half - ((xx - yy) * (xx - yy) / 4 + xy * xy).squareRoot()
+                let width = (max(narrow, 0) * 12).squareRoot()
+                let high = points.map(\.z).max()!
+                #expect(
+                    high >= 0.25 * width,
+                    "a piece \(width) m wide stands \(high) m at \(centre.x), \(centre.y)")
+            }
+        }
+        #expect(pieces > 100)
+    }
+
     @Test("A ridge's weathering as drawn breaks along the strike, within reach of the solver's cells")
     func strikeRecess() {
         let n = QuarryFace.beddingNormal

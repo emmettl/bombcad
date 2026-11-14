@@ -1664,3 +1664,99 @@ and the measurements in `measure.txt`, `rc-*`, `st-*`.
   hole beside the crack. In the face's default and close views the joints look as they did.
 - *No shimmer* seen in the orbiting clips (`crawl-*`, frames 50 ms apart): the floor's stones and
   the joints move with the surface.
+
+## Stage 3p: rocks drawn inside out, outcrops lying as slabs, and angular quarry gravel, 14 November 2026
+
+emmettl/bombcad-work#150, on the user's word of 13 November ("keep working through the defects list
+until it looks strong"). Same standing: illustrative, for the eye; render-only geometry and shading,
+procedural, no third-party assets; nothing reaches the solver. The rock, its blocks and their poses
+are unchanged (116,967 blocks at the face, 31,259 on the ridge), so before and after are rendered
+from the same stored poses (`rock-strong/face-poses`, `rock-surface/ridge140-poses`).
+
+**What was wrong** (#149's frames, `rock-masses/crops/flanks-left-*`).
+- *Dark brown hollow shells on a ridge's flanks*: three in #148's frame of the flanks from above,
+  about six after #149, open cupped shapes as if a mesh were missing faces.
+- *The quarry floor's gravel was a beach*: smooth rounded stones, pale and much of a size within
+  each class.
+- *A few outcrop pieces close in were thin slabs lying on the slope*, some tapering to a point.
+
+**What the shells were.** A debug render that drew each kind of thing in its own flat colour, and
+apart where the eye saw the back of the surface by its own normal (`dbg1/`: outcrops red or green,
+small stones blue, large stones yellow, fallen blocks magenta, scrub grey, the solver's blocks and
+the dressing grey or purple) showed every shell green: whole outcrop pieces whose normals pointed
+into the rock. The meshes were whole; they were drawn inside out, so lit from behind and banked with
+the foot's soil colour, and a convex block read as a hollow. `QuarryFace.outcropMesh` chose which way
+was out by a vote of the rows where the top layer's top stands out of the ground, else from the
+middle row. Since #149 an outcrop is drawn in short pieces, and on a piece whose top layer is gone
+over all of it (its blocks stripped back into the hill) no row votes, and the middle row's top,
+folded back under the ground, gave the wrong answer: 54 of the 262 pieces that show a top, on the
+built-in ridge. Now the way out comes from the sweep's own handedness (the run's way along against
+its way down the slope, seen from above), which a fold cannot turn; a Linux test checks that every
+piece's and crag's showing tops face up (54 failures on main's code, none now).
+
+**What changed.**
+- *Outcrops face out* (`QuarryFace.outcropMesh`, BlastModel, Linux-tested), as above.
+- *A minimum thickness for outcrops* (`outcropMesh`, Linux-tested): each row's profile is measured as
+  sunk (where the run ends or gaps), and where what shows above the slope is on average thinner than
+  0.42 m (or a quarter of how far down the slope it shows, if less) the row is tipped back about where
+  its top met the ground, its front raised, by as much as that takes and at most 0.3 radians, eased
+  along the run; its foot keeps to the ground and its back stays buried (`slabThickness`,
+  `slabTilt`). The thin slabs were beds lying nearly along the slope, rows sunk part way where a run
+  gaps, and a lower layer left as a lip where the layers over it were gone. A piece's ends now sink
+  over 0.3 m with rows sampled into them, so an end is a block's steep end (it ran down over 0.8 m to
+  a point: `outcropEnd`). A Linux test checks that every piece stands at least a quarter as high as
+  it is wide (four pieces failed on main's code). Outcrop triangles on the ridge 183,752 before,
+  247,270 after (631 ledges, three crags).
+- *Angular gravel* (`crushedStone`, `quarryFloor` in `QuarryRender.metal`): each stone a polygon of
+  five to seven sides, its own size (0.22 to 0.62 of its cell, many small and a few large),
+  elongation and turn, with a flat or ridged top facet leaning its own way and a steeper facet down to
+  each side, each facet its own lightness (fresh broken faces paler, weathered ones darker); a wider
+  spread of tone from stone to stone; some sunk, the fines lapping over their lower facets. The
+  facets are blended over about a pixel (a soft minimum over their heights, the pixel measured as
+  the mean of its two sides on the floor, not their sum, which is stretched along the view and
+  blurred the facets into one another). Each size still fades to its mean under a pixel as before.
+  The talus apron's toe, shaded with the floor, takes the same stones.
+
+**Measured** (main's build and this one interleaved; GPU draw from the recorder's own timing;
+`measure.txt`).
+- *GPU draw a frame*, Record Clip of the default view (three rounds): the face 14.92, 14.93, 15.18 ms
+  before and 14.96, 14.95, 15.24 after; the ridge 11.67, 11.64, 11.77 before and 11.67, 11.78, 11.78
+  after (+0.05 ms both). Close to the floor (the floor pose) 12.55 before and 12.59 after; farther
+  (`floorfar`) 12.56 and 12.72. The target was at most +1 ms.
+- *Record Clip* a frame: the face 25.7, 25.7, 25.9 ms before and 25.8, 25.8, 26.1 after; the ridge
+  20.4, 20.1, 19.8 before and 20.1, 19.8, 19.9 after (load 2 to 4).
+- *The window's work a frame* (`play --self-test NAME --offscreen`, two rounds, medians; load 2 to
+  4): the face following 22.4, 22.1 ms before and 22.0, 22.2 after, scrubbing 45.9, 45.8 and 45.9,
+  45.9, playing 18.8, 18.6 and 18.6, 18.7; the ridge following 17.2, 16.7 before and 17.3, 17.1
+  after, scrubbing 31.9, 31.9 and 31.9, 32.0, playing 13.5, 13.8 and 13.8, 13.9. Metal allocated
+  after the first firing 812 MB at the face both, 494 to 495 MB on the ridge.
+- Rock unchanged: 116,967 blocks at the face and 31,259 on the ridge, both builds. The floor's tone
+  by bands of the frame within 2% of main's in the default views and the far floor, within 4% close
+  in (the stones a little darker).
+
+**Checked by eye** from the stored poses with the window's recorder (`hillsideblast clip`, frames
+from the movie files), before on main's build and after on this one: #149's poses (the flanks from
+above, the outcrop close, the near flank, the floor close and farther, the face's default and close
+views, the ridge's default view, the crest, the apron) and a close view of an outcrop's thin end
+(`slabc`: focus 97.5,-45,23.5, yaw 1.6, pitch 0.3, 9 m). Files under
+`$BOMBCAD_DATA/hillside-blast/rock-shells/`: `before/` and `after/`, enlarged pairs in `crops/`
+(`flanks-left-*`, `outcrop-left-*`, `near-left-*`, `floor-near-*`), the debug renders `dbg1/` (main)
+and `fixdbg/` (the shells fixed), the trials `t1/` to `t7/`, orbiting clips over the floor
+`crawl-main/` and `crawl-after/` (frames 33 ms apart, `crops/orbit-*`), the scripts in `scripts/`
+(`dbgtag.py` makes the debug shader) and the measurements in `measure.txt`, `rc-*`, `st-*`.
+
+**The look, frankly.**
+- *Shells* (`crops/flanks-left-*`): gone. The pieces that were shells now read as lit blocks like
+  their neighbours. A rusty bush close in (`crops/near-bl-t4.png`) still reads as a dark brown ring,
+  which is its leaf shading, not a shell: left for now.
+- *Outcrops close in* (`crops/outcrop-left-*`): the thin tapering slab is now a block about half a
+  metre thick and the sliver beside it a narrow upright block; the slab's far end still narrows to a
+  point in plan, and a few pieces seen from above still have a hooked or tailed outline
+  (`crops/flanks-left-after.png`), from their sweep's curve rather than their thickness.
+- *Gravel* (`crops/floor-near-*`): crushed, angular stones with flat facets and sharp edges, of
+  many sizes and tones, rather than a beach. The larger stones' facets are rather regular, a top and
+  a ring of sloping sides, so close in some read as cut gems; the smallest, a few pixels across,
+  still read as rounded specks. Some stones are still pale against the fines in the sun.
+- *No shimmer* seen in the orbiting clip over the floor (`crops/orbit-*`, consecutive frames 33 ms
+  apart): the stones and their facets hold still as the camera moves; the mid-distance floor is
+  busier than before.

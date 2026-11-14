@@ -906,6 +906,14 @@ extension QuarryFace {
             | ((crag ? 1 : 0) << 26) | (moved << 27)
     }
 
+    /// How thick, on average, what an outcrop's row shows above the slope is at least (m), and the
+    /// most it is tipped back to make it so (radians; `outcropMesh`, emmettl/bombcad-work#150):
+    /// thinner, it lay on the slope as a thin slab or lip.
+    static let slabThickness: Float = 0.42
+    static let slabTilt: Float = 0.3
+    /// How far a ledge's outcrop sinks under the ground at its ends (m; `outcropMesh`).
+    static let outcropEnd: Float = 0.3
+
     /// The step of an outcrop's shift along the bedding's normal in its vertices' tags (m).
     public static let outcropShiftStep: Float = 0.05
 
@@ -1335,6 +1343,11 @@ extension QuarryFace {
                 samples += [a + runOut * t, total - b - runOut * t]
             }
         }
+        if !crag {
+            for t: Float in [0.04, 0.12, 0.2, 0.28] where Self.outcropEnd + 0.05 < total / 2 {
+                samples += [Self.outcropEnd * t / 0.28, total - Self.outcropEnd * t / 0.28]
+            }
+        }
         samples.sort()
         var along: [Float] = []
         for u in samples where u >= 0 && u <= total && (along.isEmpty || u - along[along.count - 1] > 0.04) {
@@ -1435,7 +1448,13 @@ extension QuarryFace {
         grid.reserveCapacity(rows * columns)
         var opened: [Float] = []
         opened.reserveCapacity(rows * columns)
-        let endLength: Float = crag ? 6 : min(0.8, total * 0.2)
+        // A ledge's outcrop ends over a short way, so its end is a broken block's steep end
+        // (emmettl/bombcad-work#150): sunk over 0.8 m, its top ran down to a point, and from above
+        // or along the slope its end read as a thin slab or blade.
+        let endLength: Float = crag ? 6 : Self.outcropEnd
+        var built:
+            [(profile: [SIMD2<Float>], stand: Float, opens: [Float], c: SIMD2<Float>, d: SIMD2<Float>)] = []
+        built.reserveCapacity(rows)
         for (k, u) in along.enumerated() {
             shift = shiftAt(u)
             let (p, d) = frames[k]
@@ -1608,12 +1627,63 @@ extension QuarryFace {
             for (column, q) in profile.enumerated() where q.x < 0 && parts[column] != .buried {
                 profile[column].y = min(q.y, ground(at(q.x)) - 0.08)
             }
+            built.append((profile, stand, opens, c, d))
+        }
+        // Each row sunk where the outcrop sinks at its ends and gaps (`stand` under 1): lowered whole,
+        // or sunk out of sight rather than left as a sliver a few centimetres proud of the slope,
+        // which read as a thin lip at a run's end (emmettl/bombcad-work#148).
+        var sinks = [Float](repeating: 0, count: rows)
+        for (k, row) in built.enumerated() {
+            func at(_ s: Float) -> SIMD2<Float> { row.c + row.d * s }
             var rise: Float = 0.15
-            for q in profile { rise = max(rise, q.y - ground(at(q.x))) }
-            var sink = (1 - stand) * (rise + 0.45)
-            // Sunk whole rather than left as a sliver a few centimetres proud of the slope, which read
-            // as a thin lip at a run's end (emmettl/bombcad-work#148).
-            if stand < 0.999, rise - sink < 0.3 { sink = rise + 0.45 }
+            for q in row.profile { rise = max(rise, q.y - ground(at(q.x))) }
+            sinks[k] = (1 - row.stand) * (rise + 0.45)
+            if row.stand < 0.999, rise - sinks[k] < 0.3 { sinks[k] = rise + 0.45 }
+        }
+        // A minimum thickness (emmettl/bombcad-work#150): where what a row shows above the slope, as
+        // sunk, is on average less thick than `slabThickness` (or a quarter of how far down the slope
+        // it shows, if that is less), it is tipped back about where its top met the ground, its
+        // front raised, by about as much as that takes and at most `slabTilt`, eased along the run;
+        // its foot keeps to the ground and its back stays buried. A bed lying nearly along the slope,
+        // or a lower layer left where those over it are gone, stood out of the slope as a thin slab
+        // or lip a few decimetres high, tapering to an edge.
+        var tilts = [Float](repeating: 0, count: rows)
+        for (k, row) in built.enumerated() where !crag {
+            func at(_ s: Float) -> SIMD2<Float> { row.c + row.d * s }
+            let above = row.profile.map { $0.y - sinks[k] - ground(at($0.x)) }
+            var (low, high, area) = (Float.infinity, -Float.infinity, Float(0))
+            for i in 1..<above.count where above[i - 1] > 0 || above[i] > 0 {
+                let (x0, x1) = (row.profile[i - 1].x, row.profile[i].x)
+                let (a0, a1) = (above[i - 1], above[i])
+                let cross = x0 + (x1 - x0) * a0 / (a0 - a1)
+                let (from, to) = (a0 > 0 ? x0 : cross, a1 > 0 ? x1 : cross)
+                (low, high) = (min(low, from, to), max(high, from, to))
+                // Its area above the ground, walked along the profile (a shoelace).
+                area += from * max(a1, 0) - to * max(a0, 0)
+            }
+            let width = high - low
+            guard width > 0.3 else { continue }
+            let mean = abs(area) / 2 / width
+            let wanted = min(Self.slabThickness, 0.25 * width)
+            tilts[k] = max(0, min(Self.slabTilt, 2 * (wanted - mean) / max(high, 0.5)))
+        }
+        tilts = eased(tilts, 1.2)
+        for (k, row) in built.enumerated() {
+            let (opens, c, d) = (row.opens, row.c, row.d)
+            let (u, stand, sink) = (along[k], row.stand, sinks[k])
+            func at(_ s: Float) -> SIMD2<Float> { c + d * s }
+            var profile = row.profile
+            if tilts[k] > 1e-3 {
+                let pivot = ground(at(0)) - sink
+                let (cosine, sine) = (cos(tilts[k]), sin(tilts[k]))
+                for (column, q) in row.profile.enumerated() where parts[column] != .foot {
+                    let up = q.y - sink - pivot
+                    let x = q.x * cosine - up * sine
+                    var y = pivot + q.x * sine + up * cosine + sink
+                    if x < 0 { y = min(y, ground(at(x)) + sink - (parts[column] == .buried ? 0.4 : 0.08)) }
+                    profile[column] = SIMD2(x, y)
+                }
+            }
             // A crag's ends settle into the slope rather than sinking straight down
             // (emmettl/bombcad-work#149): what stands above the ground is lowered toward it, so its
             // beds bend with the slope's own curve as they go under, each block of its foot by its
@@ -1637,6 +1707,22 @@ extension QuarryFace {
                 opened.append(opens[m - 1 - layerOf[column]])
             }
         }
+        // Which way is out, from the sweep's own handedness: each row's profile runs from its buried
+        // back over the top and down the fronts to its foot, so the rock lies on the same side of
+        // it all along, and the top faces up where the run's way along and its way down the slope
+        // turn anticlockwise seen from above. Judged from the drawn top (emmettl/bombcad-work#147:
+        // by a vote of the rows where the top layer's top shows, else at the middle row), a short
+        // piece whose top layer was gone over all of it had no row to vote, and its middle row,
+        // folded back under the ground, turned it inside out: dark, hollow shells on the flanks,
+        // a fifth of the pieces (emmettl/bombcad-work#150).
+        var turn: Float = 0
+        for k in 1..<rows {
+            let (a, b) = (frames[k - 1], frames[k])
+            let way = b.p - a.p
+            let down = a.d + b.d
+            turn += way.x * down.y - way.y * down.x
+        }
+        let outward: Float = turn < 0 ? -1 : 1
         func normals(_ g: [SIMD3<Float>]) -> [SIMD3<Float>] {
             var out = [SIMD3<Float>](repeating: .zero, count: g.count)
             for i in 0..<rows {
@@ -1646,18 +1732,7 @@ extension QuarryFace {
                     out[i * columns + j] = simd_cross(du, dv)
                 }
             }
-            // Outward: the top faces up, judged along the rows where the top shows (a row whose top
-            // layer is gone folds back under the ground, its normals the other way; judged at one
-            // row, a crag was turned inside out: emmettl/bombcad-work#147).
-            var up: Float = 0
-            for i in 0..<rows {
-                let top = g[i * columns + 3]
-                guard top.z > ground(SIMD2(top.x, top.y)) + 0.1 else { continue }
-                up += out[i * columns + 3].z > 0 ? 1 : -1
-            }
-            if up == 0 { up = out[(rows / 2) * columns + 3].z }
-            let sign: Float = up < 0 ? -1 : 1
-            return out.map { simd_length($0) > 1e-8 ? simd_normalize($0) * sign : SIMD3(0, 0, 1) }
+            return out.map { simd_length($0) > 1e-8 ? simd_normalize($0) * outward : SIMD3(0, 0, 1) }
         }
         // Broken up: every point moved a little in all three directions by noise, so the edges
         // wander and the faces are uneven planes rather than a sweep's straight courses, and worn
