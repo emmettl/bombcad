@@ -459,6 +459,22 @@ struct QuarryFaceTests {
                 #expect(top > floor - 1 && top < floor + 6, "x \(x): top \(top), floor \(floor)")
             }
         }
+        // Its top eased along the face, not a sawtooth, and about a metre or more up it but over its
+        // last few metres to the strip, over the dressing cells' lower ends
+        // (emmettl/bombcad-work#148).
+        for range in [Float(-140)...(-2), (face.length + 2)...600] {
+            var previous: Float?
+            for x in stride(from: range.lowerBound, through: range.upperBound, by: 0.5) {
+                let top = try #require(tops[x])
+                if let previous {
+                    #expect(abs(top - previous) < 0.25, "x \(x): top \(top), before \(previous)")
+                }
+                previous = top
+                let outside = x < 0 ? -x : x - face.length
+                let floor = stride(from: Float(-40), through: 40, by: 1).map { face.oldHeight(x, $0) }.min()!
+                if outside > 5 { #expect(top > floor + 0.8, "x \(x): top \(top), floor \(floor)") }
+            }
+        }
         let ridge = try QuarryFace(site: .builtIn(.ridgeCut), options: options)
         #expect(ridge.footApron().vertices.isEmpty)
     }

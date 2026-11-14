@@ -1134,6 +1134,51 @@ extension QuarryFace {
             }
             blocks.append(row)
         }
+        // A layer gone from over a block only where what is left under it is thick enough to stand
+        // as a block: a thin lower layer left bare ran out over the slope as a thin plate or lip
+        // (emmettl/bombcad-work#148).
+        for b in blocks[m - 1].indices where blocks[m - 1][b].strip > 0 {
+            while blocks[m - 1][b].strip > 0,
+                layers[m - 1 - blocks[m - 1][b].strip].top - layers[0].bottom < 0.5
+            {
+                blocks[m - 1][b].strip -= 1
+            }
+        }
+        // No block of the top layers left standing alone at an end, nor a short one within, where
+        // those over its neighbours are gone: alone it stood as a slab on the layer below
+        // (emmettl/bombcad-work#148).
+        do {
+            let top = joints[m - 1]
+            let row = blocks[m - 1]
+            for b in row.indices where row[b].strip == 0 {
+                let start = b == 0 ? 0 : top[b - 1].at
+                let end = b == top.count ? total : top[b].at
+                let before = b > 0 ? row[b - 1].strip : 0
+                let after = b < row.count - 1 ? row[b + 1].strip : 0
+                // At either end, any block standing alone so; within, a short one.
+                let atEnd = b == 0 || b == row.count - 1
+                if end - start < 2.5 || atEnd, before > 0 || b == 0, after > 0 || b == row.count - 1,
+                    max(before, after) > 0
+                {
+                    blocks[m - 1][b].strip = min(before > 0 ? before : after, after > 0 ? after : before)
+                }
+            }
+        }
+        // Where the top layers are gone over a block, those beside it curve back into the hill over
+        // `stripRound` past the joint rather than ending at it in a square-cut slab.
+        let stripRound: Float = 1.2
+        func standingDistance(_ u: Float, _ layer: Int) -> Float {
+            let top = joints[m - 1]
+            let row = blocks[m - 1]
+            let b = top.firstIndex { $0.at > u } ?? top.count
+            var best = Float.infinity
+            for k in max(0, b - 2)...min(row.count - 1, b + 2) where layer < m - row[k].strip {
+                let start = k == 0 ? 0 : top[k - 1].at
+                let end = k == top.count ? total : top[k].at
+                best = min(best, max(0, start - u, u - end))
+            }
+            return best
+        }
         // Each layer's own weathering.
         struct Look {
             var batter: Float
@@ -1174,8 +1219,16 @@ extension QuarryFace {
         for layerJoints in joints {
             for j in layerJoints { samples += [j.at - 0.12, j.at - 0.03, j.at + 0.03, j.at + 0.12] }
         }
+        for (b, j) in joints[m - 1].enumerated()
+        where blocks[m - 1][b].strip != blocks[m - 1][b + 1].strip {
+            for t: Float in [0.15, 0.35, 0.6, 0.85, 1.1, 1.3] { samples += [j.at - t, j.at + t] }
+        }
+        // A crag's layer runs out over `runOut`, its front curving back into the hill.
+        let runOut: Float = 1.6
         for (a, b) in extents where crag {
-            samples += [a - 0.03, a + 0.03, total - b - 0.03, total - b + 0.03]
+            for t: Float in [0, 0.12, 0.3, 0.55, 0.8, 1] {
+                samples += [a + runOut * t, total - b - runOut * t]
+            }
         }
         samples.sort()
         var along: [Float] = []
@@ -1300,15 +1353,20 @@ extension QuarryFace {
                     0.1 * QuarryNoise.fbm(SIMD3(u / 1.6, Float(layer) * 5.1, look.phase + 3), octaves: 2)
                 var open: Float = 0
                 for j in js { open = max(open, j.open * (1 - smoothstep(0.03, 0.12, abs(u - j.at)))) }
-                var f = base - batter - look.recess - gone + out + wobble
-                if layer > 0 { f = min(f, fronts[layer - 1] + look.overhang) }
+                // Where the outcrop sinks at its ends and gaps, a layer neither overhangs the one
+                // below nor is weathered or battered back under the one above, so the layers stand
+                // flush and sink as one block: with the lower layers drawn back into the slope, the
+                // top layer was left standing out of it alone, a thin plate or lip (until
+                // emmettl/bombcad-work#148).
+                var f = base - batter - (look.recess + gone) * stand + out + wobble
+                if layer > 0 { f = min(f, fronts[layer - 1] + look.overhang * stand * stand) }
                 f -= open * 0.3
                 fronts[layer] = f
                 drops[layer] = block.drop + corner * block.chamfer * 0.35 + open * 0.12
                 opens[layer] = open
                 bulges[layer] = block.bulge
                 closed[layer] = block.merged && layer < m - 1
-                batter += look.batter
+                batter += look.batter * stand
             }
             // Over some blocks of the top layer, it and maybe the one below are gone, so the
             // outcrop's top steps down a layer there; elsewhere the top layer stands.
@@ -1320,10 +1378,23 @@ extension QuarryFace {
                 fronts[layer] = fronts[layer + 1]
                 drops[layer] = 0
             }
-            for layer in max(0, m - strip)..<m where strip > 0 { fronts[layer] = -1.5 }
-            // A crag's upper beds run out before its lower ones, so its ends step down.
-            for layer in 0..<m where crag && (u < extents[layer].0 || u > total - extents[layer].1) {
-                fronts[layer] = -1.5
+            for layer in max(0, m - strip)..<m where strip > 0 {
+                let t = 1 - standingDistance(u, layer) / stripRound
+                let round = t <= 0 ? 0 : sqrt(1 - (1 - t) * (1 - t))
+                fronts[layer] = -1.5 + (fronts[layer] + 1.5) * round
+                drops[layer] += (1 - round) * 0.3
+            }
+            // A crag's upper beds run out before its lower ones, so its ends step down; each bed's
+            // front curves back into the hill over a metre and a half as it runs out, its top
+            // rounding down, rather than ending in a square-cut slab (until
+            // emmettl/bombcad-work#148).
+            for layer in 0..<m where crag {
+                let inside = min(u - extents[layer].0, total - extents[layer].1 - u) / runOut
+                guard inside < 1 else { continue }
+                let t = max(0, inside)
+                let round = t <= 0 ? 0 : sqrt(1 - (1 - t) * (1 - t))
+                fronts[layer] = -1.5 + (fronts[layer] + 1.5) * round
+                drops[layer] += (1 - round) * 0.35
             }
             // A lamina come away from the top's front part.
             let lamina = 0.2 * smoothstep(0.05, 0.3, QuarryNoise.fbm(w / 3.1 + 5, octaves: 2))
@@ -1396,7 +1467,10 @@ extension QuarryFace {
             }
             var rise: Float = 0.15
             for q in profile { rise = max(rise, q.y - ground(at(q.x))) }
-            let sink = (1 - stand) * (rise + 0.45)
+            var sink = (1 - stand) * (rise + 0.45)
+            // Sunk whole rather than left as a sliver a few centimetres proud of the slope, which read
+            // as a thin lip at a run's end (emmettl/bombcad-work#148).
+            if stand < 0.999, rise - sink < 0.3 { sink = rise + 0.45 }
             for (column, q) in profile.enumerated() {
                 let xy = at(q.x)
                 grid.append(SIMD3(xy.x, xy.y, q.y - sink))

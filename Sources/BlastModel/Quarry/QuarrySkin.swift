@@ -9,8 +9,10 @@ import simd
 /// dark crack along them (`jointField` in `QuarryRender.metal`, which keeps a copy of this: change
 /// them together), so that unbroken rock reads as one mass with joints in it rather than as smooth
 /// slabs. Until 13 November 2026 each bed had its own short cracks, evenly spaced, so a face read
-/// as coursed masonry (emmettl/bombcad-work#142). They are not where the rock breaks: illustrative,
-/// for the eye.
+/// as coursed masonry (emmettl/bombcad-work#142). Since emmettl/bombcad-work#148 the crack gapes
+/// wider along stretches of it, where the shader also draws its lips spalled in chips, and the
+/// shader adds a fourth, render-only set of short cracks close in (neither is in the relief). They
+/// are not where the rock breaks: illustrative, for the eye.
 public enum QuarryJoints {
     struct JointSet {
         var normal: SIMD2<Float>
@@ -96,7 +98,7 @@ public enum QuarryJoints {
                 guard hash(k, set.salt) < set.keep else { continue }
                 let centre = (Float(k) + 0.5 + 0.8 * (hash(k, set.salt &+ 1) - 0.5)) * set.spacing
                 let d = abs(u - centre)
-                guard d < max(halfWidth, 1.55 * line) else { continue }
+                guard d < max(halfWidth, 2.6 * line) else { continue }
                 // Open over stretches some metres long both ways, through several beds; stopping at
                 // a bedding plane here and there.
                 let n = noise2(v * 0.045 + Float(k) * 7.31, p.z * 0.07 + Float(k) * 3.7, set.salt &+ 2)
@@ -107,7 +109,12 @@ public enum QuarryJoints {
                     let t = d / halfWidth
                     groove = max(groove, openness * (1 - t * t) * (1 - t * t))
                 }
-                let width = line * (0.45 + 1.1 * noise1(p.z * 1.4 + v * 0.6 + Float(k), set.salt &+ 8))
+                // Wider where its lips have spalled (a stretch some metres long).
+                let stretch = smoothstep(
+                    0.2, 0.65, noise2(v * 0.8 + Float(k) * 5.3, p.z * 0.8 + Float(k) * 1.9, set.salt &+ 12))
+                let width =
+                    line * (0.45 + 1.1 * noise1(p.z * 1.4 + v * 0.6 + Float(k), set.salt &+ 8))
+                    * (0.75 + 1.1 * stretch)
                 if d < width {
                     let t = max(0, min(1, (d - 0.5 * width) / (0.5 * width)))
                     crack = max(crack, openness * (1 - t * t * (3 - 2 * t)))
@@ -507,4 +514,9 @@ extension QuarryFace {
             Date().timeIntervalSince(start))
         return (vertices, indices, report)
     }
+}
+
+private func smoothstep(_ a: Float, _ b: Float, _ x: Float) -> Float {
+    let t = max(0, min(1, (x - a) / (b - a)))
+    return t * t * (3 - 2 * t)
 }

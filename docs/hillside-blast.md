@@ -1427,3 +1427,124 @@ Files under `$BOMBCAD_DATA/hillside-blast/rock-forms/`: `before/` and `after/`, 
   bedding, which crosses the crest in straight lines; breaking them fully would need the bedding
   itself to fold or the crest's rock cells to differ, which is the solver's, so it is recorded here
   as a stop for this stage.
+
+## Stage 3n: joints with broken edges, and the floor, talus, turf and outcrops' ends, 14 November 2026
+
+emmettl/bombcad-work#148, on the user's word of 13 November ("keep working through the defects list
+until it looks strong"). Same standing: illustrative, for the eye; render-side shading and
+render-only geometry, procedural, no third-party assets; nothing reaches the solver. The rock, its
+blocks and their poses are unchanged (116,967 blocks at the face, 31,259 on the ridge), so before
+and after are rendered from the same stored poses (`rock-strong/face-poses`,
+`rock-surface/ridge140-poses`).
+
+**What was wrong** (#142's and #147's frames).
+- *Joints were drawn lines of even darkness*: a crack of one width and tone with no broken edges,
+  and past the strip's left end so few that the face was plain. A crag's joints were an even dark
+  band.
+- *A soft band across the quarry floor*: its grit and stones faded out together over 1.5 to 8 cm a
+  pixel, so where they went the floor turned from gravel to smooth in one band.
+- *The talus apron's top was sawtoothed where low* (0.7 m up the face, under the lowest dressing
+  cells' lower ends, and the meeting line followed the ground's own steps), and *its toe showed as
+  an edge on the floor*: its relief and normals were its own, not the floor's.
+- *The soil's stones were even round domes* (every stone filling its cell, all domed alike), and
+  the soil's edge against the rock was a hazy margin some decimetres wide close in.
+- *Turf on rock that moved*: judged on the face as it now lay, and whole over each piece, so a
+  thrown piece's top could read as a green tile.
+- *A crag's end showed square-cut slabs*: where its upper beds run out (or the top layers are gone
+  over a block) the bed below stopped in a square end at the same place, and a short block of the
+  top layer could be left standing alone as a slab on the layer below.
+- *Some outcrops ended in a thin lip*: as an outcrop sinks into the slope at its ends and gaps its
+  lower layers were still weathered back under the top one, so the top layer stood out of the slope
+  alone; and a layer gone from over a block could leave a thin lower layer bare as a plate.
+
+**What changed.**
+- *Joints* (`jointLook` in `QuarryRender.metal`; `QuarryJoints.field` keeps the crack's width in
+  step): the crack gapes wider along stretches some metres long, and there its lips are spalled in
+  chips (a few centimetres to two decimetres across, on one side or both, scalloped), drawn paler
+  and fresher and bevelled down into the crack; the crack's darkness varies along it (filled paler
+  in places). A fourth, render-only set of short cracks (spacing 1.9 m, open over a metre or two)
+  lies between the joints close in, so no stretch is plain. The lips fade as they come under a
+  couple of pixels. On the crags and outcrops (`ledgeFragment`) the joints vary in width and
+  darkness along them and have chipped, paler lips.
+- *The floor* (`quarryFloor`): grit, pebbles and cobbles each fade out at their own footprint (0.8
+  to 3.5 cm, 2.5 to 10 cm, 7 to 24 cm a pixel), each leaving its mean tone, so there is no one place
+  where the detail goes; the stones have their own outline (`stoneOutline`) and some are sunk.
+- *The talus apron* (`QuarryFace.footApron`, Linux-tested): its top at least about a metre up the
+  face, lower only over its last few metres to the strip; where it meets the face eased along the
+  face over about two metres, with a row run on a little into the hill under the rock; toward its
+  toe its normals are the floor's, and its toe is shaded with the floor's own relief, so it runs out
+  into the floor with no edge.
+- *Soil on the rock* (`heldSoil`, `screeGround`): each stone its own size (0.24 to 0.5 of its
+  cell), elongation (to 1.9), turn and lumpy outline, some sunk to a low hump with the fines lapping
+  over; the grit between is a smooth noise (a 2.5 cm hash read as a mosaic where it showed). The
+  soil's edge wanders at a hand's breadth and is as sharp as the pixel allows; on steeper rock the
+  soil thins to smaller patches rather than fading.
+- *Turf on rock that moved* (`blockFragment`): judged on the face as it lay in the hill (its rest
+  normal), so a piece thrown on its side keeps its turf on what was its top; on rock thrown more
+  than about a metre the turf holds only in ragged patches and clumps back from the piece's edges,
+  soil showing at the tear. Rock that has heaved, or been released but not yet moved far, keeps its
+  turf whole (torn on every piece at release, a first try spotted the crest with a round patch on
+  each). The sides of a ridge's render-only cells take the soil of the ground they stand in.
+- *Crags and outcrops* (`QuarryFace.outcropMesh`, Linux-tested): where an outcrop sinks at its ends
+  and gaps its layers stand flush (no overhang, no recess or batter), so it sinks as one block; a
+  remnant a few centimetres proud of the slope is sunk whole. A layer goes from over a block only
+  where what is left is at least half a metre thick; no block of the top layers is left standing
+  alone at a run's end, nor a short one within. A crag's bed, as it runs out, curves back into the
+  hill over 1.6 m, and the beds beside a block whose top layers are gone curve back over 1.2 m,
+  rather than ending square. Outcrop triangles on the ridge 176,628 before, 215,358 after (631
+  ledges and three crags both).
+
+**Measured** (main's build and this one interleaved; GPU draw from the recorder's own timing;
+`measure.txt`).
+- *GPU draw a frame*, Record Clip of the default view (three rounds): the face 14.69, 14.73, 14.73
+  ms before and 15.31, 15.31, 15.34 after (+0.6 ms: the lips and the fourth set's cracks close in,
+  the floor's three sizes of stone); the ridge 11.45, 11.44, 11.47 before and 11.77, 11.78, 11.77
+  after (+0.3 ms). The target was at most +1 ms.
+- *Record Clip* a frame: the face 25.9, 25.9, 26.0 ms before and 26.4, 26.3, 26.5 after; the ridge
+  19.8, 19.7, 19.8 before and 20.1, 20.1, 20.1 after (load 6 to 11).
+- *The window's work a frame* (`play --self-test NAME --offscreen`, two rounds, medians; load 3 to
+  8): the face following 21.6, 22.2 ms before and 23.7, 23.3 after, scrubbing 46.5, 46.2 and 46.9,
+  46.8, playing 18.2, 18.2 and 18.6, 19.5; the ridge following 16.9, 16.9 before and 17.5, 17.1
+  after, scrubbing 32.6, 32.5 and 32.9, 32.8, playing 14.3, 14.6 and 14.8, 14.6. Metal allocated
+  after the first firing 812 MB at the face and 494 MB on the ridge, both builds.
+- Rock unchanged: 116,967 blocks at the face and 31,259 on the ridge, both builds.
+
+**Checked by eye** from the stored poses with the window's recorder (`hillsideblast clip`, frames
+from the movie files), before on main's build and after on this one: #142's poses (the face's
+default view, close and left end; the ridge's default view and the Pull back) and #147's (the near
+flank, the wide view, the crag and its close-up, an outcrop close, the crest from above), plus a
+joint close up on the face past the strip, the floor close, the apron, the crest close, and the
+thrown rock from above at 10 to 11 s. Files under `$BOMBCAD_DATA/hillside-blast/rock-finish/`:
+`before/` and `after/`, enlarged pairs in `crops/`, the trials `t1/` to `t16/`, the debug renders
+`dbg*` (lip and crack masks, crag layers, which faces are skin, held, moved or dressing), the
+scripts in `scripts/` (`clips.sh`, `try.sh`, `measure.sh`, `crop.swift`) and the measurements in
+`measure.txt`, `rc-*`, `st-*`.
+
+**The look, frankly.**
+- *Joints* (`crops/joints-faceclose-*`, `joints-close-*`): they read as cracks in rock rather than
+  drawn lines: wider and darker in places, with pale chipped lips that catch the light, filled
+  paler in others. Close in, the lips are a fringe along the crack rather than real spalls: there
+  is no depth to them, and under a raking light they can read as a pale line beside the dark one.
+  The face past the strip's left end has more, shorter cracks and is no longer plain
+  (`faceleft-plain-*`), though it is still the smoothest stretch of the face.
+- *The floor* (`floorband-*`, `floor-*`): no band where the detail fades; scattered pale stones
+  run on into the distance and thin out. The stones are still few and pale against the dark grit,
+  so close in it reads as a scatter on a smooth bed rather than a gravel floor.
+- *The apron* (`apron-*`, `apron-left-*`): its top meets the face in a smooth, wandering line, and
+  its toe runs into the floor with no edge where it is shaded. It is still paler than the floor, so
+  in the sun its foot reads as a change of colour along the face.
+- *Soil on a ridge* (`soil-*`): stones of many sizes and shapes, some sunk, some proud; the soil's
+  edge against the rock is crisp and irregular. Seen close the stones are rather many and too alike
+  in colour, so a patch of soil reads somewhat pocked.
+- *Turf on thrown rock* (`thrown-*`, `turf-margin-*`): a thrown piece keeps only ragged patches of
+  its turf, so there are no green tiles among the thrown rock from above. The broken margin of the
+  cut, rock that heaved but was not thrown, keeps its turf whole on each cell, and there its cells'
+  outlines still show as green plates (the cells, not the shading: torn on every piece that moved,
+  the crest was spotted with a round patch on each, so it was left).
+- *Crags and outcrops* (`cragend-*`, `crag-*`, and `t10/outc1-00.30.png` against `t8/`): a crag's
+  run-out curves back into the hill and the slab that stood alone on its end is gone; a few short
+  outcrops no longer end in a thin lip, and none of the gaps leaves a plate on the slope. A crag's
+  end is still a squarish block seen from along the flank, and its layers still meet the slope in
+  straight sweeps.
+- *No crawl* seen in a short orbiting clip close to a jointed face (`crawl-main/`, `crawl-after/`,
+  consecutive frames at 1/30 s): the cracks and lips hold still as the camera moves.
