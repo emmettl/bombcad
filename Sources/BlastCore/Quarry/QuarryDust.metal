@@ -4,12 +4,12 @@
 using namespace metal;
 
 struct QuarryDustUniforms {
-    float4 low; // w: a ridge cut's thinning high up, a share a second (0 for a face)
+    float4 low; // w: the fines' thinning high up, a share a second
     float4 hdtsteps; // h, dt, what velocity and density keep a step
-    int4 dims;
-    float4 wind; // w: a ridge cut's thinning near the ground
-    float4 sun;
-    float4 high;
+    int4 dims; // w: a face's bench top over the box's floor (m), 0 for a ridge cut
+    float4 wind; // xyz: the wind at height; w: the fines' thinning near the ground
+    float4 sun; // w: the share of thin dust the renderer's march draws as haze
+    float4 high; // w: the event's time
 };
 
 constexpr sampler triSampler(filter::linear, address::clamp_to_edge, coord::normalized);
@@ -36,48 +36,6 @@ kernel void dustAddSources(texture3d<float, access::read> vIn [[texture(0)]],
     }
     vOut.write(v, id);
     dOut.write(float4(dust), id);
-}
-
-kernel void dustAdvectVelocity(texture3d<float, access::sample> vIn [[texture(0)]],
-                               texture3d<float, access::write> vOut [[texture(1)]],
-                               constant QuarryDustUniforms &u [[buffer(0)]],
-                               uint3 id [[thread_position_in_grid]]) {
-    float3 pos = float3(id) + 0.5f;
-    float3 v = vIn.read(id).xyz;
-    float3 size = float3(u.dims.xyz);
-    float3 back = (pos - (v + u.wind.xyz) * u.hdtsteps.y / u.hdtsteps.x) / size;
-    float3 s = vIn.sample(triSampler, back).xyz;
-    float4 carried = vIn.sample(triSampler, back);
-    // Heat cools with an e-folding time of about three seconds.
-    vOut.write(float4(s * u.hdtsteps.z, carried.w * exp(-u.hdtsteps.y / 1.6f)), id);
-}
-
-kernel void dustForces(texture3d<float, access::read> vIn [[texture(0)]],
-                       texture3d<float, access::read> dIn [[texture(1)]],
-                       texture3d<float, access::write> vOut [[texture(2)]],
-                       constant QuarryDustUniforms &u [[buffer(0)]],
-                       uint3 id [[thread_position_in_grid]]) {
-    int3 p = int3(id);
-    float3 v = vIn.read(id).xyz;
-    float dust = dIn.read(id).r;
-    // Buoyancy of the warm dusty gas, and a touch of vorticity confinement.
-    // Hot, dusty gas rises; cold dust only drifts.
-    float heat = vIn.read(id).w;
-    v.z += (heat * 3.2f + min(dust, 4.0f) * 0.01f) * u.hdtsteps.y;
-    if (p.x > 0 && p.y > 0 && p.z > 0 && p.x < u.dims.x - 1 && p.y < u.dims.y - 1 && p.z < u.dims.z - 1) {
-        float3 vx0 = vIn.read(uint3(p + int3(-1,0,0))).xyz, vx1 = vIn.read(uint3(p + int3(1,0,0))).xyz;
-        float3 vy0 = vIn.read(uint3(p + int3(0,-1,0))).xyz, vy1 = vIn.read(uint3(p + int3(0,1,0))).xyz;
-        float3 vz0 = vIn.read(uint3(p + int3(0,0,-1))).xyz, vz1 = vIn.read(uint3(p + int3(0,0,1))).xyz;
-        float3 curl = float3((vy1.z - vy0.z) - (vz1.y - vz0.y), (vz1.x - vz0.x) - (vx1.z - vx0.z), (vx1.y - vx0.y) - (vy1.x - vy0.x));
-        // A simplified confinement: keep the rotation alive where it is strong.
-        float magnitude = length(curl);
-        if (magnitude > 0.5f) {
-            float3 w = normalize(curl);
-            float3 n = normalize(float3(vy1.y - vy0.y, vz1.z - vz0.z, vx1.x - vx0.x) + float3(1e-4f));
-            v += cross(n, w) * min(magnitude, 20.0f) * 1.1f * u.hdtsteps.y;
-        }
-    }
-    vOut.write(float4(v, vIn.read(id).w), id);
 }
 
 kernel void dustDivergence(texture3d<float, access::read> vIn [[texture(0)]],
@@ -137,91 +95,25 @@ kernel void dustProject(texture3d<float, access::read> vIn [[texture(0)]],
     vOut.write(float4(v, vIn.read(id).w), id);
 }
 
-kernel void dustAdvectDensity(texture3d<float, access::sample> dIn [[texture(0)]],
-                              texture3d<float, access::sample> vIn [[texture(1)]],
-                              texture3d<float, access::write> dOut [[texture(2)]],
-                              texture3d<float, access::read> sIn [[texture(3)]],
-                              constant QuarryDustUniforms &u [[buffer(0)]],
-                              uint3 id [[thread_position_in_grid]]) {
-    if (sIn.read(id).r > 0.5f) { dOut.write(float4(0), id); return; }
-    float3 pos = float3(id) + 0.5f;
-    float3 v = vIn.read(id).xyz;
-    // Fines settle a little, and thin out.
-    v += u.wind.xyz + float3(0.0f, 0.0f, -0.05f);
-    float3 size = float3(u.dims.xyz);
-    float3 back = (pos - v * u.hdtsteps.y / u.hdtsteps.x) / size;
-    float d = dIn.sample(triSampler, back).r * u.hdtsteps.w;
-    dOut.write(float4(d), id);
-}
-
-// MacCormack correction: the backward trace of the semi-Lagrangian result measures its error, and
-// half of it goes back, clamped to the corners the trace landed among, so it cannot ring.
-kernel void dustBackward(texture3d<float, access::sample> dIn [[texture(0)]],
-                         texture3d<float, access::sample> vIn [[texture(1)]],
-                         texture3d<float, access::write> dOut [[texture(2)]],
-                         constant QuarryDustUniforms &u [[buffer(0)]],
-                         uint3 id [[thread_position_in_grid]]) {
-    float3 pos = float3(id) + 0.5f;
-    float3 v = vIn.read(id).xyz + u.wind.xyz + float3(0.0f, 0.0f, -0.05f);
-    float3 size = float3(u.dims.xyz);
-    float3 forward = (pos + v * u.hdtsteps.y / u.hdtsteps.x) / size;
-    dOut.write(dIn.sample(triSampler, forward), id);
-}
-
-kernel void dustCorrect(texture3d<float, access::sample> d0 [[texture(0)]],
-                        texture3d<float, access::sample> dSemi [[texture(1)]],
-                        texture3d<float, access::sample> dBack [[texture(2)]],
-                        texture3d<float, access::sample> vIn [[texture(3)]],
-                        texture3d<float, access::read> sIn [[texture(4)]],
-                        texture3d<float, access::write> dOut [[texture(5)]],
-                        texture3d<float, access::read> clearance [[texture(6)]],
-                        constant QuarryDustUniforms &u [[buffer(0)]],
-                        uint3 id [[thread_position_in_grid]]) {
-    if (sIn.read(id).r > 0.5f) { dOut.write(float4(0), id); return; }
-    // Cold dust low over the ground and the pile falls out: within a few metres of the ground it
-    // thins in about two seconds, so what the impacts throw up comes down again rather than
-    // lying in a flat sheet. Warm dust rises first; the plumes high up are left alone.
-    float above = clearance.read(id).r * 12.75f;
-    float cold = 1.0f - smoothstep(0.04f, 0.3f, vIn.read(id).w);
-    float deposit = exp(-u.hdtsteps.y * 0.55f * cold * (1.0f - smoothstep(3.0f, 9.0f, above)));
-    float3 pos = float3(id) + 0.5f;
-    float3 v = vIn.read(id).xyz + u.wind.xyz + float3(0.0f, 0.0f, -0.05f);
-    float3 size = float3(u.dims.xyz);
-    float3 back = (pos - v * u.hdtsteps.y / u.hdtsteps.x) / size;
-    float semi = dSemi.read(id).r;
-    float original = d0.read(id).r;
-    float corrected = semi + 0.5f * (original - dBack.read(id).r);
-    float3 c = floor(back * size - 0.5f) ;
-    float lo = semi, hi = semi;
-    for (int z = 0; z < 2; ++z) for (int y = 0; y < 2; ++y) for (int x = 0; x < 2; ++x) {
-        float3 p = (c + float3(x, y, z) + 0.5f) / size;
-        float value = d0.sample(triSampler, p).r;
-        lo = min(lo, value);
-        hi = max(hi, value);
-    }
-    float kept = clamp(corrected, lo, hi) * u.hdtsteps.w * deposit;
-    if (u.low.w > 0.0f) {
-        // A ridge cut's dust thins as it rises and spreads, so each firing's plume clears and the
-        // notch shows again: slowly near the ground, where the skirt down the flanks is fed.
-        kept *= exp(-u.hdtsteps.y * mix(u.wind.w, u.low.w, smoothstep(3.0f, 10.0f, above)));
-    }
-    dOut.write(float4(kept), id);
-}
-
-// A ridge cut's own field (stage 3k, emmettl/bombcad-work#145): one plume that drifts and
-// lingers. Copies of the face's kernels rather than branches in them, so the face's field is
-// computed exactly as it was. Three things differ:
-// - The wind is in the flow itself (`ridgeWind`), stronger with height over the ground, so it goes
-//   over and round the ridge rather than through it, and the flow relaxes to it rather than to
+// The flow and the dust's thinning, one set of kernels for both scenes since stage 3l
+// (emmettl/bombcad-work#146; a ridge cut's own copies from stage 3k, emmettl/bombcad-work#145,
+// the face's older ones retired): one plume that drifts and lingers.
+// - The wind is in the flow itself (`windAt`), stronger with height over the ground, so it goes
+//   over and round the ground rather than through it, and the flow relaxes to it rather than to
 //   rest. Gusts from the baked noise (carried with the wind, divergence taken out by the pressure
 //   solve) make it a little turbulent.
 // - Dust thins mostly while it is thick: its coarse part falls out within seconds, its fines stay
 //   for tens of seconds, so the cloud thins, spreads and settles rather than vanishing.
 // - Dust near the box's sides fades, so a drifting plume never ends on a box face in view.
-// `u.wind.xyz` is the wind at height; `u.low.w` and `u.wind.w` the fines' thinning high up and
-// near the ground; `u.high.w` the event's time.
+// Per scene: `u.wind.xyz` is the wind at height (across each scene's opening view); `u.low.w` and
+// `u.wind.w` the fines' thinning high up and near the ground; `u.high.w` the event's time.
 
-static inline float3 ridgeWind(constant QuarryDustUniforms &u, float above) {
+// A face's coarse fall-out against a ridge cut's, and its cold dust's settling a second in the
+// trench below the bench's top (stage 3l).
+constant float faceCoarse = 0.25f;
+constant float faceSettle = 0.4f;
+
+static inline float3 windAt(constant QuarryDustUniforms &u, float above) {
     // A light wind that rises from about a third of its strength at the ground to all of it 12 m
     // up (the clearance's reach).
     return u.wind.xyz * (0.35f + 0.65f * smoothstep(0.0f, 12.0f, above));
@@ -232,11 +124,11 @@ kernel void dustWindStart(texture3d<float, access::write> vOut [[texture(0)]],
                           texture3d<float, access::read> sIn [[texture(2)]],
                           constant QuarryDustUniforms &u [[buffer(0)]],
                           uint3 id [[thread_position_in_grid]]) {
-    float3 v = sIn.read(id).r > 0.5f ? float3(0.0f) : ridgeWind(u, clearance.read(id).r * 12.75f);
+    float3 v = sIn.read(id).r > 0.5f ? float3(0.0f) : windAt(u, clearance.read(id).r * 12.75f);
     vOut.write(float4(v, 0.0f), id);
 }
 
-kernel void dustAdvectVelocityRidge(texture3d<float, access::sample> vIn [[texture(0)]],
+kernel void dustAdvectVelocity(texture3d<float, access::sample> vIn [[texture(0)]],
                                     texture3d<float, access::write> vOut [[texture(1)]],
                                     texture3d<float, access::read> clearance [[texture(2)]],
                                     constant QuarryDustUniforms &u [[buffer(0)]],
@@ -250,13 +142,13 @@ kernel void dustAdvectVelocityRidge(texture3d<float, access::sample> vIn [[textu
     // faster (by 0.5 a second more, as the plume takes in the air round it), so
     // the plume leans and drifts with the wind within a few seconds of rising.
     float above = clearance.read(id).r * 12.75f;
-    float3 wind = ridgeWind(u, above);
+    float3 wind = windAt(u, above);
     float across = u.hdtsteps.z * exp(-u.hdtsteps.y * 0.5f * smoothstep(4.0f, 12.0f, above));
     float3 s = wind + (carried.xyz - wind) * float3(across, across, u.hdtsteps.z);
     vOut.write(float4(s, carried.w * exp(-u.hdtsteps.y / 1.6f)), id);
 }
 
-kernel void dustForcesRidge(texture3d<float, access::read> vIn [[texture(0)]],
+kernel void dustForces(texture3d<float, access::read> vIn [[texture(0)]],
                             texture3d<float, access::read> dIn [[texture(1)]],
                             texture3d<float, access::write> vOut [[texture(2)]],
                             texture3d<float, access::sample> noise [[texture(3)]],
@@ -295,7 +187,7 @@ kernel void dustForcesRidge(texture3d<float, access::read> vIn [[texture(0)]],
     vOut.write(float4(v, vIn.read(id).w), id);
 }
 
-kernel void dustAdvectDensityRidge(texture3d<float, access::sample> dIn [[texture(0)]],
+kernel void dustAdvectDensity(texture3d<float, access::sample> dIn [[texture(0)]],
                                    texture3d<float, access::sample> vIn [[texture(1)]],
                                    texture3d<float, access::write> dOut [[texture(2)]],
                                    texture3d<float, access::read> sIn [[texture(3)]],
@@ -309,7 +201,7 @@ kernel void dustAdvectDensityRidge(texture3d<float, access::sample> dIn [[textur
     dOut.write(float4(dIn.sample(triSampler, back).r * u.hdtsteps.w), id);
 }
 
-kernel void dustBackwardRidge(texture3d<float, access::sample> dIn [[texture(0)]],
+kernel void dustBackward(texture3d<float, access::sample> dIn [[texture(0)]],
                               texture3d<float, access::sample> vIn [[texture(1)]],
                               texture3d<float, access::write> dOut [[texture(2)]],
                               constant QuarryDustUniforms &u [[buffer(0)]],
@@ -321,7 +213,7 @@ kernel void dustBackwardRidge(texture3d<float, access::sample> dIn [[texture(0)]
     dOut.write(dIn.sample(triSampler, forward), id);
 }
 
-kernel void dustCorrectRidge(texture3d<float, access::sample> d0 [[texture(0)]],
+kernel void dustCorrect(texture3d<float, access::sample> d0 [[texture(0)]],
                              texture3d<float, access::sample> dSemi [[texture(1)]],
                              texture3d<float, access::sample> dBack [[texture(2)]],
                              texture3d<float, access::sample> vIn [[texture(3)]],
@@ -354,6 +246,15 @@ kernel void dustCorrectRidge(texture3d<float, access::sample> d0 [[texture(0)]],
     float near = 1.0f - smoothstep(3.0f, 10.0f, above);
     float cold = 1.0f - smoothstep(0.04f, 0.3f, vIn.read(id).w);
     float coarse = smoothstep(0.8f, 3.5f, kept) * (0.45f + 0.45f * near * cold);
+    if (u.dims.w > 0) {
+        // A face's (`dims.w`, its bench top over the box's floor, is set; stage 3l): its coarse
+        // dust falls out more slowly, so the cloud that rose over the bench stands and drifts for
+        // longer; but cold dust below the bench's top, in the trench the rock has left, settles,
+        // so it does not lie as a flat veil over the new face.
+        float bench = float(u.dims.w);
+        float z = (float(id.z) + 0.5f) * u.hdtsteps.x;
+        coarse = coarse * faceCoarse + faceSettle * cold * (1.0f - smoothstep(0.6f * bench, bench, z));
+    }
     float fines = mix(u.low.w, u.wind.w, near);
     // Toward the box's sides (not its top or floor) the dust fades over its last 8 m, so it
     // leaves the box as it thins rather than ending on a face.
@@ -401,3 +302,26 @@ kernel void dustLight(texture3d<float, access::sample> dIn [[texture(0)]],
     lOut.write(float4(tau * u.hdtsteps.x * 1.6f), id);
 }
 
+
+// The most dust within `hazeReach` cells of each cell (stage 3l, emmettl/bombcad-work#146), for
+// the march: where it is under the least dust the cuts of its noise would keep anything of at a
+// step, no lookup its warp can make there would be kept, so the warp is skipped and the dust drawn
+// as haze. Haze that has spread was looked up through the warp at every fine step (stage 3k), at
+// most of the cost of a frame after the firings. A box filter of maxima, one axis a pass
+// (`spread.xyz` the axis, `w` the reach in cells).
+kernel void dustSpreadMax(texture3d<float, access::read> dIn [[texture(0)]],
+                          texture3d<float, access::write> dOut [[texture(1)]],
+                          constant QuarryDustUniforms &u [[buffer(0)]],
+                          constant int4 &spread [[buffer(1)]],
+                          uint3 id [[thread_position_in_grid]]) {
+    int3 p = int3(id);
+    int3 axis = spread.xyz;
+    int3 top = u.dims.xyz - 1;
+    float most = 0.0f;
+    for (int k = -spread.w; k <= spread.w; ++k) {
+        int3 q = p + axis * k;
+        if (any(q < int3(0)) || any(q > top)) continue;
+        most = max(most, dIn.read(uint3(q)).r);
+    }
+    dOut.write(float4(most), id);
+}

@@ -5,9 +5,8 @@ import Metal
 /// then blended over. Illustrative.
 final class QuarryDustPass {
     private(set) var target: MTLTexture
+    /// The march, one for both scenes since stage 3l (emmettl/bombcad-work#146).
     let march: MTLRenderPipelineState
-    /// A ridge cut's march: its dust warped less (stage 3f).
-    let marchRidge: MTLRenderPipelineState
     let blend: MTLRenderPipelineState
     /// A ridge cut's crack jets, drawn as thin streaks over the scene before the march (stage 3i).
     let jets: MTLRenderPipelineState
@@ -34,8 +33,6 @@ final class QuarryDustPass {
         draw.fragmentFunction = library.makeFunction(name: "dustFragment")!
         draw.colorAttachments[0].pixelFormat = .rgba16Float
         march = try device.makeRenderPipelineState(descriptor: draw)
-        draw.fragmentFunction = library.makeFunction(name: "dustFragmentRidge")!
-        marchRidge = try device.makeRenderPipelineState(descriptor: draw)
         let over = MTLRenderPipelineDescriptor()
         over.vertexFunction = library.makeFunction(name: "fullscreen")!
         over.fragmentFunction = library.makeFunction(name: "dustComposite")!
@@ -94,14 +91,15 @@ final class QuarryDustPass {
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .store
         let encoder = buffer.makeRenderCommandEncoder(descriptor: pass)!
-        // A ridge cut's field carries its thinning in `low.w`; a face's is 0.
-        encoder.setRenderPipelineState(dust.uniforms.low.w > 0 ? marchRidge : march)
+        encoder.setRenderPipelineState(march)
         encoder.setFragmentTexture(dust.density[0], index: 0)
         encoder.setFragmentTexture(dust.light, index: 1)
         encoder.setFragmentTexture(depth, index: 2)
         encoder.setFragmentTexture(dust.noiseVolume, index: 3)
-        // A ridge's billows ride its flow (stage 3j).
-        if dust.uniforms.low.w > 0 { encoder.setFragmentTexture(dust.velocity[0], index: 4) }
+        // The billows ride the flow (stage 3j).
+        encoder.setFragmentTexture(dust.velocity[0], index: 4)
+        // Where the dust is thin enough to march as haze alone (stage 3l).
+        encoder.setFragmentTexture(dust.hazeBound, index: 5)
         encoder.setFragmentSamplerState(sampler, index: 0)
         encoder.setFragmentBytes(&cam, length: MemoryLayout<QuarryCameraUniforms>.stride, index: 0)
         var u = dust.uniforms

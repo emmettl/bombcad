@@ -1562,3 +1562,126 @@ frames), `play-before/` and `play-after/` (with `-nodust` twins), the trials `v1
 unequal strength and each reaches its neighbours along the cut; with only the columns feeding the
 field, more than a tenth of the dust 2 s after the last firing is left 8 s later, and its middle
 has drifted more than 5 m downwind.
+
+## Stage 3l: a plume that lets the rock show, a cheaper haze, and one dust for both scenes, 13 November 2026
+
+emmettl/bombcad-work#146, on the user's word of 13 November ("keep working through the defects
+list until it looks strong"). Same standing: illustrative; the rock's physics, block counts and
+motion are unchanged (every ridge frame below is drawn from stage 3f's own 20 s run of 31,259
+blocks, `ridge-dust-heave/a30/poses`). Nothing here is a load, a blast design, or a claim about
+fragments, dust, a dust hazard or anything's reach. The Quarry Face's side of it is in
+[hillside-blast.md](hillside-blast.md), "Stage 3l".
+
+**What was wrong** (stage 3k's list).
+- *The plume hid the rock.* At 3.6 to 4.5 s the merged plume stood as a tall, opaque wall over
+  the near flank, hiding the rock running down it for a second or two. Drawn without the columns
+  (stage 3k's `d-nocol`) the wall went and without the shed dust it stayed: it was the low columns
+  over the shallow rock toward the cut's ends, which stage 3k had fed 1.6 times as long over 1.5
+  times the footprint, so they lay low and thick on the flank.
+- *The haze cost.* The crest close shot sits in the lingering dust from 6 to 12 s, its draw near
+  twice the clear shot's, and the haze added about 2.8 ms to Record Clip's draw over the event.
+- *Two copies.* The ridge's dust had its own copies of the face's kernels and march
+  (`dustFragmentRidge`, `ridgeBillow`, the `...Ridge` kernels), kept apart so the face stayed
+  byte-identical, so none of stages 3f to 3k reached the face.
+
+**What changed.**
+- *One dust for both scenes* (`QuarryDust.metal`, `QuarryDustField`, `QuarryRender.metal`,
+  `QuarryDustPass`). The ridge's kernels and march are now the only ones (`dustAdvectVelocity`,
+  `dustForces`, `dustAdvectDensity`, `dustBackward`, `dustCorrect`, `dustWindStart`;
+  `dustFragment`, `dustLit`, `dustBillow`); the face's older ones are gone. What differs by scene
+  is in the uniforms and the sources: the wind's way (`u.wind`), the fines' thinning (`u.low.w`,
+  `u.wind.w`: 0.05 and 0.15 a second here, as stage 3k), the share of thin dust drawn as haze
+  (`u.sun.w`, new: all of it here), a face's bench height (`u.dims.w`, new, 0 here: a face's slower
+  coarse fall-out, its trench's settling, its haze share by height and its paler light key off
+  it), and each scene's own firing sources. The face's own branches were added after this
+  section's ridge frames were made; drawn again with them, every ridge frame whose own runs repeat
+  (the opening view at 4.5 to 18 s, Pull back at 4.5 to 8 s) was byte-identical to before. Checked on its own with
+  the face's old sources (the ridge's code is the same, renamed): every Record Clip frame of the
+  three views at stage 3l's times was byte-identical to main's but the opening view's 4.50, 4.53
+  and 4.57 s, where 44,000 to 50,000 pixels in the frame's lower right corner (thin dust on the
+  heap) differed by up to 48 levels through one group of the movie's frames. A later build with
+  the same path and the march's skip below drew the opening view and the crest close at 4.50 s
+  byte-identical to main's, so that was one run's variation (stage 3k found Record Clip's runs not
+  repeatable on this loaded machine), not the fold.
+- *A plume that lets the rock show* (`QuarryDustField.columns`). Over the shallow rock toward the
+  cut's ends a column is now up to a quarter as strong (it was a half), fed as long as the others
+  (it was up to 1.6 times), and its dust comes from three clumps of its footprint, each 0.7 of it
+  (`clumps`, `clumpSize`, from a shallowness of 0.3), so low down the dust over the rock running
+  down the near flank is broken, with the rock between, and it merges above into the same plume.
+  The crest's columns are as they were. In all, a little less dust (the near flank's columns).
+- *A cheaper march in haze* (`hazeBound`, `dustSpreadMax`; `dustFragment`). The dust step now
+  keeps the most dust within 5 cells (7.5 m at the window's 1.5 m cells) of each cell, a box filter
+  of maxima in three passes. At each fine step the march looks up the two noises of its cuts first
+  and works out the least dust the cuts would keep anything of there; where the bound is under it,
+  no lookup the warp can make there (5.1 m at most, and a cell's interpolation) would be kept, so
+  the warp's five lookups are skipped and the dust drawn as haze, lit at the unwarped point. This
+  is exact for the cut (shaped dust is never lost); the haze is lit a few metres off where it was.
+  Frames where the cloud is thick come out the same (the opening view at 4.5 s and the crest close
+  at 4.5 s were byte-identical to main's with this alone); in the lingering haze the difference is
+  up to 37 levels in the haze's lighting, invisible side by side.
+- Tried and not kept, each measured interleaved against main on the crest close (6 to 12 s):
+  bricks of 4 cells, their maxima spread over the bricks within reach, with the march stepping two
+  cells at a time and unwarped through bricks under a fixed threshold, was 1.2 ms slower (the
+  bricks' bound, 12 m round, was almost never under it in this haze: a debug march found no fine
+  step in such a brick at 6 to 8 s, though at 8 to 12 s the noise's cuts kept nothing at 99 to 100%
+  of steps); the same with a full-resolution bound, 1.35 ms slower; a coarser fine step in such
+  bricks, a skip by the first cut alone, and the same branches made uniform across each SIMD group
+  (`simd_all`, `simd_any`), all 0.4 to 1.7 ms slower. Each added branch cost more than it saved
+  until the skip was tested per step against the cuts' own noise.
+
+**Measured** (release build, M4 Max Studio, loaded by other sessions; Record Clip at 1920 x 1080,
+interleaved with main's build, two runs each; `tools/` below).
+- *Record Clip while the ridge fires* (the opening view, 1.5 to 5.5 s): draw 9.84 and 9.82 ms main,
+  9.81 and 9.83 ms this: unchanged. The dust step 4.20 and 4.21 against 4.50 and 4.52 ms (+0.3 ms,
+  the haze bound's three passes).
+- *Over the whole 20 s* (the opening view): draw 11.81 and 11.82 ms main, 10.72 and 10.72 ms this
+  (-1.1 ms of stage 3k's +2.8 ms).
+- *The crest close shot* in its fog (6 to 12 s): 15.56 and 15.55 ms main, 13.20 and 13.15 ms this
+  (-2.4 ms); over its whole 20 s 14.55 and 18.47 (a run beside another job) against 12.30 and
+  12.55 ms.
+- *A debug march* (each pixel's mean dust along its fine steps, the share of steps whose cuts kept
+  anything, and the count of steps, read back through a ramp drawn in the frame): in the crest
+  close shot the fine steps' mean density is 0.76 at 6 s, 0.58 at 8 s and 0.28 at 12 s, the cuts
+  kept anything at 8% of them at 6 s, 0.8% at 8 s and none at 12 s, over 90 to 115 steps a pixel:
+  the fog is dust the cuts keep nothing of, looked up through the warp at every step.
+- *The window* (`play --ridge --self-test`, two runs each interleaved, the first of each with shots;
+  medians from 1 to 5 s while following the first firing): draw 13.6 and 15.1 ms main, 18.4 and
+  14.8 ms this (the 18.4 beside other load: its dust-and-chips step was 12.1 against 9.3 to 11.0 in
+  the others); over the whole event 12.2 and 13.4 against 15.1 and 11.6 ms. Inside the runs'
+  spread either way.
+
+**Checked by eye**, before (main's build) and after, from the same poses and cameras, with Record
+Clip's opening view held still, Pull back and the crest close in at 1, 2, 3, 3.6, 4, 4.5, 6, 8,
+12 and 18 s (with 4.5 and 12 s three frames in a row), and the window's own frames.
+- *The plume at 3.6 to 4.5 s.* The near flank's low wall is gone: the rock running down it shows
+  through thin, broken dust, two or three narrow stems rising from it into the plume. Above the
+  crest it is one tall plume, as before, its top and the far side unchanged.
+- *From 6 s* the frames are as stage 3k's: the plume drifts left and thins to a haze; the crest
+  close shot is in the same fog from 6 to 12 s.
+- *No crawl* (`flicker.py`, the opening view at 4.50, 4.53, 4.57 s and 12.00, 12.03, 12.07 s): the
+  change in fine detail between frames at 4.5 s is 5.27 and 5.21 (main 4.84 and 4.79), with the
+  fine detail itself 5.93 (5.63), the broken low dust; at 12 s 0.57 and 1.03 (0.47 and 0.39), the
+  second spread evenly over the whole frame, ground and sky alike (14 pixels over 20 levels): the
+  movie's key frame, not the dust.
+
+**What still looks wrong.**
+- *Stems.* The near flank's broken low dust reads as a few separate stems at 3.6 to 4 s, rising
+  into the plume; the plume's middle over the crest is still a tall dense mass in front of the
+  crest's own break.
+- *The crest close shot is still in fog* from 6 to 12 s: it is cheaper to draw, not clearer.
+- *The lean is slight* and *the haze's texture* swirls at 6 to 8 s, as stage 3k left them.
+- Not looked at on a screen: all of it was made offscreen.
+
+Files: `$BOMBCAD_DATA/hillside-blast/quarry-dust/`: `before/` and `after/` (`ridge/` and `face/`,
+each with `still.mp4`, `pull.mp4`, `close.mp4` and their frames), the sheets `sheet-ridge-still-ba.png`,
+`sheet-ridge-pull-ba.png`, `sheet-ridge-close-ba.png`, `sheet-ridge-plume-ba.png` (3.6 to 4.5 s),
+`sheet-ridge-consecutive-ba.png` (before left), the window's `play-*` and `sheet-window-*`, the
+trials `r1` to `r5` (the plume), `f1` to `f7` and `k1` to `k9` (the face), `fold/` (the shared path
+with the face's old sources), the cost variants `iter*-bin`, `cost-*` and `clipcost.txt`, the
+debug marches `dbg*/`, and `tools/` (`look.sh`, `clipcost.sh`, `play.sh`, `sheet.py`, `flicker.py`,
+`pixdiff.py`, `dbgshare.py`, `noisemax.py`).
+
+**Tests.** `QuarryDustTests/faceDustMergesAndHazeBound` (BlastCore, GPU): a face's firings' dust
+is of unequal strength and each reaches its neighbours along the strip, its wind blows along the
+strip and off the face, and after the firings every cell's dust is under the haze bound of every
+cell within its reach (which covers the warp and a cell). `ridgeDustLingers` as before.

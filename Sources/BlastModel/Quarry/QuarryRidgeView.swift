@@ -29,6 +29,18 @@ public struct QuarryOrbit: Sendable, Equatable {
     public var eye: SIMD3<Float> { focus + direction * distance }
 }
 
+extension QuarryOrbit {
+    /// A face's opening view, the Quarry Face window's default: from the floor in front of the
+    /// strip's near end, toward its middle. Here, not in the window, so the dust's wind can be set
+    /// across it (stage 3l, emmettl/bombcad-work#146).
+    public static func faceOpening(_ face: QuarryFace) -> QuarryOrbit {
+        let scale = face.length / 180
+        return QuarryOrbit(
+            focus: SIMD3(68 * scale, 15, face.floorLevel + 21), yaw: -0.81, pitch: -0.086,
+            distance: 143 * max(1, scale * 0.85))
+    }
+}
+
 /// A ridge cut's opening view and the sun it is lit by.
 public struct QuarryRidgeView: Sendable, Equatable {
     public var orbit: QuarryOrbit

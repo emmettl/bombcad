@@ -186,11 +186,7 @@ public final class QuarrySession: @unchecked Sendable {
     /// opening view (`QuarryRidgeView`, in the cut's frame, so it follows the cut); a face's from
     /// the floor in front of the strip's near end, toward its middle.
     public static func defaultOrbit(_ face: QuarryFace) -> QuarryOrbit {
-        if let view = QuarryRidgeView.opening(face) { return view.orbit }
-        let scale = face.length / 180
-        return QuarryOrbit(
-            focus: SIMD3(68 * scale, 15, face.floorLevel + 21), yaw: -0.81, pitch: -0.086,
-            distance: 143 * max(1, scale * 0.85))
+        QuarryRidgeView.opening(face)?.orbit ?? QuarryOrbit.faceOpening(face)
     }
 
     /// Starts a firing of `face` on its own thread, for a session made after it with `run:`.

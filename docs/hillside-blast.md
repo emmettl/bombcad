@@ -1333,6 +1333,131 @@ dense rock round the cut ended against the grass in a hard edge.
   slabs carry their turf in patches. GPU draw a frame in Record Clip of the default view (main's build
   and this one interleaved, twice): 9.14, 9.25 ms before and 9.34, 9.41 after (+0.2 ms).
 
+## Stage 3l: the face's dust brought up to the ridge's, 13 November 2026
+
+emmettl/bombcad-work#146, on the user's word of 13 November ("keep working through the defects
+list until it looks strong"). Same standing: illustrative, dust for the eye; not a model of real
+dust, a dust hazard or a blast-design aid. The rock's physics is unchanged: every face frame below
+is drawn from one 20 s run of the default face (110,079 blocks, simulated with main's build,
+`$BOMBCAD_DATA/hillside-blast/quarry-dust/face20/poses`). The ridge cut's side of it (one dust
+path for both scenes, its plume, a cheaper haze) is in
+[ridge-cut.md](ridge-cut.md#stage-3l-a-plume-that-lets-the-rock-show-a-cheaper-haze-and-one-dust-for-both-scenes-13-november-2026).
+
+**What was wrong**, from the face's own Record Clip frames (opening view, Pull back, a close shot
+of the strip: focus 70,-4,12, yaw -0.55, 48 m) and the window's. Stages 3f to 3k of the ridge's dust
+had been kept off the face, so its dust was still the old one.
+- *Grain*: yes. Thin dust at 2 s (the first firings' puffs, the dust over the crest) was a speckle
+  of dust and sky; close in, thin dust over the face was speckled dark grit (the march's 5.5 m warp
+  of fine noise, stage 3i's cause).
+- *Dark cores*: yes, as a dark, speckled underside. From 3 to 8 s the cloud's lower part, over the
+  pile and the face, was a grainy dark brown band (the octave-sum self-shadow, stage 3i's cause).
+- *Cotton wool*: yes. At 4.5 to 8 s the strip's later firings stood as a row of equal round puffs
+  at its right end: each firing was a ball 7 m across thrown out of the face at 22 m/s for 0.3 s,
+  the same at every firing.
+- *Dust that vanishes*: no, the opposite. The face's dust never thinned high up (0.024 a second)
+  and drifted only along the strip outside its flow, so at 18 s a dense, hard-edged cloud still sat
+  over the bench where it had risen.
+
+**What changed** (`QuarryDustField`, BlastCore; the shared kernels and march).
+- *The ridge's dust*, now one path for both scenes: the diffuse self-shadow and the aligned shadow
+  lookup (no dark cores), the two-scale warp (no grain), the billows once a pixel on the flowing,
+  mipmapped noise, the light wind in the flow with its gusts, coarse dust that falls out while
+  thick and fines that thin slowly, the box-edge fade, and the haze.
+- *The face's firings* (`faceColumns`). A face is a bench fired along a strip, not a crest, so its
+  firings' dust comes out of the face and off the bench's top rather than up from a crest. Each
+  firing's dust is drawn once from its place in the row: its own delay (0 to 0.1 s), feed (0.3 to
+  0.6 s, front-loaded, so it billows out within half a second of the firing), strength (0.5 to
+  1.4), throw and place, spread along the strip over 0.9 to 1.9 times the spacing so it reaches
+  its neighbours (1.6 times that for the row's two end firings, which have no neighbour past
+  them). 0.55 of it comes out of the face, from 0.3 to 0.85 of its height and over three quarters
+  of that footprint, thrown out over the floor at up to 12 m/s and hot, so it billows up off the
+  pile; the rest vents from the bench's top behind the crest. 30,000 in all a firing (the old
+  ball's 8,170, which never thinned).
+- *The face's wind*: 3 m/s at height, across the opening view toward its right, along the strip
+  toward its far end and a little off the face and away from the eye. Toward the view's left (the
+  ridge's choice) it blew into the face and back over the bench.
+- *A cloud that stands and drifts* (`dustCorrect`, a face's only: `dims.w`, the bench's top over
+  the box's floor, 30 m on the default face, marks a face). The coarse dust falls out at a quarter
+  of the ridge's rate, the fines at 0.02 a second high up (the ridge's 0.05) and 0.35 within 3 m
+  of the ground, so the cloud that rose over the bench is still there and drifting along it at 8
+  to 12 s and thins to haze over the next ten to twenty seconds.
+- *The trench's veil* kept in check by the trench alone: cold dust below the bench's top (fading
+  in from 0.6 of its height) settles at 0.4 a second, so the dust left in the excavated trench in
+  front of the new face clears in a few seconds once it has cooled; and the march draws thin dust
+  there as haze at 0.3 of the ridge's share, rising to all of it above the bench (`sun.w`, from 0.7
+  to 1.2 of the bench's height). At the ridge's share and thinning, that dust lay as a flat brown
+  veil over the face from 6 to 12 s. Tried first, in vain: a narrower or smaller throw out of the
+  face, hotter puffs from the blocks, none of the blocks' trails, none of their impacts, swell and
+  release puffs (the veil stayed each time: it is the trench's dust, not one source); and faster
+  thinning overall, which took the whole cloud by 12 s.
+- *Cream where it is lit*: a face's dust's light is 1.10, 1.15 and 1.22 times the ridge's in red,
+  green and blue (`dustFaceCream`): the old cloud's lit parts were about 240, 214, 169 on screen,
+  the first round's 229, 200, 154.
+- Tried and not kept: a throw of 18 m/s, whose fast, sheared flow drew the billows as marbled
+  streaks at 3 to 4.5 s; 8,170 to 20,000 a firing, thin from the opening view or gone by 12 s; the
+  front's dust over the whole footprint (thin at 2 s) or half of it (a row of stems at 4.5 s);
+  the first round's fines (0.08 a second high up), whose cloud had nearly gone by 12 s.
+
+**Measured** (release build, M4 Max Studio, loaded by other sessions, load average near 100 for the
+last runs; Record Clip at 1920 x 1080, interleaved with main's build at f1802ba4).
+- *Record Clip while the face fires* (the opening view, 1.5 to 5.5 s, three runs each): draw 13.97,
+  14.37 and 14.45 ms main, 14.48, 14.39 and 14.24 ms this: within +0.2 ms. The dust step 5.65,
+  5.86 and 5.96 against 6.07, 6.06 and 6.01 ms (+0.2 ms: the haze bound's three passes). The first
+  round, with the ridge's thinning, drew 1.3 ms more than main here (14.95 and 14.86 against 13.57
+  and 13.65): its cloud was thinner and spread wider, so more of the frame was marched through
+  haze at the fine steps; the denser, more compact bank leaves more of its rays early.
+- *Over the whole 20 s* (two runs each): draw 14.55 and 14.14 ms main, 14.89 and 14.71 ms this
+  (+0.45 ms, the bank that stands longer); the dust step 5.58 and 5.35 against 5.91 and 5.79 ms.
+- *The window* (the first round; `play --self-test`, two runs each interleaved, the first of each
+  with shots; medians from 1 to 5 s while following the first firing): draw 39.3 and 39.1 ms main,
+  39.0 and 41.3 ms the first round; the dust-and-chips step while firing 19.9 and 21.8 against 23.9
+  and 23.3 ms (the face's sources, 700 particles a firing for longer, and the haze bound). The
+  window's frames of this version (`play-face-a3`) are as Record Clip's.
+- *No crawl* (`flicker.py`, the opening view at 4.50, 4.53, 4.57 s and 12.00, 12.03, 12.07 s): the
+  change in fine detail between frames is 2.75 and 2.76 at 4.5 s (main 2.90 and 3.05), with the
+  fine detail itself 4.27 (4.81); 0.48 and 0.41 at 12 s (0.47 and 0.35).
+
+**Checked by eye**, before (main's build), a first round (stage 3l as first built, with the
+ridge's thinning) and after, from the same poses: Record Clip's opening view, Pull back and the
+close shot at 1, 2, 3, 3.6, 4, 4.5, 6, 8, 12, 18 and 19.9 s, with 4.5 and 12 s three frames in a
+row, and the window's own frames while following (`sheet-face-still-3way.png`,
+`sheet-face-pull-3way.png`: main, first round, after).
+- *No grain or dark band.* The cloud is a lit cream with soft shading on its turned sides and
+  creases; its lower part over the pile is a lit haze with the falling rock showing in it.
+- *A strong first second.* At 2 s the first firings' dust is already billowing out of the face and
+  off the bench at the strip's left end (the first round's was a thin smear). The window's dust
+  covers 14% of its frame at 2 s (main 12%, the first round 7%).
+- *One bank.* At 3 s the firings' dust runs together along the strip; at 4.5 s it is one billowing
+  bank the length of the face, the strip's right end merged into it (28% of the window's frame;
+  main 23%).
+- *It stands and drifts.* At 6 to 8 s the bank stands over the bench, drifting right along it; at
+  12 s it is a lower, thinner bank along the bench's top, still plainly there (15% of the window's
+  frame, main 15%); at 18 to 20 s a haze over the bench's far half. The trench in front of the new
+  face is clear from about 8 s, and the new face shows under the bank.
+- *Cream where lit.* The window's brightest fifth of the dust is 235, 209, 167 at 4.5 s and 229,
+  203, 165 at 12 s (main 240, 214, 169 and 242, 216, 172; the first round 229, 200, 154 and 176,
+  144, 107, when its thinning cloud went brown).
+- *No crawl*: the frames in a row show the lobes moving with the cloud (the measure is under
+  **Measured**).
+
+**What still looks wrong.**
+- *Not the old cloud's spectacle at the end.* The old cloud stood bright and whole to 20 s; this
+  one is a haze over the bench by 18 s. The aim was haze by 20 to 30 s, and that is about where it
+  is, but it reads as gone sooner than the old one.
+- *Bulky at 4.5 to 8 s.* The bank stands as a tall, even wall the length of the face; its top is
+  lobed but its front is a fairly flat surface of billows. Pull back's close opening at 3 and
+  4.5 s is filled by it.
+- *Darker underside at 8 to 12 s.* The bank's lower edge over the pile is a shaded brown fringe.
+- *Marbling.* Pull back's close opening at 3 s still shows some streaky strands in the bank.
+- Not looked at on a screen: all of it was made offscreen.
+
+Files: `$BOMBCAD_DATA/hillside-blast/quarry-dust/` (as listed in
+[ridge-cut.md](ridge-cut.md), Stage 3l): `face20/poses` (the 20 s face run), `before/face`,
+`after/face`, `sheet-face-still-ba.png`, `sheet-face-pull-ba.png`, `sheet-face-close-ba.png`,
+`sheet-face-consecutive-ba.png` (main and the first round), `sheet-face-still-3way.png`,
+`sheet-face-pull-3way.png` (main, the first round, after), `main2/`, `current/`, `after2/`, and the
+trials `f1` to `f7`, `k1` to `k9`, `m1`, `m2`, `nA` to `nE`.
+
 ## Stage 3m: outcrops, crags and fallen blocks as rock masses, 14 November 2026
 
 emmettl/bombcad-work#147, on the user's word of 13 November ("keep working through the defects list
