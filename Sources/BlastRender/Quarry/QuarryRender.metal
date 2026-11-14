@@ -471,90 +471,84 @@ static inline float3 stones(float2 x, uint salt, thread float2 &toCentre) {
     return float3(sqrt(f1), sqrt(f2), id);
 }
 
-// A stone's outline in its cell (`stones`' way to its middle, `to`, in cell units): how far out
-// toward its edge (1 there), and the way out from its middle, for its dome. Each stone its own
-// size (0.2 to 0.48 of a cell), elongation (up to 1.9), turn and lumps (emmettl/bombcad-work#148).
-static inline float stoneOutline(float2 to, float id, thread float2 &out) {
-    float a = fract(id * 7.13f) * 6.2832f;
-    float2 axis = float2(cos(a), sin(a));
-    float2 r = -float2(dot(to, axis), dot(to, float2(-axis.y, axis.x)));
-    float size = 0.24f + 0.26f * fract(id * 19.7f);
-    float aspect = 1.0f + 0.9f * fract(id * 5.3f);
-    r.y *= aspect;
-    float l = length(r);
-    float2 c = r / max(l, 1e-4f);
-    // Lumps: two angular harmonics, from the way out (cos and sin of 3 and 5 times its angle).
-    float c3 = c.x * (4.0f * c.x * c.x - 3.0f), s3 = c.y * (3.0f - 4.0f * c.y * c.y);
-    float lumps = 1.0f + 0.12f * (c3 * cos(id * 40.0f) + s3 * sin(id * 40.0f)) + 0.06f * sin(id * 90.0f + 5.0f * atan2(c.y, c.x));
-    float d = l / (size * lumps);
-    float2 o = float2(r.x, r.y * aspect) / size;
-    out = axis * o.x + float2(-axis.y, axis.x) * o.y;
-    out /= max(length(out), 1e-4f);
-    return d;
-}
-
 // A crushed stone in its cell (`stones`' way to its middle, `to`, in cell units), for the quarry
-// floor's gravel (emmettl/bombcad-work#150; rounded domes in `stoneOutline`'s outlines read as beach
-// pebbles): a polygon of five to seven sides, its own size (many small, a few large), elongation and
-// turn, and a faceted top, a flat or ridged top facet leaning its own way and a steeper facet down
-// to each side. Returns how far out toward its edge (1 there; `edgeSoft` a pixel in those
-// units); `tilt` is the facet's slope
-// (outward, so the floor's normal leans with it) and `facetTone` its own lightness, the facets
-// blended over `soft` (in cell units, about a pixel), so the edges are sharp but do not crawl.
-static inline float crushedStone(float2 to, float id, float soft, thread float2 &tilt, thread float &facetTone,
-                                 thread float &edgeSoft) {
+// floor's gravel and the ground's stones: a convex lump cut by planes at random, each its own turn,
+// steepness and reach (emmettl/bombcad-work#151). A gentle cut runs in over its top as a broad
+// facet, a steep one is a narrow side at its edge, so its facets are of all sizes and they do not
+// ring it: a top facet and a ring of sloping sides read as cut gems (emmettl/bombcad-work#150),
+// and rounded domes as beach pebbles before that. A `small` grain is a chip split along a ridge,
+// so even a few pixels across it reads as lit on one side and shaded on the other, not a speck.
+// Its outline is where it stands `level` (a share of its height: a sunk stone's fines lap over its
+// lower facets) out of the fines. Returns how far inside that outline the point is, in cell units
+// (negative outside); `tilt` is the facet's slope (outward, so the ground's normal leans with it)
+// and `facetTone` its own lightness, the facets blended over `soft` (in cell units, about a pixel),
+// so the edges are sharp but do not crawl. `edgeSoft` is a pixel in the returned distance's units.
+static inline float crushedStone(float2 to, float id, float soft, float level, bool small, thread float2 &tilt,
+                                 thread float &facetTone, thread float &edgeSoft) {
     float a = fract(id * 7.13f) * 6.2832f;
     float2 axis = float2(cos(a), sin(a));
     float2 r = -float2(dot(to, axis), dot(to, float2(-axis.y, axis.x)));
     float size = 0.22f + 0.4f * pow(fract(id * 19.7f), 1.5f);
-    float aspect = 1.0f + 0.8f * fract(id * 5.3f);
+    float aspect = 1.0f + (small ? 0.6f : 0.75f) * fract(id * 5.3f);
     r.y *= aspect;
-    // A pixel in the outline's own units (1 at its edge).
-    edgeSoft = soft * aspect / (0.9f * size);
-    int sides = 5 + int(fract(id * 3.71f) * 2.99f);
+    edgeSoft = soft * aspect;
+    // Its top: one plane leaning its own way, or a ridge between two (a small grain always a ridge,
+    // its two sides leaning well apart).
+    float top = size * (0.3f + 0.4f * fract(id * 23.3f));
+    float t1 = fract(id * 47.3f) * 6.2832f;
+    float m1 = small ? 0.5f + 0.7f * fract(id * 91.7f) : 0.45f * fract(id * 91.7f);
+    float2 lean1 = float2(cos(t1), sin(t1)) * m1;
+    float t2 = t1 + 3.1416f * (0.65f + 0.7f * fract(id * 71.9f));
+    float m2 = small ? 0.5f + 0.7f * fract(id * 37.1f) : 0.3f + 0.6f * fract(id * 37.1f);
+    bool ridged = small || fract(id * 61.1f) < 0.55f;
+    float2 lean2 = ridged ? float2(cos(t2), sin(t2)) * m2 : lean1;
+    float2 offset2 = ridged ? (float2(fract(id * 13.3f), fract(id * 17.9f)) - 0.5f) * size * 0.8f : float2(0.0f);
+    float zs[10];
+    float2 gs[10];
+    float tones[10];
+    zs[0] = top - dot(lean1, r); gs[0] = lean1; tones[0] = 1.0f + 0.3f * (fract(id * 83.1f) - 0.5f);
+    zs[1] = top - dot(lean2, r - offset2); gs[1] = lean2; tones[1] = 1.0f + 0.3f * (fract(id * 29.9f) - 0.5f);
+    // Its cuts: four to eight, at uneven turns (the gap between two well under half a turn, so it
+    // has no long point), each its own steepness and reach.
+    int cuts = small ? 4 + int(fract(id * 3.71f) * 1.99f) : 5 + int(fract(id * 3.71f) * 3.99f);
     float spin = fract(id * 13.9f) * 6.2832f;
-    float d = 0.0f;
-    // Its top facet: flat or ridged, leaning its own way; its height a share of its size.
-    float top = size * (0.35f + 0.35f * fract(id * 23.3f));
-    float2 lean1 = (float2(fract(id * 47.3f), fract(id * 91.7f)) - 0.5f) * 0.7f;
-    float2 lean2 = fract(id * 61.1f) < 0.5f ? lean1 : (float2(fract(id * 71.9f), fract(id * 37.1f)) - 0.5f) * 0.9f;
-    // A soft minimum over the facets' heights: the active facet's slope, blended at its edges.
-    float zs[9];
-    float2 gs[9];
-    float tones[9];
-    zs[0] = top - dot(lean1, r); gs[0] = lean1; tones[0] = 1.0f + 0.25f * (fract(id * 83.1f) - 0.5f);
-    zs[1] = top - dot(lean2, r); gs[1] = lean2; tones[1] = 1.0f + 0.25f * (fract(id * 29.9f) - 0.5f);
     float zmin = min(zs[0], zs[1]);
-    for (int i = 0; i < 7; ++i) {
-        if (i >= sides) { zs[2 + i] = 1e3f; gs[2 + i] = float2(0.0f); tones[2 + i] = 1.0f; continue; }
+    float hard = zmin;
+    float2 hardSlope = zs[0] < zs[1] ? gs[0] : gs[1];
+    for (int i = 0; i < 8; ++i) {
+        if (i >= cuts) { zs[2 + i] = 1e3f; gs[2 + i] = float2(0.0f); tones[2 + i] = 1.0f; continue; }
         float h1 = fract(id * (17.3f + 3.1f * float(i))), h2 = fract(id * (41.7f + 5.3f * float(i)));
-        float ang = spin + 6.2832f * (float(i) + 0.38f * (h1 - 0.5f)) / float(sides);
+        float h3 = fract(id * (7.7f + 2.3f * float(i)));
+        float ang = spin + 6.2832f * (float(i) + 0.55f * (h1 - 0.5f)) / float(cuts);
         float2 n = float2(cos(ang), sin(ang));
-        float reach = size * (0.78f + 0.3f * h2);
-        float along = dot(r, n);
-        d = max(d, along / reach);
-        float steep = 0.7f + 1.1f * fract(id * (7.7f + 2.3f * float(i)));
-        zs[2 + i] = steep * (reach - along);
+        float reach = size * (0.6f + 0.55f * h2);
+        // Gentle cuts (0.4) run in over its top; steep ones (to 2.4) are narrow sides at its edge.
+        float steep = 0.4f + 2.0f * h3 * h3;
+        zs[2 + i] = steep * (reach - dot(r, n));
         gs[2 + i] = n * steep;
         // Fresh broken faces paler, weathered ones darker.
-        tones[2 + i] = 1.0f + 0.4f * (fract(id * (53.3f + 7.9f * float(i))) - 0.5f);
+        tones[2 + i] = 1.0f + 0.36f * (fract(id * (53.3f + 7.9f * float(i))) - 0.5f);
         zmin = min(zmin, zs[2 + i]);
+        if (zs[2 + i] < hard) { hard = zs[2 + i]; hardSlope = gs[2 + i]; }
     }
     float2 g = float2(0.0f);
     float t = 0.0f, w = 0.0f;
     float k = max(soft * 0.6f, 1e-4f);
-    for (int i = 0; i < 9; ++i) {
+    for (int i = 0; i < 10; ++i) {
         float wi = exp(-(zs[i] - zmin) / k);
         g += gs[i] * wi;
         t += tones[i] * wi;
         w += wi;
     }
     tilt = g / w;
-    // Back to the floor's frame: the elongation undone, then turned back.
+    // Back to the ground's frame: the elongation undone, then turned back.
     tilt.y *= aspect;
     tilt = axis * tilt.x + float2(-axis.y, axis.x) * tilt.y;
-    facetTone = t / w;
-    return d;
+    // Its lower facets a little darker, toward its contact with the fines.
+    facetTone = t / w * (0.86f + 0.2f * saturate(hard / max(top, 1e-4f)));
+    // How far inside its outline: its height over the fines' level, over the slope of the facet
+    // that meets them.
+    return (hard - level * top) / max(length(hardSlope), 0.35f);
 }
 
 // The old joints of the weathered surface (`QuarryJoints.field` in BlastModel, a copy: change them
@@ -693,7 +687,7 @@ static inline JointLook jointLook(float3 p, float halfWidth, float line, bool mi
 
 // The ground's looks, shared by the ridge's flanks, the face's talus apron and the soil held on the
 // weathered rock (defined with the ridge's ground below).
-static inline float3 screeGround(float2 q, float3 world, float detail, thread float3 &tilt);
+static inline float3 screeGround(float2 q, float3 world, float detail, float pixel, thread float3 &tilt);
 static inline float3 grassGround(float3 world, float detail, thread float3 &tilt);
 static inline float3 stoneColour(float id);
 
@@ -754,6 +748,7 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
     float detail = fbm3(rest * 4.0f, 4);
     float grain = fbm3(rest * 19.0f, 3);
     float footprint = length(fwidth(rest));
+    float restPixel = sqrt(length(dfdx(rest)) * length(dfdy(rest)));
     // The bed is read a few centimetres inside the block, so a face cut along a bedding plane
     // takes its own block's bed and not the next. On a ridge cut the beds jog between joints, as
     // its weathered surface's steps do (`strikeJog`).
@@ -923,7 +918,7 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
     if (soil.x > 0.0f) {
         float3 earth = float3(0.22f, 0.18f, 0.14f) * (0.8f + 0.4f * fbm3(rest * 2.2f + 9.0f, 3)) * (1.0f - 0.3f * torn);
         float3 gritTilt;
-        earth = mix(earth, screeGround(rest.xy, rest, near, gritTilt) * 0.8f, 0.35f);
+        earth = mix(earth, screeGround(rest.xy, rest, near, restPixel, gritTilt) * 0.8f, 0.35f);
         // Thin turf on rock: darker and greener than the flanks' dry grass, with the soil showing.
         float3 turf = grassGround(rest, near, soilTilt);
         turf = mix(turf * 0.75f, float3(0.2f, 0.21f, 0.1f), 0.3f);
@@ -964,7 +959,14 @@ fragment float4 blockFragment(RasterOut in [[stage_in]],
             a = normalize(a);
             float3 b = cross(n, a);
             float slope = joint.lip * mix(0.3f + 0.7f * joint.inner, 0.25f + 0.6f * joint.inner * joint.inner, joint.near);
-            surface = normalize(surface - a * slope + b * (joint.scallop * 0.7f * joint.lip * joint.near));
+            float3 scooped = normalize(surface - a * slope + b * (joint.scallop * 0.7f * joint.lip * joint.near));
+            // Its shaded side no darker than about half the rock round it (emmettl/bombcad-work#151):
+            // a scoop turned from the low sun went to sky light only and read as a dark hole beside
+            // the crack. Eased back toward the rock's own normal as far as that takes.
+            float before = max(dot(surface, cam.sun.xyz), 0.0f), after = dot(scooped, cam.sun.xyz);
+            float least = 0.55f * before;
+            if (after < least) scooped = normalize(mix(scooped, surface, saturate((least - after) / max(before - after, 1e-4f))));
+            surface = scooped;
         }
     }
     // Soil lies smoother than the rock round it.
@@ -1020,7 +1022,7 @@ static inline FloorLook quarryFloor(float3 world) {
     float drift = fbm3(world * 0.5f + 7.0f, 2);
     // The stones' tone follows the ground's broad paler and darker patches.
     float tone = clamp(dot(ground, float3(0.2126f, 0.7152f, 0.0722f)) / 0.215f, 0.55f, 1.6f);
-    float3 gravelMean = float3(0.3f, 0.274f, 0.24f) * 0.84f * tone;
+    float3 gravelMean = float3(0.3f, 0.274f, 0.24f) * 0.82f * tone;
     float3 fines = ground * float3(0.93f, 0.92f, 0.94f);
     float more = (0.55f + 0.9f * drift) * (1.0f - 0.45f * roads) * (1.0f - 0.5f * damp);
     // The share of cells holding a stone; a stone, drawn 1.4 times `crushedStone`'s size so the
@@ -1047,24 +1049,28 @@ static inline FloorLook quarryFloor(float3 world) {
         // sum (`footprint`, stretched along the view), which blurred the facets into one another.
         float soft = pixel / sizes[k].x;
         float facetTone, edgeSoft;
-        float d = crushedStone(to * 0.72f, cell.z, soft * 0.72f, facetTilt, facetTone, edgeSoft);
+        float buried = fract(cell.z * 31.7f) * fract(cell.z * 3.3f);
+        // Cut by planes at random since emmettl/bombcad-work#151 (a top facet and a ring of sides
+        // read as cut gems), the grit as chips split along a ridge (round specks until then); a
+        // sunk stone's fines lap over its lower facets.
+        float d = crushedStone(to * 0.72f, cell.z, soft * 0.72f, 0.6f * buried, k == 0, facetTilt, facetTone, edgeSoft);
         // Fines darker in the crevices between stones.
         close *= (0.88f + 0.12f * smoothstep(0.0f, 0.25f, cell.y - cell.x)) / 0.97f;
         float3 here = close;
         float2 tilt = gravelTilt.xy;
-        if (fract(cell.z * 173.1f) < holds[k] && d < 1.0f + edgeSoft) {
+        if (fract(cell.z * 173.1f) < holds[k] && d > -edgeSoft) {
             float id = cell.z;
-            float buried = fract(id * 31.7f) * fract(id * 3.3f);
-            // A sharp edge, a pixel or so wide; a sunk stone's fines lap over its lower facets.
-            float edge = 1.0f - 0.35f * buried;
-            float rim = 1.0f - smoothstep(edge - edgeSoft, edge + 0.5f * edgeSoft, d);
+            // A sharp edge, a pixel or so wide.
+            float rim = smoothstep(-0.5f * edgeSoft, 0.5f * edgeSoft, d);
             // Each stone its own rock and tone, darker and lighter ones among them, its facets
-            // fresher or more weathered.
-            float own = 0.66f + 0.62f * fract(id * 61.3f);
-            float3 stone = mix(stoneColour(id), float3(0.34f, 0.32f, 0.29f), 0.3f) * 0.77f * tone * own * facetTone
+            // fresher or more weathered; kept near the fines' tone (emmettl/bombcad-work#151: 0.66
+            // to 1.28 of it, all its own colour, some stones were pale against the fines in sun).
+            float own = 0.82f + 0.36f * fract(id * 61.3f);
+            float3 stone = mix(stoneColour(id), float3(0.34f, 0.32f, 0.29f), 0.3f) * 0.77f * tone * own
                 * (0.9f + 0.2f * fbm3(world * sizes[k].z + id * 40.0f, 2));
+            stone = mix(stone, fines * 1.1f, 0.3f) * facetTone;
             here = mix(close * mix(0.72f, 1.0f, buried), stone, rim);
-            tilt = facetTilt * (1.0f - 0.5f * buried) * rim * (k == 0 ? 0.6f : 1.0f);
+            tilt = facetTilt * (1.0f - 0.5f * buried) * rim * (k == 0 ? 0.85f : 1.0f);
         }
         // Faded as it comes under a pixel, to its share's mean; at the pebbles' scale that mean is
         // mottled a little, as clusters of stones and fines are, so the floor between the cobbles is
@@ -1963,7 +1969,7 @@ fragment float4 dustComposite(FullscreenOut in [[stage_in]],
 
 // Loose stones packed on the ground: weathered rock of every bed, darker in the crevices, each
 // domed and leaning its own way. `detail` is how much of the close detail to draw.
-static inline float3 screeGround(float2 q, float3 world, float detail, thread float3 &tilt) {
+static inline float3 screeGround(float2 q, float3 world, float detail, float pixel, thread float3 &tilt) {
     // Talus is mostly gravel and grit, streaked paler and darker down the slope, with stones in it.
     float streak = fbm3(world * float3(0.9f, 0.9f, 0.25f) + 3.0f, 3);
     float3 mean = mix(float3(0.3f, 0.28f, 0.25f), float3(0.46f, 0.42f, 0.36f), streak) * (0.85f + 0.3f * fbm3(world * 0.15f + 8.0f, 2));
@@ -1972,36 +1978,47 @@ static inline float3 screeGround(float2 q, float3 world, float detail, thread fl
     float2 toCobble, toPebble;
     float3 cobble = stones(q / 0.26f, 21u, toCobble);
     float3 pebble = stones(q / 0.09f, 23u, toPebble);
-    // Each stone its own size, shape and burial (emmettl/bombcad-work#148): an ellipse turned its
-    // own way, lumpy at its outline, some sunk in the fines to a low hump; they filled their cells
-    // as even round domes until then.
-    float2 cobbleOut, pebbleOut;
-    float cobbleD = stoneOutline(toCobble, cobble.z, cobbleOut);
-    float pebbleD = stoneOutline(toPebble, pebble.z, pebbleOut);
-    bool isCobble = cobble.z < 0.28f && cobbleD < 1.0f;
-    bool isPebble = !isCobble && pebble.z < 0.75f && pebbleD < 1.0f;
+    // Each stone its own size, shape and burial (emmettl/bombcad-work#148), and since
+    // emmettl/bombcad-work#151 crushed as the quarry floor's are (`crushedStone`: cut by planes at
+    // random, its facets each its own tilt and tone), some sunk in the fines to their upper
+    // facets; rounded, lumpy domes until then.
+    float2 cobbleTilt, pebbleTilt;
+    float cobbleTone, pebbleTone, cobbleSoft, pebbleSoft;
+    float cobbleSunk = fract(cobble.z * 31.7f), pebbleSunk = fract(pebble.z * 31.7f);
+    float cobbleD = crushedStone(toCobble, cobble.z, pixel / 0.26f, 0.7f * cobbleSunk, false, cobbleTilt, cobbleTone, cobbleSoft);
+    float pebbleD = crushedStone(toPebble, pebble.z, pixel / 0.09f, 0.7f * pebbleSunk, pebble.z > 0.55f, pebbleTilt, pebbleTone, pebbleSoft);
+    // Each stone's shadow on the grit just round it, a few centimetres wide, so it sits in it
+    // rather than lying on it as a flat chip.
+    bool isCobble = cobble.z < 0.28f && cobbleD > -cobbleSoft;
+    bool isPebble = !isCobble && pebble.z < 0.75f && pebbleD > -pebbleSoft;
+    float contact = 1.0f;
+    if (cobble.z < 0.28f && cobbleD > -0.12f) contact = min(contact, 1.0f - 0.15f * (1.0f - cobbleSunk) * smoothstep(-0.12f, 0.0f, cobbleD));
+    if (pebble.z < 0.75f && pebbleD > -0.14f) contact = min(contact, 1.0f - 0.12f * (1.0f - pebbleSunk) * smoothstep(-0.14f, 0.0f, pebbleD));
     // The grit between: a smooth noise (a hash of 2.5 cm cells showed as a mosaic of squares where
     // the stones left it bare).
     float grain = noise3(world * 40.0f);
-    float3 matrixColour = mean * (0.75f + 0.5f * grain) * (0.85f + 0.3f * fbm3(world * 6.0f, 2));
+    float3 matrixColour = mean * (0.75f + 0.5f * grain) * (0.85f + 0.3f * fbm3(world * 6.0f, 2)) * mix(1.0f, contact, detail);
     if (!isCobble && !isPebble) {
         tilt = float3((float2(grain, noise3(world * 40.0f + 9.0f)) - 0.5f) * 0.35f * detail, 0.0f);
         return mix(mean, matrixColour, detail);
     }
     float id = isCobble ? cobble.z : pebble.z;
     float d = isCobble ? cobbleD : pebbleD;
-    float2 out = isCobble ? cobbleOut : pebbleOut;
-    float buried = fract(id * 31.7f);
+    float edgeSoft = isCobble ? cobbleSoft : pebbleSoft;
+    float buried = isCobble ? cobbleSunk : pebbleSunk;
     RockColour rock = rockOfKind(kindFromShare(fract(id * 3.71f)));
     if (rock.kind == 1) rock.patina = mix(rock.patina, float3(0.33f, 0.32f, 0.3f), 0.6f);
-    float3 stone = mix(rock.patina, rock.oxidised, 0.3f + 0.5f * fract(id * 11.3f)) * (0.85f + 0.35f * fract(id * 29.1f));
+    float3 stone = mix(rock.patina, rock.oxidised, 0.3f + 0.5f * fract(id * 11.3f)) * (0.78f + 0.32f * fract(id * 29.1f));
     stone *= 0.85f + 0.3f * fbm3(world * (isCobble ? 18.0f : 40.0f) + id * 40.0f, 2);
+    // Kept near the grit's tone, so a stone in the sun is not a pale chip on it.
+    stone = mix(stone, matrixColour * 1.05f, 0.45f) * (isCobble ? cobbleTone : pebbleTone);
     // Its outline: a dark contact where it stands proud, fines lapping over it where it is sunk.
-    float rim = smoothstep(1.0f, 0.72f, d);
-    stone = mix(mix(matrixColour * 0.72f, matrixColour, buried), stone, rim);
-    float height = 1.0f - 0.75f * buried;
-    float2 lean = (float2(fract(id * 47.3f), fract(id * 91.7f)) - 0.5f) * 0.5f * height;
-    tilt = float3((lean + out * (0.3f + 0.9f * d) * height) * detail * rim, 0.0f);
+    float rim = smoothstep(-0.5f * edgeSoft, 0.5f * edgeSoft, d);
+    // A light contact line (0.72 of the grit's tone until emmettl/bombcad-work#151: in the shade, where
+    // a stone's facets differ little, the stones read as outlines drawn on the ground).
+    stone = mix(mix(matrixColour * 0.86f, matrixColour, buried), stone, rim);
+    float2 slope = (isCobble ? cobbleTilt : pebbleTilt) * (1.0f - 0.4f * buried);
+    tilt = float3(slope * detail * rim, 0.0f);
     return mix(mean, stone, detail);
 }
 
@@ -2071,7 +2088,7 @@ fragment float4 ridgeTerrainFragment(TerrainOut in [[stage_in]],
     float footprint = length(fwidth(q));
     float detail = 1.0f - smoothstep(0.03f, 0.11f, footprint);
     float3 screeTilt, grassTilt;
-    float3 scree = screeGround(q, world, detail, screeTilt);
+    float3 scree = screeGround(q, world, detail, sqrt(length(dfdx(world)) * length(dfdy(world))), screeTilt);
     float3 grassy = grassGround(world, detail, grassTilt);
     // Bare soil with grit, and pale bare patches on the far ground.
     float soilDetail = fbm3(world * 2.2f, 4);
@@ -2147,7 +2164,7 @@ fragment float4 apronFragment(ApronOut in [[stage_in]],
     // gravel's, and over the lower half of its slope it turns into the floor itself, in lobes, so
     // its foot is not a change of colour along the face (paler than the floor, turning over its
     // lowest third, until then).
-    float3 talus = screeGround(world.xy + world.z * 0.7f, world, detail, tilt) * float3(0.64f, 0.61f, 0.59f);
+    float3 talus = screeGround(world.xy + world.z * 0.7f, world, detail, sqrt(length(dfdx(world)) * length(dfdy(world))), tilt) * float3(0.64f, 0.61f, 0.59f);
     float toe = 1.0f - smoothstep(0.0f, 0.75f, in.up + 0.3f * (fbm3(world * 0.6f + 3.0f, 3) - 0.45f));
     toe *= toe;
     float3 albedo = mix(talus, floor.ground, toe);
@@ -2513,10 +2530,11 @@ fragment float4 ledgeFragment(LedgeOut in [[stage_in]],
     // A crag's broad top is mostly turf, the hillside running on over it to its edge.
     float turf = smoothstep(0.44f, 0.58f, fbm3(world * 0.8f + 3.0f, 3) + 0.25f * back + 0.3f * in.crag * (in.layer < 0.5f ? 1.0f : 0.3f)) * topness;
     albedo = mix(albedo, grassGround(world, detail, tilt), turf);
-    float bank = 0.18f + 0.6f * fbm3(world * float3(0.9f, 0.9f, 0.4f) + 21.0f, 3);
+    // Higher and more ragged against a crag (emmettl/bombcad-work#151), where scree laps up over its foot.
+    float bank = mix(0.18f, 0.22f, in.crag) + mix(0.6f, 1.0f, in.crag) * fbm3(world * float3(0.9f, 0.9f, 0.4f) + 21.0f, 3);
     float banked = 1.0f - smoothstep(bank - 0.12f, bank + 0.04f, in.above);
     float3 screeTilt;
-    float3 loose = screeGround(world.xy, world, detail, screeTilt);
+    float3 loose = screeGround(world.xy, world, detail, sqrt(length(dfdx(world)) * length(dfdy(world))), screeTilt);
     albedo = mix(albedo, mix(loose, float3(0.23f, 0.19f, 0.14f), 0.35f), banked);
     // Joints: dark, narrow cracks, wider and darker in places and filled paler in others, their lips
     // spalled in chips of fresher rock (an even dark band until emmettl/bombcad-work#148);

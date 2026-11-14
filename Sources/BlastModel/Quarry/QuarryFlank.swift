@@ -748,6 +748,19 @@ public struct QuarryFlank: Sendable {
                     stone(p.x, p.y, size, sink: 0.3, angular: cr.float() < 0.7, anywhere: true)
                 }
             }
+            // Scree along its whole foot (emmettl/bombcad-work#151): stones and small blocks banked
+            // against it, half buried, so the slope meets it in a ragged line of fallen rock. Those
+            // that land under its overhang or inside it are hidden.
+            var fr = QuarryRandom(seed: UInt64(crag.seed * 1e6) &+ 151)
+            for _ in 0..<Int(crag.width * 2.4 * scale) {
+                let size = min(0.9, 0.16 * pow(max(fr.float(), 0.02), -0.5))
+                let t = fr.float(-1, 1)
+                let p =
+                    centre + side * (t * crag.width / 2)
+                    + crag.downhill
+                    * (-0.15 * crag.width * t * t + crag.reach * fr.float(0.75, 1.1) + fr.float(-0.3, 0.9))
+                stone(p.x, p.y, size, sink: 0.35, angular: fr.float() < 0.6, anywhere: true)
+            }
         }
         // The small stones first, then the large (drawn rounder), then the bushes' lobes.
         let small = stones.filter { $0.posSize.w < Self.largeStone }
@@ -913,6 +926,22 @@ extension QuarryFace {
     static let slabTilt: Float = 0.3
     /// How far a ledge's outcrop sinks under the ground at its ends (m; `outcropMesh`).
     static let outcropEnd: Float = 0.3
+    /// The most an outcrop piece's line turns, a metre along it (radians; `outcrop`,
+    /// emmettl/bombcad-work#151).
+    static let outcropTurn: Float = 0.08
+
+    /// The sharpest turn of a line through `points`, a metre along it (radians).
+    static func sharpestTurn(_ points: [SIMD2<Float>]) -> Float {
+        var sharpest: Float = 0
+        for k in 1..<max(1, points.count - 1) {
+            let (a, b) = (points[k] - points[k - 1], points[k + 1] - points[k])
+            let (la, lb) = (simd_length(a), simd_length(b))
+            guard la > 1e-3, lb > 1e-3 else { continue }
+            let turn = acos(max(-1, min(1, simd_dot(a, b) / (la * lb))))
+            sharpest = max(sharpest, turn / (0.5 * (la + lb)))
+        }
+        return sharpest
+    }
 
     /// The step of an outcrop's shift along the bedding's normal in its vertices' tags (m).
     public static let outcropShiftStep: Float = 0.05
@@ -1044,6 +1073,17 @@ extension QuarryFace {
                     let way = (b - a) / chord
                     p = p.map { a + way * simd_dot($0 - a, way) }
                     d = d.map { _ in mean }
+                } else if p.count > 2 {
+                    // A longer piece's curve eased until it turns no more than `outcropTurn` a metre
+                    // (emmettl/bombcad-work#151): a tighter turn, its profiles fanning out from it,
+                    // gave its outline in plan a hook or a tail.
+                    for _ in 0..<24 where Self.sharpestTurn(p) > Self.outcropTurn {
+                        var eased = p
+                        for k in 1..<(p.count - 1) {
+                            eased[k] = 0.25 * p[k - 1] + 0.5 * p[k] + 0.25 * p[k + 1]
+                        }
+                        p = eased
+                    }
                 }
             }
             if p.count == 1, pieces.count > 1 {
@@ -1223,10 +1263,11 @@ extension QuarryFace {
             for _ in 0...kept.count {
                 let out = r.float(-spread, spread * 0.8)
                 var block = Block(
-                    outA: out + r.float(-0.3, 0.3), outB: out + r.float(-0.3, 0.3),
+                    outA: out + r.float(-0.3, 0.3) * (crag ? 1.5 : 1),
+                    outB: out + r.float(-0.3, 0.3) * (crag ? 1.5 : 1),
                     outKink: out + r.float(-0.35, 0.3),
                     kinkAt: r.float(0.25, 0.75), drop: r.float() < 0.55 ? r.float(0.05, 0.5) : 0,
-                    chamfer: r.float(0.1, 0.6), bulge: r.float(-0.3, 0.25),
+                    chamfer: crag ? r.float(0.3, 0.9) : r.float(0.1, 0.6), bulge: r.float(-0.3, 0.25),
                     merged: r.float() < (crag ? 0.7 : 0.45),
                     strip: m > 1 && r.float() < 0.35 ? (m > 2 && r.float() < 0.35 ? 2 : 1) : 0)
                 if r.float() < (crag ? 0.1 : 0.1) {
@@ -1306,7 +1347,7 @@ extension QuarryFace {
                     recess: soft * (crag ? r.float(0.6, 1.4) : r.float(0.2, 0.5)),
                     goneDepth: (crag ? r.float(0.2, 0.7) : r.float(0.2, 0.6)) * (0.6 + soft),
                     goneAt: r.float(0, 0.25) - 0.15 * soft,
-                    nose: r.float(0.02, 0.1),
+                    nose: crag ? r.float(0.15, 0.45) : r.float(0.02, 0.1),
                     lean: soft > 0.3 ? r.float(0.1, 0.45) : r.float(-0.12, 0.22),
                     notch: crag && soft < 0.5 ? r.float(0.02, 0.12) : r.float(0.05, 0.3),
                     overhang: soft > 0.3 ? 0.1 : crag ? r.float(0.12, 0.45) : r.float(0.15, 0.45),
@@ -1329,7 +1370,11 @@ extension QuarryFace {
         var samples = Array(stride(from: Float(0), through: total, by: crag ? 0.6 : 0.5))
         if samples[samples.count - 1] < total - 0.15 { samples.append(total) }
         for layerJoints in joints {
-            for j in layerJoints { samples += [j.at - 0.12, j.at - 0.03, j.at + 0.03, j.at + 0.12] }
+            for j in layerJoints {
+                samples += [j.at - 0.12, j.at - 0.03, j.at + 0.03, j.at + 0.12]
+                // A crag's blocks' rounded corners (emmettl/bombcad-work#151).
+                if crag { samples += [j.at - 0.6, j.at - 0.35, j.at + 0.35, j.at + 0.6] }
+            }
         }
         for (b, j) in joints[m - 1].enumerated()
         where blocks[m - 1][b].strip != blocks[m - 1][b + 1].strip {
@@ -1361,11 +1406,15 @@ extension QuarryFace {
         // foot's level does, eased along the run.
         var frames: [(p: SIMD2<Float>, d: SIMD2<Float>)] = []
         var meets: [Float] = []
-        var feet: [Float] = []
+        var found: [Bool] = []
         var segment = 0
         let span: Float = crag ? 6 : 2.5
         let longest: Float = crag ? 16 : max(4.5, 2.4 * (topLevel - bottomLevel) / normal.z)
-        for u in along {
+        func excess(_ k: Int, _ s: Float, _ at: Float) -> Float {
+            let q = frames[k].p + frames[k].d * s
+            return ground(q) - level(at, q)
+        }
+        for (k, u) in along.enumerated() {
             shift = shiftAt(u)
             while segment < points.count - 2 && lengths[segment + 1] < u { segment += 1 }
             let t = max(
@@ -1373,30 +1422,54 @@ extension QuarryFace {
             let p = points[segment] + (points[segment + 1] - points[segment]) * t
             var d = downs[segment] + (downs[segment + 1] - downs[segment]) * t
             d = simd_length(d) > 1e-3 ? simd_normalize(d) : downs[segment]
-            func excess(_ s: Float, _ at: Float) -> Float { ground(p + d * s) - level(at, p + d * s) }
+            frames.append((p, d))
             var s0: Float = 0
-            if excess(-span, topLevel) > 0, excess(span, topLevel) < 0 {
+            let bracketed = excess(k, -span, topLevel) > 0 && excess(k, span, topLevel) < 0
+            if bracketed {
                 var (a, b) = (-span, span)
                 for _ in 0..<20 {
                     let mid = (a + b) / 2
-                    if excess(mid, topLevel) > 0 { a = mid } else { b = mid }
+                    if excess(k, mid, topLevel) > 0 { a = mid } else { b = mid }
                 }
                 s0 = (a + b) / 2
             }
+            meets.append(s0)
+            found.append(bracketed)
+        }
+        // Where the top's line is not found within reach of a row, it is taken along the run from the
+        // rows on either side where it is (emmettl/bombcad-work#151): taken as the sweep's own line,
+        // a row there jumped up to `span` down or up the slope from its neighbours, and the piece's
+        // outline in plan had a tail or a hook.
+        if found.contains(true) {
+            for k in along.indices where !found[k] {
+                let before = (0..<k).last { found[$0] }
+                let after = ((k + 1)..<along.count).first { found[$0] }
+                switch (before, after) {
+                case (let a?, let b?):
+                    meets[k] =
+                        meets[a] + (meets[b] - meets[a]) * (along[k] - along[a]) / (along[b] - along[a])
+                case (let a?, nil): meets[k] = meets[a]
+                case (nil, let b?): meets[k] = meets[b]
+                default: break
+                }
+            }
+        }
+        var feet: [Float] = []
+        for (k, u) in along.enumerated() {
+            shift = shiftAt(u)
+            let s0 = meets[k]
             var foot: Float = 0.5
-            if excess(s0, bottomLevel) > 0 {
+            if excess(k, s0, bottomLevel) > 0 {
                 foot = longest
                 var s: Float = 0.25
                 while s < longest {
-                    if excess(s0 + s, bottomLevel) < 0 {
+                    if excess(k, s0 + s, bottomLevel) < 0 {
                         foot = s
                         break
                     }
                     s += 0.25
                 }
             }
-            frames.append((p, d))
-            meets.append(s0)
             feet.append(foot)
         }
         func eased(_ v: [Float], _ width: Float) -> [Float] {
@@ -1438,8 +1511,8 @@ extension QuarryFace {
                 parts += [.parting, .top]
                 layerOf += [k, k]
             }
-            parts += [.face, .face, .face]
-            layerOf += [k, k, k]
+            parts += crag ? [.face, .face, .face, .face] : [.face, .face, .face]
+            layerOf += crag ? [k, k, k, k] : [k, k, k]
         }
         parts += [.foot, .foot]
         layerOf += [m - 1, m - 1]
@@ -1463,7 +1536,9 @@ extension QuarryFace {
             func at(_ s: Float) -> SIMD2<Float> { c + d * s }
             let ends = min(
                 smoothstep(shownFrom, shownFrom + endLength, u), smoothstep(shownTo, shownTo - endLength, u))
-            let gaps = crag ? 1 : smoothstep(-0.34, -0.12, QuarryNoise.fbm(w / 5, octaves: 2))
+            // Gaps open and close over a short way (emmettl/bombcad-work#151: over -0.34 to -0.12 of the
+            // noise, a metre or more, so each side of a gap sank slowly and narrowed to a point in plan).
+            let gaps = crag ? 1 : smoothstep(-0.25, -0.21, QuarryNoise.fbm(w / 5, octaves: 2))
             let stand = ends * gaps
             var base = max(
                 0.5, feet[k] * (0.88 + 0.45 * QuarryNoise.fbm(w / 4 + 3, octaves: 2)) + (crag ? 0.25 : 0.1))
@@ -1486,9 +1561,11 @@ extension QuarryFace {
                     t < block.kinkAt
                     ? block.outA + (block.outKink - block.outA) * t / block.kinkAt
                     : block.outKink + (block.outB - block.outKink) * (t - block.kinkAt) / (1 - block.kinkAt)
-                // Its corners broken back.
+                // Its corners broken back; on a crag, weathered round (emmettl/bombcad-work#151: cut back
+                // straight, a crag's blocks read as squarish masonry).
                 let corner = max(0, 1 - min(u - start, end - u) / block.chamfer)
-                out -= corner * block.chamfer * 0.9
+                let rounded = crag ? block.chamfer * (1 - (max(0, 1 - corner * corner)).squareRoot()) : 0
+                out -= crag ? rounded : corner * block.chamfer * 0.9
                 let lw = SIMD3(u / (crag ? 6 : 4.5), Float(layer) * 3.7, look.phase)
                 let gone =
                     smoothstep(look.goneAt - 0.06, look.goneAt + 0.06, QuarryNoise.fbm(lw, octaves: 2))
@@ -1506,7 +1583,17 @@ extension QuarryFace {
                 if layer > 0 { f = min(f, fronts[layer - 1] + look.overhang * stand * stand) }
                 f -= open * 0.3
                 fronts[layer] = f
-                drops[layer] = block.drop + corner * block.chamfer * 0.35 + open * 0.12
+                drops[layer] =
+                    block.drop + (crag ? rounded * 0.7 : corner * block.chamfer * 0.35) + open * 0.12
+                // A crag's block tops uneven (emmettl/bombcad-work#151): each tipped a little its own way
+                // along the run, and hummocky, rather than all flat at the bed's level.
+                if crag {
+                    let thick = layers[layer].top - layers[layer].bottom
+                    let lean = QuarryNoise.hash(Int32(b), Int32(layer), Int32(look.phase * 100))
+                    let hummock = max(
+                        0, QuarryNoise.fbm(SIMD3(u / 1.7, Float(layer) * 4.1, look.phase + 23), octaves: 2))
+                    drops[layer] += thick * (0.1 * (1 + lean * (2 * t - 1)) + 0.35 * hummock)
+                }
                 opens[layer] = open
                 bulges[layer] = block.bulge
                 closed[layer] = block.merged && layer < m - 1
@@ -1581,6 +1668,11 @@ extension QuarryFace {
                 )
                 wander[layer] =
                     0.3 * thin * QuarryNoise.fbm(SIMD3(u / 2.2, Float(layer) * 7.3, phase + 11), octaves: 2)
+                // A crag's beds pinch and swell more, over longer stretches too (emmettl/bombcad-work#151).
+                if crag {
+                    wander[layer] +=
+                        0.4 * thin * QuarryNoise.fbm(SIMD3(u / 7, Float(layer) * 2.9, phase + 31), octaves: 2)
+                }
             }
             func topOf(_ layer: Int, _ q: SIMD2<Float>) -> Float {
                 level(layers[layer].top, q) + wander[layer + 1]
@@ -1592,13 +1684,15 @@ extension QuarryFace {
                 let (f, look) = (fronts[layer], looks[layer])
                 let thick = max(0.1, topOf(layer, at(f)) - bottomOf(layer, at(f)))
                 let lowered = min(endDrop * thick, layer == m - 1 ? lamina + drops[layer] : drops[layer])
-                let nose = closed[layer] ? 0 : min(look.nose, 0.3 * thick)
+                let nose = closed[layer] ? 0 : min(look.nose, (crag ? 0.45 : 0.3) * thick)
                 if layer < m - 1 {
                     let back = min(fronts[layer + 1], f) - (closed[layer] ? 0 : look.notch)
                     profile.append(SIMD2(back, topOf(layer, at(back)) - 0.02))
                     profile.append(SIMD2(f - nose, topOf(layer, at(f - nose)) - lowered))
                 }
                 let upper = topOf(layer, at(f)) - lowered - nose
+                // A crag's arris weathered round, a quarter circle of its nose (emmettl/bombcad-work#151).
+                if crag { profile.append(SIMD2(f - 0.29 * nose, upper + 0.71 * nose)) }
                 profile.append(SIMD2(f, upper))
                 // Over a closed parting below, the face runs on down without leaning.
                 let lean = layer > 0 && closed[layer - 1] ? 0 : look.lean
@@ -1668,10 +1762,10 @@ extension QuarryFace {
             tilts[k] = max(0, min(Self.slabTilt, 2 * (wanted - mean) / max(high, 0.5)))
         }
         tilts = eased(tilts, 1.2)
+        var tilted: [[SIMD2<Float>]] = []
         for (k, row) in built.enumerated() {
-            let (opens, c, d) = (row.opens, row.c, row.d)
-            let (u, stand, sink) = (along[k], row.stand, sinks[k])
-            func at(_ s: Float) -> SIMD2<Float> { c + d * s }
+            func at(_ s: Float) -> SIMD2<Float> { row.c + row.d * s }
+            let sink = sinks[k]
             var profile = row.profile
             if tilts[k] > 1e-3 {
                 let pivot = ground(at(0)) - sink
@@ -1684,6 +1778,82 @@ extension QuarryFace {
                     profile[column] = SIMD2(x, y)
                 }
             }
+            tilted.append(profile)
+        }
+        // No fins (emmettl/bombcad-work#151): a ledge's outcrop row of which, as sunk, only its front
+        // stands out of the slope, narrower down the slope than about its own height or half a
+        // metre, or lower than 0.15 m, is sunk out of sight, and so is one left standing alone
+        // between sunk rows. Where a row's top went under the slope and its front stayed proud (as
+        // a piece sinks at its ends, or where the slope falls away in front), it stood as a thin
+        // wall, and in plan the piece ran out in a point or a tail.
+        if !crag {
+            var hidden = [Bool](repeating: false, count: rows)
+            var spans = [Float](repeating: 0, count: rows)
+            var talls = [Float](repeating: 0, count: rows)
+            for (k, row) in built.enumerated() {
+                func at(_ s: Float) -> SIMD2<Float> { row.c + row.d * s }
+                let above = tilted[k].map { $0.y - sinks[k] - ground(at($0.x)) }
+                var (low, high, tallest) = (Float.infinity, -Float.infinity, Float(0))
+                for i in 1..<above.count where above[i - 1] > 0 || above[i] > 0 {
+                    let (x0, x1) = (tilted[k][i - 1].x, tilted[k][i].x)
+                    let (a0, a1) = (above[i - 1], above[i])
+                    let cross = x0 + (x1 - x0) * a0 / (a0 - a1)
+                    let (from, to) = (a0 > 0 ? x0 : cross, a1 > 0 ? x1 : cross)
+                    (low, high) = (min(low, from, to), max(high, from, to))
+                    tallest = max(tallest, a0, a1)
+                }
+                spans[k] = high - low
+                talls[k] = tallest
+                hidden[k] = tallest < 0.15 || high - low < max(0.5, 0.8 * tallest)
+            }
+            // Each stretch of rows that shows ends where it is still broad: rows at its ends that show
+            // less than 0.45 of its usual breadth down the slope, within the outer third of it, are
+            // sunk too, so it ends in a block's steep end, not a narrow lip or tail.
+            var k = 0
+            while k < rows {
+                guard !hidden[k] else {
+                    k += 1
+                    continue
+                }
+                var end = k
+                while end + 1 < rows, !hidden[end + 1] { end += 1 }
+                let stretch = Array(k...end)
+                // A stretch shorter along the run than about half its height, or 0.9 m, stood as a
+                // thin upright plate: sunk whole.
+                let tallest = stretch.map { talls[$0] }.max() ?? 0
+                if along[end] - along[k] < max(0.9, 0.5 * tallest) {
+                    for q in stretch { hidden[q] = true }
+                    k = end + 1
+                    continue
+                }
+                let usual = stretch.map { spans[$0] }.sorted()[stretch.count / 2]
+                let third = (along[end] - along[k]) / 3
+                for q in stretch where along[q] - along[k] <= third {
+                    guard spans[q] < 0.45 * usual else { break }
+                    hidden[q] = true
+                }
+                for q in stretch.reversed() where along[end] - along[q] <= third {
+                    guard spans[q] < 0.45 * usual else { break }
+                    hidden[q] = true
+                }
+                k = end + 1
+            }
+            for k in 0..<rows
+            where !hidden[k] && (k == 0 || hidden[k - 1]) && (k == rows - 1 || hidden[k + 1]) {
+                hidden[k] = true
+            }
+            for (k, row) in built.enumerated() where hidden[k] {
+                func at(_ s: Float) -> SIMD2<Float> { row.c + row.d * s }
+                var rise: Float = 0.15
+                for q in tilted[k] { rise = max(rise, q.y - ground(at(q.x))) }
+                sinks[k] = rise + 0.45
+            }
+        }
+        for (k, row) in built.enumerated() {
+            let (opens, c, d) = (row.opens, row.c, row.d)
+            let (u, stand, sink) = (along[k], row.stand, sinks[k])
+            func at(_ s: Float) -> SIMD2<Float> { c + d * s }
+            let profile = tilted[k]
             // A crag's ends settle into the slope rather than sinking straight down
             // (emmettl/bombcad-work#149): what stands above the ground is lowered toward it, so its
             // beds bend with the slope's own curve as they go under, each block of its foot by its
@@ -1693,7 +1863,7 @@ extension QuarryFace {
             if crag {
                 let foot = joints[0]
                 let block = blocks[0][foot.firstIndex { $0.at > u } ?? foot.count]
-                keep = pow(stand, 0.6 + 4 * (block.chamfer - 0.1))
+                keep = pow(stand, 0.6 + 4 * (min(block.chamfer, 0.6) - 0.1))
             }
             for (column, q) in profile.enumerated() {
                 let xy = at(q.x)
@@ -1702,6 +1872,15 @@ extension QuarryFace {
                     let below = ground(xy)
                     let above = q.y - below
                     z = above > 0 ? below + above * keep - (1 - keep) * 0.45 : q.y - (1 - keep) * 0.45
+                    // Partly buried where the slope meets it (emmettl/bombcad-work#151): within a metre of
+                    // the ground it is sunk by up to about 0.75 m in patches a metre or two across, so
+                    // the slope's scree laps up over its foot and its beds' ends raggedly, rather than
+                    // meeting its layers in straight lines.
+                    let low = z - below
+                    if low < 1.2 {
+                        let patch = QuarryNoise.fbm(SIMD3(xy.x / 1.3, xy.y / 1.3, phase + 51), octaves: 3)
+                        z -= max(0, patch + 0.2) * 0.8 * (1 - smoothstep(0.15, 1.2, low))
+                    }
                 }
                 grid.append(SIMD3(xy.x, xy.y, z))
                 opened.append(opens[m - 1 - layerOf[column]])
@@ -1740,7 +1919,7 @@ extension QuarryFace {
         // pillows of it until emmettl/bombcad-work#141).
         var shaped = grid
         let first = normals(grid)
-        let reach: Float = crag ? 0.32 : 0.2
+        let reach: Float = crag ? 0.38 : 0.2
         for k in 0..<grid.count {
             let p = grid[k] + SIMD3(0, 0, phase)
             let q = p / 1.4
@@ -1749,7 +1928,10 @@ extension QuarryFace {
                 0.6 * QuarryNoise.fbm(q + 37.7, octaves: 2))
             let wear =
                 0.04 * QuarryNoise.fbm(p * 0.9, octaves: 2) + 0.03 * QuarryNoise.fbm(p * 2.8 + 7, octaves: 2)
-            shaped[k] = grid[k] + move * reach + first[k] * wear
+            // A crag's faces lumpier at a metre too (emmettl/bombcad-work#151): its blocks read as flat
+            // slabs of masonry.
+            let lumps = crag ? 0.14 * QuarryNoise.fbm(p / 0.9 + 51, octaves: 2) : 0
+            shaped[k] = grid[k] + move * reach + first[k] * (wear + lumps)
         }
         let final = normals(shaped)
         var vertices: [Vertex] = []

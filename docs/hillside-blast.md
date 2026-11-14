@@ -1886,6 +1886,123 @@ and `fixdbg/` (the shells fixed), the trials `t1/` to `t7/`, orbiting clips over
   apart): the stones and their facets hold still as the camera moves; the mid-distance floor is
   busier than before.
 
+## Stage 3q: weathered crags, outcrop ends without points, and crushed gravel, 14 November 2026
+
+emmettl/bombcad-work#151, on the user's word of 13 November ("keep working through the defects list
+until it looks strong"). Same standing: illustrative, for the eye; render-side shading and
+render-only geometry, procedural, no third-party assets; nothing reaches the solver. The rock, its
+blocks and their poses are unchanged (116,967 blocks at the face, 31,259 on the ridge), so before
+and after are rendered from the same stored poses (`rock-strong/face-poses`,
+`rock-surface/ridge140-poses`). Before is main at de992c68 (#146's dust included).
+
+**What was wrong** (#149's and #150's frames, `rock-masses/crops/cragend-after.png`).
+- *Crags were built of large squarish, flat-topped blocks*, and where the slope crosses their beds
+  it met them in straight lines.
+- *Some outcrop pieces narrowed to a point in plan, or ran out in a hooked tail.*
+- *The floor's larger stones had regular facets* (a top and a ring of sides) and read as cut gems;
+  the small ones were round specks; some were pale against the fines in the sun.
+- *The ridge's soil and scree stones (`screeGround`) were rounded domes.*
+- *A chipped crack lip turned away from the sun could read as a dark hole beside the crack.*
+
+**What the points and tails were.** A plan of every outcrop piece, from its surface sampled every
+0.2 m where it stands out of the ground and split into the patches it shows, measured the width
+0.3 to 0.8 m in from each end against the piece's median width, and how far the middle of that end
+stretch stands off the line of the piece's middle. (Judged from the vertices alone it misread the
+long sloping tops as slivers.) The worst ends were rows whose top had gone under the slope while
+their front still stood out: as a piece sinks at its ends and gaps (slowly, over a metre or more
+of the gaps' noise), where its upper layers are stripped back into the hill and the lower one's
+top is a long ramp, and where `slabTilt` (#150) tipped back a row far down the slope, raising its
+front. In plan each was a thin wall or lip running on from the block: a point, or a tail.
+
+**What changed.**
+- *Outcrop ends* (`QuarryFace.outcropMesh`, `outcrop`, BlastModel, Linux-tested): after tipping, a
+  row of which only a front shows (narrower down the slope than its own height or half a metre, or
+  lower than 0.15 m) is sunk out of sight, and so is one left alone between sunk rows; each stretch
+  of rows that shows ends where it is still broad (rows at its ends showing under 0.45 of its usual
+  breadth, within its outer third, are sunk); a stretch shorter along the run than half its height
+  or 0.9 m (a thin upright plate) is sunk whole; gaps open and close over a short way (-0.25 to
+  -0.21 of their noise, from -0.34 to -0.12); where the top's line is not found within reach of a
+  row it is taken from the rows on either side (it fell back on the sweep's own line, a jump of up
+  to 2.5 m); and a piece's curve is eased until it turns no more than 0.08 radians a metre
+  (`outcropTurn`). A Linux test checks every patch's ends are at least 0.2 of its width and stand
+  off its line by at most 1.5 widths (main's code: ends down to 0.09, a tail at 2.5 widths; now
+  0.22 and 1.24).
+- *Crags* (`outcropMesh`, `QuarryFlank.stones`): each bed's front arris is weathered round (a
+  quarter circle of 0.15 to 0.45 m, at most 0.45 of the bed), its blocks' corners rounded back
+  over 0.3 to 0.9 m (a straight bevel of 0.1 to 0.6 m until now), each block's top tipped its own
+  way along the run and hummocky (up to about a third of the bed), the beds pinch and swell over
+  some metres as well as two, the blocks' fronts stand out or back more, and the faces are lumpier
+  at a metre. Within 1.2 m of the ground a crag is sunk by up to about 0.75 m in patches a metre or two
+  across, so the slope laps up over its foot raggedly; stones and small blocks lie banked along its
+  whole foot, half buried (about 2.4 a metre of its width), and the scree drawn on its foot
+  (`ledgeFragment`) reaches higher and more raggedly. Outcrop triangles on the ridge 247,270
+  before, 263,030 after (631 ledges, three crags); flank stones 11,089 before, 11,303 after.
+- *Gravel* (`crushedStone`, `quarryFloor`, `screeGround`): each stone is cut by planes at random,
+  a top plane or a ridge of two and four to eight cuts at uneven turns, each its own steepness
+  (0.4 to 2.4) and reach, so gentle cuts run in over its top as broad facets and steep ones are
+  narrow sides; its outline is where it stands out of the fines, which lap over a sunk stone's lower
+  facets; its lower facets a little darker. The grit is drawn as chips split along a ridge, lit on
+  one side and shaded on the other. On the floor each stone's tone is kept nearer the fines (0.82
+  to 1.18 of its own, from 0.66 to 1.28, and 0.3 of the way to the fines), the floor's mean
+  unchanged within about 1% near and far. The ridge's scree, the soil on its rock and the apron's
+  talus take the same stones (`screeGround`; its rounded `stoneOutline` is gone), their tone 0.45
+  of the way to the grit, with a faint shadow on the grit round each.
+- *Crack lips* (`blockFragment`): a chip's scoop is turned from the sun no further than leaves
+  about half the light of the rock round it.
+
+**Measured** (main's build and this one interleaved; GPU draw from the recorder's own timing;
+`measure.txt`, and `measure-loaded.txt` for a first run at load 40 to 87).
+- *GPU draw a frame*, Record Clip of the default view (three rounds): the face 15.97, 15.80, 15.90
+  ms before and 15.94, 15.90, 15.94 after; the ridge 10.79, 10.80, 10.92 before and 11.01, 11.04,
+  11.13 after (+0.2 ms). The target was at most +1 ms.
+- *Record Clip* a frame: the face 27.6, 27.3, 27.3 ms before and 27.3, 27.4, 27.5 after; the ridge
+  19.9, 19.8, 20.0 before and 19.8, 19.9, 20.1 after (load 3 to 8).
+- *The window's work a frame* (`play --self-test NAME --offscreen`, two rounds, medians; load 4 to
+  7): the face following 24.4, 32.0 ms before and 25.0, 32.0 after, scrubbing 49.6, 59.2 and 49.3,
+  57.6, playing 19.8, 23.2 and 19.5, 21.1; the ridge following 16.8, 18.5 before and 18.8, 18.7
+  after, scrubbing 36.4, 40.8 and 38.8, 40.3, playing 14.7, 14.8 and 14.3, 14.7. Metal allocated
+  after the first firing 820 MB at the face both, 503 to 504 MB on the ridge.
+- *No added shimmer*: consecutive frames 33 ms apart from orbiting clips over the floor and round
+  the crag, compared by the mean luminance difference in the frame's middle (the camera's motion
+  makes most of it): the floor 22.5, 22.7, 22.3 levels before and 20.2, 20.3, 19.9 after; the crag
+  9.6, 9.7, 9.5 before and 8.6, 8.7, 8.9 after; the share of pixels changing by more than 40 levels
+  lower after as well. By eye the stones and crag faces hold still (`crops/orbit-floor-after.png`).
+- *None drawn inside out*: #150's test passes, and the debug render that tags each draw (`dbg/`,
+  outcrops red, their backs green) shows no green piece, only the odd grazing edge.
+- Rock unchanged: 116,967 blocks at the face and 31,259 on the ridge, both builds.
+
+**Checked by eye** from the stored poses with the window's recorder (`hillsideblast clip`, frames
+from the movie files), before on main's build and after on this one: #149's and #150's poses (the
+flanks from above, the outcrop close, the slab close, the crag, its close-up and end, the floor
+close and farther, the near flank, the face close and a joint close up) plus scree by a crag
+(`screeclose`: focus 104,-126,17, yaw 1.5, pitch 0.35, 9 m) and soil on the crest (`soilclose`:
+focus 72,4,37, yaw 0.95, pitch 0.6, 6 m). Files under `$BOMBCAD_DATA/hillside-blast/rock-weather/`:
+`before/`, `before2/`, `before3/` and `after/`, enlarged pairs in `crops/` (`crag`, `cragnear`,
+`cragend`, `flanks-left`, `outcrop-left`, `slabc`, `floor-near`, `scree`, `soil`, `joint`), the
+trials `a1/` to `a5/`, the debug render `dbg/`, the orbiting clips `crawl-main/`, `crawl-after/`
+and their frames in `g/`, the plan diagnostics `diag-*.log`, the scripts in `scripts/` and the
+measurements in `measure.txt`, `rc-*`, `st-*`.
+
+**The look, frankly.**
+- *Crags* (`crops/crag.png`, `crops/cragnear.png`, `crops/cragend.png`): the lower beds now read as
+  weathered, rounded masses with a ragged, partly buried foot and stones banked along it, and the
+  front block at the end has a rounded arris. From a little way off a crag is still made of large
+  blocks in straight courses: its partings and joints are still nearly straight lines across it,
+  and its top bed still reads as a long slab on edge from along the flank. A thin dark plate still
+  stands off the long crag's left end.
+- *Outcrop ends* (`crops/flanks-left.png`, `crops/outcrop-left.png`, `crops/slabc.png`): the hooked
+  and tailed pieces seen from above are now blocks, and the long point of the slab close in is
+  shorter and blunter, but that slab still tapers somewhat toward its far end; the lone upright
+  sliver beside it is gone.
+- *Floor gravel* (`crops/floor-near.png`): irregular facets and ridged chips rather than gems, the
+  grit angular, the tone nearer the fines; at the bigger stones the facets are a little soft, and
+  there are fewer large stones showing than before (the burial now trims their outlines).
+- *Scree and soil* (`crops/scree.png`, `crops/soil.png`): angular stones instead of domes. In
+  shade, where a stone's facets differ little, the scree's stones still read as flat pale polygons
+  with a faint outline, more drawn than solid; in sun the larger ones read as rock.
+- *Crack lips* (`crops/joint.png`): the dark scoop beside the crack is gone; the joints otherwise
+  look as they did.
+
 ## Stage 3r: a dust bank with depth, 14 November 2026
 
 emmettl/bombcad-work#152, on the user's word of 13 November ("keep working through the defects

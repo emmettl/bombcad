@@ -347,6 +347,144 @@ struct QuarryFlankTests {
         #expect(pieces > 100)
     }
 
+    /// A piece's plan, from the points of it that stand out of the ground: its length along its long
+    /// axis, its median width over its middle half, its width 0.3 to 0.8 m in from each end, and how
+    /// far the middle of that end stretch stands off the line of the piece's middle part (a
+    /// tail or hook), the last two as shares of the median width.
+    struct Plan {
+        var centre: SIMD2<Float>
+        var length: Float
+        var width: Float
+        var ends: [Float]
+        var offsets: [Float]
+    }
+
+    /// Points over each piece's surface, its triangles sampled every 0.2 m or so, where it stands
+    /// out of the ground, in plan.
+    static func shownPlan(
+        _ mesh: (vertices: [QuarryFace.Vertex], indices: [UInt32]), piece: [Int], flank: QuarryFlank
+    ) -> [Int: [SIMD2<Float>]] {
+        var shown: [Int: [SIMD2<Float>]] = [:]
+        for t in stride(from: 0, to: mesh.indices.count, by: 3) {
+            let v = (0..<3).map { mesh.vertices[Int(mesh.indices[t + $0])] }
+            let p = v.map { SIMD3($0.x, $0.y, $0.z) }
+            let longest = max(simd_distance(p[0], p[1]), simd_distance(p[1], p[2]), simd_distance(p[2], p[0]))
+            let n = max(1, min(40, Int((longest / 0.2).rounded(.up))))
+            for i in 0...n {
+                for j in 0...(n - i) {
+                    let (a, b) = (Float(i) / Float(n), Float(j) / Float(n))
+                    let q = p[0] + (p[1] - p[0]) * a + (p[2] - p[0]) * b
+                    if q.z - flank.groundHeight(q.x, q.y) > 0.05 {
+                        shown[piece[Int(mesh.indices[t])], default: []].append(SIMD2(q.x, q.y))
+                    }
+                }
+            }
+        }
+        return shown
+    }
+
+    /// `points` split into the patches they make in plan (touching in 0.3 m cells).
+    static func patches(_ points: [SIMD2<Float>]) -> [[SIMD2<Float>]] {
+        func cell(_ p: SIMD2<Float>) -> SIMD2<Int32> {
+            SIMD2(Int32((p.x / 0.3).rounded(.down)), Int32((p.y / 0.3).rounded(.down)))
+        }
+        var cells: [SIMD2<Int32>: [SIMD2<Float>]] = [:]
+        for p in points { cells[cell(p), default: []].append(p) }
+        var seen = Set<SIMD2<Int32>>()
+        var out: [[SIMD2<Float>]] = []
+        for start in cells.keys where !seen.contains(start) {
+            var patch: [SIMD2<Float>] = []
+            var stack = [start]
+            seen.insert(start)
+            while let c = stack.popLast() {
+                patch += cells[c]!
+                for dx: Int32 in -1...1 {
+                    for dy: Int32 in -1...1 {
+                        let n = c &+ SIMD2(dx, dy)
+                        if cells[n] != nil, !seen.contains(n) {
+                            seen.insert(n)
+                            stack.append(n)
+                        }
+                    }
+                }
+            }
+            out.append(patch)
+        }
+        return out
+    }
+
+    static func plan(_ points: [SIMD2<Float>]) -> Plan? {
+        guard points.count > 8 else { return nil }
+        let centre = points.reduce(SIMD2<Float>.zero, +) / Float(points.count)
+        var (xx, xy, yy): (Float, Float, Float) = (0, 0, 0)
+        for p in points {
+            let d = p - centre
+            (xx, xy, yy) = (xx + d.x * d.x, xy + d.x * d.y, yy + d.y * d.y)
+        }
+        let angle = 0.5 * atan2(2 * xy, xx - yy)
+        let long = SIMD2(cos(angle), sin(angle))
+        let across = SIMD2(-long.y, long.x)
+        let ab = points.map { SIMD2(simd_dot($0 - centre, long), simd_dot($0 - centre, across)) }
+        let (low, high) = (ab.map(\.x).min()!, ab.map(\.x).max()!)
+        let length = high - low
+        func window(_ from: Float, _ to: Float) -> (width: Float, middle: Float)? {
+            let inside = ab.filter { $0.x >= from && $0.x <= to }.map(\.y)
+            guard inside.count >= 3 else { return nil }
+            return (inside.max()! - inside.min()!, (inside.max()! + inside.min()!) / 2)
+        }
+        var middles: [(a: Float, width: Float, middle: Float)] = []
+        var a = low + 0.25 * length
+        while a + 0.5 <= high - 0.25 * length {
+            if let w = window(a, a + 0.5) { middles.append((a + 0.25, w.width, w.middle)) }
+            a += 0.25
+        }
+        guard length > 2, middles.count >= 2 else { return nil }
+        let width = middles.map(\.width).sorted()[middles.count / 2]
+        // The middle part's line: a least-squares fit of its windows' middles.
+        let n = Float(middles.count)
+        let ma = middles.map(\.a).reduce(0, +) / n
+        let mm = middles.map(\.middle).reduce(0, +) / n
+        var (sab, saa): (Float, Float) = (0, 0)
+        for w in middles {
+            sab += (w.a - ma) * (w.middle - mm)
+            saa += (w.a - ma) * (w.a - ma)
+        }
+        let slope = saa > 1e-6 ? sab / saa : 0
+        var ends: [Float] = []
+        var offsets: [Float] = []
+        for (from, to) in [(low + 0.3, low + 0.8), (high - 0.8, high - 0.3)] {
+            guard let w = window(from, to) else { continue }
+            ends.append(w.width / width)
+            let fit = mm + slope * ((from + to) / 2 - ma)
+            offsets.append(abs(w.middle - fit) / width)
+        }
+        return Plan(centre: centre, length: length, width: width, ends: ends, offsets: offsets)
+    }
+
+    @Test("Outcrop pieces end broad in plan: no point or hooked tail at either end")
+    func outcropEnds() throws {
+        // Pieces narrowed to a point in plan, or ran out in a tail, where a row's top went under the
+        // slope and only its front stood out, a thin wall or lip (emmettl/bombcad-work#151). Judged
+        // on the surface as drawn, sampled every 0.2 m, in the patches it shows in plan.
+        let flank = try #require(QuarryFlank(face: Self.face))
+        var plans: [Plan] = []
+        for (k, run) in flank.ledgeRuns().enumerated() {
+            let mesh = QuarryFace.outcrop(run.map { flank.ledges[$0] }, flank: flank, seed: UInt64(k))
+            let piece = Self.pieces(mesh)
+            let shown = Self.shownPlan(mesh, piece: piece, flank: flank)
+            plans += shown.values.flatMap(Self.patches).compactMap(Self.plan)
+        }
+        // Main's code before emmettl/bombcad-work#151: ends down to 0.09 of a piece's width, a patch's
+        // end standing off its line by 2.5 widths; 0.22 and 1.24 after.
+        #expect(plans.count > 150)
+        for plan in plans {
+            #expect(
+                plan.ends.allSatisfy { $0 >= 0.2 } && plan.offsets.allSatisfy { $0 <= 1.5 },
+                "a piece at \(plan.centre) ends \(plan.ends) of its width, its ends off its line by \(plan.offsets)"
+            )
+        }
+    }
+
     @Test("A ridge's weathering as drawn breaks along the strike, within reach of the solver's cells")
     func strikeRecess() {
         let n = QuarryFace.beddingNormal
