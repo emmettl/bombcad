@@ -1548,3 +1548,119 @@ scripts in `scripts/` (`clips.sh`, `try.sh`, `measure.sh`, `crop.swift`) and the
   straight sweeps.
 - *No crawl* seen in a short orbiting clip close to a jointed face (`crawl-main/`, `crawl-after/`,
   consecutive frames at 1/30 s): the cracks and lips hold still as the camera moves.
+
+## Stage 3o: crag ends, outcrops that don't read as rows, torn turf at the cut's margin, and a gravel floor, 14 November 2026
+
+emmettl/bombcad-work#149, on the user's word of 13 November ("keep working through the defects list
+until it looks strong"). Same standing: illustrative, for the eye; render-side shading and
+render-only geometry, procedural, no third-party assets; nothing reaches the solver. The rock, its
+blocks and their poses are unchanged (116,967 blocks at the face, 31,259 on the ridge), so before
+and after are rendered from the same stored poses (`rock-strong/face-poses`,
+`rock-surface/ridge140-poses`). The ridge's thrown and heaved blocks are the solver's bodies: their
+displacement is read only to shade them.
+
+**What was wrong** (#147's and #148's frames).
+- *A crag's ends, seen along the flank, were square-cut blocks* and its layers met the slope in
+  straight sweeps. The crag's sweep runs on past where it shows: as its line bows back into the hill
+  the slope climbs over its beds, so its ends, where its beds ran out and curved back, were under
+  the ground, and what showed was its full-height layers cut off by the slope.
+- *Outcrops read as rows from above*: each run of ledges was one sweep along its bed's line.
+- *At the cut's margin after the blast, green plates*: the render-only rock round the cut (the
+  dressing) kept its turf whole on each cell's top, and as the ground's soil on its sides, so where
+  the blast laid it bare it stepped down the cut's wall in green plates. (Not, as #148 thought, the
+  solver's heaved pieces: a render of how far each piece had moved showed the plates on the
+  dressing, which never moves.)
+- *The quarry floor read as a scatter of pale stones on a smooth dark bed*, and the talus apron was
+  paler than the floor, so its foot was a change of colour along the face.
+- *Chipped crack lips were flat colour*: under a raking light, a pale line beside the dark crack.
+
+**What changed.**
+- *Crag ends* (`QuarryFace.outcropMesh`, Linux-tested): its ends are measured from where its top
+  stands at least half a metre out of the slope, not from its sweep's ends; there its beds run out a
+  step at a time (each 0.5 to 1.25 m in from the one below, a twentieth of its width at most until
+  now), each bed's front curving back into the hill over 2.2 m and its top rounding down most of the
+  way to its foot (0.35 m until now); and what stands above the slope settles toward it rather than
+  sinking straight down, each block of its foot by its own amount. Talus lies at its ends
+  (`QuarryFlank.stones`, and scree in the cover), blocks and stones half buried, over its last 12 m.
+- *Outcrops* (`QuarryFace.outcrop`, Linux-tested): drawn in short pieces en échelon, one to four
+  ledges each; each piece's beds are drawn shifted along the bedding's normal (up to 0.12 m at its
+  middle) and twisted along it (0.04 to 0.1 m a metre, the same way along the run, its ends within
+  0.45 m of the bed), so it runs a little obliquely across the slope and steps off the next; a lone
+  ledge in a run makes a tor, a short block broken small, two beds high in places. The shift rides
+  in the vertices' tags (`outcropTag`, 5 bits; `ledgeFragment` colours the beds as drawn). Outcrop
+  triangles on the ridge 215,358 before, 183,752 after (631 ledges, three crags).
+- *Margin turf* (`blockFragment`): on a ridge cut, once the blast has laid it bare (from 2.2 s; the
+  first firing is at 1.8 s), the dressing's turf near the cut's rim (read from the flanks' cover map)
+  is torn into ragged mats some decimetres across, wider tears the nearer the rim, soil in the
+  tears; its sides facing the cut are bare rock, and under the cut it is bare rock with a little
+  fallen soil. On the solver's pieces that heaved but were not thrown (moved 3 to 30 cm), the turf
+  is split along the heave into mats, the splits wider the more the piece moved, and broken back
+  from its edges. Before firing the hill looks as it did.
+- *The floor* (`quarryFloor`): granules, pebbles and cobbles of the beds' rock, weathered toward the
+  talus' grey-buff (the apron's palette), cover most of it, nearly touching, with darker fines
+  between; fewer on the haul roads and in the damp hollows, more in drifts. Each size, faded under a
+  pixel, leaves the mean of its stones and fines in their shares, so the floor's tone holds from
+  near to far (within about 3% of main's by bands of the frame); at the pebbles' scale that mean is
+  mottled a little. The floor's broad relief is gentler (0.1 to 0.17, from 0.16 to 0.26): under the
+  low sun it shaded the gravel in dark blotches.
+- *The apron* (`apronFragment`): its talus is darker (its mean the floor's gravel's) and over the
+  lower half of its slope it turns into the floor itself in lobes (over its lowest third, from a
+  paler talus, until now).
+- *Crack lips* (`jointLook`, `blockFragment`): close in (a chip five or more pixels across) the
+  chips are separate scoops with whole edge between, only a little paler than the patina, each a
+  shallow scoop steepening toward the crack and turned a little its own way along it, so a lip
+  catches the light on one side of the crack and is shaded on the other. A few pixels across, the
+  lip runs along the crack as before (separate scoops there left the face's joints all but gone from
+  the default view in a trial). The crack's width is unchanged, so `QuarryJoints` is too.
+
+**Measured** (main's build and this one interleaved; GPU draw from the recorder's own timing;
+`measure.txt`).
+- *GPU draw a frame*, Record Clip of the default view (three rounds): the face 14.84, 14.85, 14.83
+  ms before and 14.92, 14.92, 14.93 after (+0.08 ms); the ridge 11.58, 11.57, 11.56 before and 11.66,
+  11.69, 11.66 after (+0.1 ms). The target was at most +1 ms.
+- *Record Clip* a frame: the face 25.7, 25.6, 25.7 ms before and 25.8, 26.0, 25.8 after; the ridge
+  20.3, 20.2, 20.1 before and 20.3, 20.5, 20.4 after (load 4 to 7).
+- *The window's work a frame* (`play --self-test NAME --offscreen`, two rounds, medians; load 1 to
+  6): the face following 21.9, 21.8 ms before and 22.0, 22.0 after, scrubbing 45.8, 45.7 and 45.9,
+  45.8, playing 18.6, 18.5 and 18.7, 18.6; the ridge following 17.1, 17.1 before and 16.8, 17.3
+  after, scrubbing 31.9, 31.9 and 31.9, 31.9, playing 14.3, 14.4 and 14.3, 13.6. Metal allocated
+  after the first firing 812 MB at the face and 494 MB on the ridge, both builds.
+- Rock unchanged: 116,967 blocks at the face and 31,259 on the ridge, both builds.
+
+**Checked by eye** from the stored poses with the window's recorder (`hillsideblast clip`, frames
+from the movie files), before on main's build and after on this one: #147's and #148's poses (the
+face's default view, close, a joint close up, the floor close and farther, the apron, the ridge's
+default view, the crest from above, the thrown rock, the crag, its close-up, an outcrop close, the
+near flank, the wide view) plus a crag's end along the flank (focus 100,-133,19, yaw 0.25, 24 m),
+the flanks from above (focus 105,-60,15, yaw 1.1, pitch 1.0, 130 m), the cut's margin after the
+blast (focus 70,23,33, yaw 0.95, pitch 0.75, 28 m, at 11 s) and at 1.5 s, and the apron wider.
+Files under `$BOMBCAD_DATA/hillside-blast/rock-masses/`: `before/` and `after/`, enlarged pairs in
+`crops/`, the trials `t1/` to `t13/`, the debug renders `dbg1/` (no lips), `dbg2/`, `dbg3/` (how far
+each piece moved, which is dressing) and `dbg4/` (the crag in red), orbiting clips `crawl-main/`
+and `crawl-after/` (a joint and the floor, frames 50 ms apart in `g-*`), the scripts in `scripts/`
+and the measurements in `measure.txt`, `rc-*`, `st-*`.
+
+**The look, frankly.**
+- *Crag ends* (`crops/cragend-*`, `after/crag-01.00.png`): seen along the flank the end now steps
+  down: the upper bed stops short, the bed below runs on and rounds down into the slope, with blocks
+  and stones at its foot. It is still made of large squarish blocks with flat tops; the right end of
+  the long crag in the oblique view changed little (its beds there are cut by the slope rather than
+  run out), and the layers still meet the slope in straightish lines where the slope crosses them.
+- *Outcrops from above* (`crops/flanks-left-*`, `after/flanks-01.00.png`): the long runs are gone;
+  the flanks show scattered blocks and short broken groups, some offset from their neighbours. Close
+  in, a few pieces are thin slabs lying on the slope, and some groups still line up along their bed
+  when seen in a row of three or four.
+- *Margin turf* (`crops/margin-rim-*`, `crops/thrown-margin-*`): the green plates on the cut's wall
+  and rim are gone: bare rock and soil with ragged turf at the rim. The flank's own turf beyond runs
+  right up to the wall, so the edge between grass and bare rock is sharp in places. The heaved
+  pieces' split turf is visible only close in.
+- *The floor* (`crops/floor-near-*`, `after/floor-00.30.png`): it reads as gravel. The stones are
+  rather smooth and rounded, like a beach more than crushed rock, and a little pale and even in size
+  within each class; far off it is a plain mottled tone, as before.
+- *The apron* (`crops/apron-*`): darker and closer to the floor, its foot no longer a pale band;
+  where the sun rakes its slope it is still lighter than the shaded floor beyond, so its form shows.
+- *Crack lips* (`crops/joint-*`, `crops/faceclose-*`): close in the continuous pale line is gone;
+  chips are separate, some lit and some shaded. A scoop turned away from the sun can read as a dark
+  hole beside the crack. In the face's default and close views the joints look as they did.
+- *No shimmer* seen in the orbiting clips (`crawl-*`, frames 50 ms apart): the floor's stones and
+  the joints move with the surface.

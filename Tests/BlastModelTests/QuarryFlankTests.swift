@@ -218,6 +218,44 @@ struct QuarryFlankTests {
         }
     }
 
+    @Test("Outcrops are drawn in short pieces en échelon, and talus lies at a crag's ends")
+    func rockMasses() throws {
+        let flank = try #require(QuarryFlank(face: Self.face))
+        // A tag keeps its shift along the bedding's normal to its step, and the rest of its bits.
+        for shift: Float in [-0.45, -0.1, 0, 0.25, 0.45] {
+            let tag = QuarryFace.outcropTag(
+                above: 1.2, random: 0.5, part: .face, layer: 2, joint: 0.4, crag: true, shift: shift)
+            #expect(abs(QuarryFace.outcropShift(tag) - shift) <= QuarryFace.outcropShiftStep / 2 + 1e-5)
+            #expect(
+                QuarryFace.isCrag(tag) && (tag >> 19) & 7 == 2
+                    && (tag >> 16) & 7 == QuarryFace.OutcropPart.face.rawValue)
+        }
+        // Each long run's outcrop is drawn shifted, within half a metre of its bed, and not all the
+        // same way along it (emmettl/bombcad-work#149).
+        var shifted = 0
+        var long = 0
+        for (k, run) in flank.ledgeRuns().enumerated() where run.count >= 4 {
+            long += 1
+            let mesh = QuarryFace.outcrop(run.map { flank.ledges[$0] }, flank: flank, seed: UInt64(k))
+            let shifts = mesh.vertices.map { QuarryFace.outcropShift($0.body) }
+            #expect(shifts.allSatisfy { abs($0) <= 0.5 })
+            if (shifts.max() ?? 0) - (shifts.min() ?? 0) > 0.2 { shifted += 1 }
+        }
+        #expect(long > 0 && shifted * 10 >= long * 9)
+        // Stones at both ends of each crag, where its beds go under the slope.
+        let stones = flank.stones()
+        for crag in flank.crags {
+            let side = SIMD2(-crag.downhill.y, crag.downhill.x)
+            for end: Float in [-1, 1] {
+                let at = SIMD2(crag.centre.x, crag.centre.y) + side * (end * crag.width / 2)
+                let near = stones.filter {
+                    $0.look.x < 0.5 && simd_distance(SIMD2($0.posSize.x, $0.posSize.y), at) < 9
+                }
+                #expect(near.count >= 5)
+            }
+        }
+    }
+
     @Test("A ridge's weathering as drawn breaks along the strike, within reach of the solver's cells")
     func strikeRecess() {
         let n = QuarryFace.beddingNormal
